@@ -73,6 +73,7 @@ export const HealthNewsModule: React.FC = () => {
 
   const pediatricsCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'pediatrics').length, []);
   const vaccineCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'vaccine').length, []);
+  const physioCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'physio').length, []);
   const thyroidCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'thyroid').length, []);
   const bpCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'bp').length, []);
   const diabetesCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'diabetes').length, []);
@@ -83,6 +84,7 @@ export const HealthNewsModule: React.FC = () => {
 
   const CATEGORIES = [
     { id: 'all', label: `အားလုံး (${HEALTH_ARTICLES.length} ပုဒ်)` },
+    { id: 'physio', label: `🏃 ကာယကုထုံး (${physioCount})` },
     { id: 'pediatrics', label: `👶 ကလေးကျန်းမာရေး (${pediatricsCount})` },
     { id: 'vaccine', label: `💉 ကာကွယ်ဆေးများ (${vaccineCount})` },
     { id: 'thyroid', label: `သိုင်းရွိုက် (${thyroidCount})` },
@@ -97,6 +99,7 @@ export const HealthNewsModule: React.FC = () => {
 
   const getCategoryLabel = (cat: string) => {
     switch (cat) {
+      case 'physio': return 'ကာယကုထုံး';
       case 'pediatrics': return 'ကလေးကျန်းမာရေး';
       case 'vaccine': return 'ကာကွယ်ဆေး';
       case 'thyroid': return 'သိုင်းရွိုက်';

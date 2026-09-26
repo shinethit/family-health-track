@@ -271,3 +271,53 @@ export interface HealthArticle {
   keyTakeaways: string[];
   badgeColor?: string;
 }
+
+export interface VaccinationRecord {
+  id: string;
+  userId: string;
+  patientName?: string;
+  vaccineName: string;
+  targetDisease: string;
+  doseNumber: number;
+  totalDoses: number;
+  dateAdministered?: string;
+  nextDueDate?: string;
+  administeredBy?: string;
+  batchNumber?: string;
+  status: 'completed' | 'scheduled' | 'overdue';
+  category: 'adult' | 'child' | 'travel';
+  notes?: string;
+  createdAt?: string;
+}
+
+export interface EmergencyProfile {
+  id: string;
+  userId: string;
+  patientName: string;
+  dateOfBirth?: string;
+  bloodType: string; // A+, O+, etc.
+  allergies: string[]; // Medication or food allergies
+  chronicConditions: string[]; // Hypertension, Diabetes, Asthma, etc.
+  primaryContactName: string;
+  primaryContactPhone: string;
+  primaryContactRelation: string;
+  secondaryContactName?: string;
+  secondaryContactPhone?: string;
+  attendingDoctorName?: string;
+  attendingDoctorPhone?: string;
+  preferredHospital?: string;
+  organDonor?: boolean;
+  specialInstructions?: string;
+  updatedAt?: string;
+}
+
+export interface DietRecommendation {
+  category: 'hypertension' | 'diabetes' | 'kidney' | 'liver' | 'general';
+  titleMm: string;
+  subtitleMm: string;
+  recommendedFoods: string[];
+  foodsToAvoid: string[];
+  myanmarMealTips: string[];
+  recommendedHydrationLiters: number;
+}
+

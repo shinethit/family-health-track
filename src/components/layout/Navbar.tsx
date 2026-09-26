@@ -6,7 +6,8 @@ import {
   BookOpen, 
   History, 
   KeyRound, 
-  LogOut 
+  LogOut,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -16,6 +17,7 @@ interface NavbarProps {
   onOpenNotifications: () => void;
   onOpenUserGuide: () => void;
   onOpenVersionHistory: () => void;
+  onOpenPassportModal?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
@@ -24,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNotifications,
   onOpenUserGuide,
   onOpenVersionHistory,
+  onOpenPassportModal
 }) => {
   const { profile, isAdmin, logout } = useAuth();
   const { unreadCount } = useNotifications();
@@ -60,20 +63,32 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </span>
                   <button
                     onClick={onOpenVersionHistory}
-                    className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
+                    className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 transition-colors cursor-pointer"
                     title="Version History ကြည့်မည်"
                   >
-                    v1.3.7
+                    v1.6.0
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500 hidden md:block">
-                  သွေးတိုး၊ ဆီးချို၊ BMI၊ သိုင်းရွိုက် (TFT)၊ ကာကွယ်ဆေးနှင့် ဓာတ်ခွဲခန်းစစ်ဆေးချက်များ
+                  သွား၊ မျက်စိ၊ နား၊ အရေပြား၊ ရှေးဦးပြုစုခြင်း၊ သွေးတိုး၊ ဆီးချို၊ BMI၊ ကာကွယ်ဆေးနှင့် အာဟာရ
                 </p>
               </div>
             </div>
 
             {/* Right Tools & Profile - Pristine Single Flex Row */}
             <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Health Passport PDF Export Button */}
+              {onOpenPassportModal && (
+                <button
+                  onClick={onOpenPassportModal}
+                  className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition-colors cursor-pointer flex items-center gap-1"
+                  title="ဆရာဝန်ပြသရန် ကျန်းမာရေး အစီရင်ခံစာ PDF / Print"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="hidden sm:inline">အစီရင်ခံစာ PDF</span>
+                </button>
+              )}
+
               {/* User Guide Button */}
               <button
                 onClick={onOpenUserGuide}
@@ -83,6 +98,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <BookOpen className="w-4 h-4" />
                 <span className="hidden sm:inline">လမ်းညွှန်</span>
               </button>
+
 
               {/* Notification Bell */}
               <button
@@ -142,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
                       >
                         <History className="w-4 h-4 text-purple-600" />
-                        <span>ဗားရှင်း မှတ်တမ်း (v1.3.7)</span>
+                        <span>ဗားရှင်း မှတ်တမ်း (v1.4.0)</span>
                       </button>
 
                       <button

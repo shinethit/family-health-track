@@ -32,11 +32,113 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v1.3.7',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Major Feature Update)',
+    version: 'v1.6.0',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Dental, Eye, Ear, Skincare & Emergency First Aid Update)',
     isLatest: true,
+    title: '🦷 Dental, Eye, Ear Specialities, Dermatology Skincare & Emergency First Aid Protocol',
+    badge: 'နောက်ဆုံး ဗားရှင်း (v1.6.0)',
+    badgeColor: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
+    highlights: [
+      {
+        title: '🦷 သွား၊ မျက်စိ နှင့် နား/အကြားအာရုံ အထူးကု မှတ်တမ်းနှင့် စစ်ဆေးမှုများ (Specialties Module)',
+        icon: Stethoscope,
+        items: [
+          'သွားကျန်းမာရေး ပြသမှု မှတ်တမ်း၊ သွား ၃၂ ချောင်း Interactive Teeth Chart နှင့် ၂ မိနစ် သွားတိုက် နာရီစနစ် (Brushing Coach)',
+          'မျက်စိ အမြင်အာရုံ စစ်ဆေးမှု (Snellen Vision Chart Simulator)၊ Ishihara ရောင်စုံ ကာလာဘလိုင်းနက် စစ်ဆေးမှုနှင့် မျက်မှန်/မျက်စိပါဝါ (OD/OS) မှတ်တမ်းများ',
+          'နားနှင့် အကြားအာရုံ Sound Tone Generator (250Hz - 8000Hz) စမ်းသပ်မှုနှင့် နားစည်ကာကွယ်ရေး လမ်းညွှန်များ'
+        ]
+      },
+      {
+        title: '✨ အရေပြား ကျန်းမာရေးနှင့် မြန်မာ့ရာသီ အလှအပ (Dermatology & Skincare Module)',
+        icon: Sparkles,
+        items: [
+          'မိမိ အရေပြား အမျိုးအစား (Dry, Oily, Combination, Sensitive, Normal) စစ်ဆေးပေးသော Interactive Quiz',
+          'မှဲ့နှင့် အရေပြား ကင်ဆာ သတိပေးစနစ် (ABCDE Warning Criteria) စစ်ဆေးမှု',
+          'ဝက်ခြံ၊ ကြက်သားအရေပြား/Eczema၊ ပွေး/ညှင်း၊ ဓာတ်မတည့်အဖုအပိန့်များ ပြုစုကုသနည်းနှင့် မြန်မာ့ရာသီဥတု Skincare လမ်းညွှန်များ'
+        ]
+      },
+      {
+        title: '🚨 အရေးပေါ် ကျန်းမာရေးနှင့် ရှေးဦးပြုစုခြင်း (Emergency First Aid Protocol)',
+        icon: Activity,
+        items: [
+          'မြွေကိုက်၊ ခွေး/ကြောင်ကိုက်၊ ကင်း/ပျားတုပ်ခြင်းအတွက် အချိန်မီ သွေးအဆိပ်ဖြေပစ္စည်းနှင့် ရှေးဦးပြုစုနည်းများ',
+          'အပူလောင်ခြင်း (၁st, ၂nd, ၃rd Degree) ရေအေး မိနစ် ၂၀ လောင်းခြင်း စည်းမျဉ်းနှင့် သွေးထွက်လွန်ခြင်း ဖိအားပေးနည်းများ',
+          'ဓာတ်မတည့် ပြင်းထန်မှု (Anaphylaxis)၊ သီးခြင်း (Heimlich Maneuver) နှင့် CPR နှလုံးနှိုးဆွခြင်း 30:2 Rhythm လမ်းညွှန်များ'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.5.0',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (Physiotherapy & Rehabilitation Update)',
+    isLatest: false,
+    title: '🏃 Physiotherapy Exercises, Interactive Reps Timer & Physical Rehab Guides',
+    badge: 'ဗားရှင်း v1.5.0',
+    badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    highlights: [
+      {
+        title: '🏃 Physiotherapy & Physical Rehab Module (အရိုး၊ အကြောနှင့် ကာယကုထုံး)',
+        icon: Activity,
+        items: [
+          'ခါးနာ၊ ဇာတ်ကြောတက်၊ ဒူးဆစ်အဆစ်ရောင်ခြင်း၊ လေဖြတ်ပြီး ပြန်လည်သန်စွမ်းရေး၊ Office Syndrome နှင့် သက်ကြီးရွယ်အို ဟန်ချက်ထိန်း လေ့ကျင့်ခန်းများ စနစ်တကျ ပါဝင်ခြင်း',
+          'ခန္ဓာကိုယ် နာကျင်သည့်နေရာအလိုက် (Neck, Shoulder, Back, Knee, Arm) သီးသန့် ကာယကုထုံးများ ရှာဖွေနိုင်သော Interactive Body Area Selector',
+          'စက္ကန့် တိုက်ရိုက် ရေတွက်စနစ် (Timer)၊ အကြောလျှော့/အကြိမ်ရေ ရေတွက်စနစ် (Reps Counter) နှင့် audio beep cue ပါရှိသော Live Exercise Runner Mode',
+          'ယနေ့ ပြုလုပ်ပြီးသမျှ လေ့ကျင့်ခန်းများနှင့် နေ့စဉ် streak တိုးတက်မှုကို မှတ်တမ်းတင်ပေးသော Daily Rehab Tracker'
+        ]
+      },
+      {
+        title: '📚 Physiotherapy Health Articles (ကာယကုထုံး ကျန်းမာရေး ဆောင်းပါးများ)',
+        icon: Sparkles,
+        items: [
+          'ခါးနာဇာတ်ကြောတက်သူများ၊ လေဖြတ်လူနာများ၊ ဒူးဆစ်ရောင်သူများနှင့် ရုံးဝန်ထမ်းများအတွက် အိမ်မှာတင် ပြုလုပ်နိုင်သည့် ဆေးခန်းအဆင့် ကာယကုထုံး ဆောင်းပါး ၅ ပုဒ် ထပ်မံဖြည့်သွင်းပေးခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.4.0',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (All-In-One Major Healthcare Release)',
+    isLatest: false,
+    title: '📄 Health Passport PDF, Vaccination Tracker, Emergency ID Card & Clinical Nutrition Guide',
+    badge: 'v1.4.0',
+    badgeColor: 'bg-slate-500/20 text-slate-300 border-slate-500/40',
+    highlights: [
+      {
+        title: '📄 Medical Health Passport / Print & PDF Summary Report',
+        icon: Activity,
+        items: [
+          'ဆရာဝန်ပြသရန် သို့မဟုတ် ဆေးခန်းတင်ပြရန်အတွက် သွေးတိုး၊ ဆီးချို၊ BMI၊ ဓာတ်ခွဲခန်းစစ်ဆေးချက်များ၊ လက်ရှိသောက်ဆေးများနှင့် အရေးပေါ် အချက်အလက်များကို A4 Size Printable PDF Health Passport အဖြစ် ၁-ချက်နှိပ်ရုံဖြင့် ထုတ်ယူနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '💉 Vaccination Tracker & Child/Adult Immunization Passport',
+        icon: Sparkles,
+        items: [
+          'ဘီပိုး၊ တုပ်ကွေး၊ မေးခိုင်၊ COVID-19၊ HPV၊ ဝက်သက် နှင့် ဦးနှောက်ရောင် ကာကွယ်ဆေးများ၏ ထိုးနှံပြီးစီးမှုနှင့် နောက်တစ်ကြိမ် ထိုးနှံရမည့် ရက်စွဲများကို စနစ်တကျ မှတ်တမ်းတင် ထိန်းသိမ်းနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '🚨 Emergency Medical ID / Pocket Card',
+        icon: ShieldCheck,
+        items: [
+          'သွေးအမျိုးအစား၊ ဓာတ်မတည့်သော ဆေးဝါးများ၊ အဓိက အရေးပေါ် ဆက်သွယ်ရန် ဖုန်းနံပါတ် (Direct Click-To-Call) နှင့် ပြသနေသော ဆရာဝန်/ဆေးရုံ အချက်အလက်ပါရှိသော အရေးပေါ် ကျန်းမာရေးကတ်ပြား'
+        ]
+      },
+      {
+        title: '🥗 Clinical Diet & Nutrition Guide for Hypertension & Diabetes',
+        icon: Gauge,
+        items: [
+          'သွေးတိုးရောဂါရှင်များအတွက် DASH Diet၊ ဆီးချိုရောဂါရှင်များအတွက် Glycemic Index နည်းသော အာဟာရနှင့် မြန်မာ့ရိုးရာ ဟင်းလျာများ ကျန်းမာရေးနှင့်ညီညွတ်စွာ ချက်ပြုတ်နည်း လမ်းညွှန်များ'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.3.7',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (Major Feature Update)',
+    isLatest: false,
     title: '🔔 Health Notifications & Custom Reminders Center, Alarms & Audio Push Alert System',
-    badge: 'နောက်ဆုံး ဗားရှင်း (v1.3.7)',
+    badge: 'ဗားရှင်း (v1.3.7)',
     badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
     highlights: [
       {
