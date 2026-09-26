@@ -32,13 +32,21 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v1.3.1',
+    version: 'v1.3.2',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့)',
     isLatest: true,
-    title: 'Free Quota Monitoring System & Patient Privacy & Database Hardening',
+    title: 'Cloudflare Pages Deployment Fix & Build System Optimization',
     badge: 'နောက်ဆုံး ဗားရှင်း',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
     highlights: [
+      {
+        title: '🚀 Cloudflare Pages Build Pipeline Fix',
+        icon: Sparkles,
+        items: [
+          'Cloudflare Pages CI/CD Build အတွက် bun lockfile compatibility error ကို ဖြေရှင်းပေးပြီး standard npm lockfile စနစ်သို့ ပြောင်းလဲတပ်ဆင်ခြင်း',
+          'Vite Production Build နှင့် PWA Service Worker assets များကို Cloudflare Pages တွင် အောင်မြင်စွာ Auto-deploy ဖြစ်စေရန် ပြင်ဆင်ပြီးစီးခြင်း'
+        ]
+      },
       {
         title: '📊 Free Quota & Database Health Monitoring System',
         icon: Gauge,
@@ -54,7 +62,16 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
           'လူနာများ၏ ကျန်းမာရေးမှတ်တမ်းများကို သီးသန့် Encrypted Database တွင် လုံခြုံစွာ သိမ်းဆည်းခြင်း',
           'ခွင့်ပြုချက်မရှိဘဲ စောင့်ကြည့်ခြင်းမရှိစေဘဲ မိမိကိုယ်တိုင်သာ စီမံနိုင်သော Privacy Protection စနစ်'
         ]
-      },
+      }
+    ]
+  },
+  {
+    version: 'v1.3.1',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ',
+    title: 'Free Quota Monitoring System & Patient Privacy & Database Hardening',
+    badge: 'Database Update',
+    badgeColor: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+    highlights: [
       {
         title: '⚡ Real-time Patient Data Syncing & Null-Safe Pipeline',
         icon: Database,
