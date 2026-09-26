@@ -32,12 +32,45 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v1.3.5',
+    version: 'v1.3.6',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Major Update)',
     isLatest: true,
-    title: 'Clean Bright Medical Theme, Thyroid Function Test (TFT), 35+ Health Articles with Vaccine Guides & Incomplete Record Management',
-    badge: 'နောက်ဆုံး ဗားရှင်း (Latest)',
+    title: '☀️ Pure White Minimalist UI, Pediatrics & Children Healthcare, Categorized Knowledge Grid & Zero Horizontal Scroll Navigation',
+    badge: 'နောက်ဆုံး ဗားရှင်း (v1.3.6)',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    highlights: [
+      {
+        title: '⚪️ Pure White Minimalist UI (အဖြူခံ ရိုးရိုးရှင်းရှင်း ဒီဇိုင်း)',
+        icon: Sparkles,
+        items: [
+          'အက်ဒမင် ဒါရှ်ဘုတ်နှင့် Quota Monitor အပါအဝင် အပလီကေးရှင်း အစိတ်အပိုင်းတစ်ခုလုံးကို စက်တွင်း အမှောင်ရောင် အပေါ်ယံလွှာများ ဖယ်ရှား၍ Pure White (အဖြူခံ သန့်သန့်ရှင်းရှင်း) သို့ အပြည့်အဝ ပြောင်းလဲပေးထားခြင်း',
+          'ဖုန်းစခရင်များတွင် ဘေးဘက်သို့ ပွတ်ဆွဲရန် မလိုဘဲ တစ်ကြည့်တည်း အကုန်မြင်နိုင်သော Responsive Grid Tabs'
+        ]
+      },
+      {
+        title: '👶 ကလေးကျန်းမာရေးနှင့် မွေးကင်းစ ပြုစုစောင့်ရှောက်နည်း (Pediatrics)',
+        icon: Stethoscope,
+        items: [
+          'ကလေးသူငယ် ကျန်းမာရေးအတွက် မွေးကင်းစမှ ၅ နှစ်အထိ EPI ကာကွယ်ဆေးဇယား၊ အဖျားတက်လျှင် ရေပတ်တိုက်နည်း၊ ဉာဏ်ရည်နှင့် အရပ်အမောင်းအတွက် အာဟာရနှင့် သွေးလွန်တုပ်ကွေး အထူးသတိပေးချက်များ',
+          'ကျန်းမာရေး အသိပညာ ဆောင်းပါးများကို ကလေးကျန်းမာရေး၊ ကာကွယ်ဆေး၊ သိုင်းရွိုက်၊ သွေးတိုး၊ ဆီးချို၊ နှလုံး၊ အသည်း၊ ကျောက်ကပ်၊ အာဟာရနှင့် သက်ကြီးကျန်းမာရေး ဟူ၍ အုပ်စု ၉ ခု သီးသန့် အုပ်စုဖွဲ့ ပေးထားခြင်း'
+        ]
+      },
+      {
+        title: '📋 Change Log & Version History Transparency (ပြောင်းလဲမှု မှတ်တမ်း)',
+        icon: History,
+        items: [
+          'စနစ်အတွင်း ပြုလုပ်ခဲ့သမျှ အပြောင်းအလဲနှင့် အဆင့်မြှင့်တင်မှုများ အားလုံးကို Version History & Change Log တွင် အချိန်နှင့်တစ်ပြေးညီ ပွင့်လင်းမြင်သာစွာ အပြည့်အစုံ မှတ်တမ်းတင်ပေးထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.3.5',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ',
+    isLatest: false,
+    title: 'Clean Bright Medical Theme, Thyroid Function Test (TFT), 35+ Health Articles with Vaccine Guides & Incomplete Record Management',
+    badge: 'ယခင် ဗားရှင်း',
+    badgeColor: 'bg-slate-500/20 text-slate-300 border-slate-500/40',
     highlights: [
       {
         title: '☀️ Clean & Bright Medical Theme (လင်းလင်း ရှင်းရှင်း Theme)',

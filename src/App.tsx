@@ -273,7 +273,7 @@ const MainContent: React.FC = () => {
               className="hover:text-purple-600 transition-colors cursor-pointer flex items-center gap-1"
             >
               <History className="w-3.5 h-3.5" />
-              <span>Version History (v1.3.5)</span>
+              <span>Version History (v1.3.6)</span>
             </button>
           </div>
 

@@ -71,15 +71,19 @@ export const HealthNewsModule: React.FC = () => {
     }
   };
 
+  const pediatricsCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'pediatrics').length, []);
   const vaccineCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'vaccine').length, []);
   const thyroidCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'thyroid').length, []);
   const bpCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'bp').length, []);
   const diabetesCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'diabetes').length, []);
   const liverCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'liver').length, []);
   const kidneyCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'kidney').length, []);
+  const nutritionCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'nutrition').length, []);
+  const elderlyCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'elderly').length, []);
 
   const CATEGORIES = [
     { id: 'all', label: `အားလုံး (${HEALTH_ARTICLES.length} ပုဒ်)` },
+    { id: 'pediatrics', label: `👶 ကလေးကျန်းမာရေး (${pediatricsCount})` },
     { id: 'vaccine', label: `💉 ကာကွယ်ဆေးများ (${vaccineCount})` },
     { id: 'thyroid', label: `သိုင်းရွိုက် (${thyroidCount})` },
     { id: 'bp', label: `သွေးတိုး (${bpCount})` },
@@ -87,12 +91,13 @@ export const HealthNewsModule: React.FC = () => {
     { id: 'heart', label: 'နှလုံး' },
     { id: 'liver', label: `အသည်း (${liverCount})` },
     { id: 'kidney', label: `ကျောက်ကပ် (${kidneyCount})` },
-    { id: 'nutrition', label: 'အာဟာရ/BMI' },
-    { id: 'elderly', label: 'သက်ကြီးကျန်းမာရေး' },
+    { id: 'nutrition', label: `အာဟာရ (${nutritionCount})` },
+    { id: 'elderly', label: `သက်ကြီး (${elderlyCount})` },
   ];
 
   const getCategoryLabel = (cat: string) => {
     switch (cat) {
+      case 'pediatrics': return 'ကလေးကျန်းမာရေး';
       case 'vaccine': return 'ကာကွယ်ဆေး';
       case 'thyroid': return 'သိုင်းရွိုက်';
       case 'bp': return 'သွေးတိုး';
@@ -108,6 +113,7 @@ export const HealthNewsModule: React.FC = () => {
 
   const getCategoryBadgeColor = (cat: string) => {
     switch (cat) {
+      case 'pediatrics': return 'bg-pink-50 text-pink-700 border-pink-200';
       case 'vaccine': return 'bg-cyan-50 text-cyan-700 border-cyan-200';
       case 'thyroid': return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'bp': return 'bg-rose-50 text-rose-700 border-rose-200';
