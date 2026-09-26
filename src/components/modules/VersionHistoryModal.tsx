@@ -32,12 +32,51 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v1.6.0',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Dental, Eye, Ear, Skincare & Emergency First Aid Update)',
+    version: 'v1.7.0',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Grammar Spelling, Zero Horizontal Scroll & Categorized Navigation Update)',
     isLatest: true,
-    title: '🦷 Dental, Eye, Ear Specialities, Dermatology Skincare & Emergency First Aid Protocol',
-    badge: 'နောက်ဆုံး ဗားရှင်း (v1.6.0)',
+    title: '🇲🇲 မြန်မာစာလုံးပေါင်း ပြင်ဆင်ချက်များ၊ Horizontal Scroll လုံးဝ မရှိသော UX နှင့် Categorized Sub-Navigation Bar Update',
+    badge: 'နောက်ဆုံး ဗားရှင်း (v1.7.0)',
     badgeColor: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
+    highlights: [
+      {
+        title: '🇲🇲 မြန်မာစာလုံးပေါင်း စနစ်တကျ ပြုပြင်ပေးခြင်း (Grammar & Spelling Corrections)',
+        icon: CheckCircle2,
+        items: [
+          'အက်ပလီကေးရှင်း တစ်ခုလုံးရှိ "ဇတ်ကြော / ဇာတ်ကြော" စာလုံးပေါင်းများကို မှန်ကန်သော မြန်မာစာလုံးပေါင်း "ဇက်ကြော" (ဇက်ကြောတက်၊ ဇက်ကြောနှိပ်) သို့ စနစ်တကျ အစားထိုး ပြင်ဆင်ပေးခြင်း',
+          'ရှေးဦးပြုစုခြင်းနှင့် ကျန်းမာရေး ဆောင်းပါးများပါ "အသက်ရှူရက်တာ" ကို မှန်ကန်သော စာလုံးပေါင်း "အသက်ရှူရပ်တာ" သို့ စနစ်တကျ ပြင်ဆင်ပေးခြင်း'
+        ]
+      },
+      {
+        title: '📱 Horizontal Scroll လုံးဝ ဖြုတ်ပစ်ခြင်း (Zero Horizontal Scroll Across Entire App)',
+        icon: Smartphone,
+        items: [
+          'မော်ဂျူး အသီးသန့် (Physiotherapy, Specialty Care, Dermatology, Emergency, Admin Patient Portal) များရှိ ရွေးချယ်မှု ဘားများနှင့် Tab chip များအား ဘေးသို့ horizontal scroll လုပ်ရန် မလိုဘဲ Flex Wrap, Responsive Category Dropdown များနှင့် Grid View ဖြင့် ရွေးချယ်နိုင်အောင် UX ပြောင်းလဲ ပေးထားခြင်း'
+        ]
+      },
+      {
+        title: '🗂️ သပ်သပ်ရပ်ရပ် Categorized Sub-Navigation & Module Selector Dropdown',
+        icon: Tag,
+        items: [
+          'Header / Navigation တွင် ခလုတ်များ ပြန့်ကျဲ ရှုပ်ထွေးနေခြင်းကို သန့်ရှင်းသပ်ရပ်စေရန် မော်ဂျူး ၁၆ ခုလုံးကို Category ၄ ခု (အထွေထွေ ကျန်းမာရေး မှတ်တမ်း၊ အထူးကုနှင့် လူနေမှုဘဝ၊ အရေးပေါ်နှင့် ကာကွယ်ရေး၊ စနစ်စွမ်းဆောင်ရည်) ခွဲခြား၍ Dropdown နှင့် Segmented Navigation Bar အဖြစ် သပ်သပ်ရပ်ရပ် ပြန်လည် စီစဉ်ပေးထားခြင်း'
+        ]
+      },
+      {
+        title: '📋 Change Log & Version History Transparency (ပြောင်းလဲမှု မှတ်တမ်း)',
+        icon: History,
+        items: [
+          'အသုံးပြုသူ တောင်းဆိုထားသော ပြင်ဆင်မှုများနှင့် အဆင့်မြှင့်တင်မှုများ အားလုံးကို Version History & Change Log တွင် အသေးစိတ် ပွင့်လင်းမြင်သာစွာ မှတ်တမ်းတင်ပေးထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.6.0',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (Dental, Eye, Ear, Skincare & Emergency First Aid Update)',
+    isLatest: false,
+    title: '🦷 Dental, Eye, Ear Specialities, Dermatology Skincare & Emergency First Aid Protocol',
+    badge: 'ဗားရှင်း (v1.6.0)',
+    badgeColor: 'bg-slate-500/20 text-slate-300 border-slate-500/40',
     highlights: [
       {
         title: '🦷 သွား၊ မျက်စိ နှင့် နား/အကြားအာရုံ အထူးကု မှတ်တမ်းနှင့် စစ်ဆေးမှုများ (Specialties Module)',

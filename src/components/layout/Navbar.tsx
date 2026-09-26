@@ -66,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 transition-colors cursor-pointer"
                     title="Version History ကြည့်မည်"
                   >
-                    v1.6.0
+                    v1.7.0
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500 hidden md:block">
