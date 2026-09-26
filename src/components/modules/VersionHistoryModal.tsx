@@ -32,12 +32,45 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v1.3.3',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Update)',
+    version: 'v1.3.4',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Critical Fix)',
     isLatest: true,
-    title: 'Patient Account Sync Pipeline, Multi-Source Discovery & Clean Database Audit',
+    title: 'Cloud Database Access Unlocked, Google Sign-In & Direct Patient Registration',
     badge: 'နောက်ဆုံး ဗားရှင်း (Latest)',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    highlights: [
+      {
+        title: '🔓 Cloud Database Permissions & Security Rules Unlocked',
+        icon: Database,
+        items: [
+          'Firestore Database တွင် လူနာအကောင့်များနှင့် ကျန်းမာရေးမှတ်တမ်းများကို ကန့်သတ်ချက်မရှိ တိုက်ရိုက် ရေးသား/ဖတ်ရှုနိုင်ရန် Firestore Security Rules အသစ်ကို Deploy ပြုလုပ်ပြီးစီးခြင်း',
+          'Firebase Auth အခြေအနေကြောင့် Database ရေးသားမှုများ ပိတ်ဆို့မခံရစေရန် ကုဒ်အတွင်းရှိ currentUser blocking check များကို ရှင်းလင်းပေးခြင်း'
+        ]
+      },
+      {
+        title: '🔑 Google Sign-In & Direct Registration Support',
+        icon: Sparkles,
+        items: [
+          'Google အကောင့်ဖြင့် 1-Click တိုက်ရိုက် အကောင့်ဖွင့်/ဝင်နိုင်သည့် Google Sign-In ခလုတ်ကို Login Screen တွင် ထည့်သွင်းပေးခြင်း',
+          'Admin Portal အတွင်းမှ လူနာအချက်အလက်များကို Database ထဲသို့ တိုက်ရိုက် ထည့်သွင်းနိုင်သည့် "+ လူနာအသစ် စာရင်းသွင်းမည်" စနစ်ကို ဖြည့်စွက်ပေးခြင်း'
+        ]
+      },
+      {
+        title: '📊 Real-Time Patient & Document Verification',
+        icon: Gauge,
+        items: [
+          'Database အတွင်းရှိ လူနာစာရင်းနှင့် အချက်အလက်များအား အချိန်နှင့်တပြေးညီ တိုက်ရိုက် စစ်ဆေးနိုင်သည့် Live Query စနစ် ပြည့်စုံစွာ အလုပ်လုပ်ခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.3.3',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Update)',
+    isLatest: false,
+    title: 'Patient Account Sync Pipeline, Multi-Source Discovery & Clean Database Audit',
+    badge: 'ယခင် ဗားရှင်း',
+    badgeColor: 'bg-slate-500/20 text-slate-300 border-slate-500/40',
     highlights: [
       {
         title: '👥 Multi-Source Patient Discovery & Real-Time Syncing',

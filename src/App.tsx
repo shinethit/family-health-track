@@ -125,7 +125,7 @@ const MainContent: React.FC = () => {
               title="Version History (ဗားရှင်းမှတ်တမ်း)"
             >
               <History className="w-3.5 h-3.5" />
-              <span>v1.3.3</span>
+              <span>v1.3.4</span>
             </button>
 
             {/* Open Notifications */}

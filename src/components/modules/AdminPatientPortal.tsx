@@ -51,6 +51,7 @@ export const AdminPatientPortal: React.FC = () => {
     medications,
     doctorAdvices,
     addDoctorAdvice,
+    addPatient,
     deletePatient,
     clearAllPatients,
     dbStats,
@@ -66,6 +67,45 @@ export const AdminPatientPortal: React.FC = () => {
   const [adviceSuccess, setAdviceSuccess] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showQuotaDetails, setShowQuotaDetails] = useState(true);
+
+  // Add Patient Modal States
+  const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
+  const [patientName, setPatientName] = useState('');
+  const [patientEmail, setPatientEmail] = useState('');
+  const [patientPhone, setPatientPhone] = useState('');
+  const [patientAge, setPatientAge] = useState<number | string>('');
+  const [patientGender, setPatientGender] = useState<'male' | 'female' | 'other'>('male');
+  const [patientConditions, setPatientConditions] = useState<string[]>(['သွေးတိုး']);
+  const [patientHeight, setPatientHeight] = useState<number | string>('165');
+  const [patientWeight, setPatientWeight] = useState<number | string>('65');
+  const [patientBloodType, setPatientBloodType] = useState('O+');
+  const [isSavingPatient, setIsSavingPatient] = useState(false);
+
+  const handleCreatePatient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!patientName.trim()) return;
+    setIsSavingPatient(true);
+    try {
+      await addPatient({
+        displayName: patientName.trim(),
+        email: patientEmail.trim() || undefined,
+        phone: patientPhone.trim() || undefined,
+        age: patientAge ? Number(patientAge) : 45,
+        gender: patientGender,
+        chronicConditions: patientConditions,
+        heightCm: patientHeight ? Number(patientHeight) : 165,
+        weightKg: patientWeight ? Number(patientWeight) : 65,
+        bloodType: patientBloodType,
+      });
+      setPatientName('');
+      setPatientEmail('');
+      setPatientPhone('');
+      setPatientAge('');
+      setIsAddPatientOpen(false);
+    } finally {
+      setIsSavingPatient(false);
+    }
+  };
 
   // Pure patient list (excluding admin)
   const actualPatients = patientsList.filter(isPatientOnly);
@@ -413,6 +453,13 @@ export const AdminPatientPortal: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setIsAddPatientOpen(true)}
+              className="px-4 py-2 rounded-2xl bg-indigo-500 hover:bg-indigo-600 text-xs font-bold text-white transition-all flex items-center gap-2 cursor-pointer shadow-md"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>+ လူနာအသစ် စာရင်းသွင်းမည်</span>
+            </button>
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
@@ -830,13 +877,216 @@ export const AdminPatientPortal: React.FC = () => {
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
             လူနာအကောင့်များနှင့် ကျန်းမာရေးမှတ်တမ်းများကို Database မှ စနစ်တကျ လုံခြုံစွာ စစ်ဆေးနိုင်ပါသည်။ အောက်ပါ "အချက်အလက်များ ပြန်လည်ဆွဲယူမည်" ခလုတ်ကို နှိပ်၍လည်း နောက်ဆုံးရဒေတာများကို တိုက်ရိုက် Sync ပြုလုပ်နိုင်ပါသည်။
           </p>
-          <button
-            onClick={handleRefresh}
-            className="px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer shadow-xs mt-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>အချက်အလက်များ ပြန်လည်ဆွဲယူရန် နှိပ်ပါ</span>
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => setIsAddPatientOpen(true)}
+              className="px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer shadow-xs"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>လူနာအသစ် စာရင်းသွင်းမည်</span>
+            </button>
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer shadow-xs"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>အချက်အလက်များ ပြန်လည်ဆွဲယူရန် နှိပ်ပါ</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Patient Modal */}
+      {isAddPatientOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                    လူနာအသစ် စာရင်းသွင်းရန်
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Firestore Database ထဲသို့ တိုက်ရိုက် အချိန်နှင့်တပြေးညီ သိမ်းဆည်းပေးမည်ဖြစ်ပါသည်
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAddPatientOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePatient} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  လူနာအမည် *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ဥပမာ- ဦးမြဦး"
+                  value={patientName}
+                  onChange={(e) => setPatientName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-hidden focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    အီးမေးလ်
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="patient@example.com"
+                    value={patientEmail}
+                    onChange={(e) => setPatientEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-hidden focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    ဖုန်းနံပါတ်
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="0912345678"
+                    value={patientPhone}
+                    onChange={(e) => setPatientPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-hidden focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    အသက်
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="45"
+                    value={patientAge}
+                    onChange={(e) => setPatientAge(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-hidden focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    ကျား / မ
+                  </label>
+                  <select
+                    value={patientGender}
+                    onChange={(e: any) => setPatientGender(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-hidden focus:border-indigo-500"
+                  >
+                    <option value="male">ကျား (Male)</option>
+                    <option value="female">မ (Female)</option>
+                    <option value="other">အခြား (Other)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  ရောဂါအခံများ
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {['သွေးတိုး', 'ဆီးချို', 'အသည်းအဆီဖုံး', 'နှလုံး', 'ကျောက်ကပ်', 'ယူရစ်အက်စစ်'].map((cond) => {
+                    const isSelected = patientConditions.includes(cond);
+                    return (
+                      <button
+                        type="button"
+                        key={cond}
+                        onClick={() => {
+                          if (isSelected) {
+                            setPatientConditions(patientConditions.filter(c => c !== cond));
+                          } else {
+                            setPatientConditions([...patientConditions, cond]);
+                          }
+                        }}
+                        className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : '+ '}
+                        {cond}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    အရပ် (cm)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="165"
+                    value={patientHeight}
+                    onChange={(e) => setPatientHeight(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    ဝိတ် (kg)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="65"
+                    value={patientWeight}
+                    onChange={(e) => setPatientWeight(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    သွေးအုပ်စု
+                  </label>
+                  <select
+                    value={patientBloodType}
+                    onChange={(e) => setPatientBloodType(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-hidden"
+                  >
+                    <option value="O+">O+</option>
+                    <option value="A+">A+</option>
+                    <option value="B+">B+</option>
+                    <option value="AB+">AB+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAddPatientOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold transition-all cursor-pointer"
+                >
+                  မလုပ်တော့ပါ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingPatient}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold transition-all flex items-center gap-2 cursor-pointer shadow-md"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>{isSavingPatient ? 'သိမ်းဆည်းနေပါသည်...' : 'လူနာစာရင်း သိမ်းဆည်းမည်'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
