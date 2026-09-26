@@ -76,6 +76,23 @@ const sanitizeDemoRecords = <T extends { id?: string; userId?: string }>(records
   });
 };
 
+export interface DatabaseStats {
+  totalUsers: number;
+  totalBP: number;
+  totalGlucose: number;
+  totalBMI: number;
+  totalLabs: number;
+  totalMeds: number;
+  totalQuestions: number;
+  totalAdvices: number;
+  totalDocuments: number;
+  estimatedStorageKB: number;
+  dailyReadQuota: number;
+  dailyWriteQuota: number;
+  storageQuotaMB: number;
+  lastSyncTime: string;
+}
+
 interface HealthDataContextType {
   // State
   bpRecords: BloodPressureRecord[];
@@ -88,6 +105,8 @@ interface HealthDataContextType {
   latestBMI: BMIRecord | null;
   doctorQuestions: DoctorQuestion[];
   allDoctorQuestions: DoctorQuestion[];
+  dbStats: DatabaseStats;
+  refreshAdminData: () => Promise<void>;
   
   // Family Members Management
   familyMembers: FamilyMember[];
@@ -346,6 +365,92 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.warn('Firestore initialization warning:', e);
     }
   }, [currentUser, isAdmin]);
+
+  const [lastSyncTime, setLastSyncTime] = useState<string>(() => new Date().toLocaleTimeString('my-MM'));
+
+  const refreshAdminData = async () => {
+    try {
+      const [uSnap, vSnap, gSnap, bSnap, lSnap, mSnap, qSnap, aSnap] = await Promise.all([
+        getDocs(collection(db, 'users')),
+        getDocs(collection(db, 'vitals')),
+        getDocs(collection(db, 'glucose')),
+        getDocs(collection(db, 'bmi')),
+        getDocs(collection(db, 'labTests')),
+        getDocs(collection(db, 'medications')),
+        getDocs(collection(db, 'doctorQuestions')),
+        getDocs(collection(db, 'doctorAdvices')),
+      ]);
+
+      const uList: UserProfile[] = [];
+      uSnap.forEach(d => {
+        const prof = { ...(d.data() as UserProfile), id: d.id };
+        if (isPatientOnly(prof)) uList.push(prof);
+      });
+      if (uList.length > 0 || uSnap.size >= 0) {
+        setPatientsList(uList);
+      }
+
+      const vList: BloodPressureRecord[] = [];
+      vSnap.forEach(d => vList.push({ ...(d.data() as BloodPressureRecord), id: d.id }));
+      if (vList.length > 0) setAllBP(vList);
+
+      const gList: BloodSugarRecord[] = [];
+      gSnap.forEach(d => gList.push({ ...(d.data() as BloodSugarRecord), id: d.id }));
+      if (gList.length > 0) setAllGlucose(gList);
+
+      const bList: BMIRecord[] = [];
+      bSnap.forEach(d => bList.push({ ...(d.data() as BMIRecord), id: d.id }));
+      if (bList.length > 0) setAllBMI(bList);
+
+      const lList: LabTestRecord[] = [];
+      lSnap.forEach(d => lList.push({ ...(d.data() as LabTestRecord), id: d.id }));
+      if (lList.length > 0) setAllLabs(lList);
+
+      const mList: Medication[] = [];
+      mSnap.forEach(d => mList.push({ ...(d.data() as Medication), id: d.id }));
+      if (mList.length > 0) setAllMeds(mList);
+
+      const qList: DoctorQuestion[] = [];
+      qSnap.forEach(d => qList.push({ ...(d.data() as DoctorQuestion), id: d.id }));
+      if (qList.length > 0) setAllQuestions(qList);
+
+      const aList: DoctorAdvice[] = [];
+      aSnap.forEach(d => aList.push({ ...(d.data() as DoctorAdvice), id: d.id }));
+      if (aList.length > 0) setAllAdvices(aList);
+
+      setLastSyncTime(new Date().toLocaleTimeString('my-MM'));
+    } catch (err) {
+      console.warn('Manual refresh err:', err);
+    }
+  };
+
+  const totalUsers = patientsList.length;
+  const totalBP = allBP.length;
+  const totalGlucose = allGlucose.length;
+  const totalBMI = allBMI.length;
+  const totalLabs = allLabs.length;
+  const totalMeds = allMeds.length;
+  const totalQuestions = allQuestions.length;
+  const totalAdvices = allAdvices.length;
+  const totalDocuments = totalUsers + totalBP + totalGlucose + totalBMI + totalLabs + totalMeds + totalQuestions + totalAdvices;
+  const estimatedStorageKB = Math.max(1, Math.round(totalDocuments * 0.85));
+
+  const dbStats: DatabaseStats = {
+    totalUsers,
+    totalBP,
+    totalGlucose,
+    totalBMI,
+    totalLabs,
+    totalMeds,
+    totalQuestions,
+    totalAdvices,
+    totalDocuments,
+    estimatedStorageKB,
+    dailyReadQuota: 50000,
+    dailyWriteQuota: 20000,
+    storageQuotaMB: 1024,
+    lastSyncTime,
+  };
 
   // Target Active User ID for filtering
   const currentTargetUserId = isAdmin 
@@ -793,6 +898,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       latestBMI,
       doctorQuestions,
       allDoctorQuestions: allQuestions,
+      dbStats,
+      refreshAdminData,
       familyMembers,
       selectedFamilyMemberId,
       setSelectedFamilyMemberId,

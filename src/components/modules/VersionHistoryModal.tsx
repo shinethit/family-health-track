@@ -41,7 +41,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         title: '👑 Master Admin & Real-time User Tracking',
         icon: ShieldCheck,
         items: [
-          'အက်ဒမင် (shinethitsmt@gmail.com) မှ လူနာများ အကောင့်သစ်ဖွင့်သည်နှင့် အချိန်နှင့်တပြေးညီ သိရှိစောင့်ကြည့်နိုင်ခြင်း',
+          'အက်ဒမင် (Admin) မှ လူနာများ အကောင့်သစ်ဖွင့်သည်နှင့် အချိန်နှင့်တပြေးညီ သိရှိစောင့်ကြည့်နိုင်ခြင်း',
           'လူနာတစ်ဦးချင်းစီ၏ အသက်၊ ကျား/မ၊ BMI၊ နာတာရှည်ရောဂါများနှင့် နေ့စဉ်ကျန်းမာရေး အချက်အလက်များကို Clinical Dashboard ဖြင့် စောင့်ကြည့်နိုင်ခြင်း',
           'Firestore Real-time Syncing စနစ်ဖြင့် စက်အမျိုးမျိုး (Multi-device) မှ ဝင်ရောက်အသုံးပြုနိုင်ခြင်း'
         ]

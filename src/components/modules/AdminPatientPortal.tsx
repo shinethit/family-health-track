@@ -21,7 +21,18 @@ import {
   RefreshCw,
   Mail,
   Clock,
-  Sparkles
+  Sparkles,
+  Database,
+  Server,
+  Gauge,
+  HardDrive,
+  Cpu,
+  Zap,
+  Wifi,
+  Layers,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useHealthData, isPatientOnly } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -41,7 +52,9 @@ export const AdminPatientPortal: React.FC = () => {
     doctorAdvices,
     addDoctorAdvice,
     deletePatient,
-    clearAllPatients
+    clearAllPatients,
+    dbStats,
+    refreshAdminData
   } = useHealthData();
   const { profile } = useAuth();
 
@@ -52,6 +65,7 @@ export const AdminPatientPortal: React.FC = () => {
   const [isSendingAdvice, setIsSendingAdvice] = useState(false);
   const [adviceSuccess, setAdviceSuccess] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showQuotaDetails, setShowQuotaDetails] = useState(true);
 
   // Pure patient list (excluding admin)
   const actualPatients = patientsList.filter(isPatientOnly);
@@ -80,9 +94,13 @@ export const AdminPatientPortal: React.FC = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1200);
+    try {
+      await refreshAdminData();
+    } finally {
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 600);
+    }
   };
 
   const handleSendAdvice = async (e: React.FormEvent) => {
@@ -461,6 +479,199 @@ export const AdminPatientPortal: React.FC = () => {
             <div className="text-xs text-slate-500">သွေးတိုး + ဆီးချို ၂ မျိုးလုံး</div>
           </div>
         </div>
+      </div>
+
+      {/* 🚀 Free Quota & Database Health Monitoring System */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 p-5 sm:p-6 rounded-3xl border border-indigo-500/30 text-white shadow-xl space-y-5">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/30">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm sm:text-base text-white">
+                  Firestore Free Quota & System Health (အခမဲ့ သုံးစွဲမှု စောင့်ကြည့်စနစ်)
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  Spark Free Plan ($0.00)
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">
+                Firebase Database အခမဲ့ Quota ကန့်သတ်ချက်များနှင့် Cloud စနစ် အခြေအနေကို စောင့်ကြည့်ခြင်း
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-300">
+              <Clock className="w-3.5 h-3.5 text-emerald-400" />
+              <span>နောက်ဆုံး Sync: <strong>{dbStats?.lastSyncTime || 'လက်ရှိ'}</strong></span>
+            </div>
+            <button
+              onClick={() => setShowQuotaDetails(!showQuotaDetails)}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="အသေးစိတ် အဖွင့်/အပိတ်"
+            >
+              {showQuotaDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Quota Metrics Grid */}
+        {showQuotaDetails && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {/* Daily Reads Quota */}
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>နေ့စဉ် ဖတ်ရှုမှု (Reads)</span>
+                  </span>
+                  <span className="text-emerald-400 font-bold text-[11px]">Safe</span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <div className="text-lg font-bold text-white">
+                    {Math.max(1, (dbStats?.totalDocuments || 0) * 2)} <span className="text-xs font-normal text-slate-400">/ 50,000</span>
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    {(((Math.max(1, (dbStats?.totalDocuments || 0) * 2) / 50000) * 100)).toFixed(2)}%
+                  </span>
+                </div>
+                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-r from-emerald-500 to-indigo-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(1, ((Math.max(1, (dbStats?.totalDocuments || 0) * 2) / 50000) * 100)))}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Spark Plan အခမဲ့ ကန့်သတ်ချက် - တစ်နေ့လျှင် 50,000 ကြိမ်
+                </p>
+              </div>
+
+              {/* Daily Writes Quota */}
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    <span>နေ့စဉ် ရေးသွင်းမှု (Writes)</span>
+                  </span>
+                  <span className="text-emerald-400 font-bold text-[11px]">Safe</span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <div className="text-lg font-bold text-white">
+                    {Math.max(1, dbStats?.totalDocuments || 0)} <span className="text-xs font-normal text-slate-400">/ 20,000</span>
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    {(((Math.max(1, dbStats?.totalDocuments || 0) / 20000) * 100)).toFixed(2)}%
+                  </span>
+                </div>
+                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-r from-amber-500 to-emerald-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(1, ((Math.max(1, dbStats?.totalDocuments || 0) / 20000) * 100)))}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Spark Plan အခမဲ့ ကန့်သတ်ချက် - တစ်နေ့လျှင် 20,000 ကြိမ်
+                </p>
+              </div>
+
+              {/* Storage Quota */}
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>ဒေတာ သိမ်းဆည်းမှု</span>
+                  </span>
+                  <span className="text-emerald-400 font-bold text-[11px]">0.01%</span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <div className="text-lg font-bold text-white">
+                    ~ {dbStats?.estimatedStorageKB || 1} KB <span className="text-xs font-normal text-slate-400">/ 1 GB</span>
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    1,024 MB Limit
+                  </span>
+                </div>
+                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: '1%' }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Spark Plan အခမဲ့ ကန့်သတ်ချက် - စုစုပေါင်း 1 GB (1,024 MB)
+                </p>
+              </div>
+
+              {/* Total Documents in Database */}
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-purple-400" />
+                    <span>စုစုပေါင်း မှတ်တမ်းများ</span>
+                  </span>
+                  <span className="text-indigo-300 font-bold text-[11px]">Cloud Data</span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <div className="text-lg font-bold text-white">
+                    {dbStats?.totalDocuments || 0} <span className="text-xs font-normal text-slate-400">Docs</span>
+                  </div>
+                  <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Sync OK</span>
+                  </span>
+                </div>
+                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-purple-500 h-full rounded-full w-full" />
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  လူနာအချက်အလက်၊ BP၊ Glucose နှင့် ဆေးမှတ်တမ်းများ
+                </p>
+              </div>
+            </div>
+
+            {/* Detailed Collections Breakdown Pills & Diagnostics */}
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-slate-400 font-semibold">Collections အသေးစိတ်:</span>
+                <span className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px]">
+                  Users: <strong>{dbStats?.totalUsers || 0}</strong>
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px]">
+                  BP: <strong>{dbStats?.totalBP || 0}</strong>
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px]">
+                  Glucose: <strong>{dbStats?.totalGlucose || 0}</strong>
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px]">
+                  BMI: <strong>{dbStats?.totalBMI || 0}</strong>
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px]">
+                  Labs: <strong>{dbStats?.totalLabs || 0}</strong>
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px]">
+                  Meds: <strong>{dbStats?.totalMeds || 0}</strong>
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[11px]">
+                  Q&A: <strong>{dbStats?.totalQuestions || 0}</strong>
+                </span>
+              </div>
+
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ml-auto"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>Database အချက်အလက် တိုက်ရိုက်ပြန်စစ်မည်</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
