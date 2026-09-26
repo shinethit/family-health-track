@@ -125,67 +125,8 @@ export const LoginScreen: React.FC = () => {
 
       {/* Center Main Hero & Auth Box */}
       <main className="relative z-10 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-        {/* Left Side: App Intro & Highlights */}
-        <div className="lg:col-span-7 space-y-6 text-left">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-semibold text-emerald-300 backdrop-blur-xs">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span>ကျန်းမာရေးမှတ်တမ်းများကို လုံခြုံစွာ သိမ်းဆည်းပါ</span>
-          </div>
-
-          <div className="space-y-3">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white !leading-[1.6]">
-              မိသားစု ကျန်းမာရေးကို
-            </h1>
-            <div className="text-2xl sm:text-3xl lg:text-4xl font-extrabold bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent !leading-[1.6]">
-              စနစ်တကျ စောင့်ကြည့် ထိန်းသိမ်းပါ
-            </div>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-xl !leading-[1.9]">
-              နေ့စဉ် သွေးပေါင်ချိန် (BP)၊ သွေးတွင်းသကြားဓာတ် (Glucose)၊ ခန္ဓာကိုယ်အချိုးအစား (BMI) နှင့် ဓာတ်ခွဲခန်း ဆေးစစ်ချက်များကို တစ်နေရာတည်းတွင် အချိန်နှင့်တပြေးညီ မှတ်တမ်းတင် တွက်ချက်နိုင်ပါသည်။
-            </p>
-          </div>
-
-          {/* Highlights grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <Activity className="w-5 h-5 text-rose-400 mb-2" />
-              <div className="font-bold text-xs text-white">သွေးပေါင်ချိန် (BP)</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">AHA Guidelines သတ်မှတ်ချက်</div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <Droplets className="w-5 h-5 text-emerald-400 mb-2" />
-              <div className="font-bold text-xs text-white">သွေးချို/HbA1c</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">ADA စံနှုန်း သကြားဓာတ်</div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <FlaskConical className="w-5 h-5 text-cyan-400 mb-2" />
-              <div className="font-bold text-xs text-white">အသည်း & ကျောက်ကပ်</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">ဓာတ်ခွဲခန်း Lab Tests</div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <Pill className="w-5 h-5 text-amber-400 mb-2" />
-              <div className="font-bold text-xs text-white">ဆေးသောက် Reminder</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">အချိန်မှန် သတိပေးချက်</div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <Newspaper className="w-5 h-5 text-indigo-400 mb-2" />
-              <div className="font-bold text-xs text-white">ကျန်းမာရေး သတင်း</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">ဆောင်းပါး ဗဟုသုတများ</div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <MessageSquareHeart className="w-5 h-5 text-pink-400 mb-2" />
-              <div className="font-bold text-xs text-white">ဆရာဝန် မေးမြန်းရန်</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">အွန်လိုင်း ကျန်းမာရေး Q&A</div>
-            </div>
-          </div>
-        </div>
-
         {/* Right Side: Secure Auth Card */}
-        <div className="lg:col-span-5">
+        <div className="lg:col-span-5 order-first lg:order-first">
           <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
             
             {/* Switch Tabs (Login / Register) */}
@@ -233,7 +174,7 @@ export const LoginScreen: React.FC = () => {
               {mode === 'register' && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-white mb-1.5">
                       အမည် (Full Name) *
                     </label>
                     <div className="relative">
@@ -244,14 +185,14 @@ export const LoginScreen: React.FC = () => {
                         placeholder="ဥပမာ- ဦးအောင်ကျော်"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                        className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-bold text-white mb-1.5">
                         မွေးသက္ကရာဇ် (DOB)
                       </label>
                       <div className="relative">
@@ -260,19 +201,19 @@ export const LoginScreen: React.FC = () => {
                           type="date"
                           value={dob}
                           onChange={(e) => setDob(e.target.value)}
-                          className="w-full pl-10 pr-2 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                          className="w-full pl-10 pr-2 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-bold text-white mb-1.5">
                         ကျား / မ (Gender)
                       </label>
                       <select
                         value={gender}
                         onChange={(e) => setGender(e.target.value as any)}
-                        className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                        className="w-full px-3 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                       >
                         <option value="male">ကျား (Male)</option>
                         <option value="female">မ (Female)</option>
@@ -283,7 +224,7 @@ export const LoginScreen: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-bold text-white mb-1.5">
                         အရပ် (cm)
                       </label>
                       <div className="relative">
@@ -293,13 +234,13 @@ export const LoginScreen: React.FC = () => {
                           placeholder="168"
                           value={heightCm}
                           onChange={(e) => setHeightCm(e.target.value)}
-                          className="w-full pl-10 pr-2 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                          className="w-full pl-10 pr-2 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      <label className="block text-xs font-bold text-white mb-1.5">
                         ကိုယ်အလေးချိန် (kg)
                       </label>
                       <div className="relative">
@@ -310,7 +251,7 @@ export const LoginScreen: React.FC = () => {
                           placeholder="65"
                           value={weightKg}
                           onChange={(e) => setWeightKg(e.target.value)}
-                          className="w-full pl-10 pr-2 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                          className="w-full pl-10 pr-2 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
                         />
                       </div>
                     </div>
@@ -318,7 +259,7 @@ export const LoginScreen: React.FC = () => {
 
                   {/* Chronic condition chips */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold text-white mb-2">
                       ရောဂါအခံများ (ရှိပါက ရွေးချယ်ပါ)
                     </label>
                     <div className="flex flex-wrap gap-1.5">
@@ -347,36 +288,36 @@ export const LoginScreen: React.FC = () => {
 
               {/* Email Field */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-white mb-1.5">
                   အီးမေးလ် (Email) *
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
                     type="email"
                     required
                     placeholder="name@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
                   />
                 </div>
               </div>
 
               {/* Password Field */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-white mb-1.5">
                   လျှို့ဝှက်နံပါတ် (Password) *
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
                     type="password"
                     required
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
                   />
                 </div>
                 {mode === 'register' && (
@@ -441,6 +382,65 @@ export const LoginScreen: React.FC = () => {
 
             <div className="mt-5 pt-4 border-t border-slate-800 text-center text-[11px] text-slate-400">
               လုံခြုံစိတ်ချရသော Firebase Authentication ကျန်းမာရေးစနစ်
+            </div>
+          </div>
+        </div>
+
+        {/* Left Side: App Intro & Highlights */}
+        <div className="lg:col-span-7 order-last lg:order-last space-y-6 text-left">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-semibold text-emerald-300 backdrop-blur-xs">
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <span>ကျန်းမာရေးမှတ်တမ်းများကို လုံခြုံစွာ သိမ်းဆည်းပါ</span>
+          </div>
+
+          <div className="space-y-3">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white !leading-[1.6]">
+              မိသားစု ကျန်းမာရေးကို
+            </h1>
+            <div className="text-2xl sm:text-3xl lg:text-4xl font-extrabold bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent !leading-[1.6]">
+              စနစ်တကျ စောင့်ကြည့် ထိန်းသိမ်းပါ
+            </div>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl !leading-[1.9]">
+              နေ့စဉ် သွေးပေါင်ချိန် (BP)၊ သွေးတွင်းသကြားဓာတ် (Glucose)၊ ခန္ဓာကိုယ်အချိုးအစား (BMI) နှင့် ဓာတ်ခွဲခန်း ဆေးစစ်ချက်များကို တစ်နေရာတည်းတွင် အချိန်နှင့်တပြေးညီ မှတ်တမ်းတင် တွက်ချက်နိုင်ပါသည်။
+            </p>
+          </div>
+
+          {/* Highlights grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+              <Activity className="w-5 h-5 text-rose-400 mb-2" />
+              <div className="font-bold text-xs text-white">သွေးပေါင်ချိန် (BP)</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">AHA Guidelines သတ်မှတ်ချက်</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+              <Droplets className="w-5 h-5 text-emerald-400 mb-2" />
+              <div className="font-bold text-xs text-white">သွေးချို/HbA1c</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">ADA စံနှုန်း သကြားဓာတ်</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+              <FlaskConical className="w-5 h-5 text-cyan-400 mb-2" />
+              <div className="font-bold text-xs text-white">အသည်း & ကျောက်ကပ်</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">ဓာတ်ခွဲခန်း Lab Tests</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+              <Pill className="w-5 h-5 text-amber-400 mb-2" />
+              <div className="font-bold text-xs text-white">ဆေးသောက် Reminder</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">အချိန်မှန် သတိပေးချက်</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+              <Newspaper className="w-5 h-5 text-indigo-400 mb-2" />
+              <div className="font-bold text-xs text-white">ကျန်းမာရေး သတင်း</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">ဆောင်းပါး ဗဟုသုတများ</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
+              <MessageSquareHeart className="w-5 h-5 text-pink-400 mb-2" />
+              <div className="font-bold text-xs text-white">ဆရာဝန် မေးမြန်းရန်</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">အွန်လိုင်း ကျန်းမာရေး Q&A</div>
             </div>
           </div>
         </div>

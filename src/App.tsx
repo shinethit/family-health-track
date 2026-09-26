@@ -50,6 +50,7 @@ import { SpecialtyCareModule } from './components/modules/SpecialtyCareModule';
 import { DermatologyModule } from './components/modules/DermatologyModule';
 import { EmergencyFirstAidModule } from './components/modules/EmergencyFirstAidModule';
 import { HomeMedicinesGuideModule } from './components/modules/HomeMedicinesGuideModule';
+import { LabInvestigationGuideModule } from './components/modules/LabInvestigationGuideModule';
 import { WomensHealthModule } from './components/modules/WomensHealthModule';
 import { PregnancyCareModule } from './components/modules/PregnancyCareModule';
 import { ChildCareModule } from './components/modules/ChildCareModule';
@@ -64,7 +65,7 @@ const MainContent: React.FC = () => {
   const { selectedPatient, setSelectedPatientId, doctorQuestions } = useHealthData();
   const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState<
-    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
+    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
   >(isAdmin ? 'admin' : 'trends');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
@@ -135,6 +136,17 @@ const MainContent: React.FC = () => {
       ]
     },
     {
+      id: 'knowledge',
+      nameMm: '📚 သိမှတ်ဖွယ်ရာများ',
+      badgeColor: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+      activeColor: 'bg-indigo-600 text-white shadow-xs',
+      tabs: [
+        { id: 'otc_meds', label: 'အိမ်သုံးဆေးဝါးလမ်းညွှန်', icon: Pill, activeColor: 'bg-teal-700 text-white' },
+        { id: 'news', label: 'ကျန်းမာရေးဆောင်းပါး', icon: Newspaper, activeColor: 'bg-teal-600 text-white' },
+        { id: 'investigations_guide', label: 'ဓာတ်ခွဲ/စမ်းသပ်မှုလမ်းညွှန်', icon: FlaskConical, activeColor: 'bg-indigo-600 text-white' },
+      ]
+    },
+    {
       id: 'specialty',
       nameMm: '🩺 အထူးကုနှင့် ကုထုံးများ',
       badgeColor: 'bg-teal-50 text-teal-800 border-teal-200',
@@ -154,10 +166,8 @@ const MainContent: React.FC = () => {
       activeColor: 'bg-rose-600 text-white shadow-xs',
       tabs: [
         { id: 'firstaid', label: 'ရှေးဦးပြုစုခြင်း', icon: ShieldAlert, activeColor: 'bg-red-600 text-white' },
-        { id: 'otc_meds', label: 'အိမ်သုံးဆေးဝါးလမ်းညွှန်', icon: Pill, activeColor: 'bg-teal-700 text-white' },
         { id: 'emergency', label: 'အရေးပေါ် ID', icon: ShieldAlert, activeColor: 'bg-rose-700 text-white' },
         { id: 'vaccine', label: 'ကာကွယ်ဆေး', icon: Syringe, activeColor: 'bg-teal-700 text-white' },
-        { id: 'news', label: 'ကျန်းမာရေးဆောင်းပါး', icon: Newspaper, activeColor: 'bg-teal-600 text-white' },
       ]
     },
     ...(isAdmin ? [{
@@ -334,6 +344,7 @@ const MainContent: React.FC = () => {
         {activeTab === 'firstaid' && <EmergencyFirstAidModule />}
         {activeTab === 'otc_meds' && <HomeMedicinesGuideModule />}
         {activeTab === 'news' && <HealthNewsModule />}
+        {activeTab === 'investigations_guide' && <LabInvestigationGuideModule />}
         {activeTab === 'reminders' && <RemindersModule />}
         {activeTab === 'womens_health' && <WomensHealthModule />}
         {activeTab === 'pregnancy' && <PregnancyCareModule />}

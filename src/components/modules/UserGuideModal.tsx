@@ -212,7 +212,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
         </div>
 
         {/* Content Body: Sidebar List & Detail View */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800">
+        <div className="flex-1 overflow-y-auto min-h-0 grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800">
           {/* Left Column: Topics Search & List */}
           <div className="md:col-span-4 p-4 space-y-3 bg-slate-50/50 dark:bg-slate-950/40">
             {/* Search Box */}
@@ -228,7 +228,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
             </div>
 
             {/* List of Guides */}
-            <div className="space-y-1.5 overflow-y-auto max-h-[calc(90vh-180px)] pr-1">
+            <div className="space-y-1.5 overflow-y-auto max-h-[220px] md:max-h-[calc(80vh-180px)] pr-1">
               {filteredGuides.map((guide) => {
                 const isSelected = guide.id === selectedGuideId;
                 const Icon = guide.icon;
