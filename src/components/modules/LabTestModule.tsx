@@ -16,7 +16,7 @@ import {
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { LabTestRecord } from '../../types/health';
-import { evaluateLabParam } from '../../lib/medicalCalculations';
+import { evaluateLabParam, evaluateThyroidFunction } from '../../lib/medicalCalculations';
 
 export const LabTestModule: React.FC = () => {
   const { labRecords, addLabRecord, deleteLabRecord, selectedPatient, selectedFamilyMember } = useHealthData();
@@ -32,7 +32,7 @@ export const LabTestModule: React.FC = () => {
   const [labName, setLabName] = useState<string>('အထူးကု ဆေးဓာတ်ခွဲခန်း');
   const [notes, setNotes] = useState<string>('');
   const [doctorReview, setDoctorReview] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'liver' | 'renal' | 'lipid'>('liver');
+  const [activeTab, setActiveTab] = useState<'liver' | 'renal' | 'lipid' | 'thyroid'>('liver');
 
   // Liver Function Test inputs
   const [ast_sgot, setAstSgot] = useState<string>('35');
@@ -54,6 +54,14 @@ export const LabTestModule: React.FC = () => {
   const [triglycerides, setTriglycerides] = useState<string>('175');
   const [hdl, setHdl] = useState<string>('44');
   const [ldl, setLdl] = useState<string>('131');
+
+  // Thyroid Function Test inputs
+  const [tsh, setTsh] = useState<string>('1.8');
+  const [ft4, setFt4] = useState<string>('1.2');
+  const [ft3, setFt3] = useState<string>('3.0');
+  const [totalT4, setTotalT4] = useState<string>('8.2');
+  const [totalT3, setTotalT3] = useState<string>('125');
+  const [antiTpo, setAntiTpo] = useState<string>('12');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -92,6 +100,14 @@ export const LabTestModule: React.FC = () => {
           hdl: hdl ? Number(hdl) : undefined,
           ldl: ldl ? Number(ldl) : undefined,
         },
+        thyroid: {
+          tsh: tsh ? Number(tsh) : undefined,
+          ft4: ft4 ? Number(ft4) : undefined,
+          ft3: ft3 ? Number(ft3) : undefined,
+          totalT4: totalT4 ? Number(totalT4) : undefined,
+          totalT3: totalT3 ? Number(totalT3) : undefined,
+          antiTpo: antiTpo ? Number(antiTpo) : undefined,
+        },
         notes,
         doctorReview,
       });
@@ -115,8 +131,8 @@ export const LabTestModule: React.FC = () => {
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {selectedPatient 
-              ? `လူနာ ${selectedPatient.displayName} ၏ အသည်း၊ ကျောက်ကပ်၊ ယူရစ်အက်စစ်နှင့် သွေးတွင်းအဆီဓာတ်များ`
-              : 'Liver Function (LFT), Renal Function & Uric Acid, Lipid Profile စစ်ဆေးချက်မှတ်တမ်းများ'}
+              ? `လူနာ ${selectedPatient.displayName} ၏ အသည်း၊ ကျောက်ကပ်၊ ယူရစ်အက်စစ်၊ သွေးတွင်းအဆီနှင့် သိုင်းရွိုက်ဟော်မုန်း (TFT)`
+              : 'Liver Function (LFT), Renal & Uric, Lipid Profile နှင့် Thyroid Function Test (TFT) စစ်ဆေးချက်များ'}
           </p>
         </div>
 
@@ -202,6 +218,16 @@ export const LabTestModule: React.FC = () => {
                       {lab.lipid?.totalCholesterol && (
                         <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                           Chol: {lab.lipid.totalCholesterol}
+                        </span>
+                      )}
+                      {lab.thyroid?.tsh && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          TSH: {lab.thyroid.tsh}
+                        </span>
+                      )}
+                      {lab.thyroid?.ft4 && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                          FT4: {lab.thyroid.ft4}
                         </span>
                       )}
                     </div>
@@ -400,6 +426,108 @@ export const LabTestModule: React.FC = () => {
                   })}
                 </div>
               </div>
+
+              {/* Panel 4: Thyroid Function Test (TFT) */}
+              {activeRecord.thyroid && (
+                activeRecord.thyroid.tsh !== undefined || 
+                activeRecord.thyroid.ft4 !== undefined || 
+                activeRecord.thyroid.ft3 !== undefined || 
+                activeRecord.thyroid.totalT4 !== undefined || 
+                activeRecord.thyroid.totalT3 !== undefined || 
+                activeRecord.thyroid.antiTpo !== undefined
+              ) && (
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-purple-700 dark:text-purple-300 font-bold text-xs">
+                        TFT
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                          လည်ပင်းကြီးဟော်မုန်း စစ်ဆေးချက် (Thyroid Function Test - TFT)
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          TSH, Free T4, Free T3 နှင့် သိုင်းရွိုက်ဟော်မုန်း ပုံမှန်/အဆိပ်သင့်/အားနည်းခြင်း စစ်ဆေးချက်
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clinical Assessment Box if TSH / FT4 / FT3 available */}
+                  {(() => {
+                    const thyroidEval = evaluateThyroidFunction(
+                      activeRecord.thyroid?.tsh,
+                      activeRecord.thyroid?.ft4,
+                      activeRecord.thyroid?.ft3
+                    );
+                    if (!thyroidEval) return null;
+                    return (
+                      <div className="mb-4 p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                            သိုင်းရွိုက် ဆေးပညာ သုံးသပ်ချက် အဖြေ:
+                          </span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${thyroidEval.badgeClass}`}>
+                            {thyroidEval.labelMm}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed mb-2">
+                          {thyroidEval.descriptionMm}
+                        </p>
+                        <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-purple-100 dark:border-purple-900 text-xs text-slate-600 dark:text-slate-400">
+                          <span className="font-bold text-purple-700 dark:text-purple-300">ဆရာဝန် လမ်းညွှန်ချက်: </span>
+                          {thyroidEval.clinicalAdviceMm}
+                        </div>
+                        {thyroidEval.symptomsMm.length > 0 && (
+                          <div className="mt-2.5 flex flex-wrap gap-1.5 items-center">
+                            <span className="text-[10px] font-bold text-slate-500">သတိပြုရန် လက္ခဏာများ:</span>
+                            {thyroidEval.symptomsMm.map((sym, idx) => (
+                              <span key={idx} className="text-[10px] px-2 py-0.5 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-purple-100 dark:border-purple-900">
+                                {sym}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Metric Cards Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {[
+                      { key: 'tsh', name: 'TSH (ဟော်မုန်းနှိုးဆွဓာတ်)', val: activeRecord.thyroid?.tsh, unit: 'µIU/mL', ref: '0.4 - 4.0' },
+                      { key: 'ft4', name: 'Free T4 (လွတ်လပ် T4)', val: activeRecord.thyroid?.ft4, unit: 'ng/dL', ref: '0.8 - 1.8' },
+                      { key: 'ft3', name: 'Free T3 (လွတ်လပ် T3)', val: activeRecord.thyroid?.ft3, unit: 'pg/mL', ref: '2.3 - 4.2' },
+                      { key: 'totalT4', name: 'Total T4 (စုစုပေါင်း T4)', val: activeRecord.thyroid?.totalT4, unit: 'µg/dL', ref: '4.5 - 12.0' },
+                      { key: 'totalT3', name: 'Total T3 (စုစုပေါင်း T3)', val: activeRecord.thyroid?.totalT3, unit: 'ng/dL', ref: '80 - 200' },
+                      { key: 'antiTpo', name: 'Anti-TPO (ပဋိပစ္စည်း)', val: activeRecord.thyroid?.antiTpo, unit: 'IU/mL', ref: '< 35' },
+                    ].map((param) => {
+                      if (param.val === undefined || param.val === null) return null;
+                      const evalInfo = evaluateLabParam(param.key, param.val);
+                      return (
+                        <div key={param.key} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">{param.name}</span>
+                            <span className={`px-1.5 py-0.2 rounded text-[10px] font-medium ${evalInfo.badgeClass}`}>
+                              {evalInfo.labelMm}
+                            </span>
+                          </div>
+                          <div className="flex items-baseline gap-1 mt-1">
+                            <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+                              {param.val}
+                            </span>
+                            <span className="text-[10px] text-slate-400">{param.unit}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-1.5 font-mono">
+                            Ref: {param.ref}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -482,11 +610,22 @@ export const LabTestModule: React.FC = () => {
                   onClick={() => setActiveTab('lipid')}
                   className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
                     activeTab === 'lipid'
-                      ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+                      ? 'border-purple-600 text-purple-600 dark:text-purple-400 font-bold'
                       : 'border-transparent text-slate-500 hover:text-slate-700'
                   }`}
                 >
                   ၃။ သွေးတွင်းအဆီဓာတ် (Lipid)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('thyroid')}
+                  className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+                    activeTab === 'thyroid'
+                      ? 'border-purple-600 text-purple-600 dark:text-purple-400 font-bold'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  ၄။ လည်ပင်းကြီးဟော်မုန်း (Thyroid - TFT)
                 </button>
               </div>
 
@@ -675,6 +814,95 @@ export const LabTestModule: React.FC = () => {
                       type="number"
                       value={ldl}
                       onChange={(e) => setLdl(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 4: Thyroid Function Test */}
+              {activeTab === 'thyroid' && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-in fade-in duration-150">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      TSH (0.4 - 4.0 µIU/mL)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="1.8"
+                      value={tsh}
+                      onChange={(e) => setTsh(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      Free T4 (0.8 - 1.8 ng/dL)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="1.2"
+                      value={ft4}
+                      onChange={(e) => setFt4(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      Free T3 (2.3 - 4.2 pg/mL)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="3.0"
+                      value={ft3}
+                      onChange={(e) => setFt3(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      Total T4 (4.5 - 12.0 µg/dL)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="8.2"
+                      value={totalT4}
+                      onChange={(e) => setTotalT4(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      Total T3 (80 - 200 ng/dL)
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      placeholder="125"
+                      value={totalT3}
+                      onChange={(e) => setTotalT3(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      Anti-TPO (&lt; 35 IU/mL)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="12"
+                      value={antiTpo}
+                      onChange={(e) => setAntiTpo(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm"
                     />
                   </div>

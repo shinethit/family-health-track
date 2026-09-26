@@ -32,12 +32,54 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v1.3.4',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Critical Fix)',
+    version: 'v1.3.5',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Major Update)',
     isLatest: true,
-    title: 'Cloud Database Access Unlocked, Google Sign-In & Direct Patient Registration',
+    title: 'Clean Bright Medical Theme, Thyroid Function Test (TFT), 35+ Health Articles with Vaccine Guides & Incomplete Record Management',
     badge: 'နောက်ဆုံး ဗားရှင်း (Latest)',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    highlights: [
+      {
+        title: '☀️ Clean & Bright Medical Theme (လင်းလင်း ရှင်းရှင်း Theme)',
+        icon: Sparkles,
+        items: [
+          'အမှောင်ရောင်လွှမ်းမိုးနေခြင်းကို ဖယ်ရှား၍ မျက်စိအေးချမ်းပြီး ရှင်းလင်းလန်းဆန်းသော Clean White / Teal / Emerald ဆေးဘက်ဆိုင်ရာ Theme ကို မူလအဖြစ် သတ်မှတ်ပေးခြင်း',
+          'Navbar နှင့် Header တွင် ☀️ လင်းလင်းရှင်းရှင်း (Light Mode) နှင့် 🌙 အမှောင် (Dark Mode) စိတ်ကြိုက် ပြောင်းလဲနိုင်သည့် Theme Switcher စနစ် ထည့်သွင်းပေးခြင်း'
+        ]
+      },
+      {
+        title: '🧪 Thyroid Function Test (TFT) လည်ပင်းကြီးဟော်မုန်း အပြည့်အစုံ',
+        icon: Activity,
+        items: [
+          'Lab Tests တွင် TSH, Free T4 (FT4), Free T3 (FT3), Total T4, Total T3, Anti-TPO တန်ဖိုးများ ထည့်သွင်း မှတ်တမ်းတင်နိုင်ခြင်း',
+          'သိုင်းရွိုက် အဆိပ်သင့်ခြင်း (Hyperthyroidism)၊ သိုင်းရွိုက်အားနည်းခြင်း (Hypothyroidism) နှင့် ပုံမှန်အခြေအနေများအတွက် ဆေးပညာဆိုင်ရာ သုံးသပ်ချက် အဖြေနှင့် ဆရာဝန်လမ်းညွှန်ချက် အလိုအလျောက် တွက်ချက်ဖော်ပြခြင်း'
+        ]
+      },
+      {
+        title: '💉 ကျန်းမာရေး ဗဟုသုတ ဆောင်းပါး ၃၅ ပုဒ်နှင့် ကာကွယ်ဆေး ကဏ္ဍ',
+        icon: Stethoscope,
+        items: [
+          'ကလေးနှင့် လူကြီး ကာကွယ်ဆေးများ (ဘီပိုး၊ HPV သားအိမ်ခေါင်း၊ တုပ်ကွေး၊ နမိုးနီးယား၊ ခါးပတ်ရေယုန်၊ ခွေးရူးပြန်၊ မေးခိုင်၊ EPI မွေးစမှ ၅ နှစ် ကာကွယ်ဆေးများ)',
+          'သိုင်းရွိုက်၊ သွေးတိုး၊ ဆီးချို၊ အသည်း၊ ကျောက်ကပ်နှင့် အာဟာရ ဆောင်းပါး စုစုပေါင်း ၃၈ ပုဒ်ထိ ပြည့်စုံစွာ ဖြည့်ဆည်းပေးထားခြင်း'
+        ]
+      },
+      {
+        title: '🛡️ မှားယွင်း/မပြည့်စုံသော လူနာမှတ်တမ်း ပြင်ဆင်/ဖျက်ပစ်နိုင်သည့် စနစ်',
+        icon: ShieldCheck,
+        items: [
+          'အချက်အလက် မပြည့်စုံသော လူနာများကို Incomplete Alert ဖြင့် သတိပေးခြင်း၊ စာရင်းတွင် သီးသန့်စစ်ထုတ်နိုင်ခြင်း',
+          'အမည်၊ အသက်၊ ဖုန်း၊ ရောဂါအခံများ တိုက်ရိုက်ပြင်ဆင်နိုင်သည့် Edit Modal နှင့် ဆက်စပ်မှတ်တမ်းများပါ တစ်ခါတည်း ရှင်းလင်းနိုင်သည့် Cascading Delete စနစ်'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.3.4',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ',
+    isLatest: false,
+    title: 'Cloud Database Access Unlocked, Google Sign-In & Direct Patient Registration',
+    badge: 'ယခင် ဗားရှင်း',
+    badgeColor: 'bg-slate-500/20 text-slate-300 border-slate-500/40',
     highlights: [
       {
         title: '🔓 Cloud Database Permissions & Security Rules Unlocked',

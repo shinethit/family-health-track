@@ -32,12 +32,20 @@ import {
   Layers,
   CheckCircle2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Edit3,
+  UserX,
+  AlertCircle,
+  Phone,
+  Info
 } from 'lucide-react';
 import { useHealthData, isPatientOnly } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
+import { UserProfile } from '../../types/health';
 import { BloodPressureChart, BloodSugarChart } from '../charts/HealthCharts';
 import { calculateBPCategory, calculateGlucoseStatus, calculateAge, calculateBMI } from '../../lib/medicalCalculations';
+import { EditPatientModal } from './EditPatientModal';
+import { DeletePatientModal } from './DeletePatientModal';
 
 export const AdminPatientPortal: React.FC = () => {
   const { 
@@ -52,6 +60,7 @@ export const AdminPatientPortal: React.FC = () => {
     doctorAdvices,
     addDoctorAdvice,
     addPatient,
+    updatePatient,
     deletePatient,
     clearAllPatients,
     dbStats,
@@ -67,6 +76,11 @@ export const AdminPatientPortal: React.FC = () => {
   const [adviceSuccess, setAdviceSuccess] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showQuotaDetails, setShowQuotaDetails] = useState(true);
+
+  // Edit & Delete Modal States
+  const [editingPatient, setEditingPatient] = useState<UserProfile | null>(null);
+  const [deletingPatient, setDeletingPatient] = useState<UserProfile | null>(null);
+  const [actionAlert, setActionAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Add Patient Modal States
   const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
@@ -102,13 +116,99 @@ export const AdminPatientPortal: React.FC = () => {
       setPatientPhone('');
       setPatientAge('');
       setIsAddPatientOpen(false);
+      setActionAlert({
+        type: 'success',
+        message: 'လူနာအသစ်အား Database ထဲသို့ အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ။',
+      });
+      setTimeout(() => setActionAlert(null), 4000);
     } finally {
       setIsSavingPatient(false);
     }
   };
 
+  const handleSavePatient = async (id: string, updates: Partial<UserProfile>) => {
+    try {
+      await updatePatient(id, updates);
+      setActionAlert({
+        type: 'success',
+        message: `လူနာ "${updates.displayName || 'အမည်'}" ၏ မှတ်တမ်းအား Cloud Database တွင် အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ။`,
+      });
+      setTimeout(() => setActionAlert(null), 4000);
+    } catch (err: any) {
+      setActionAlert({
+        type: 'error',
+        message: 'လူနာမှတ်တမ်း ပြင်ဆင်ရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်: ' + (err?.message || ''),
+      });
+      setTimeout(() => setActionAlert(null), 5000);
+      throw err;
+    }
+  };
+
+  const handleConfirmDeletePatient = async (id: string, cascade: boolean) => {
+    try {
+      await deletePatient(id, cascade);
+      setActionAlert({
+        type: 'success',
+        message: 'လူနာမှတ်တမ်းနှင့်တကွ ဆက်စပ်ဒေတာများကို Database မှ အပြီးတိုင် ဖျက်ပစ်ပြီးပါပြီ။',
+      });
+      setTimeout(() => setActionAlert(null), 4000);
+    } catch (err: any) {
+      setActionAlert({
+        type: 'error',
+        message: 'လူနာမှတ်တမ်း ဖျက်ရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်: ' + (err?.message || ''),
+      });
+      setTimeout(() => setActionAlert(null), 5000);
+      throw err;
+    }
+  };
+
   // Pure patient list (excluding admin)
   const actualPatients = patientsList.filter(isPatientOnly);
+
+  // Incomplete record detector
+  const isIncompletePatient = (p: UserProfile): boolean => {
+    const name = (p.displayName || '').trim();
+    const email = (p.email || '').toLowerCase().trim();
+    const phone = (p.phone || '').trim();
+
+    const isGenericName = !name || name === 'လူနာ' || name === 'အမည်မရှိ' || name.startsWith('pat-') || name.startsWith('user-') || name.includes('6bce6599');
+    const isFakeEmail = !email || email.includes('@patient.local') || email.includes('demo');
+    const missingPhone = !phone;
+    const missingAge = (!p.age || p.age <= 0) && !p.dateOfBirth;
+    const missingVitals = !p.heightCm || !p.weightKg;
+    const missingConditions = !p.chronicConditions || p.chronicConditions.length === 0;
+
+    return isGenericName || isFakeEmail || missingPhone || missingAge || missingVitals || missingConditions;
+  };
+
+  const getMissingFields = (p: UserProfile): string[] => {
+    const missing: string[] = [];
+    const name = (p.displayName || '').trim();
+    const email = (p.email || '').toLowerCase().trim();
+    const phone = (p.phone || '').trim();
+
+    if (!name || name === 'လူနာ' || name === 'အမည်မရှိ' || name.startsWith('pat-') || name.startsWith('user-') || name.includes('6bce6599')) {
+      missing.push('အမည်မစုံ');
+    }
+    if (!email || email.includes('@patient.local')) {
+      missing.push('အီးမေးလ်မစုံ');
+    }
+    if (!phone) {
+      missing.push('ဖုန်းနံပါတ်မရှိ');
+    }
+    if ((!p.age || p.age <= 0) && !p.dateOfBirth) {
+      missing.push('အသက်မရှိ');
+    }
+    if (!p.heightCm || !p.weightKg) {
+      missing.push('အရပ်/ဝိတ်မရှိ');
+    }
+    if (!p.chronicConditions || p.chronicConditions.length === 0) {
+      missing.push('ရောဂါအခံမရှိ');
+    }
+    return missing;
+  };
+
+  const countIncomplete = actualPatients.filter(isIncompletePatient).length;
 
   // Filter patients
   const filteredPatients = actualPatients.filter(p => {
@@ -118,6 +218,9 @@ export const AdminPatientPortal: React.FC = () => {
     
     if (!matchesSearch) return false;
 
+    if (filterCondition === 'incomplete') {
+      return isIncompletePatient(p);
+    }
     if (filterCondition === 'hypertension') {
       return p.chronicConditions?.some(c => c.includes('သွေးတိုး') || c.toLowerCase().includes('hypertension'));
     }
@@ -172,6 +275,26 @@ export const AdminPatientPortal: React.FC = () => {
 
     return (
       <div className="space-y-6 animate-in fade-in duration-200">
+        {/* Action Alert Banner */}
+        {actionAlert && (
+          <div className={`p-4 rounded-3xl border text-xs font-bold flex items-center justify-between gap-3 animate-in fade-in duration-200 ${
+            actionAlert.type === 'success' 
+              ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200' 
+              : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+          }`}>
+            <div className="flex items-center gap-2">
+              {actionAlert.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+              <span>{actionAlert.message}</span>
+            </div>
+            <button 
+              onClick={() => setActionAlert(null)}
+              className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Back navigation & Patient header */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -185,7 +308,7 @@ export const AdminPatientPortal: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                  {selectedPatient.displayName}
+                  {selectedPatient.displayName || 'အမည်မရှိ'}
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
                   လူနာမှတ်တမ်း (Patient Record)
@@ -197,7 +320,9 @@ export const AdminPatientPortal: React.FC = () => {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 mt-1">
-                <span>အီးမေးလ်: <strong>{selectedPatient.email}</strong></span>
+                <span>အီးမေးလ်: <strong>{selectedPatient.email || '-'}</strong></span>
+                <span>•</span>
+                <span>ဖုန်း: <strong>{selectedPatient.phone || '-'}</strong></span>
                 <span>•</span>
                 <span>အသက်: <strong>{resolvedAge !== null ? `${resolvedAge} နှစ်` : 'မထည့်ရသေးပါ'}</strong> {patientAgeObj ? `(${patientAgeObj.formattedMm})` : ''}</span>
                 <span>•</span>
@@ -208,7 +333,23 @@ export const AdminPatientPortal: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setEditingPatient(selectedPatient)}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+              title="လူနာအချက်အလက်များ ပြင်ဆင်မည်"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>ပြင်ဆင်မည်</span>
+            </button>
+            <button
+              onClick={() => setDeletingPatient(selectedPatient)}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/80 hover:bg-rose-600 hover:text-white text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer flex items-center gap-1.5"
+              title="လူနာမှတ်တမ်း ဖျက်ပစ်မည်"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>လူနာဖျက်မည်</span>
+            </button>
             <button
               onClick={() => setSelectedPatientId(null)}
               className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
@@ -414,6 +555,20 @@ export const AdminPatientPortal: React.FC = () => {
             </div>
           </form>
         </div>
+
+        {/* Edit & Delete Modals for Detail View */}
+        <EditPatientModal
+          isOpen={editingPatient !== null}
+          patient={editingPatient}
+          onClose={() => setEditingPatient(null)}
+          onSave={handleSavePatient}
+        />
+        <DeletePatientModal
+          isOpen={deletingPatient !== null}
+          patient={deletingPatient}
+          onClose={() => setDeletingPatient(null)}
+          onConfirmDelete={handleConfirmDeletePatient}
+        />
       </div>
     );
   }
@@ -429,6 +584,26 @@ export const AdminPatientPortal: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Action Alert Notification */}
+      {actionAlert && (
+        <div className={`p-4 rounded-3xl border text-xs font-bold flex items-center justify-between gap-3 animate-in fade-in duration-200 ${
+          actionAlert.type === 'success' 
+            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200' 
+            : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            {actionAlert.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+            <span>{actionAlert.message}</span>
+          </div>
+          <button 
+            onClick={() => setActionAlert(null)}
+            className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Top Banner & Quick Controls */}
       <div className="bg-gradient-to-r from-indigo-900 via-purple-950 to-slate-900 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -775,8 +950,34 @@ export const AdminPatientPortal: React.FC = () => {
           >
             ၂ မျိုးလုံး ({countBoth})
           </button>
+          <button
+            onClick={() => setFilterCondition('incomplete')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
+              filterCondition === 'incomplete'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60 hover:bg-amber-100'
+            }`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+            <span>အချက်အလက်မစုံသူများ ({countIncomplete})</span>
+          </button>
         </div>
       </div>
+
+      {/* Incomplete Records Advisory Banner */}
+      {filterCondition === 'incomplete' && (
+        <div className="p-4 rounded-3xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-start gap-3 text-xs text-amber-900 dark:text-amber-200 animate-in fade-in">
+          <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold">
+              အချက်အလက်မစုံလင်သော သို့မဟုတ် စမ်းသပ်ထည့်သွင်းထားသော မှတ်တမ်းများ ({filteredPatients.length} ဦး)
+            </p>
+            <p className="text-[11px] text-amber-800/90 dark:text-amber-300/80 leading-relaxed">
+              ဖုန်းနံပါတ်၊ အသက်၊ အရပ်/ကိုယ်အလေးချိန် မပြည့်စုံသော သို့မဟုတ် မှားယွင်းစာရင်းသွင်းမိသော လူနာမှတ်တမ်းများကို အောက်ပါကတ်ပြားများရှိ <strong>"ပြင်ဆင်မည်"</strong> ခလုတ်ဖြင့် အချက်အလက်ဖြည့်စွက်နိုင်သည် သို့မဟုတ် <strong>"ဖျက်မည်"</strong> ခလုတ်ဖြင့် Database ထဲမှ အပြီးတိုင် ရှင်းထုတ်နိုင်ပါသည် ခင်ဗျာ။
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Patient Cards List */}
       {filteredPatients.length > 0 ? (
@@ -801,13 +1002,24 @@ export const AdminPatientPortal: React.FC = () => {
                         {patient.displayName ? patient.displayName.charAt(0) : 'P'}
                       </div>
                       <div>
-                        <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">
-                          {patient.displayName || 'အမည်မရှိ'}
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
+                          <span>{patient.displayName || 'အမည်မရှိ'}</span>
                         </h4>
                         <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-                          <Mail className="w-3 h-3" />
-                          <span className="truncate max-w-[150px]">{patient.email}</span>
+                          <Mail className="w-3 h-3 shrink-0" />
+                          <span className="truncate max-w-[130px]">{patient.email || '-'}</span>
                         </div>
+                        {patient.phone ? (
+                          <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5">
+                            <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span>{patient.phone}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-[10px] text-amber-500 font-medium mt-0.5">
+                            <Phone className="w-3 h-3 text-amber-400 shrink-0" />
+                            <span>ဖုန်းနံပါတ် မရှိပါ</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -817,6 +1029,16 @@ export const AdminPatientPortal: React.FC = () => {
                       </span>
                     )}
                   </div>
+
+                  {/* Incomplete Record Warning Pill */}
+                  {isIncompletePatient(patient) && (
+                    <div className="mb-2 p-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/60 text-[10px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="font-semibold truncate">
+                        အချက်အလက်မစုံ: {getMissingFields(patient).join('၊ ')}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Vitals summary tags */}
                   <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300 py-2 border-y border-slate-100 dark:border-slate-800/80">
@@ -854,14 +1076,35 @@ export const AdminPatientPortal: React.FC = () => {
                   )}
                 </div>
 
-                {/* Bottom Action button */}
-                <button
-                  onClick={() => setSelectedPatientId(patient.id)}
-                  className="w-full py-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 hover:text-white text-indigo-700 dark:text-indigo-300 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <span>လူနာမှတ်တမ်း အပြည့်အစုံ ကြည့်မည်</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                {/* Bottom Action buttons */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+                  <button
+                    onClick={() => setSelectedPatientId(patient.id)}
+                    className="w-full py-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 hover:text-white text-indigo-700 dark:text-indigo-300 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <span>လူနာမှတ်တမ်း အပြည့်အစုံ ကြည့်မည်</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setEditingPatient(patient)}
+                      className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-200 hover:text-indigo-700 dark:hover:text-indigo-300 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700"
+                      title="လူနာအချက်အလက် ပြင်ဆင်မည်"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>ပြင်ဆင်မည်</span>
+                    </button>
+                    <button
+                      onClick={() => setDeletingPatient(patient)}
+                      className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-slate-700 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-300 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700"
+                      title="လူနာမှတ်တမ်း ဖျက်ပစ်မည်"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                      <span>ဖျက်မည်</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -1089,6 +1332,20 @@ export const AdminPatientPortal: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Edit & Delete Modals for Main List View */}
+      <EditPatientModal
+        isOpen={editingPatient !== null}
+        patient={editingPatient}
+        onClose={() => setEditingPatient(null)}
+        onSave={handleSavePatient}
+      />
+      <DeletePatientModal
+        isOpen={deletingPatient !== null}
+        patient={deletingPatient}
+        onClose={() => setDeletingPatient(null)}
+        onConfirmDelete={handleConfirmDeletePatient}
+      />
     </div>
   );
 };

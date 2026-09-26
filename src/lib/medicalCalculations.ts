@@ -463,7 +463,130 @@ export function evaluateLabParam(param: string, value: number): LabParamEvaluati
       if (value < 40) return { status: 'low', labelMm: 'ကောင်းသောအဆီနည်းနေသည်', labelEn: 'Low HDL (Need > 40)', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '> 40 - 50 mg/dL' };
       return { status: 'normal', labelMm: 'ကောင်းမွန်သည်', labelEn: 'Good HDL', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '> 40 - 50 mg/dL' };
 
+    // Thyroid Function Test (TFT)
+    case 'tsh':
+      if (value < 0.1) return { status: 'critical', labelMm: 'အလွန်နိမ့် (သိုင်းရွိုက်အဆိပ်သင့်နိုင်ခြေ)', labelEn: 'Significantly Low TSH', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '0.4 - 4.0 µIU/mL' };
+      if (value < 0.4) return { status: 'low', labelMm: 'နိမ့်နေသည် (Hyperthyroid သတိပြု)', labelEn: 'Suppressed TSH', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '0.4 - 4.0 µIU/mL' };
+      if (value > 10.0) return { status: 'critical', labelMm: 'အလွန်မြင့် (သိုင်းရွိုက်ဟော်မုန်း အားနည်း)', labelEn: 'Significantly High TSH', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '0.4 - 4.0 µIU/mL' };
+      if (value > 4.0) return { status: 'high', labelMm: 'မြင့်နေသည် (Hypothyroid သတိပြု)', labelEn: 'Elevated TSH', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '0.4 - 4.0 µIU/mL' };
+      return { status: 'normal', labelMm: 'ပုံမှန် (Euthyroid)', labelEn: 'Normal TSH', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '0.4 - 4.0 µIU/mL' };
+
+    case 'ft4':
+      if (value > 1.8) return { status: 'high', labelMm: 'မြင့်နေသည် (Hyperthyroid)', labelEn: 'High Free T4', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '0.8 - 1.8 ng/dL' };
+      if (value < 0.8) return { status: 'low', labelMm: 'နည်းနေသည် (Hypothyroid)', labelEn: 'Low Free T4', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '0.8 - 1.8 ng/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal Free T4', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '0.8 - 1.8 ng/dL' };
+
+    case 'ft3':
+      if (value > 4.2) return { status: 'high', labelMm: 'မြင့်နေသည် (T3 Toxicosis)', labelEn: 'High Free T3', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '2.3 - 4.2 pg/mL' };
+      if (value < 2.3) return { status: 'low', labelMm: 'နည်းနေသည်', labelEn: 'Low Free T3', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '2.3 - 4.2 pg/mL' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal Free T3', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '2.3 - 4.2 pg/mL' };
+
+    case 'totalT4':
+      if (value > 12.0) return { status: 'high', labelMm: 'မြင့်နေသည်', labelEn: 'High Total T4', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '4.5 - 12.0 µg/dL' };
+      if (value < 4.5) return { status: 'low', labelMm: 'နည်းနေသည်', labelEn: 'Low Total T4', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '4.5 - 12.0 µg/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal Total T4', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '4.5 - 12.0 µg/dL' };
+
+    case 'totalT3':
+      if (value > 200) return { status: 'high', labelMm: 'မြင့်နေသည်', labelEn: 'High Total T3', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '80 - 200 ng/dL' };
+      if (value < 80) return { status: 'low', labelMm: 'နည်းနေသည်', labelEn: 'Low Total T3', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '80 - 200 ng/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal Total T3', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '80 - 200 ng/dL' };
+
+    case 'antiTpo':
+      if (value >= 35) return { status: 'high', labelMm: 'ပိုးတွေ့ရှိ (Autoimmune Risk)', labelEn: 'Positive Antibodies', badgeClass: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300', refRange: '< 35 IU/mL' };
+      return { status: 'normal', labelMm: 'အနုတ်လက္ခဏာ (Negative)', labelEn: 'Normal / Negative', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '< 35 IU/mL' };
+
     default:
       return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Recorded', badgeClass: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300', refRange: '-' };
   }
+}
+
+export interface ThyroidEvaluation {
+  category: 'normal' | 'hyperthyroid' | 'hypothyroid' | 'subclinical_hyper' | 'subclinical_hypo' | 'indeterminate';
+  labelMm: string;
+  labelEn: string;
+  badgeClass: string;
+  descriptionMm: string;
+  clinicalAdviceMm: string;
+  symptomsMm: string[];
+}
+
+export function evaluateThyroidFunction(tsh?: number, ft4?: number, ft3?: number): ThyroidEvaluation | null {
+  if (tsh === undefined && ft4 === undefined && ft3 === undefined) return null;
+
+  // Primary Hyperthyroidism: Low TSH and High FT4 / FT3
+  if (tsh !== undefined && tsh < 0.4 && ((ft4 !== undefined && ft4 > 1.8) || (ft3 !== undefined && ft3 > 4.2))) {
+    return {
+      category: 'hyperthyroid',
+      labelMm: 'သိုင်းရွိုက်ဟော်မုန်း အဆိပ်သင့်ခြင်း (Overt Hyperthyroidism)',
+      labelEn: 'Hyperthyroidism',
+      badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 border border-rose-300 dark:border-rose-800',
+      descriptionMm: 'သိုင်းရွိုက်ဂလင်းမှ ဟော်မုန်းထုတ်လုပ်မှု လွန်ကဲနေပြီး ခန္ဓာကိုယ်၏ ဇီဝကမ္မဖြစ်စဉ်များ အလွန်အမင်း မြန်ဆန်နေပါသည်။',
+      clinicalAdviceMm: 'ဆီးချိုနှင့် ဟော်မုန်းအထူးကု (Endocrinologist) နှင့် အမြန်ပြသပြီး သိုင်းရွိုက်ကျဆေး (Anti-thyroid drugs - Carbimazole/PTU) သောက်သုံးရန် လိုအပ်ပါသည်။ အိုင်အိုဒင်းပါဝင်မှုများသော အစားအစာများကို ဆရာဝန်ညွှန်ကြားချက်အတိုင်း ထိန်းညှိပါ။',
+      symptomsMm: ['ရင်တုန်ခြင်း၊ နှလုံးခုန်မြန်ခြင်း', 'အစားစားသော်လည်း ကိုယ်အလေးချိန် လျင်မြန်စွာ ကျဆင်းခြင်း', 'ချွေးထွက်လွန်ခြင်း၊ အပူမခံနိုင်ခြင်း', 'လက်တုန်ခြင်း၊ စိတ်ဂနာမငြိမ်ဖြစ်ခြင်း', 'အိပ်မပျော်ခြင်း၊ နုံးခွေခြင်း']
+    };
+  }
+
+  // Subclinical Hyperthyroidism: Low TSH but Normal FT4 & FT3
+  if (tsh !== undefined && tsh < 0.4 && (ft4 === undefined || (ft4 >= 0.8 && ft4 <= 1.8)) && (ft3 === undefined || (ft3 >= 2.3 && ft3 <= 4.2))) {
+    return {
+      category: 'subclinical_hyper',
+      labelMm: 'ကနဦး သိုင်းရွိုက်ဟော်မုန်း မြင့်တက်ခြင်း (Subclinical Hyperthyroidism)',
+      labelEn: 'Subclinical Hyperthyroidism',
+      badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300 dark:border-amber-800',
+      descriptionMm: 'TSH ဟော်မုန်း နည်းပါးနေသော်လည်း သွေးတွင်း FT4/FT3 ပမာဏ ပုံမှန်အဆင့်တွင် ရှိနေဆဲ ဖြစ်ပါသည်။',
+      clinicalAdviceMm: 'နှလုံးခုန်မမှန်ခြင်း (Arrhythmia) နှင့် အရိုးပွခြင်းတို့ မဖြစ်စေရန် ၂ လမှ ၃ လအကြာတွင် TFT စစ်ဆေးချက် ပြန်လည်စစ်ဆေးသင့်ပါသည်။',
+      symptomsMm: ['အနည်းငယ် ရင်တုန်လွယ်ခြင်း', 'စိတ်ပူပန်လွယ်ခြင်း', 'သွေးပေါင်အနည်းငယ်တက်ခြင်း']
+    };
+  }
+
+  // Primary Hypothyroidism: High TSH and Low FT4 / FT3
+  if (tsh !== undefined && tsh > 4.0 && ((ft4 !== undefined && ft4 < 0.8) || (ft3 !== undefined && ft3 < 2.3))) {
+    return {
+      category: 'hypothyroid',
+      labelMm: 'သိုင်းရွိုက်ဟော်မုန်း အားနည်း/ချို့တဲ့ခြင်း (Overt Hypothyroidism)',
+      labelEn: 'Hypothyroidism',
+      badgeClass: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800',
+      descriptionMm: 'သိုင်းရွိုက်ဂလင်းမှ လုံလောက်သော ဟော်မုန်းမထုတ်လုပ်နိုင်သဖြင့် ခန္ဓာကိုယ် ဇီဝကမ္မဖြစ်စဉ်များ နှေးကွေးလေးလံနေပါသည်။',
+      clinicalAdviceMm: 'သိုင်းရွိုက်ဟော်မုန်း အစားထိုးဆေး (Levothyroxine) ကို မနက်စောစော ဗိုက်ဗလာချိန်တွင် သောက်သုံးရန် လိုအပ်ပါသည်။ ဆရာဝန်နှင့် ပြသ၍ ဆေးပမာဏ ချိန်ညှိပါ။',
+      symptomsMm: ['အမြဲတစေ မောပန်းနွမ်းနယ်ပြီး အိပ်ငိုက်ခြင်း', 'အစာနည်းနည်းစားသော်လည်း ကိုယ်အလေးချိန်တက်လာခြင်း', 'အအေးဒဏ် လုံးဝမခံနိုင်ခြင်း', 'အသားအရေ ခြောက်သွေ့ခြင်း၊ ဆံပင်ကျွတ်ခြင်း', 'ဝမ်းချုပ်ခြင်း၊ မျက်နှာဖောသွပ်ခြင်း']
+    };
+  }
+
+  // Subclinical Hypothyroidism: High TSH but Normal FT4 & FT3
+  if (tsh !== undefined && tsh > 4.0 && (ft4 === undefined || (ft4 >= 0.8 && ft4 <= 1.8)) && (ft3 === undefined || (ft3 >= 2.3 && ft3 <= 4.2))) {
+    return {
+      category: 'subclinical_hypo',
+      labelMm: 'ကနဦး သိုင်းရွိုက်ဟော်မုန်း လျော့နည်းခြင်း (Subclinical Hypothyroidism)',
+      labelEn: 'Subclinical Hypothyroidism',
+      badgeClass: 'bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-200 border border-sky-300 dark:border-sky-800',
+      descriptionMm: 'သိုင်းရွိုက်အားနည်းခြင်း ကနဦးအဆင့်ဖြစ်ပြီး သွေးတွင်း ကိုလက်စထရော တက်ခြင်းကို တွဲဖက်စစ်ဆေးရန် လိုအပ်ပါသည်။',
+      clinicalAdviceMm: 'TSH ပမာဏ > 10 µIU/mL ကျော်ပါက သို့မဟုတ် လက္ခဏာများရှိပါက ဆရာဝန်ထံ ပြသ၍ သိုင်းရွိုက်ဟော်မုန်းဆေး စတင်သောက်သုံးရန် စဉ်းစားရပါမည်။',
+      symptomsMm: ['မကြာခဏ မောပန်းနွမ်းနယ်ခြင်း', 'သွေးတွင်းကိုလက်စထရော အနည်းငယ်မြင့်တက်ခြင်း', 'စိတ်ဓာတ်ကျလွယ်ခြင်း']
+    };
+  }
+
+  // Normal Euthyroid
+  if ((tsh === undefined || (tsh >= 0.4 && tsh <= 4.0)) && 
+      (ft4 === undefined || (ft4 >= 0.8 && ft4 <= 1.8)) && 
+      (ft3 === undefined || (ft3 >= 2.3 && ft3 <= 4.2))) {
+    return {
+      category: 'normal',
+      labelMm: 'သိုင်းရွိုက်ဟော်မုန်း အခြေအနေ ကောင်းမွန်သည် (Normal Euthyroid)',
+      labelEn: 'Euthyroid (Normal)',
+      badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800',
+      descriptionMm: 'TSH နှင့် Free T4/T3 စစ်ဆေးချက်များ ပုံမှန်အဆင့်အတွင်း ရှိနေပါသည်။ သိုင်းရွိုက်ဂလင်း၏ လုပ်ငန်းဆောင်တာများ ကောင်းမွန်မျှတစွာ အလုပ်လုပ်နေပါသည်။',
+      clinicalAdviceMm: 'ကျန်းမာရေးနှင့် ညီညွတ်သော နေထိုင်မှုပုံစံကို ဆက်လက်ထိန်းသိမ်းပါ။ တစ်နှစ်လျှင် တစ်ကြိမ် ပုံမှန်စစ်ဆေးပေးပါ။',
+      symptomsMm: ['ပုံမှန် ဇီဝကမ္မဖြစ်စဉ်နှင့် လန်းဆန်းတက်ကြွမှု ရှိသည်']
+    };
+  }
+
+  return {
+    category: 'indeterminate',
+    labelMm: 'သိုင်းရွိုက် စစ်ဆေးချက် ရလဒ်များ',
+    labelEn: 'Thyroid Results Recorded',
+    badgeClass: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200',
+    descriptionMm: 'စစ်ဆေးချက်တန်ဖိုးများကို မှတ်တမ်းတင်ထားပါသည်။ တိကျသော ရောဂါအဖြေအတွက် ဆရာဝန်နှင့် ပြသတိုင်ပင်ပါ။',
+    clinicalAdviceMm: 'ဓာတ်ခွဲခန်းရလဒ် အဖြေလွှာအား ဆရာဝန်ထံ ပြသပါ။',
+    symptomsMm: []
+  };
 }

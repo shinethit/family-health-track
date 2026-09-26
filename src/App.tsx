@@ -46,6 +46,27 @@ const MainContent: React.FC = () => {
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
 
+  // Theme state - defaults to clean, bright light mode ("လင်းလင်း ရှင်းရှင်း")
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('fht_theme');
+    return (saved === 'dark' || saved === 'light') ? saved : 'light';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    }
+    localStorage.setItem('fht_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
   // Automatically ensure Admin opens to Admin Dashboard by default
   useEffect(() => {
     if (isAdmin) {
@@ -56,10 +77,10 @@ const MainContent: React.FC = () => {
   // If loading authentication state from Firebase
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-800 dark:text-white">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-400 text-xs font-semibold">ကျန်းမာရေးစနစ် စစ်ဆေးနေပါသည်...</p>
+          <p className="text-slate-600 dark:text-slate-400 text-xs font-semibold">ကျန်းမာရေးစနစ် စစ်ဆေးနေပါသည်...</p>
         </div>
       </div>
     );
@@ -81,6 +102,8 @@ const MainContent: React.FC = () => {
         onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
         activeTab={activeTab} 
         setActiveTab={(tab: any) => setActiveTab(tab)} 
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* User Context Banner */}
@@ -108,6 +131,19 @@ const MainContent: React.FC = () => {
 
           {/* Quick Shortcuts: Guide / Version / Notifications / Logout */}
           <div className="flex items-center gap-2">
+            {/* Quick Theme Switch */}
+            <button
+              onClick={toggleTheme}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs ${
+                theme === 'light'
+                  ? 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
+                  : 'bg-slate-800 text-amber-300 border border-slate-700 hover:bg-slate-700'
+              }`}
+              title={theme === 'light' ? 'အမှောင်ရောင်သို့ ပြောင်းမည်' : 'လင်းလင်းရှင်းရှင်း သို့ ပြောင်းမည်'}
+            >
+              {theme === 'light' ? '☀️ လင်းလင်းရှင်းရှင်း' : '🌙 အမှောင်'}
+            </button>
+
             {/* User Guide Shortcut */}
             <button
               onClick={() => setIsUserGuideOpen(true)}
@@ -125,7 +161,7 @@ const MainContent: React.FC = () => {
               title="Version History (ဗားရှင်းမှတ်တမ်း)"
             >
               <History className="w-3.5 h-3.5" />
-              <span>v1.3.4</span>
+              <span>v1.3.5</span>
             </button>
 
             {/* Open Notifications */}

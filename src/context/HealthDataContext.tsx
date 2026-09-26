@@ -203,7 +203,8 @@ interface HealthDataContextType {
   setSelectedPatientId: (id: string | null) => void;
   selectedPatient: UserProfile | null;
   addPatient: (data: Partial<UserProfile> & { displayName: string }) => Promise<UserProfile>;
-  deletePatient: (id: string) => Promise<void>;
+  updatePatient: (id: string, updates: Partial<UserProfile>) => Promise<void>;
+  deletePatient: (id: string, deleteAssociatedData?: boolean) => Promise<void>;
   clearAllPatients: () => Promise<void>;
 
   // Actions
@@ -632,21 +633,79 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return newPatient;
   };
 
-  const deletePatient = async (id: string) => {
+  const updatePatient = async (id: string, updates: Partial<UserProfile>): Promise<void> => {
+    const updatedAt = new Date().toISOString();
+    const cleanUpdates: Partial<UserProfile> = {
+      ...updates,
+      updatedAt,
+    };
+
+    // 1. Update in local patientsList state
+    setPatientsList(prev => prev.map(p => (p.id === id ? { ...p, ...cleanUpdates } : p)));
+
+    // 2. If displayName or email updated, sync across active record states
+    if (updates.displayName) {
+      const newName = updates.displayName;
+      setAllBP(prev => prev.map(b => b.userId === id ? { ...b, patientName: newName } : b));
+      setAllGlucose(prev => prev.map(g => g.userId === id ? { ...g, patientName: newName } : g));
+      setAllLabs(prev => prev.map(l => l.userId === id ? { ...l, patientName: newName } : l));
+      setAllMeds(prev => prev.map(m => m.userId === id ? { ...m, patientName: newName } : m));
+      setAllAdvices(prev => prev.map(a => a.userId === id ? { ...a, patientName: newName } : a));
+      setAllQuestions(prev => prev.map(q => q.userId === id ? { ...q, patientName: newName } : q));
+    }
+
+    // 3. Persist to Firestore users collection
+    try {
+      await setDoc(doc(db, 'users', id), sanitizeForFirestore(cleanUpdates), { merge: true });
+    } catch (e) {
+      console.warn('Error updating patient in firestore:', e);
+      throw e;
+    }
+  };
+
+  const deletePatient = async (id: string, deleteAssociatedData: boolean = true) => {
+    // 1. Immediate UI state updates
     setPatientsList(prev => prev.filter(p => p.id !== id));
-    setAllBP(prev => prev.filter(b => b.userId !== id));
-    setAllGlucose(prev => prev.filter(g => g.userId !== id));
-    setAllLabs(prev => prev.filter(l => l.userId !== id));
-    setAllMeds(prev => prev.filter(m => m.userId !== id));
-    setAllAdvices(prev => prev.filter(a => a.userId !== id));
-    setAllBMI(prev => prev.filter(b => b.userId !== id));
-    setAllQuestions(prev => prev.filter(q => q.userId !== id));
+    if (deleteAssociatedData) {
+      setAllBP(prev => prev.filter(b => b.userId !== id));
+      setAllGlucose(prev => prev.filter(g => g.userId !== id));
+      setAllLabs(prev => prev.filter(l => l.userId !== id));
+      setAllMeds(prev => prev.filter(m => m.userId !== id));
+      setAllAdvices(prev => prev.filter(a => a.userId !== id));
+      setAllBMI(prev => prev.filter(b => b.userId !== id));
+      setAllQuestions(prev => prev.filter(q => q.userId !== id));
+    }
     if (selectedPatientId === id) {
       setSelectedPatientId(null);
     }
+
+    // 2. Delete patient document from Firestore users collection
     try {
       await deleteDoc(doc(db, 'users', id));
-    } catch {}
+    } catch (e) {
+      console.warn('Error deleting patient from firestore users collection:', e);
+    }
+
+    // 3. Cascading delete from all associated collections to prevent re-aggregation
+    if (deleteAssociatedData) {
+      try {
+        const collectionsToClean = ['vitals', 'glucose', 'bmi', 'labTests', 'medications', 'doctorAdvices', 'doctorQuestions'];
+        await Promise.all(
+          collectionsToClean.map(async (colName) => {
+            try {
+              const q = query(collection(db, colName), where('userId', '==', id));
+              const snap = await getDocs(q);
+              const deletes = snap.docs.map(d => deleteDoc(doc(db, colName, d.id)));
+              await Promise.all(deletes);
+            } catch (err) {
+              console.warn(`Error deleting ${colName} for user ${id}:`, err);
+            }
+          })
+        );
+      } catch (err) {
+        console.warn('Error cascading patient records deletion:', err);
+      }
+    }
   };
 
   const clearAllPatients = async () => {
@@ -1026,6 +1085,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setSelectedPatientId,
       selectedPatient,
       addPatient,
+      updatePatient,
       deletePatient,
       clearAllPatients,
       addBPRecord,

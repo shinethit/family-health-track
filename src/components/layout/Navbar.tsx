@@ -11,7 +11,9 @@ import {
   Trash2,
   KeyRound,
   BookOpen,
-  History
+  History,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
@@ -25,6 +27,8 @@ interface NavbarProps {
   onOpenVersionHistory: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
@@ -32,7 +36,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenUserGuide,
   onOpenVersionHistory,
   activeTab, 
-  setActiveTab 
+  setActiveTab,
+  theme = 'light',
+  onToggleTheme
 }) => {
   const { profile, isAdmin, logout } = useAuth();
   const { doctorAdvices, clearAllData } = useHealthData();
@@ -50,9 +56,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Brand Logo - Purple Background & Gold Emblem */}
+            {/* Brand Logo - Fresh Bright Medical Cyan/Teal/Emerald Gradient */}
             <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 p-0.5 border border-amber-400/60 shadow-md shadow-purple-950/40 flex items-center justify-center overflow-hidden shrink-0">
+              <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 p-0.5 border border-emerald-300/80 shadow-md shadow-emerald-500/20 flex items-center justify-center overflow-hidden shrink-0">
                 <img 
                   src="/icon.svg" 
                   alt="Family Health Track" 
@@ -61,7 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     (e.currentTarget as HTMLElement).style.display = 'none';
                   }}
                 />
-                <HeartPulse className="w-5 h-5 text-amber-400 absolute animate-pulse opacity-20" />
+                <HeartPulse className="w-5 h-5 text-white absolute animate-pulse opacity-90" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -70,20 +76,45 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </span>
                   <button
                     onClick={onOpenVersionHistory}
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-amber-300 border border-amber-400/30 hover:bg-purple-200 transition-colors cursor-pointer flex items-center gap-1"
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 hover:bg-emerald-200 transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
                     title="Version History ကြည့်မည်"
                   >
-                    <span>v1.3.3</span>
+                    <span>v1.3.5</span>
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 hidden sm:block">
-                  သွေးတိုး၊ ဆီးချို၊ BMI & အသက်တွက်ချက်မှုနှင့် ဓာတ်ခွဲခန်းစစ်ဆေးချက်များ
+                  သွေးတိုး၊ ဆီးချို၊ BMI၊ သိုင်းရွိုက် (TFT)၊ ကာကွယ်ဆေးနှင့် ဓာတ်ခွဲခန်းစစ်ဆေးချက်များ
                 </p>
               </div>
             </div>
 
             {/* Right User & Tools */}
             <div className="flex items-center gap-1.5 sm:gap-2.5">
+              {/* Theme Switcher Button - လင်းလင်းရှင်းရှင်း (Light Mode) / အမှောင် (Dark Mode) */}
+              {onToggleTheme && (
+                <button
+                  onClick={onToggleTheme}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+                    theme === 'light'
+                      ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300'
+                      : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700'
+                  }`}
+                  title={theme === 'light' ? 'အမှောင်ရောင်သို့ ပြောင်းမည်' : 'လင်းလင်းရှင်းရှင်း သို့ ပြောင်းမည်'}
+                >
+                  {theme === 'light' ? (
+                    <>
+                      <Sun className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                      <span className="hidden sm:inline">လင်းလင်းရှင်းရှင်း</span>
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-3.5 h-3.5 text-indigo-300 fill-indigo-300" />
+                      <span className="hidden sm:inline">အမှောင်</span>
+                    </>
+                  )}
+                </button>
+              )}
+
               {/* User Guide Button */}
               <button
                 onClick={onOpenUserGuide}

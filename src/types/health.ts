@@ -122,6 +122,15 @@ export interface LipidProfileTest {
   ldl?: number;
 }
 
+export interface ThyroidFunctionTest {
+  tsh?: number;        // Thyroid Stimulating Hormone (µIU/mL or mIU/L, ref: 0.4 - 4.0)
+  ft4?: number;        // Free Thyroxine (ng/dL, ref: 0.8 - 1.8)
+  ft3?: number;        // Free Triiodothyronine (pg/mL, ref: 2.3 - 4.2)
+  totalT4?: number;    // Total T4 (µg/dL, ref: 4.5 - 12.0)
+  totalT3?: number;    // Total T3 (ng/dL, ref: 80 - 200)
+  antiTpo?: number;    // Anti-Thyroid Peroxidase (IU/mL, ref: < 35)
+}
+
 export interface LabTestRecord {
   id: string;
   userId: string;
@@ -135,6 +144,7 @@ export interface LabTestRecord {
   liver?: LiverFunctionTest;
   renal?: RenalAndUricTest;
   lipid?: LipidProfileTest;
+  thyroid?: ThyroidFunctionTest;
   notes?: string;
   doctorReview?: string;
   createdAt?: string;
@@ -251,7 +261,7 @@ export interface DoctorQuestion {
 export interface HealthArticle {
   id: string;
   title: string;
-  category: 'bp' | 'diabetes' | 'liver' | 'kidney' | 'heart' | 'nutrition' | 'exercise' | 'general';
+  category: 'bp' | 'diabetes' | 'liver' | 'kidney' | 'heart' | 'nutrition' | 'exercise' | 'general' | 'vaccine' | 'thyroid' | 'elderly' | string;
   summary: string;
   content: string[];
   readingTime: string;
