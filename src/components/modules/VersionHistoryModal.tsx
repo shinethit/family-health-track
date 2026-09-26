@@ -39,7 +39,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
   {
     version: 'v2.1.0',
     type: 'major',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ မတ်လ (ယနေ့ - Major Family & Life Stage Healthcare Suite)',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
     title: '🌟 [MAJOR] Women’s Health, Pregnancy & Maternal Care, Child Care, Developmental Milestones & Geriatric Elderly Care Suite',
     badge: 'Major Release (v2.1.0)',
@@ -74,7 +74,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
           'မွေးကင်းစကလေး ချက်ကြိုးသန့်ရှင်းရေး (Cord Care)၊ အသားဝါခြင်း (Jaundice) နှင့် လေထုတ်ပေးနည်းများ',
           'မိခင်နို့ သီးသန့်တိုက်ကျွေးခြင်း (Exclusive Breastfeeding) နှင့် အသက်အလိုက် ဖြည့်စွက်စာ အဆင့်ဆင့် ကျွေးနည်းဇယား',
           'ကလေးဖျားနာမှု အဆင့်သတ်မှတ်ခြင်းနှင့် အရေးပေါ် အကဲဖြတ်စနစ် (Pediatric Fever Triage Tool)',
-          'ကလေး ဝမ်းလျှောခြင်းတွင် ဓာတ်ဆားရည် (ORS) ဖျော်စပ်တိုက်ကျွေးနည်းနှင့် ရေဓာတ်ခမ်းခြောက်မှု စစ်ဆေးခြင်း'
+          'ကလေး ဝမ်းလျှောခြင်းတွင် ဓာတ်ဆားရည် (ORS) ဖျော်စပ်တိုက်ကျွေးနည်းနှင့် ရေဓာတ်ခမ်းောက်မှု စစ်ဆေးခြင်း'
         ]
       },
       {
@@ -96,13 +96,22 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
           'အိပ်ရာထဲ လဲနေသော သက်ကြီးရွယ်အိုများ ဖိအားဒဏ်ရာ (Bed Sore) ကာကွယ်နည်း (၂ နာရီတစ်ကြိမ် စောင်းပေးခြင်း)',
           'ဆေးဝါး ဘေးကင်းစွာ သောက်သုံးရေး (Polypharmacy Management) နှင့် အစာမျိုရခက်ခြင်း (Dysphagia) အာဟာရ'
         ]
+      },
+      {
+        title: '🔬 သိမှတ်ဖွယ်ရာများ (Health Knowledge & Guides)',
+        icon: Database,
+        items: [
+          'ကျန်းမာရေးဆောင်းပါးများ (Health Articles) စုံလင်စွာ ထည့်သွင်းပေးထားခြင်း',
+          'အိမ်သုံးဆေးဝါးလမ်းညွှန် (OTC Medicines Guide) အသုံးပြုနည်း လမ်းညွှန်များ',
+          'ဓာတ်ခွဲ/စမ်းသပ်မှုလမ်းညွှန် (Investigation Guides) - သွေးစစ်၊ ဆီးစစ်၊ ဓာတ်မှန်စသည့် စစ်ဆေးချက်များ၏ ပုံမှန်စံနှုန်းများ နှင့် အဓိပ္ပာယ်များ'
+        ]
       }
     ]
   },
   {
     version: 'v2.0.0',
     type: 'major',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ မတ်လ (Major Healthcare Ecosystem & Security Release)',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (Major Healthcare Ecosystem & Security Release)',
     isLatest: false,
     title: '🌟 [MAJOR] Speciality Health Articles, Household OTC Medicines Guide, Data Privacy & Security, Medical Disclaimer & Admin Broadcast Marquee System',
     badge: 'Major Release (v2.0.0)',
@@ -167,7 +176,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
   {
     version: 'v1.7.0',
     type: 'minor',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ မတ်လ (Grammar Spelling, Zero Horizontal Scroll & Categorized Navigation Update)',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (Grammar Spelling, Zero Horizontal Scroll & Categorized Navigation Update)',
     isLatest: false,
     title: '🇲🇲 [MINOR] မြန်မာစာလုံးပေါင်း ပြင်ဆင်ချက်များ၊ Horizontal Scroll လုံးဝ မရှိသော UX နှင့် Categorized Sub-Navigation Bar Update',
     badge: 'Minor Release (v1.7.0)',
@@ -207,7 +216,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
   {
     version: 'v1.6.0',
     type: 'major',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ မတ်လ (Dental, Eye, Ear, Skincare & Emergency First Aid Update)',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (Dental, Eye, Ear, Skincare & Emergency First Aid Update)',
     isLatest: false,
     title: '🦷 [MAJOR] Dental, Eye, Ear Specialities, Dermatology Skincare & Emergency First Aid Protocol',
     badge: 'Major Release (v1.6.0)',
@@ -245,7 +254,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
   {
     version: 'v1.5.0',
     type: 'major',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ မတ်လ (Physiotherapy & Rehabilitation Update)',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (Physiotherapy & Rehabilitation Update)',
     isLatest: false,
     title: '🏃 [MAJOR] Physiotherapy Exercises, Interactive Reps Timer & Physical Rehab Guides',
     badge: 'Major Release (v1.5.0)',
@@ -273,7 +282,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
   {
     version: 'v1.4.0',
     type: 'major',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ မတ်လ (All-In-One Major Healthcare Release)',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (All-In-One Major Healthcare Release)',
     isLatest: false,
     title: '📄 [MAJOR] Health Passport PDF, Vaccination Tracker, Emergency ID Card & Clinical Nutrition Guide',
     badge: 'Major Release (v1.4.0)',
@@ -312,7 +321,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
   {
     version: 'v1.3.7',
     type: 'minor',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ မတ်လ (Notification & Audio Alert Update)',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (Notification & Audio Alert Update)',
     isLatest: false,
     title: '🔔 [MINOR] Health Notifications & Custom Reminders Center, Alarms & Audio Push Alert System',
     badge: 'Minor Release (v1.3.7)',

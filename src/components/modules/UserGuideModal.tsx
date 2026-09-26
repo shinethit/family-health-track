@@ -263,7 +263,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
           </div>
 
           {/* Right Column: Selected Guide Details */}
-          <div className="md:col-span-8 p-5 sm:p-6 space-y-6 overflow-y-auto">
+          <div className="md:col-span-8 p-5 sm:p-6 space-y-6 overflow-y-auto max-h-[calc(80vh-80px)]">
             {/* Guide Header Banner */}
             <div className="flex items-start gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
