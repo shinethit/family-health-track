@@ -1,0 +1,7 @@
+{
+  "name": "Family Health Track",
+  "description": "Family Health Track - သွေးတိုး၊ ဆီးချို၊ BMI & အသက်တွက်ချက်မှု၊ ဓာတ်ခွဲခန်းစစ်ဆေးချက်များ (LFT, Renal, Lipid) နှင့် ဆေးမှတ်တမ်း စောင့်ရှောက်မှု အက်ပ်",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

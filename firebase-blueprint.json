@@ -1,0 +1,100 @@
+{
+  "$schema": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firestore-blueprint.json",
+  "collections": [
+    {
+      "id": "users",
+      "description": "Registered patient and admin user profiles",
+      "fields": [
+        { "name": "id", "type": "string", "description": "User UID" },
+        { "name": "email", "type": "string", "description": "User email address" },
+        { "name": "displayName", "type": "string", "description": "User full name" },
+        { "name": "role", "type": "string", "description": "Role: 'patient' or 'admin'" },
+        { "name": "dateOfBirth", "type": "string", "description": "Date of birth in YYYY-MM-DD" },
+        { "name": "gender", "type": "string", "description": "Gender: male, female, or other" },
+        { "name": "heightCm", "type": "number", "description": "Height in cm" },
+        { "name": "weightKg", "type": "number", "description": "Weight in kg" },
+        { "name": "bmi", "type": "number", "description": "Calculated BMI" },
+        { "name": "chronicConditions", "type": "array", "description": "List of chronic conditions" },
+        { "name": "createdAt", "type": "string", "description": "ISO creation timestamp" }
+      ]
+    },
+    {
+      "id": "vitals",
+      "description": "Blood pressure vital records",
+      "fields": [
+        { "name": "userId", "type": "string", "description": "Owner UID" },
+        { "name": "patientName", "type": "string", "description": "Patient Name" },
+        { "name": "systolic", "type": "number", "description": "Systolic BP" },
+        { "name": "diastolic", "type": "number", "description": "Diastolic BP" },
+        { "name": "pulse", "type": "number", "description": "Pulse BPM" },
+        { "name": "category", "type": "string", "description": "BP Category" },
+        { "name": "recordedAt", "type": "string", "description": "Record timestamp" }
+      ]
+    },
+    {
+      "id": "glucose",
+      "description": "Blood glucose records",
+      "fields": [
+        { "name": "userId", "type": "string", "description": "Owner UID" },
+        { "name": "patientName", "type": "string", "description": "Patient Name" },
+        { "name": "glucoseValue", "type": "number", "description": "Glucose mg/dL" },
+        { "name": "type", "type": "string", "description": "Fasting, Postprandial, or Random" },
+        { "name": "status", "type": "string", "description": "Glucose status" },
+        { "name": "recordedAt", "type": "string", "description": "Record timestamp" }
+      ]
+    },
+    {
+      "id": "bmi",
+      "description": "Body Mass Index records",
+      "fields": [
+        { "name": "userId", "type": "string", "description": "Owner UID" },
+        { "name": "heightCm", "type": "number", "description": "Height in cm" },
+        { "name": "weightKg", "type": "number", "description": "Weight in kg" },
+        { "name": "bmi", "type": "number", "description": "Calculated BMI" },
+        { "name": "category", "type": "string", "description": "BMI category" },
+        { "name": "recordedAt", "type": "string", "description": "Record timestamp" }
+      ]
+    },
+    {
+      "id": "labTests",
+      "description": "Lab test records",
+      "fields": [
+        { "name": "userId", "type": "string", "description": "Owner UID" },
+        { "name": "testName", "type": "string", "description": "Name of lab test" },
+        { "name": "resultValue", "type": "string", "description": "Lab test result" },
+        { "name": "recordedAt", "type": "string", "description": "Record timestamp" }
+      ]
+    },
+    {
+      "id": "medications",
+      "description": "Prescription medications",
+      "fields": [
+        { "name": "userId", "type": "string", "description": "Owner UID" },
+        { "name": "name", "type": "string", "description": "Medicine name" },
+        { "name": "dosage", "type": "string", "description": "Dosage" },
+        { "name": "frequency", "type": "string", "description": "Daily frequency" },
+        { "name": "status", "type": "string", "description": "active, completed, paused" }
+      ]
+    },
+    {
+      "id": "doctorAdvices",
+      "description": "Clinical advice from admin doctor",
+      "fields": [
+        { "name": "userId", "type": "string", "description": "Patient UID" },
+        { "name": "advice", "type": "string", "description": "Doctor medical advice" },
+        { "name": "diet", "type": "string", "description": "Diet recommendation" },
+        { "name": "createdAt", "type": "string", "description": "Timestamp" }
+      ]
+    },
+    {
+      "id": "doctorQuestions",
+      "description": "Patient Q&A consultations",
+      "fields": [
+        { "name": "userId", "type": "string", "description": "Patient UID" },
+        { "name": "question", "type": "string", "description": "Patient medical question" },
+        { "name": "status", "type": "string", "description": "pending or answered" },
+        { "name": "answers", "type": "array", "description": "Doctor response answers" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B0764"/>
+      <stop offset="40%" stop-color="#581C87"/>
+      <stop offset="100%" stop-color="#1E1B4B"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB"/>
+      <stop offset="25%" stop-color="#FDE047"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="80%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#B45309"/>
+    </linearGradient>
+    <linearGradient id="goldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A"/>
+      <stop offset="50%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#78350F"/>
+    </linearGradient>
+    <radialGradient id="purpleGlow" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#A855F7" stop-opacity="0.5"/>
+      <stop offset="60%" stop-color="#7E22CE" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#3B0764" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="goldDrop" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#F59E0B" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="512" height="512" rx="115" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Inner Border -->
+  <rect x="12" y="12" width="488" height="488" rx="103" fill="none" stroke="url(#goldBorder)" stroke-width="2.5" stroke-opacity="0.4"/>
+  
+  <!-- Radial Glow Behind Logo -->
+  <circle cx="256" cy="245" r="180" fill="url(#purpleGlow)"/>
+
+  <!-- Main Emblem Group -->
+  <g filter="url(#goldDrop)">
+    <!-- Elegant Shield Base -->
+    <path d="M 256 95 C 320 95 365 110 385 125 C 385 240 330 345 256 395 C 182 345 127 240 127 125 C 147 110 192 95 256 95 Z" 
+          fill="none" 
+          stroke="url(#goldGrad)" 
+          stroke-width="14" 
+          stroke-linejoin="round"/>
+
+    <!-- Inner Medical Heart Shape -->
+    <path d="M 256 165 C 240 135 200 130 180 155 C 155 185 160 225 190 255 L 256 315 L 322 255 C 352 225 357 185 332 155 C 312 130 272 135 256 165 Z" 
+          fill="url(#goldGrad)" 
+          opacity="0.2"/>
+
+    <!-- Golden Medical Cross & Heartbeat Line -->
+    <!-- Medical Cross -->
+    <rect x="238" y="145" width="36" height="150" rx="10" fill="url(#goldGrad)"/>
+    <rect x="181" y="202" width="150" height="36" rx="10" fill="url(#goldGrad)"/>
+
+    <!-- Central Glowing Pulse / Lifeline -->
+    <path d="M 145 220 L 205 220 L 225 180 L 250 260 L 275 195 L 295 235 L 310 220 L 367 220" 
+          fill="none" 
+          stroke="#FFFBEB" 
+          stroke-width="10" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+
+    <!-- Sparkles / Stars -->
+    <circle cx="256" cy="118" r="5" fill="#FFFBEB"/>
+    <circle cx="256" cy="370" r="5" fill="#FFFBEB"/>
+    <circle cx="150" cy="145" r="3.5" fill="#FDE047"/>
+    <circle cx="362" cy="145" r="3.5" fill="#FDE047"/>
+  </g>
+</svg>
