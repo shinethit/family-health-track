@@ -63,14 +63,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </span>
                   <button
                     onClick={onOpenVersionHistory}
-                    className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 transition-colors cursor-pointer"
-                    title="Version History ကြည့်မည်"
+                    className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer"
+                    title="Version History & Change Log ကြည့်မည်"
                   >
-                    v1.7.0
+                    v2.0.0 Major
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500 hidden md:block">
-                  သွား၊ မျက်စိ၊ နား၊ အရေပြား၊ ရှေးဦးပြုစုခြင်း၊ သွေးတိုး၊ ဆီးချို၊ BMI၊ ကာကွယ်ဆေးနှင့် အာဟာရ
+                  အထူးကုဆောင်းပါးများ၊ အိမ်သုံးဆေးဝါးလမ်းညွှန်၊ သွေးတိုး၊ ဆီးချို၊ BMI၊ ကာကွယ်ဆေးနှင့် အရေးပေါ်စနစ်
                 </p>
               </div>
             </div>
@@ -158,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
                       >
                         <History className="w-4 h-4 text-purple-600" />
-                        <span>ဗားရှင်း မှတ်တမ်း (v1.4.0)</span>
+                        <span>ဗားရှင်း မှတ်တမ်း (v2.0.0)</span>
                       </button>
 
                       <button

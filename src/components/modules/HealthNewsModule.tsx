@@ -81,9 +81,21 @@ export const HealthNewsModule: React.FC = () => {
   const kidneyCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'kidney').length, []);
   const nutritionCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'nutrition').length, []);
   const elderlyCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'elderly').length, []);
+  const dentalCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_dental').length, []);
+  const eyeCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_eye').length, []);
+  const entCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_ent').length, []);
+  const dermaCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_derma').length, []);
+  const orthoCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_ortho').length, []);
+  const neuroCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_neuro').length, []);
 
   const CATEGORIES = [
     { id: 'all', label: `အားလုံး (${HEALTH_ARTICLES.length} ပုဒ်)` },
+    { id: 'specialty_dental', label: `🦷 သွားနှင့် ခံတွင်း (${dentalCount})` },
+    { id: 'specialty_eye', label: `👁️ မျက်စိ (${eyeCount})` },
+    { id: 'specialty_ent', label: `👂 နား၊ နှာ၊ လည် (${entCount})` },
+    { id: 'specialty_derma', label: `✨ အရေပြား (${dermaCount})` },
+    { id: 'specialty_ortho', label: `🦴 အရိုးနှင့် အဆစ် (${orthoCount})` },
+    { id: 'specialty_neuro', label: `🧠 အာရုံကြော (${neuroCount})` },
     { id: 'physio', label: `🏃 ကာယကုထုံး (${physioCount})` },
     { id: 'pediatrics', label: `👶 ကလေးကျန်းမာရေး (${pediatricsCount})` },
     { id: 'vaccine', label: `💉 ကာကွယ်ဆေးများ (${vaccineCount})` },
@@ -99,6 +111,12 @@ export const HealthNewsModule: React.FC = () => {
 
   const getCategoryLabel = (cat: string) => {
     switch (cat) {
+      case 'specialty_dental': return 'သွားနှင့် ခံတွင်း';
+      case 'specialty_eye': return 'မျက်စိ';
+      case 'specialty_ent': return 'နား၊ နှာခေါင်း၊ လည်ချောင်း';
+      case 'specialty_derma': return 'အရေပြားနှင့် အလှအပ';
+      case 'specialty_ortho': return 'အရိုးနှင့် အဆစ်';
+      case 'specialty_neuro': return 'အာရုံကြော';
       case 'physio': return 'ကာယကုထုံး';
       case 'pediatrics': return 'ကလေးကျန်းမာရေး';
       case 'vaccine': return 'ကာကွယ်ဆေး';
@@ -116,6 +134,12 @@ export const HealthNewsModule: React.FC = () => {
 
   const getCategoryBadgeColor = (cat: string) => {
     switch (cat) {
+      case 'specialty_dental': return 'bg-cyan-50 text-cyan-800 border-cyan-200';
+      case 'specialty_eye': return 'bg-sky-50 text-sky-800 border-sky-200';
+      case 'specialty_ent': return 'bg-teal-50 text-teal-800 border-teal-200';
+      case 'specialty_derma': return 'bg-rose-50 text-rose-800 border-rose-200';
+      case 'specialty_ortho': return 'bg-amber-50 text-amber-800 border-amber-200';
+      case 'specialty_neuro': return 'bg-indigo-50 text-indigo-800 border-indigo-200';
       case 'pediatrics': return 'bg-pink-50 text-pink-700 border-pink-200';
       case 'vaccine': return 'bg-cyan-50 text-cyan-700 border-cyan-200';
       case 'thyroid': return 'bg-purple-50 text-purple-700 border-purple-200';

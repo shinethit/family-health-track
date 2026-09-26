@@ -18,7 +18,10 @@ import {
   Utensils,
   Smile,
   Sparkles,
-  Flame
+  Flame,
+  Baby,
+  Users,
+  Award
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { HealthDataProvider, useHealthData } from './context/HealthDataContext';
@@ -46,6 +49,14 @@ import { PhysiotherapyModule } from './components/modules/PhysiotherapyModule';
 import { SpecialtyCareModule } from './components/modules/SpecialtyCareModule';
 import { DermatologyModule } from './components/modules/DermatologyModule';
 import { EmergencyFirstAidModule } from './components/modules/EmergencyFirstAidModule';
+import { HomeMedicinesGuideModule } from './components/modules/HomeMedicinesGuideModule';
+import { WomensHealthModule } from './components/modules/WomensHealthModule';
+import { PregnancyCareModule } from './components/modules/PregnancyCareModule';
+import { ChildCareModule } from './components/modules/ChildCareModule';
+import { ChildMilestonesModule } from './components/modules/ChildMilestonesModule';
+import { ElderlyCareModule } from './components/modules/ElderlyCareModule';
+import { PrivacyPolicyModal } from './components/modules/PrivacyPolicyModal';
+import { BroadcastMarqueeBanner } from './components/layout/BroadcastMarqueeBanner';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 
 const MainContent: React.FC = () => {
@@ -53,12 +64,13 @@ const MainContent: React.FC = () => {
   const { selectedPatient, setSelectedPatientId, doctorQuestions } = useHealthData();
   const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState<
-    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'news' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'admin'
+    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
   >(isAdmin ? 'admin' : 'trends');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
   const [isPassportOpen, setIsPassportOpen] = useState(false);
+  const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
 
   // Force pure clean light theme by default ("အဖြူခံနဲ့ ရိုးရိုးလေး")
   useEffect(() => {
@@ -110,6 +122,19 @@ const MainContent: React.FC = () => {
       ]
     },
     {
+      id: 'family_care',
+      nameMm: '👶 မိခင်၊ ကလေးနှင့် သက်ကြီးစောင့်ရှောက်မှု',
+      badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
+      activeColor: 'bg-amber-600 text-white shadow-xs',
+      tabs: [
+        { id: 'womens_health', label: 'အမျိုးသမီးကျန်းမာရေး', icon: Sparkles, activeColor: 'bg-rose-600 text-white' },
+        { id: 'pregnancy', label: 'ကိုယ်ဝန်ဆောင်စောင့်ရှောက်မှု', icon: Heart, activeColor: 'bg-teal-700 text-white' },
+        { id: 'child_care', label: 'ကလေးငယ်ပြုစုရေး', icon: Baby, activeColor: 'bg-sky-600 text-white' },
+        { id: 'milestones', label: 'ကလေးဖွံ့ဖြိုးမှုမှတ်တိုင်', icon: Award, activeColor: 'bg-amber-600 text-white' },
+        { id: 'elderly_care', label: 'သက်ကြီးရွယ်အိုစောင့်ရှောက်ရေး', icon: Users, activeColor: 'bg-emerald-700 text-white' },
+      ]
+    },
+    {
       id: 'specialty',
       nameMm: '🩺 အထူးကုနှင့် ကုထုံးများ',
       badgeColor: 'bg-teal-50 text-teal-800 border-teal-200',
@@ -129,6 +154,7 @@ const MainContent: React.FC = () => {
       activeColor: 'bg-rose-600 text-white shadow-xs',
       tabs: [
         { id: 'firstaid', label: 'ရှေးဦးပြုစုခြင်း', icon: ShieldAlert, activeColor: 'bg-red-600 text-white' },
+        { id: 'otc_meds', label: 'အိမ်သုံးဆေးဝါးလမ်းညွှန်', icon: Pill, activeColor: 'bg-teal-700 text-white' },
         { id: 'emergency', label: 'အရေးပေါ် ID', icon: ShieldAlert, activeColor: 'bg-rose-700 text-white' },
         { id: 'vaccine', label: 'ကာကွယ်ဆေး', icon: Syringe, activeColor: 'bg-teal-700 text-white' },
         { id: 'news', label: 'ကျန်းမာရေးဆောင်းပါး', icon: Newspaper, activeColor: 'bg-teal-600 text-white' },
@@ -168,6 +194,25 @@ const MainContent: React.FC = () => {
         activeTab={activeTab} 
         setActiveTab={(tab: any) => setActiveTab(tab)} 
       />
+
+      {/* 📢 Live Broadcast Running Text (Marquee Ticker) */}
+      <BroadcastMarqueeBanner />
+
+      {/* Medical Knowledge Notice Banner (ဗဟုသုတ သီးသန့် အသိပေးချက်) */}
+      <div className="bg-slate-50 border-b border-slate-200 px-3 sm:px-6 py-1.5 text-[11px] text-slate-600 flex items-center justify-between gap-2">
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="font-bold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded text-[10px]">အသိပေးချက်</span>
+            <span className="truncate">ဤ App သည် အထွေထွေ ကျန်းမာရေး ဗဟုသုတနှင့် မိသားစု မှတ်တမ်းတင်ရန် သီးသန့် ဖြစ်ပါသည်။ ဆရာဝန်၏ တိုက်ရိုက် ကုသမှုကို အစားမထိုးပါ။</span>
+          </div>
+          <button 
+            onClick={() => setIsPrivacyPolicyOpen(true)}
+            className="text-teal-700 hover:text-teal-800 font-bold shrink-0 underline ml-2 cursor-pointer"
+          >
+            မူဝါဒ & ဒေတာလုံခြုံရေး
+          </button>
+        </div>
+      </div>
 
       {/* Selected Patient Banner for Admin (Simple & Crisp) */}
       {selectedPatient && isAdmin && (
@@ -287,8 +332,14 @@ const MainContent: React.FC = () => {
         {activeTab === 'specialty' && <SpecialtyCareModule />}
         {activeTab === 'derma' && <DermatologyModule />}
         {activeTab === 'firstaid' && <EmergencyFirstAidModule />}
+        {activeTab === 'otc_meds' && <HomeMedicinesGuideModule />}
         {activeTab === 'news' && <HealthNewsModule />}
         {activeTab === 'reminders' && <RemindersModule />}
+        {activeTab === 'womens_health' && <WomensHealthModule />}
+        {activeTab === 'pregnancy' && <PregnancyCareModule />}
+        {activeTab === 'child_care' && <ChildCareModule />}
+        {activeTab === 'milestones' && <ChildMilestonesModule />}
+        {activeTab === 'elderly_care' && <ElderlyCareModule />}
       </main>
 
       {/* Simple Clean Footer */}
@@ -301,7 +352,7 @@ const MainContent: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex flex-wrap items-center gap-3 text-xs">
             <button
               onClick={() => setIsUserGuideOpen(true)}
               className="hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1"
@@ -311,11 +362,19 @@ const MainContent: React.FC = () => {
             </button>
             <span>•</span>
             <button
+              onClick={() => setIsPrivacyPolicyOpen(true)}
+              className="hover:text-teal-600 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>မူဝါဒ & ဒေတာလုံခြုံရေး</span>
+            </button>
+            <span>•</span>
+            <button
               onClick={() => setIsVersionHistoryOpen(true)}
               className="hover:text-purple-600 transition-colors cursor-pointer flex items-center gap-1"
             >
               <History className="w-3.5 h-3.5" />
-              <span>Version History (v1.4.0)</span>
+              <span>Version History (v2.1.0)</span>
             </button>
           </div>
 
@@ -341,6 +400,10 @@ const MainContent: React.FC = () => {
       <UserGuideModal
         isOpen={isUserGuideOpen}
         onClose={() => setIsUserGuideOpen(false)}
+      />
+      <PrivacyPolicyModal
+        isOpen={isPrivacyPolicyOpen}
+        onClose={() => setIsPrivacyPolicyOpen(false)}
       />
       <OfflineIndicator />
     </div>

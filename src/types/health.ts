@@ -311,6 +311,33 @@ export interface EmergencyProfile {
   updatedAt?: string;
 }
 
+export interface OTCMedicine {
+  id: string;
+  nameMm: string;
+  genericName: string;
+  category: 'fever_pain' | 'stomach_gas' | 'allergy_cold' | 'diarrhea_ors' | 'firstaid_topical' | 'cough_phlegm' | string;
+  categoryLabelMm: string;
+  indications: string[];
+  usage: string;
+  minDose: string;
+  maxDose: string;
+  childDose?: string;
+  sideEffects: string[];
+  precautions: string[];
+  drugInteractions: string[];
+  foodInteractions: string[];
+  badgeColor?: string;
+}
+
+export interface BroadcastTicker {
+  id: string;
+  message: string;
+  isActive: boolean;
+  type: 'info' | 'warning' | 'urgent';
+  createdAt: string;
+  createdBy?: string;
+}
+
 export interface DietRecommendation {
   category: 'hypertension' | 'diabetes' | 'kidney' | 'liver' | 'general';
   titleMm: string;

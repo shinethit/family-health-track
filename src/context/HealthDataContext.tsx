@@ -23,7 +23,8 @@ import {
   FamilyMember,
   BMIRecord,
   DoctorQuestion,
-  DoctorAnswer
+  DoctorAnswer,
+  BroadcastTicker
 } from '../types/health';
 import { calculateBPCategory, calculateGlucoseStatus, calculateBMI } from '../lib/medicalCalculations';
 
@@ -187,8 +188,14 @@ interface HealthDataContextType {
   latestBMI: BMIRecord | null;
   doctorQuestions: DoctorQuestion[];
   allDoctorQuestions: DoctorQuestion[];
+  broadcastTickers: BroadcastTicker[];
   dbStats: DatabaseStats;
   refreshAdminData: () => Promise<void>;
+
+  // Broadcast Marquee Ticker Actions
+  addBroadcastTicker: (message: string, type?: 'info' | 'warning' | 'urgent') => Promise<void>;
+  toggleBroadcastTicker: (id: string, isActive: boolean) => Promise<void>;
+  deleteBroadcastTicker: (id: string) => Promise<void>;
   
   // Family Members Management
   familyMembers: FamilyMember[];
@@ -274,6 +281,28 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const saved = localStorage.getItem('health_records_questions');
     return saved ? sanitizeDemoRecords(JSON.parse(saved)) : [];
   });
+
+  const [broadcastTickers, setBroadcastTickers] = useState<BroadcastTicker[]>(() => {
+    const saved = localStorage.getItem('health_broadcast_tickers');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    return [
+      {
+        id: 'ticker-01',
+        message: '📢 အသိပေးချက်: ဤ အက်ပလီကေးရှင်းပါ အချက်အလက်များသည် ကျန်းမာရေး ဗဟုသုတနှင့် ကိုယ်ရေးကိုယ်တာ မှတ်တမ်းတင်ရန် သီးသန့် ဖြစ်ပါသည်။ ဆရာဝန်၏ တိုက်ရိုက် ကုသမှုကို အစားမထိုးပါ။',
+        isActive: true,
+        type: 'info',
+        createdAt: new Date().toISOString()
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('health_broadcast_tickers', JSON.stringify(broadcastTickers));
+  }, [broadcastTickers]);
 
   const [patientsList, setPatientsList] = useState<UserProfile[]>(() => {
     const saved = localStorage.getItem('health_all_patients');
@@ -1022,6 +1051,43 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const addBroadcastTicker = async (message: string, type: 'info' | 'warning' | 'urgent' = 'info') => {
+    const newTicker: BroadcastTicker = {
+      id: 'ticker-' + Date.now(),
+      message,
+      isActive: true,
+      type,
+      createdAt: new Date().toISOString(),
+      createdBy: profile?.displayName || 'Admin',
+    };
+
+    setBroadcastTickers(prev => [newTicker, ...prev]);
+
+    try {
+      await addDoc(collection(db, 'broadcastTickers'), sanitizeForFirestore(newTicker));
+    } catch (e) {
+      console.warn('Error saving broadcast ticker to firestore:', e);
+    }
+  };
+
+  const toggleBroadcastTicker = async (id: string, isActive: boolean) => {
+    setBroadcastTickers(prev => prev.map(t => t.id === id ? { ...t, isActive } : t));
+    try {
+      await updateDoc(doc(db, 'broadcastTickers', id), { isActive });
+    } catch (e) {
+      console.warn('Error updating broadcast ticker in firestore:', e);
+    }
+  };
+
+  const deleteBroadcastTicker = async (id: string) => {
+    setBroadcastTickers(prev => prev.filter(t => t.id !== id));
+    try {
+      await deleteDoc(doc(db, 'broadcastTickers', id));
+    } catch (e) {
+      console.warn('Error deleting broadcast ticker from firestore:', e);
+    }
+  };
+
   const clearAllData = () => {
     setAllBP([]);
     setAllGlucose([]);
@@ -1073,6 +1139,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       latestBMI,
       doctorQuestions,
       allDoctorQuestions: allQuestions,
+      broadcastTickers,
+      addBroadcastTicker,
+      toggleBroadcastTicker,
+      deleteBroadcastTicker,
       dbStats,
       refreshAdminData,
       familyMembers,

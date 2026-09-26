@@ -37,11 +37,16 @@ import {
   UserX,
   AlertCircle,
   Phone,
-  Info
+  Info,
+  Volume2,
+  Megaphone,
+  ToggleLeft,
+  ToggleRight,
+  Radio
 } from 'lucide-react';
 import { useHealthData, isPatientOnly } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
-import { UserProfile } from '../../types/health';
+import { UserProfile, BroadcastTicker } from '../../types/health';
 import { BloodPressureChart, BloodSugarChart } from '../charts/HealthCharts';
 import { calculateBPCategory, calculateGlucoseStatus, calculateAge, calculateBMI } from '../../lib/medicalCalculations';
 import { EditPatientModal } from './EditPatientModal';
@@ -63,6 +68,10 @@ export const AdminPatientPortal: React.FC = () => {
     updatePatient,
     deletePatient,
     clearAllPatients,
+    broadcastTickers,
+    addBroadcastTicker,
+    toggleBroadcastTicker,
+    deleteBroadcastTicker,
     dbStats,
     refreshAdminData
   } = useHealthData();
@@ -76,6 +85,11 @@ export const AdminPatientPortal: React.FC = () => {
   const [adviceSuccess, setAdviceSuccess] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showQuotaDetails, setShowQuotaDetails] = useState(true);
+
+  // Broadcast Ticker state
+  const [newTickerMessage, setNewTickerMessage] = useState('');
+  const [newTickerType, setNewTickerType] = useState<'info' | 'warning' | 'urgent'>('info');
+  const [isAddingTicker, setIsAddingTicker] = useState(false);
 
   // Edit & Delete Modal States
   const [editingPatient, setEditingPatient] = useState<UserProfile | null>(null);
@@ -892,6 +906,145 @@ export const AdminPatientPortal: React.FC = () => {
             </div>
           </div>
         )}
+      </div>
+
+      {/* 📢 User Broadcast Running Text (Marquee Ticker) Manager */}
+      <div className="bg-white border border-slate-200/90 p-5 sm:p-6 rounded-3xl shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-md shadow-amber-500/20">
+              <Megaphone className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-base text-slate-900">
+                  User များထံ စာတန်းပြေး သတိပေးချက် ပို့ရန် (Broadcast Marquee Ticker)
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                  Live Marquee
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                အက်ပလီကေးရှင်း၏ ထိပ်ဆုံးတွင် အသုံးပြုသူ လူနာအားလုံး မြင်တွေ့ရမည့် ပြေးနေသော စာတန်းများ ထည့်သွင်း/စီမံခြင်း
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Create New Broadcast Ticker Form */}
+        <form 
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!newTickerMessage.trim()) return;
+            setIsAddingTicker(true);
+            try {
+              await addBroadcastTicker(newTickerMessage.trim(), newTickerType);
+              setNewTickerMessage('');
+              setActionAlert({
+                type: 'success',
+                message: 'စာတန်းပြေး သတိပေးချက်အား အောင်မြင်စွာ ထုတ်လွှင့်လိုက်ပါပြီ။',
+              });
+              setTimeout(() => setActionAlert(null), 3000);
+            } finally {
+              setIsAddingTicker(false);
+            }
+          }}
+          className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3"
+        >
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="အသိပေးချက် စာတန်း ရေးသားပါ (ဥပမာ- ⚠️ ရာသီတုပ်ကွေး ရာသီ ရောက်ရှိလာသဖြင့် တုပ်ကွေး ကာကွယ်ဆေး ကြိုတင် ထိုးနှံကြပါရန်...)"
+                value={newTickerMessage}
+                onChange={(e) => setNewTickerMessage(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden placeholder:text-slate-400 shadow-xs"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={newTickerType}
+                onChange={(e) => setNewTickerType(e.target.value as any)}
+                className="px-3 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden cursor-pointer shadow-xs"
+              >
+                <option value="info">📢 သာမန် အသိပေးချက် (Info)</option>
+                <option value="warning">⚠️ သတိပေးချက် (Warning)</option>
+                <option value="urgent">🚨 အရေးပေါ် (Urgent)</option>
+              </select>
+
+              <button
+                type="submit"
+                disabled={isAddingTicker || !newTickerMessage.trim()}
+                className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer shrink-0"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>{isAddingTicker ? 'ထုတ်လွှင့်နေပါသည်...' : 'စာတန်းပြေး လွှင့်မည်'}</span>
+              </button>
+            </div>
+          </div>
+        </form>
+
+        {/* Existing Tickers List */}
+        <div className="space-y-2">
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            လက်ရှိ ထုတ်လွှင့်ထားသော စာတန်းများ ({broadcastTickers?.length || 0}):
+          </div>
+
+          {(!broadcastTickers || broadcastTickers.length === 0) ? (
+            <p className="text-xs text-slate-400 italic">စာတန်းပြေး သတိပေးချက်များ မရှိသေးပါ</p>
+          ) : (
+            <div className="space-y-2">
+              {broadcastTickers.map((t) => (
+                <div 
+                  key={t.id} 
+                  className={`p-3 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs ${
+                    t.isActive
+                      ? t.type === 'urgent'
+                        ? 'bg-rose-50 border-rose-200 text-rose-950'
+                        : t.type === 'warning'
+                        ? 'bg-amber-50 border-amber-200 text-amber-950'
+                        : 'bg-teal-50 border-teal-200 text-teal-950'
+                      : 'bg-slate-50 border-slate-200 text-slate-400'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold shrink-0 uppercase ${
+                      t.type === 'urgent' ? 'bg-rose-600 text-white' : t.type === 'warning' ? 'bg-amber-500 text-slate-900' : 'bg-teal-700 text-white'
+                    }`}>
+                      {t.type}
+                    </span>
+                    <span className={`font-medium ${t.isActive ? 'text-slate-900' : 'line-through text-slate-400'}`}>
+                      {t.message}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                    <button
+                      onClick={() => toggleBroadcastTicker(t.id, !t.isActive)}
+                      className={`px-3 py-1 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer border ${
+                        t.isActive
+                          ? 'bg-emerald-600 text-white border-emerald-700'
+                          : 'bg-slate-200 text-slate-600 border-slate-300'
+                      }`}
+                      title={t.isActive ? "ပိတ်ထားမည်" : "ဖွင့်မည်"}
+                    >
+                      {t.isActive ? 'Active (ဖွင့်ထား)' : 'Inactive (ပိတ်ထား)'}
+                    </button>
+
+                    <button
+                      onClick={() => deleteBroadcastTicker(t.id)}
+                      className="p-1.5 rounded-xl bg-white text-rose-600 hover:bg-rose-100 border border-slate-200 transition-colors cursor-pointer"
+                      title="ဖျက်ပစ်မည်"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
