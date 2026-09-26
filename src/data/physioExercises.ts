@@ -93,18 +93,18 @@ export const PHYSIO_EXERCISES: PhysioExercise[] = [
   },
 
   // ==========================================
-  // SECTION 2: ဇာတ်ကြောနှင့် ပခုံး (Neck & Shoulder)
+  // SECTION 2: ဇက်ကြောနှင့် ပခုံး (Neck & Shoulder)
   // ==========================================
   {
     id: 'ex-neck-01',
-    titleMm: 'မေးစေ့အနောက်ဆွဲ ဇာတ်ကြောဖြေ လေ့ကျင့်ခန်း (Chin Tucks)',
+    titleMm: 'မေးစေ့အနောက်ဆွဲ ဇက်ကြောဖြေ လေ့ကျင့်ခန်း (Chin Tucks)',
     titleEn: 'Chin Tuck Exercise',
     category: 'neck_shoulder',
     bodyPart: 'neck',
     difficulty: 'easy',
     durationSeconds: 15,
     recommendedReps: '၁၀ ကြိမ် (တစ်နေ့ ၄-၅ ကြိမ်)',
-    purpose: 'ခေါင်းငုံ့ဖုန်းကြည့်ခြင်းကြောင့် ဖြစ်သော Forward Head Posture နှင့် ဇာတ်ကြောတက်ခြင်းကို ပြုပြင်ပေးသည်။',
+    purpose: 'ခေါင်းငုံ့ဖုန်းကြည့်ခြင်းကြောင့် ဖြစ်သော Forward Head Posture နှင့် ဇက်ကြောတက်ခြင်းကို ပြုပြင်ပေးသည်။',
     targetMuscles: ['Deep Cervical Flexors (လည်ပင်းအရှေ့ကြွက်သား)', 'Suboccipital Muscles'],
     steps: [
       'ကျောကုန်း မတ်မတ်ထိုင်ပါ သို့မဟုတ် မတ်တပ်ရပ်ပါ။ အရှေ့သို့ တည့်တည့်ကြည့်ပါ။',

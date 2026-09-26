@@ -20,7 +20,8 @@ import {
   Volume2,
   Calendar,
   Zap,
-  Award
+  Award,
+  Filter
 } from 'lucide-react';
 import { PHYSIO_EXERCISES, PhysioExercise } from '../../data/physioExercises';
 import { HEALTH_ARTICLES } from '../../data/healthArticles';
@@ -136,7 +137,7 @@ export const PhysiotherapyModule: React.FC = () => {
   const CATEGORIES = [
     { id: 'all', label: 'အားလုံး' },
     { id: 'back_spine', label: 'ခါးနှင့် ကျောရိုး' },
-    { id: 'neck_shoulder', label: 'ဇာတ်ကြောနှင့် ပခုံး' },
+    { id: 'neck_shoulder', label: 'ဇက်ကြောနှင့် ပခုံး' },
     { id: 'knee_joint', label: 'ဒူးဆစ်နှင့် အဆစ်' },
     { id: 'stroke_rehab', label: 'လေဖြတ် သန်စွမ်းရေး' },
     { id: 'office_syndrome', label: 'Office Syndrome' },
@@ -144,7 +145,7 @@ export const PhysiotherapyModule: React.FC = () => {
   ];
 
   const BODY_PARTS = [
-    { id: 'neck', nameMm: 'ဇာတ်ကြော / လည်ပင်း', icon: '🧠', desc: 'Chin tucks, Cervical Stretches' },
+    { id: 'neck', nameMm: 'ဇက်ကြော / လည်ပင်း', icon: '🧠', desc: 'Chin tucks, Cervical Stretches' },
     { id: 'shoulder', nameMm: 'ပခုံး / လက်မောင်း', icon: '🦾', desc: 'Codman pendulum, Wall ladder' },
     { id: 'back', nameMm: 'ခါး / ကျောရိုး', icon: '🦿', desc: 'Cat-Cow, McKenzie, Bridging' },
     { id: 'knee', nameMm: 'ဒူးဆစ် / ပေါင်', icon: '🦵', desc: 'Quad extensions, Leg raises' },
@@ -170,7 +171,7 @@ export const PhysiotherapyModule: React.FC = () => {
               အရိုး၊ အကြောနှင့် ကာယကုထုံး လေ့ကျင့်ခန်းများ
             </h1>
             <p className="text-emerald-100 text-xs sm:text-sm mt-1.5 max-w-2xl leading-relaxed">
-              ခါးနာ၊ ဇာတ်ကြောတက်၊ ဒူးနာ၊ ပခုံးအဆစ်ခဲခြင်းနှင့် လေဖြတ်ပြီးနောက် ပြန်လည်သန်စွမ်းရေးအတွက် ဆေးခန်းအဆင့် ကာယကုထုံး လမ်းညွှန်နှင့် တိုက်ရိုက် လေ့ကျင့်နိုင်သည့် စနစ်။
+              ခါးနာ၊ ဇက်ကြောတက်၊ ဒူးနာ၊ ပခုံးအဆစ်ခဲခြင်းနှင့် လေဖြတ်ပြီးနောက် ပြန်လည်သန်စွမ်းရေးအတွက် ဆေးခန်းအဆင့် ကာယကုထုံး လမ်းညွှန်နှင့် တိုက်ရိုက် လေ့ကျင့်နိုင်သည့် စနစ်။
             </p>
           </div>
 
@@ -291,21 +292,42 @@ export const PhysiotherapyModule: React.FC = () => {
             )}
           </div>
 
-          {/* Category Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
-                  selectedCategory === cat.id
-                    ? 'bg-emerald-600 text-white font-bold shadow-2xs'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                }`}
+          {/* Category Filter - Responsive Dropdown & Clean Wrap */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs font-bold text-slate-700">အမျိုးအစားအလိုက် စစ်ထုတ်ရန်:</span>
+            </div>
+
+            {/* Mobile Dropdown Select */}
+            <div className="sm:hidden w-full">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full bg-white border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               >
-                {cat.label}
-              </button>
-            ))}
+                {CATEGORIES.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Desktop / Tablet Clean Wrap */}
+            <div className="hidden sm:flex flex-wrap items-center gap-1.5">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                    selectedCategory === cat.id
+                      ? 'bg-emerald-600 text-white font-bold shadow-2xs'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Exercise Grid */}
@@ -324,7 +346,7 @@ export const PhysiotherapyModule: React.FC = () => {
                     <div className="flex items-start justify-between gap-2">
                       <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${ex.badgeColor}`}>
                         {ex.category === 'back_spine' && 'ခါးနှင့် ကျောရိုး'}
-                        {ex.category === 'neck_shoulder' && 'ဇာတ်ကြောနှင့် ပခုံး'}
+                        {ex.category === 'neck_shoulder' && 'ဇက်ကြောနှင့် ပခုံး'}
                         {ex.category === 'knee_joint' && 'ဒူးဆစ်နှင့် အဆစ်'}
                         {ex.category === 'stroke_rehab' && 'လေဖြတ် သန်စွမ်းရေး'}
                         {ex.category === 'office_syndrome' && 'Office Syndrome'}

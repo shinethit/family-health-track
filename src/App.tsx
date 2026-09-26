@@ -92,6 +92,71 @@ const MainContent: React.FC = () => {
 
   const pendingQuestionsCount = doctorQuestions.filter(q => q.status === 'pending').length;
 
+  // Group Categories for Clean Navigation
+  const moduleCategories = [
+    {
+      id: 'records',
+      nameMm: '📊 ကျန်းမာရေး မှတ်တမ်းများ',
+      badgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+      activeColor: 'bg-emerald-600 text-white shadow-xs',
+      tabs: [
+        { id: 'trends', label: 'သုံးသပ်ချက်/အနှစ်ချုပ်', icon: TrendingUp, activeColor: 'bg-emerald-600 text-white' },
+        { id: 'bp', label: 'သွေးပေါင်ချိန်', icon: Activity, activeColor: 'bg-rose-600 text-white' },
+        { id: 'sugar', label: 'ဆီးချို/သွေးချို', icon: Droplets, activeColor: 'bg-emerald-600 text-white' },
+        { id: 'bmi', label: 'BMI ညွှန်းကိန်း', icon: Scale, activeColor: 'bg-teal-600 text-white' },
+        { id: 'labs', label: 'ဓာတ်ခွဲခန်း', icon: FlaskConical, activeColor: 'bg-purple-600 text-white' },
+        { id: 'medications', label: 'ဆေးမှတ်တမ်း', icon: Pill, activeColor: 'bg-sky-600 text-white' },
+        { id: 'reminders', label: 'သတိပေးချက်များ', icon: BellRing, activeColor: 'bg-amber-500 text-white', badge: unreadCount },
+      ]
+    },
+    {
+      id: 'specialty',
+      nameMm: '🩺 အထူးကုနှင့် ကုထုံးများ',
+      badgeColor: 'bg-teal-50 text-teal-800 border-teal-200',
+      activeColor: 'bg-teal-700 text-white shadow-xs',
+      tabs: [
+        { id: 'physio', label: 'ကာယကုထုံး', icon: Activity, activeColor: 'bg-emerald-600 text-white' },
+        { id: 'specialty', label: 'သွား/မျက်စိ/နား', icon: Smile, activeColor: 'bg-teal-700 text-white' },
+        { id: 'derma', label: 'အရေပြား/အလှအပ', icon: Sparkles, activeColor: 'bg-rose-600 text-white' },
+        { id: 'diet', label: 'အာဟာရလမ်းညွှန်', icon: Utensils, activeColor: 'bg-emerald-700 text-white' },
+        { id: 'doctor_qa', label: isAdmin ? 'ဆရာဝန် Q&A' : 'ဆရာဝန်နှင့် တိုင်ပင်ရန်', icon: MessageSquareHeart, activeColor: 'bg-indigo-600 text-white', badge: pendingQuestionsCount },
+      ]
+    },
+    {
+      id: 'emergency',
+      nameMm: '🚨 အရေးပေါ်နှင့် ကာကွယ်ရေး',
+      badgeColor: 'bg-rose-50 text-rose-800 border-rose-200',
+      activeColor: 'bg-rose-600 text-white shadow-xs',
+      tabs: [
+        { id: 'firstaid', label: 'ရှေးဦးပြုစုခြင်း', icon: ShieldAlert, activeColor: 'bg-red-600 text-white' },
+        { id: 'emergency', label: 'အရေးပေါ် ID', icon: ShieldAlert, activeColor: 'bg-rose-700 text-white' },
+        { id: 'vaccine', label: 'ကာကွယ်ဆေး', icon: Syringe, activeColor: 'bg-teal-700 text-white' },
+        { id: 'news', label: 'ကျန်းမာရေးဆောင်းပါး', icon: Newspaper, activeColor: 'bg-teal-600 text-white' },
+      ]
+    },
+    ...(isAdmin ? [{
+      id: 'admin',
+      nameMm: '🛡️ စနစ်စီမံခန့်ခွဲမှု',
+      badgeColor: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+      activeColor: 'bg-indigo-600 text-white shadow-xs',
+      tabs: [
+        { id: 'admin', label: 'Admin Dashboard', icon: ShieldCheck, activeColor: 'bg-indigo-600 text-white' }
+      ]
+    }] : [])
+  ];
+
+  // Active Category Group State
+  const initialGroup = moduleCategories.find(cat => cat.tabs.some(t => t.id === activeTab))?.id || 'records';
+  const [selectedCategoryGroup, setSelectedCategoryGroup] = useState<string>(initialGroup);
+
+  // Sync category group when activeTab changes
+  useEffect(() => {
+    const found = moduleCategories.find(cat => cat.tabs.some(t => t.id === activeTab));
+    if (found) {
+      setSelectedCategoryGroup(found.id);
+    }
+  }, [activeTab]);
+
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white text-slate-900 flex flex-col font-sans">
       {/* Top Navbar - Clean, Pristine White */}
@@ -120,246 +185,88 @@ const MainContent: React.FC = () => {
         </div>
       )}
 
-      {/* Main Tab Navigation - ZERO Horizontal Scroll */}
-      <div className="bg-white border-b border-slate-200 sticky top-16 z-30 w-full max-w-full overflow-hidden shadow-xs">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2">
-          <nav className="flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-1.5 text-center">
-            {/* Tab: Admin Portal */}
-            {isAdmin && (
-              <button
-                onClick={() => {
-                  setSelectedPatientId(null);
-                  setActiveTab('admin');
-                }}
-                className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'admin'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
-                }`}
+      {/* Main Tab Navigation - Clean Grouped Navigation & Dropdown */}
+      <div className="bg-white border-b border-slate-200 sticky top-16 z-30 w-full max-w-full shadow-xs">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 space-y-2">
+          
+          {/* Top Row: Category Segmented Tabs & Quick Dropdown Select */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+            
+            {/* Category Segmented Tabs */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {moduleCategories.map(cat => {
+                const isCatActive = selectedCategoryGroup === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      setSelectedCategoryGroup(cat.id);
+                      if (!cat.tabs.some(t => t.id === activeTab)) {
+                        setActiveTab(cat.tabs[0].id as any);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                      isCatActive
+                        ? `${cat.activeColor} border-transparent shadow-xs`
+                        : `bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200`
+                    }`}
+                  >
+                    {cat.nameMm}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Direct Jump Dropdown Select */}
+            <div className="flex items-center gap-1.5 min-w-[220px]">
+              <span className="text-[11px] font-bold text-slate-500 shrink-0 hidden md:inline">တိုက်ရိုက် ရွေးရန်:</span>
+              <select
+                value={activeTab}
+                onChange={(e) => setActiveTab(e.target.value as any)}
+                className="w-full bg-emerald-50/90 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Admin</span>
-              </button>
-            )}
+                {moduleCategories.map(cat => (
+                  <optgroup key={cat.id} label={cat.nameMm}>
+                    {cat.tabs.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+          </div>
 
-            {/* Tab: Doctor Consult Q&A */}
-            <button
-              onClick={() => setActiveTab('doctor_qa')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
-                activeTab === 'doctor_qa'
-                  ? 'bg-indigo-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <MessageSquareHeart className="w-3.5 h-3.5 text-indigo-500" />
-              <span>{isAdmin ? 'Q&A' : 'ဆရာဝန်'}</span>
-              {pendingQuestionsCount > 0 && (
-                <span className="px-1 py-0.2 rounded-full text-[10px] bg-amber-400 text-amber-950 font-bold">
-                  {pendingQuestionsCount}
-                </span>
-              )}
-            </button>
+          {/* Bottom Row: Sub-Module Buttons for Current Selected Category */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100">
+            {moduleCategories
+              .find(cat => cat.id === selectedCategoryGroup)
+              ?.tabs.map(t => {
+                const Icon = t.icon;
+                const isTabActive = activeTab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveTab(t.id as any)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+                      isTabActive
+                        ? `${t.activeColor} font-bold shadow-xs`
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/90'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${isTabActive ? 'text-white' : 'text-slate-500'}`} />
+                    <span>{t.label}</span>
+                    {t.badge && t.badge > 0 ? (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold ml-0.5">
+                        {t.badge}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+          </div>
 
-            {/* Tab: Overview & Trends */}
-            <button
-              onClick={() => setActiveTab('trends')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'trends'
-                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-              <span>သုံးသပ်ချက်</span>
-            </button>
-
-            {/* Tab: Blood Pressure */}
-            <button
-              onClick={() => setActiveTab('bp')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'bp'
-                  ? 'bg-rose-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5 text-rose-500" />
-              <span>သွေးပေါင်</span>
-            </button>
-
-            {/* Tab: Blood Sugar */}
-            <button
-              onClick={() => setActiveTab('sugar')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'sugar'
-                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <Droplets className="w-3.5 h-3.5 text-emerald-500" />
-              <span>ဆီးချို</span>
-            </button>
-
-            {/* Tab: BMI & Body Metrics */}
-            <button
-              onClick={() => setActiveTab('bmi')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'bmi'
-                  ? 'bg-teal-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <Scale className="w-3.5 h-3.5 text-teal-500" />
-              <span>BMI</span>
-            </button>
-
-            {/* Tab: Lab Tests */}
-            <button
-              onClick={() => setActiveTab('labs')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'labs'
-                  ? 'bg-purple-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <FlaskConical className="w-3.5 h-3.5 text-purple-500" />
-              <span>ဓာတ်ခွဲခန်း</span>
-            </button>
-
-            {/* Tab: Medications */}
-            <button
-              onClick={() => setActiveTab('medications')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'medications'
-                  ? 'bg-sky-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <Pill className="w-3.5 h-3.5 text-sky-500" />
-              <span>ဆေးမှတ်တမ်း</span>
-            </button>
-
-            {/* Tab: Vaccination Passport */}
-            <button
-              onClick={() => setActiveTab('vaccine')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'vaccine'
-                  ? 'bg-teal-700 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <Syringe className="w-3.5 h-3.5 text-teal-600" />
-              <span>ကာကွယ်ဆေး</span>
-            </button>
-
-            {/* Tab: Emergency ID */}
-            <button
-              onClick={() => setActiveTab('emergency')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'emergency'
-                  ? 'bg-rose-700 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-              <span>အရေးပေါ် ID</span>
-            </button>
-
-            {/* Tab: Dietary & Nutrition Guide */}
-            <button
-              onClick={() => setActiveTab('diet')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'diet'
-                  ? 'bg-emerald-700 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <Utensils className="w-3.5 h-3.5 text-emerald-600" />
-              <span>အာဟာရ</span>
-            </button>
-
-            {/* Tab: Physiotherapy & Physical Rehab */}
-            <button
-              onClick={() => setActiveTab('physio')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'physio'
-                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5 text-emerald-600" />
-              <span>ကာယကုထုံး</span>
-            </button>
-
-            {/* Tab: Speciality Care (Dental, Eye, Ear) */}
-            <button
-              onClick={() => setActiveTab('specialty')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'specialty'
-                  ? 'bg-teal-700 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <Smile className="w-3.5 h-3.5 text-teal-600" />
-              <span>သွား/မျက်စိ/နား</span>
-            </button>
-
-            {/* Tab: Dermatology & Skincare */}
-            <button
-              onClick={() => setActiveTab('derma')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'derma'
-                  ? 'bg-rose-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-rose-500" />
-              <span>အရေပြား/အလှအပ</span>
-            </button>
-
-            {/* Tab: First Aid & Emergency Care */}
-            <button
-              onClick={() => setActiveTab('firstaid')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'firstaid'
-                  ? 'bg-red-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-red-600" />
-              <span>ရှေးဦးပြုစုခြင်း</span>
-            </button>
-
-            {/* Tab: Health News & Articles */}
-            <button
-              onClick={() => setActiveTab('news')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'news'
-                  ? 'bg-teal-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <Newspaper className="w-3.5 h-3.5 text-teal-500" />
-              <span>ဆောင်းပါးများ</span>
-            </button>
-
-            {/* Tab: Reminders & Notifications */}
-            <button
-              onClick={() => setActiveTab('reminders')}
-              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
-                activeTab === 'reminders'
-                  ? 'bg-amber-500 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
-              }`}
-            >
-              <BellRing className="w-3.5 h-3.5 text-amber-500" />
-              <span>သတိပေးချက်များ</span>
-              {unreadCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          </nav>
         </div>
       </div>
 
