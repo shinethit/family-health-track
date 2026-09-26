@@ -604,25 +604,23 @@ export const AdminPatientPortal: React.FC = () => {
         </div>
       )}
 
-      {/* Top Banner & Quick Controls */}
-      <div className="bg-gradient-to-r from-indigo-900 via-purple-950 to-slate-900 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        
+      {/* Top Banner & Quick Controls - Pure White Clean Style */}
+      <div className="bg-white border border-slate-200/90 p-6 rounded-3xl text-slate-900 shadow-xs relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/30 text-indigo-300 border border-indigo-400/40">
-                MASTER ADMIN PORTAL
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                ADMIN PORTAL
               </span>
-              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                 <span>Cloud Live Syncing</span>
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">
               ဆေးခန်းနှင့် လူနာမှတ်တမ်း စီမံခန့်ခွဲမှု (Admin Portal)
             </h1>
-            <p className="text-xs text-slate-300 max-w-2xl">
+            <p className="text-xs text-slate-600 max-w-2xl">
               လူနာများ၏ သွေးပေါင်၊ ဆီးချို၊ BMI နှင့် ဓာတ်ခွဲခန်း ဆေးစစ်ချက် မှတ်တမ်းများကို သီးသန့် လုံခြုံစွာ စီမံခန့်ခွဲပြီး ဆေးပညာဆိုင်ရာ အကြံပြုချက်များ ပေးပို့နိုင်ပါသည်။
             </p>
           </div>
@@ -630,7 +628,7 @@ export const AdminPatientPortal: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setIsAddPatientOpen(true)}
-              className="px-4 py-2 rounded-2xl bg-indigo-500 hover:bg-indigo-600 text-xs font-bold text-white transition-all flex items-center gap-2 cursor-pointer shadow-md"
+              className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white transition-all flex items-center gap-2 cursor-pointer shadow-sm"
             >
               <UserPlus className="w-4 h-4" />
               <span>+ လူနာအသစ် စာရင်းသွင်းမည်</span>
@@ -638,11 +636,11 @@ export const AdminPatientPortal: React.FC = () => {
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="px-4 py-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+              className="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-bold text-slate-700 transition-all flex items-center gap-2 cursor-pointer"
               title="အချက်အလက်များ ပြန်လည်ဆွဲယူရန်"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>{isRefreshing ? 'ဆွဲယူနေပါသည်...' : 'ပြန်လည်ဆွဲယူမည် (Refresh)'}</span>
+              <span>{isRefreshing ? 'ဆွဲယူနေပါသည်...' : 'ပြန်လည်ဆွဲယူမည်'}</span>
             </button>
           </div>
         </div>
