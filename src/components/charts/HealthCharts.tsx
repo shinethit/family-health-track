@@ -12,9 +12,9 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
 
   if (!records || records.length === 0) {
     return (
-      <div className={`p-8 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center ${className}`}>
-        <Activity className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+      <div className={`p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-center ${className}`}>
+        <Activity className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+        <p className="text-xs font-bold text-slate-800">
           သွေးပေါင်ချိန် မှတ်တမ်းမရှိသေးပါ။ Chart ပြသရန် အနည်းဆုံး မှတ်တမ်း ၁ ခု ထည့်သွင်းပါ။
         </p>
       </div>
@@ -310,9 +310,9 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
 
   if (!records || records.length === 0) {
     return (
-      <div className={`p-8 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center ${className}`}>
-        <Droplets className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+      <div className={`p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-center ${className}`}>
+        <Droplets className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+        <p className="text-xs font-bold text-slate-800">
           သွေးတွင်းသကြားဓာတ် မှတ်တမ်းမရှိသေးပါ။ Chart ပြသရန် အနည်းဆုံး မှတ်တမ်း ၁ ခု ထည့်သွင်းပါ။
         </p>
       </div>

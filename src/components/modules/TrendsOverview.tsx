@@ -1,21 +1,12 @@
 import React from 'react';
 import { 
-  TrendingUp, 
   Activity, 
   Droplets, 
   FlaskConical, 
-  Pill, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Heart, 
   Stethoscope,
-  ShieldAlert,
-  ArrowUpRight,
-  Info,
+  AlertTriangle,
   Scale,
-  Calendar,
-  Ruler,
-  ChevronRight
+  Calendar
 } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -23,7 +14,6 @@ import { BloodPressureChart, BloodSugarChart } from '../charts/HealthCharts';
 import { 
   calculateBPCategory, 
   calculateGlucoseStatus, 
-  evaluateLabParam, 
   calculateBMI, 
   calculateAge 
 } from '../../lib/medicalCalculations';
@@ -33,7 +23,7 @@ interface TrendsOverviewProps {
 }
 
 export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab }) => {
-  const { bpRecords, glucoseRecords, labRecords, medications, doctorAdvices, selectedPatient, latestBMI } = useHealthData();
+  const { bpRecords, glucoseRecords, labRecords, doctorAdvices, selectedPatient, latestBMI } = useHealthData();
   const { profile } = useAuth();
 
   const latestBP = bpRecords.length > 0 ? bpRecords[bpRecords.length - 1] : null;
@@ -57,7 +47,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
   if (latestBP && (latestBP.systolic >= 140 || latestBP.diastolic >= 90)) {
     alerts.push({
-      title: 'သွေးပေါင်ချိန် သတ်မှတ်ချက်ထက် မြင့်နေပါသည်',
+      title: 'သွေးပေါင်ချိန် သက်မှတ်ချက်ထက် မြင့်နေပါသည်',
       desc: `အပေါ်သွေး ${latestBP.systolic} / အောက်သွေး ${latestBP.diastolic} mmHg ရှိနေပါသည်။ သွေးတိုးကျဆေး သောက်ထားခြင်း ရှိမရှိ စစ်ဆေးပါ။`,
       type: 'danger',
     });
@@ -88,24 +78,16 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
     });
   }
 
-  if (latestLab?.renal?.creatinine && latestLab.renal.creatinine > 1.2) {
-    alerts.push({
-      title: 'ကျောက်ကပ်လုပ်ဆောင်ချက် သတိပြုရန် (Creatinine Elevated)',
-      desc: `Creatinine ${latestLab.renal.creatinine} mg/dL ဖြစ်နေပါသည်။ ရေလုံလောက်စွာသောက်ပါ၊ အကိုက်အခဲပျောက်ဆေးများ အလွန်အကျွံမသောက်ပါနှင့်။`,
-      type: 'warning',
-    });
-  }
-
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white p-6 rounded-3xl shadow-sm">
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white p-6 rounded-3xl shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-200">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-100">
               ကျန်းမာရေးသုံးသပ်ချက် အနှစ်ချုပ် (Health Analytics)
             </span>
-            <h2 className="text-xl font-bold mt-1">
+            <h2 className="text-xl sm:text-2xl font-extrabold mt-1">
               {selectedPatient 
                 ? `${selectedPatient.displayName} ၏ ကျန်းမာရေးအခြေအနေ` 
                 : profile?.role === 'admin' 
@@ -117,10 +99,10 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="px-4 py-2.5 bg-white/10 rounded-2xl backdrop-blur-xs text-center">
-              <span className="text-xs text-emerald-100 block">ကျန်းမာရေးအဆင့်</span>
-              <span className="text-lg font-bold">
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="px-4 py-2 bg-white/10 rounded-2xl backdrop-blur-xs text-center border border-white/20">
+              <span className="text-[10px] text-emerald-100 block font-medium">ကျန်းမာရေးအဆင့်</span>
+              <span className="text-base font-bold">
                 {alerts.length === 0 ? '🟢 ပုံမှန်ကောင်းမွန်' : alerts.some(a => a.type === 'danger') ? '🔴 ဂရုပြုစောင့်ကြည့်' : '🟡 အလယ်အလတ်'}
               </span>
             </div>
@@ -134,37 +116,37 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
           {alerts.map((alert, i) => (
             <div
               key={i}
-              className={`p-4 rounded-2xl border flex items-start gap-3 text-xs ${
+              className={`p-4 rounded-2xl border flex items-start gap-3 text-xs font-semibold ${
                 alert.type === 'danger'
-                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-900 dark:text-rose-200'
-                  : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200'
+                  ? 'bg-rose-50 border-rose-200 text-rose-900'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
               }`}
             >
               <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${alert.type === 'danger' ? 'text-rose-600' : 'text-amber-600'}`} />
               <div>
-                <span className="font-bold block">{alert.title}</span>
-                <span className="opacity-90">{alert.desc}</span>
+                <span className="font-extrabold block">{alert.title}</span>
+                <span className="opacity-90 font-normal">{alert.desc}</span>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Snapshot Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Snapshot Cards - Pristine Pure White */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* Age & Profile */}
         <div 
           onClick={() => onNavigateTab && onNavigateTab('bmi')}
-          className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-teal-400 dark:hover:border-teal-600 transition-all cursor-pointer group"
+          className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-teal-500 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-medium">အသက် (Age)</span>
-            <Calendar className="w-4 h-4 text-teal-500 group-hover:scale-110 transition-transform" />
+            <span className="font-bold">အသက် (Age)</span>
+            <Calendar className="w-4 h-4 text-teal-600 group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
-            {activeAgeYears !== null ? activeAgeYears : '--'} <span className="text-xs text-slate-400 font-sans">နှစ်</span>
+          <div className="text-xl font-extrabold font-mono text-slate-900 mt-1">
+            {activeAgeYears !== null ? activeAgeYears : '--'} <span className="text-xs text-slate-500 font-sans">နှစ်</span>
           </div>
-          <span className="text-[11px] text-teal-600 dark:text-teal-400 font-medium mt-1 block truncate">
+          <span className="text-[11px] text-teal-700 font-semibold mt-1 block truncate">
             {ageObj ? ageObj.formattedMm : 'မွေးနေ့မှ တွက်ချက်မည်'}
           </span>
         </div>
@@ -172,79 +154,79 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
         {/* BMI & Weight */}
         <div 
           onClick={() => onNavigateTab && onNavigateTab('bmi')}
-          className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-teal-400 dark:hover:border-teal-600 transition-all cursor-pointer group"
+          className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-medium">BMI အညွှန်း</span>
-            <Scale className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+            <span className="font-bold">BMI အညွှန်း</span>
+            <Scale className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
-            {bmiEval ? bmiEval.bmi : '--'} <span className="text-xs text-slate-400 font-sans">kg/m²</span>
+          <div className="text-xl font-extrabold font-mono text-slate-900 mt-1">
+            {bmiEval ? bmiEval.bmi : '--'} <span className="text-xs text-slate-500 font-sans">kg/m²</span>
           </div>
           {bmiEval ? (
-            <span className={`text-[11px] font-semibold mt-1 inline-block truncate ${bmiEval.color}`}>
+            <span className={`text-[11px] font-bold mt-1 inline-block truncate ${bmiEval.color}`}>
               {bmiEval.labelMm}
             </span>
           ) : (
-            <span className="text-[11px] text-slate-400 mt-1 block">မှတ်တမ်းမရှိသေး</span>
+            <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
           )}
         </div>
 
         {/* BP */}
         <div 
           onClick={() => onNavigateTab && onNavigateTab('bp')}
-          className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-rose-400 transition-all cursor-pointer group"
+          className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-rose-500 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-medium">သွေးပေါင်ချိန် (BP)</span>
+            <span className="font-bold">သွေးပေါင်ချိန် (BP)</span>
             <Activity className="w-4 h-4 text-rose-500 group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
-            {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : '--/--'} <span className="text-xs text-slate-400 font-sans">mmHg</span>
+          <div className="text-xl font-extrabold font-mono text-slate-900 mt-1">
+            {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : '--/--'} <span className="text-xs text-slate-500 font-sans">mmHg</span>
           </div>
           {bpEval ? (
-            <span className={`text-[11px] font-semibold mt-1 inline-block ${bpEval.color}`}>
+            <span className={`text-[11px] font-bold mt-1 inline-block ${bpEval.color}`}>
               {bpEval.labelMm}
             </span>
           ) : (
-            <span className="text-[11px] text-slate-400 mt-1 block">မှတ်တမ်းမရှိသေး</span>
+            <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
           )}
         </div>
 
         {/* Glucose */}
         <div 
           onClick={() => onNavigateTab && onNavigateTab('sugar')}
-          className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-emerald-400 transition-all cursor-pointer group"
+          className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-medium">သွေးတွင်းသကြားဓာတ်</span>
-            <Droplets className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+            <span className="font-bold">သွေးတွင်းသကြားဓာတ်</span>
+            <Droplets className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
-            {latestGlucose ? latestGlucose.value : '--'} <span className="text-xs text-slate-400 font-sans">{latestGlucose?.type === 'hba1c' ? '%' : 'mg/dL'}</span>
+          <div className="text-xl font-extrabold font-mono text-slate-900 mt-1">
+            {latestGlucose ? latestGlucose.value : '--'} <span className="text-xs text-slate-500 font-sans">{latestGlucose?.type === 'hba1c' ? '%' : 'mg/dL'}</span>
           </div>
           {gluEval ? (
-            <span className={`text-[11px] font-semibold mt-1 inline-block ${gluEval.color}`}>
+            <span className={`text-[11px] font-bold mt-1 inline-block ${gluEval.color}`}>
               {gluEval.labelMm}
             </span>
           ) : (
-            <span className="text-[11px] text-slate-400 mt-1 block">မှတ်တမ်းမရှိသေး</span>
+            <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
           )}
         </div>
 
         {/* Renal & Uric Acid */}
         <div 
           onClick={() => onNavigateTab && onNavigateTab('labs')}
-          className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-purple-400 transition-all cursor-pointer group"
+          className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-purple-500 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-medium">ဓာတ်ခွဲခန်းစစ်ဆေးချက်</span>
-            <FlaskConical className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform" />
+            <span className="font-bold">ဓာတ်ခွဲခန်းစစ်ဆေးချက်</span>
+            <FlaskConical className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-sm font-bold font-mono text-slate-900 dark:text-white mt-1 truncate">
+          <div className="text-sm font-extrabold font-mono text-slate-900 mt-1 truncate">
             Cr: {latestLab?.renal?.creatinine ?? '--'} | Uric: {latestLab?.renal?.uricAcid ?? '--'}
           </div>
-          <span className="text-[11px] text-slate-400 mt-1 block truncate">
+          <span className="text-[11px] text-slate-500 mt-1 block truncate font-medium">
             {latestLab ? `ရက်စွဲ: ${latestLab.testDate}` : 'စစ်ဆေးချက်မရှိသေး'}
           </span>
         </div>
@@ -262,16 +244,16 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
       {/* Doctor Advice Feed */}
       {doctorAdvices.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
               <Stethoscope className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              <h3 className="font-bold text-base text-slate-900">
                 ဆရာဝန်၏ ကျန်းမာရေးလမ်းညွှန်ချက်များနှင့် ဆေးညွှန်းများ (Doctor Consultations)
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 လူနာအတွက် ဆရာဝန်မှ အကြံပြုထားသော အစားအသောက်နှင့် ဆေးဝါးသုံးစွဲမှု လမ်းညွှန်ချက်များ
               </p>
             </div>
@@ -279,17 +261,17 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
           <div className="space-y-3">
             {doctorAdvices.map((adv) => (
-              <div key={adv.id} className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 text-xs">
-                <div className="flex items-center justify-between text-slate-400 mb-1">
-                  <span className="font-bold text-indigo-900 dark:text-indigo-300">{adv.doctorName}</span>
+              <div key={adv.id} className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs">
+                <div className="flex items-center justify-between text-slate-500 mb-1">
+                  <span className="font-extrabold text-indigo-950">{adv.doctorName}</span>
                   <span className="font-mono">{adv.date}</span>
                 </div>
-                <p className="text-slate-800 dark:text-slate-200 text-sm font-medium leading-relaxed">
+                <p className="text-slate-900 text-sm font-bold leading-relaxed">
                   {adv.advice}
                 </p>
                 {adv.dietRecommendation && (
-                  <div className="mt-2 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-950 text-slate-700 dark:text-slate-300">
-                    <span className="font-bold text-indigo-700 dark:text-indigo-400">🥗 အစားအသောက်လမ်းညွှန်: </span>
+                  <div className="mt-2 p-2.5 rounded-xl bg-white border border-indigo-200 text-slate-800">
+                    <span className="font-bold text-indigo-700">🥗 အစားအသောက်လမ်းညွှန်: </span>
                     {adv.dietRecommendation}
                   </div>
                 )}
@@ -301,52 +283,52 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
       {/* Latest Lab Report Quick Panel */}
       {latestLab && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <FlaskConical className="w-5 h-5 text-purple-600" />
                 နောက်ဆုံး ဓာတ်ခွဲခန်းစစ်ဆေးချက် အနှစ်ချုပ် ({latestLab.testDate})
               </h3>
-              <p className="text-xs text-slate-500">{latestLab.labName}</p>
+              <p className="text-xs text-slate-600">{latestLab.labName}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             {/* ALT */}
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-              <span className="text-slate-400 block text-[10px]">အသည်း (SGPT/ALT)</span>
-              <span className="text-base font-bold font-mono text-slate-900 dark:text-white">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-slate-500 block text-[10px] font-bold">အသည်း (SGPT/ALT)</span>
+              <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.liver?.alt_sgpt ?? '--'} U/L
               </span>
-              <span className="text-[10px] text-slate-500 block mt-0.5">ပုံမှန်: 7 - 56</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 7 - 56</span>
             </div>
 
             {/* Creatinine */}
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-              <span className="text-slate-400 block text-[10px]">ကျောက်ကပ် (Creatinine)</span>
-              <span className="text-base font-bold font-mono text-slate-900 dark:text-white">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-slate-500 block text-[10px] font-bold">ကျောက်ကပ် (Creatinine)</span>
+              <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.renal?.creatinine ?? '--'} mg/dL
               </span>
-              <span className="text-[10px] text-slate-500 block mt-0.5">ပုံမှန်: 0.6 - 1.2</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 0.6 - 1.2</span>
             </div>
 
             {/* Uric Acid */}
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-              <span className="text-slate-400 block text-[10px]">ဂေါက်/ယူရစ် (Uric Acid)</span>
-              <span className="text-base font-bold font-mono text-slate-900 dark:text-white">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-slate-500 block text-[10px] font-bold">ဂေါက်/ယူရစ် (Uric Acid)</span>
+              <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.renal?.uricAcid ?? '--'} mg/dL
               </span>
-              <span className="text-[10px] text-slate-500 block mt-0.5">ပုံမှန်: 3.5 - 7.2</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 3.5 - 7.2</span>
             </div>
 
             {/* Cholesterol */}
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-              <span className="text-slate-400 block text-[10px]">ကိုလက်စထရော (Total Chol)</span>
-              <span className="text-base font-bold font-mono text-slate-900 dark:text-white">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-slate-500 block text-[10px] font-bold">ကိုလက်စထရော (Total Chol)</span>
+              <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.lipid?.totalCholesterol ?? '--'} mg/dL
               </span>
-              <span className="text-[10px] text-slate-500 block mt-0.5">စံနှုန်း: &lt; 200</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">စံနှုန်း: &lt; 200</span>
             </div>
           </div>
         </div>

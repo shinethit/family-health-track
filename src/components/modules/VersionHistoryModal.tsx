@@ -32,11 +32,45 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v1.3.6',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Major Update)',
+    version: 'v1.3.7',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Major Feature Update)',
     isLatest: true,
+    title: '🔔 Health Notifications & Custom Reminders Center, Alarms & Audio Push Alert System',
+    badge: 'နောက်ဆုံး ဗားရှင်း (v1.3.7)',
+    badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+    highlights: [
+      {
+        title: '🔔 ကျန်းမာရေး သတိပေးချက်နှင့် Reminders စနစ် (Alarms & Notifications Center)',
+        icon: Activity,
+        items: [
+          'အဓိက Navigation မီနူးတွင် "သတိပေးချက်များ" Tab ကို တိုက်ရိုက် ထည့်သွင်းပေးထားပြီး နေ့စဉ် ဆေးသောက်ချိန်၊ သွေးပေါင်ချိန်/သကြားဓာတ် တိုင်းတာချိန်၊ ဆရာဝန်ပြသရန် ရက်ချိန်းနှင့် ရေသောက်ရန် သတိပေးချက်များကို အချိန်သတ်မှတ်၍ Alarm အဖြစ် ပြုလုပ်နိုင်ခြင်း',
+          'မဖတ်ရသေးသော သတိပေးချက် အရေအတွက်ကို Navigation Tab အပေါ်တွင် Badge အဖြစ် အနီရောင်ဖြင့် တိုက်ရိုက် ပြသပေးခြင်း'
+        ]
+      },
+      {
+        title: '🔊 Web Audio Chime Sound & Push Notifications',
+        icon: Sparkles,
+        items: [
+          'သတိပေးချိန် ရောက်ပါက သာယာသော Web Audio Chime အသံဖြင့် အချက်ပေးခြင်းနှင့် ဖုန်း/ကွန်ပျူတာ Screen ပေါ်တွင် Browser Push Notification သတိပေးစာ တက်လာခြင်း',
+          'ဆေးသောက်ပြီးပါက "ဆေးသောက်ပြီးပါပြီ" နှိပ်၍ မှတ်သားနိုင်ခြင်း သို့မဟုတ် မိနစ် ၂၀ တိုး၍ (Snooze) သတိပေးခိုင်းနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '⚪️ Pure White High-Contrast UI & Zero Horizontal Scroll',
+        icon: CheckCircle2,
+        items: [
+          'စာလုံးအရောင်နှင့် နောက်ခံအရောင်များ အလွန်ရှင်းလင်းစွာ ဖတ်ရှုနိုင်စေရန် High Contrast Pure White Design အပြည့်အဝ ကျင့်သုံးထားခြင်း',
+          'ဖုန်းမျက်နှာပြင် အမျိုးအစားအားလုံးတွင် ဘေးသို့ horizontal scroll လုံးဝ မထွက်ဘဲ Smooth Vertical Scroll ဖြင့်သာ ကြည့်ရှုနိုင်ခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.3.6',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (Major Update)',
+    isLatest: false,
     title: '☀️ Pure White Minimalist UI, Pediatrics & Children Healthcare, Categorized Knowledge Grid & Zero Horizontal Scroll Navigation',
-    badge: 'နောက်ဆုံး ဗားရှင်း (v1.3.6)',
+    badge: 'ဗားရှင်း (v1.3.6)',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
     highlights: [
       {

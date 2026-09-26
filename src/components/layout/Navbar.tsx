@@ -63,7 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
                     title="Version History ကြည့်မည်"
                   >
-                    v1.3.6
+                    v1.3.7
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500 hidden md:block">
@@ -142,7 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
                       >
                         <History className="w-4 h-4 text-purple-600" />
-                        <span>ဗားရှင်း မှတ်တမ်း (v1.3.6)</span>
+                        <span>ဗားရှင်း မှတ်တမ်း (v1.3.7)</span>
                       </button>
 
                       <button

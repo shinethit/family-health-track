@@ -11,7 +11,8 @@ import {
   Newspaper,
   MessageSquareHeart,
   BookOpen,
-  History
+  History,
+  BellRing
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { HealthDataProvider, useHealthData } from './context/HealthDataContext';
@@ -30,6 +31,7 @@ import { TrendsOverview } from './components/modules/TrendsOverview';
 import { AdminPatientPortal } from './components/modules/AdminPatientPortal';
 import { HealthNewsModule } from './components/modules/HealthNewsModule';
 import { DoctorQnAModule } from './components/modules/DoctorQnAModule';
+import { RemindersModule } from './components/modules/RemindersModule';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 
 const MainContent: React.FC = () => {
@@ -37,7 +39,7 @@ const MainContent: React.FC = () => {
   const { selectedPatient, setSelectedPatientId, doctorQuestions } = useHealthData();
   const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState<
-    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'news' | 'doctor_qa' | 'admin'
+    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'news' | 'doctor_qa' | 'reminders' | 'admin'
   >(isAdmin ? 'admin' : 'trends');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
@@ -102,10 +104,10 @@ const MainContent: React.FC = () => {
         </div>
       )}
 
-      {/* Main Tab Navigation - ZERO Horizontal Scroll (Responsive Grid) */}
-      <div className="bg-white border-b border-slate-200 sticky top-16 z-30 w-full shadow-xs">
+      {/* Main Tab Navigation - ZERO Horizontal Scroll */}
+      <div className="bg-white border-b border-slate-200 sticky top-16 z-30 w-full max-w-full overflow-hidden shadow-xs">
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2">
-          <nav className="grid grid-cols-3 sm:flex sm:flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-center">
+          <nav className="flex flex-wrap items-center justify-center sm:justify-start gap-1 sm:gap-1.5 text-center">
             {/* Tab: Admin Portal */}
             {isAdmin && (
               <button
@@ -232,6 +234,24 @@ const MainContent: React.FC = () => {
               <Newspaper className="w-3.5 h-3.5 text-teal-500" />
               <span>ဆောင်းပါးများ</span>
             </button>
+
+            {/* Tab: Reminders & Notifications */}
+            <button
+              onClick={() => setActiveTab('reminders')}
+              className={`flex items-center justify-center gap-1 py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
+                activeTab === 'reminders'
+                  ? 'bg-amber-500 text-white shadow-xs font-bold'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
+              }`}
+            >
+              <BellRing className="w-3.5 h-3.5 text-amber-500" />
+              <span>သတိပေးချက်များ</span>
+              {unreadCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
           </nav>
         </div>
       </div>
@@ -247,6 +267,7 @@ const MainContent: React.FC = () => {
         {activeTab === 'labs' && <LabTestModule />}
         {activeTab === 'medications' && <MedicationsModule />}
         {activeTab === 'news' && <HealthNewsModule />}
+        {activeTab === 'reminders' && <RemindersModule />}
       </main>
 
       {/* Simple Clean Footer */}
@@ -273,7 +294,7 @@ const MainContent: React.FC = () => {
               className="hover:text-purple-600 transition-colors cursor-pointer flex items-center gap-1"
             >
               <History className="w-3.5 h-3.5" />
-              <span>Version History (v1.3.6)</span>
+              <span>Version History (v1.3.7)</span>
             </button>
           </div>
 
