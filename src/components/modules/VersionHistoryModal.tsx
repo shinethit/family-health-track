@@ -32,12 +32,45 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v1.3.2',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့)',
+    version: 'v1.3.3',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့ - Update)',
     isLatest: true,
-    title: 'Cloudflare Pages Deployment Fix & Build System Optimization',
-    badge: 'နောက်ဆုံး ဗားရှင်း',
+    title: 'Patient Account Sync Pipeline, Multi-Source Discovery & Clean Database Audit',
+    badge: 'နောက်ဆုံး ဗားရှင်း (Latest)',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    highlights: [
+      {
+        title: '👥 Multi-Source Patient Discovery & Real-Time Syncing',
+        icon: Sparkles,
+        items: [
+          'Admin Dashboard တွင် လူနာအကောင့်များ မကျန်ရှိစေရန် Firestore Users Collection သာမက ကျန်းမာရေးဒေတာ (Vitals, Glucose, BMI, Meds, Q&A) အားလုံးမှ လူနာမှတ်တမ်းများကို အလိုအလျောက် ပေါင်းစပ်ဆွဲယူပြသပေးခြင်း',
+          'တွေ့ရှိသော လူနာအကောင့်အသစ်များကို Database Users စာရင်းသို့ အလိုအလျောက် Auto-Backfill ထည့်သွင်းပေးသည့် စနစ်'
+        ]
+      },
+      {
+        title: '🛡️ Patient Privacy & Trust Guarantee (လူနာယုံကြည်စိတ်ချရမှု)',
+        icon: Lock,
+        items: [
+          'လူနာများ စိတ်ချလက်ချ အသုံးပြုနိုင်စေရန် မသင့်လျော်သော စောင့်ကြည့်စာတန်းများကို ဖယ်ရှားပြီး HIPAA & ဆေးဘက်ဆိုင်ရာ ကျင့်ဝတ်နှင့်အညီ လုံခြုံစိတ်ချရသော Privacy မူဝါဒဖြင့် ပြင်ဆင်ခြင်း',
+          'အချက်အလက်များကို ခွင့်ပြုချက်မရှိဘဲ လွှဲပြောင်းခြင်းမရှိဘဲ သီးသန့် Cloud Firestore တွင်သာ လုံခြုံစွာ ထိန်းသိမ်းခြင်း'
+        ]
+      },
+      {
+        title: '⚡ One-Click Database Health Audit & Live Refresh',
+        icon: Database,
+        items: [
+          'Admin Portal တွင် "Database အချက်အလက် တိုက်ရိုက်ပြန်စစ်မည်" (Live Refresh) ခလုတ်ဖြင့် Cloud ရှိ လူနာနှင့် မှတ်တမ်းအသစ်များကို ချက်ချင်း ပြန်လည်ဆွဲယူနိုင်ခြင်း',
+          'အက်ဒမင်စစ်ဆေးမှု filter logic ကို ပိုမိုတိကျစေပြီး သာမန်လူနာအကောင့်များ မည်သည့်အခါမျှ အပယ်ခံမဖြစ်စေရန် ပြင်ဆင်ထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.3.2',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ',
+    title: 'Cloudflare Pages Deployment Fix & Build System Optimization',
+    badge: 'Build Update',
+    badgeColor: 'bg-slate-500/20 text-slate-300 border-slate-500/40',
     highlights: [
       {
         title: '🚀 Cloudflare Pages Build Pipeline Fix',
@@ -53,14 +86,6 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         items: [
           'Firebase Firestore Spark Free Plan အခမဲ့ ကန့်သတ်ချက်များ (Daily Reads 50,000 / Writes 20,000 / Storage 1 GB) ကို Admin Portal တွင် တိုက်ရိုက် စောင့်ကြည့်နိုင်ခြင်း',
           'Database အတွင်းရှိ Collection အသီးသီး၏ Document စုစုပေါင်းနှင့် Cloud Sync အခြေအနေကို အချိန်နှင့်တပြေးညီ တိုက်ရိုက် စစ်ဆေးနိုင်ခြင်း'
-        ]
-      },
-      {
-        title: '🔒 လူနာအချက်အလက် လုံခြုံရေးနှင့် သီးသန့်ဖြစ်မှု မူဝါဒ (Privacy Protection)',
-        icon: Lock,
-        items: [
-          'လူနာများ၏ ကျန်းမာရေးမှတ်တမ်းများကို သီးသန့် Encrypted Database တွင် လုံခြုံစွာ သိမ်းဆည်းခြင်း',
-          'ခွင့်ပြုချက်မရှိဘဲ စောင့်ကြည့်ခြင်းမရှိစေဘဲ မိမိကိုယ်တိုင်သာ စီမံနိုင်သော Privacy Protection စနစ်'
         ]
       }
     ]

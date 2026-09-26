@@ -73,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-amber-300 border border-amber-400/30 hover:bg-purple-200 transition-colors cursor-pointer flex items-center gap-1"
                     title="Version History ကြည့်မည်"
                   >
-                    <span>v1.3.0</span>
+                    <span>v1.3.3</span>
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 hidden sm:block">

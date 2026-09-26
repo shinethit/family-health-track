@@ -30,10 +30,13 @@ export interface UserProfile {
 export interface BloodPressureRecord {
   id: string;
   userId: string;
+  patientName?: string;
+  patientEmail?: string;
   userEmail?: string;
   userName?: string;
   timestamp?: string;
   date?: string;
+  recordedAt?: string;
   systolic: number;
   diastolic: number;
   pulseRate?: number;
@@ -50,10 +53,13 @@ export interface BloodPressureRecord {
 export interface BloodSugarRecord {
   id: string;
   userId: string;
+  patientName?: string;
+  patientEmail?: string;
   userEmail?: string;
   userName?: string;
   timestamp?: string;
   date?: string;
+  recordedAt?: string;
   glucoseValue?: number;
   value?: number;
   timing?: BloodSugarType;
@@ -68,10 +74,13 @@ export interface BloodSugarRecord {
 export interface BMIRecord {
   id: string;
   userId: string;
+  patientName?: string;
+  patientEmail?: string;
   userEmail?: string;
   userName?: string;
   timestamp?: string;
   date?: string;
+  recordedAt?: string;
   dateOfBirth?: string;
   ageYears?: number;
   ageMonths?: number;
@@ -116,8 +125,11 @@ export interface LipidProfileTest {
 export interface LabTestRecord {
   id: string;
   userId: string;
+  patientName?: string;
+  patientEmail?: string;
   userEmail?: string;
   userName?: string;
+  recordedAt?: string;
   testDate: string;
   labName: string;
   liver?: LiverFunctionTest;
@@ -131,6 +143,10 @@ export interface LabTestRecord {
 export interface Medication {
   id: string;
   userId: string;
+  patientName?: string;
+  patientEmail?: string;
+  userEmail?: string;
+  userName?: string;
   name: string;
   genericName?: string;
   dosage: string;

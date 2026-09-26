@@ -33,9 +33,98 @@ export const isPatientOnly = (p?: UserProfile | null): boolean => {
   if (isTargetAdminEmail(p.email)) return false;
   const name = (p.displayName || '').trim();
   const mail = (p.email || '').toLowerCase().trim();
-  if (name === 'ရှိုင်းသစ်' || name.toLowerCase().includes('admin') || mail.includes('shinethit')) return false;
-  if (p.id?.startsWith('admin-')) return false;
+  if (name === 'ရှိုင်းသစ်' || mail === 'admin@familyhealthtrack.com' || isTargetAdminEmail(mail)) return false;
+  if (p.id?.startsWith('admin-') || p.id === 'admin-shinethit') return false;
   return true;
+};
+
+// Multi-Source Patient Discovery: Aggregates patient profiles from the users collection and all health record collections
+export const aggregatePatientsFromRecords = (
+  existingUsers: UserProfile[],
+  vitals: BloodPressureRecord[] = [],
+  glucoses: BloodSugarRecord[] = [],
+  bmis: BMIRecord[] = [],
+  labs: LabTestRecord[] = [],
+  meds: Medication[] = [],
+  questions: DoctorQuestion[] = [],
+  advices: DoctorAdvice[] = []
+): UserProfile[] => {
+  const patientMap = new Map<string, UserProfile>();
+
+  // 1. Add all from existing users collection
+  existingUsers.forEach(u => {
+    if (u && u.id && isPatientOnly(u)) {
+      patientMap.set(u.id, u);
+    }
+  });
+
+  // 2. Discover from Vitals
+  vitals.forEach(v => {
+    if (v.userId && !patientMap.has(v.userId) && !isTargetAdminEmail(v.patientEmail)) {
+      const discovered: UserProfile = {
+        id: v.userId,
+        displayName: v.patientName || 'လူနာ',
+        email: v.patientEmail || `${v.userId}@patient.local`,
+        role: 'patient',
+        chronicConditions: ['သွေးတိုး'],
+        createdAt: v.recordedAt || v.createdAt || new Date().toISOString()
+      };
+      if (isPatientOnly(discovered)) {
+        patientMap.set(v.userId, discovered);
+      }
+    }
+  });
+
+  // 3. Discover from Glucose
+  glucoses.forEach(g => {
+    if (g.userId && !patientMap.has(g.userId) && !isTargetAdminEmail((g as any).patientEmail)) {
+      const discovered: UserProfile = {
+        id: g.userId,
+        displayName: g.patientName || 'လူနာ',
+        email: (g as any).patientEmail || `${g.userId}@patient.local`,
+        role: 'patient',
+        chronicConditions: ['ဆီးချို'],
+        createdAt: g.recordedAt || g.createdAt || new Date().toISOString()
+      };
+      if (isPatientOnly(discovered)) {
+        patientMap.set(g.userId, discovered);
+      }
+    }
+  });
+
+  // 4. Discover from Doctor Questions
+  questions.forEach(q => {
+    if (q.userId && !patientMap.has(q.userId) && !isTargetAdminEmail(q.patientEmail)) {
+      const discovered: UserProfile = {
+        id: q.userId,
+        displayName: q.patientName || 'မေးမြန်းသူ လူနာ',
+        email: q.patientEmail || `${q.userId}@patient.local`,
+        role: 'patient',
+        createdAt: q.createdAt || new Date().toISOString()
+      };
+      if (isPatientOnly(discovered)) {
+        patientMap.set(q.userId, discovered);
+      }
+    }
+  });
+
+  // 5. Discover from Advices
+  advices.forEach(a => {
+    if (a.userId && !patientMap.has(a.userId) && !isTargetAdminEmail((a as any).patientEmail)) {
+      const discovered: UserProfile = {
+        id: a.userId,
+        displayName: a.patientName || 'လူနာ',
+        email: (a as any).patientEmail || `${a.userId}@patient.local`,
+        role: 'patient',
+        createdAt: a.createdAt || new Date().toISOString()
+      };
+      if (isPatientOnly(discovered)) {
+        patientMap.set(a.userId, discovered);
+      }
+    }
+  });
+
+  return Array.from(patientMap.values()).filter(isPatientOnly);
 };
 
 // Clean Slate: No demo data pre-populated
@@ -253,11 +342,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Firestore Live Listeners when real Firebase user is authenticated
   useEffect(() => {
-    if (!currentUser || !currentUser.uid) return;
+    let unsubscribeUsers = () => {};
+    let unsubscribeVitals = () => {};
+    let unsubscribeGlu = () => {};
+    let unsubscribeBMI = () => {};
+    let unsubscribeLabs = () => {};
+    let unsubscribeMeds = () => {};
+    let unsubscribeQuestions = () => {};
 
     try {
       // 1. Users list for Admin
-      let unsubscribeUsers = () => {};
       if (isAdmin) {
         const usersQuery = query(collection(db, 'users'));
         unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
@@ -269,81 +363,116 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               list.push(prof);
             }
           });
-          setPatientsList(list);
+          setPatientsList(prev => {
+            return aggregatePatientsFromRecords(list, allBP, allGlucose, allBMI, allLabs, allMeds, allQuestions, allAdvices);
+          });
         }, (err) => console.warn('Users listener:', err));
       }
 
       // 2. Vitals
-      const vitalsQuery = isAdmin
+      const vitalsQuery = (isAdmin || !currentUser)
         ? query(collection(db, 'vitals'))
         : query(collection(db, 'vitals'), where('userId', '==', currentUser.uid));
-      const unsubscribeVitals = onSnapshot(vitalsQuery, (snapshot) => {
+      unsubscribeVitals = onSnapshot(vitalsQuery, (snapshot) => {
         const items: BloodPressureRecord[] = [];
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as BloodPressureRecord), id: docSnap.id });
         });
-        if (items.length > 0 || !isAdmin) setAllBP(items);
+        if (items.length > 0 || !isAdmin) {
+          setAllBP(items);
+          if (isAdmin) {
+            setPatientsList(prev => aggregatePatientsFromRecords(prev, items, allGlucose, allBMI, allLabs, allMeds, allQuestions, allAdvices));
+          }
+        }
       }, (e) => console.warn('Vitals snapshot:', e));
 
       // 3. Glucose
-      const gluQuery = isAdmin
+      const gluQuery = (isAdmin || !currentUser)
         ? query(collection(db, 'glucose'))
         : query(collection(db, 'glucose'), where('userId', '==', currentUser.uid));
-      const unsubscribeGlu = onSnapshot(gluQuery, (snapshot) => {
+      unsubscribeGlu = onSnapshot(gluQuery, (snapshot) => {
         const items: BloodSugarRecord[] = [];
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as BloodSugarRecord), id: docSnap.id });
         });
-        if (items.length > 0 || !isAdmin) setAllGlucose(items);
+        if (items.length > 0 || !isAdmin) {
+          setAllGlucose(items);
+          if (isAdmin) {
+            setPatientsList(prev => aggregatePatientsFromRecords(prev, allBP, items, allBMI, allLabs, allMeds, allQuestions, allAdvices));
+          }
+        }
       }, (e) => console.warn('Glucose snapshot:', e));
 
       // 4. BMI
-      const bmiQuery = isAdmin
+      const bmiQuery = (isAdmin || !currentUser)
         ? query(collection(db, 'bmi'))
         : query(collection(db, 'bmi'), where('userId', '==', currentUser.uid));
-      const unsubscribeBMI = onSnapshot(bmiQuery, (snapshot) => {
+      unsubscribeBMI = onSnapshot(bmiQuery, (snapshot) => {
         const items: BMIRecord[] = [];
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as BMIRecord), id: docSnap.id });
         });
-        if (items.length > 0 || !isAdmin) setAllBMI(items);
+        if (items.length > 0 || !isAdmin) {
+          setAllBMI(items);
+          if (isAdmin) {
+            setPatientsList(prev => aggregatePatientsFromRecords(prev, allBP, allGlucose, items, allLabs, allMeds, allQuestions, allAdvices));
+          }
+        }
       }, (e) => console.warn('BMI snapshot:', e));
 
       // 5. Labs
-      const labsQuery = isAdmin
+      const labsQuery = (isAdmin || !currentUser)
         ? query(collection(db, 'labTests'))
         : query(collection(db, 'labTests'), where('userId', '==', currentUser.uid));
-      const unsubscribeLabs = onSnapshot(labsQuery, (snapshot) => {
+      unsubscribeLabs = onSnapshot(labsQuery, (snapshot) => {
         const items: LabTestRecord[] = [];
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as LabTestRecord), id: docSnap.id });
         });
-        if (items.length > 0 || !isAdmin) setAllLabs(items);
+        if (items.length > 0 || !isAdmin) {
+          setAllLabs(items);
+          if (isAdmin) {
+            setPatientsList(prev => aggregatePatientsFromRecords(prev, allBP, allGlucose, allBMI, items, allMeds, allQuestions, allAdvices));
+          }
+        }
       }, (e) => console.warn('Labs snapshot:', e));
 
       // 6. Meds
-      const medsQuery = isAdmin
+      const medsQuery = (isAdmin || !currentUser)
         ? query(collection(db, 'medications'))
         : query(collection(db, 'medications'), where('userId', '==', currentUser.uid));
-      const unsubscribeMeds = onSnapshot(medsQuery, (snapshot) => {
+      unsubscribeMeds = onSnapshot(medsQuery, (snapshot) => {
         const items: Medication[] = [];
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as Medication), id: docSnap.id });
         });
-        if (items.length > 0 || !isAdmin) setAllMeds(items);
+        if (items.length > 0 || !isAdmin) {
+          setAllMeds(items);
+          if (isAdmin) {
+            setPatientsList(prev => aggregatePatientsFromRecords(prev, allBP, allGlucose, allBMI, allLabs, items, allQuestions, allAdvices));
+          }
+        }
       }, (e) => console.warn('Meds snapshot:', e));
 
       // 7. Doctor Questions
-      const questionsQuery = isAdmin
+      const questionsQuery = (isAdmin || !currentUser)
         ? query(collection(db, 'doctorQuestions'))
         : query(collection(db, 'doctorQuestions'), where('userId', '==', currentUser.uid));
-      const unsubscribeQuestions = onSnapshot(questionsQuery, (snapshot) => {
+      unsubscribeQuestions = onSnapshot(questionsQuery, (snapshot) => {
         const items: DoctorQuestion[] = [];
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as DoctorQuestion), id: docSnap.id });
         });
         setAllQuestions(items);
+        if (isAdmin) {
+          setPatientsList(prev => aggregatePatientsFromRecords(prev, allBP, allGlucose, allBMI, allLabs, allMeds, items, allAdvices));
+        }
       }, (e) => console.warn('DoctorQuestions snapshot:', e));
+
+      // If admin, auto run refresh on mount
+      if (isAdmin) {
+        refreshAdminData();
+      }
 
       return () => {
         unsubscribeUsers();
@@ -374,12 +503,11 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         getDocs(collection(db, 'doctorAdvices')),
       ]);
 
-      const uList: UserProfile[] = [];
+      const rawUsers: UserProfile[] = [];
       uSnap.forEach(d => {
         const prof = { ...(d.data() as UserProfile), id: d.id };
-        if (isPatientOnly(prof)) uList.push(prof);
+        if (isPatientOnly(prof)) rawUsers.push(prof);
       });
-      setPatientsList(uList);
 
       const vList: BloodPressureRecord[] = [];
       vSnap.forEach(d => vList.push({ ...(d.data() as BloodPressureRecord), id: d.id }));
@@ -408,6 +536,19 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const aList: DoctorAdvice[] = [];
       aSnap.forEach(d => aList.push({ ...(d.data() as DoctorAdvice), id: d.id }));
       setAllAdvices(aList);
+
+      // Perform complete multi-source patient aggregation
+      const combinedPatients = aggregatePatientsFromRecords(rawUsers, vList, gList, bList, lList, mList, qList, aList);
+      setPatientsList(combinedPatients);
+
+      // Backfill any newly discovered patients into users collection for persistence
+      combinedPatients.forEach(async (pat) => {
+        if (pat && pat.id && !rawUsers.some(u => u.id === pat.id)) {
+          try {
+            await setDoc(doc(db, 'users', pat.id), sanitizeForFirestore(pat), { merge: true });
+          } catch {}
+        }
+      });
 
       setLastSyncTime(new Date().toLocaleTimeString('my-MM'));
     } catch (err) {
@@ -569,9 +710,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const addBPRecord = async (data: Omit<BloodPressureRecord, 'id' | 'category' | 'createdAt'>) => {
     const evalRes = calculateBPCategory(data.systolic, data.diastolic);
     const category = evalRes.category;
+    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
+    const resolvedPatientName = data.patientName || profile?.displayName || 'လူနာ';
+    const resolvedPatientEmail = (data as any).patientEmail || profile?.email || '';
+
     const newRecord: BloodPressureRecord = {
       ...data,
       id: 'bp-' + Date.now(),
+      userId: resolvedUserId,
+      patientName: resolvedPatientName,
+      patientEmail: resolvedPatientEmail,
       category,
       condition: category,
       createdAt: new Date().toISOString(),
@@ -604,9 +752,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const timingVal = data.timing || data.type || 'fasting';
     const evalRes = calculateGlucoseStatus(glucoseVal, timingVal);
     const status = evalRes.status;
+    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
+    const resolvedPatientName = data.patientName || profile?.displayName || 'လူနာ';
+    const resolvedPatientEmail = (data as any).patientEmail || profile?.email || '';
+
     const newRecord: BloodSugarRecord = {
       ...data,
       id: 'glu-' + Date.now(),
+      userId: resolvedUserId,
+      patientName: resolvedPatientName,
+      patientEmail: resolvedPatientEmail,
       glucoseValue: glucoseVal,
       value: glucoseVal,
       timing: timingVal,
@@ -638,9 +793,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const addLabRecord = async (data: Omit<LabTestRecord, 'id' | 'createdAt'>) => {
+    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
+    const resolvedPatientName = (data as any).patientName || profile?.displayName || 'လူနာ';
+    const resolvedPatientEmail = (data as any).patientEmail || profile?.email || '';
+
     const newRecord: LabTestRecord = {
       ...data,
       id: 'lab-' + Date.now(),
+      userId: resolvedUserId,
+      patientName: resolvedPatientName,
+      patientEmail: resolvedPatientEmail,
       createdAt: new Date().toISOString(),
     };
 
@@ -667,9 +829,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const addMedication = async (data: Omit<Medication, 'id' | 'createdAt'>) => {
+    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
+    const resolvedPatientName = (data as any).patientName || profile?.displayName || 'လူနာ';
+    const resolvedPatientEmail = (data as any).patientEmail || profile?.email || '';
+
     const newMed: Medication = {
       ...data,
       id: 'med-' + Date.now(),
+      userId: resolvedUserId,
+      patientName: resolvedPatientName,
+      patientEmail: resolvedPatientEmail,
       createdAt: new Date().toISOString(),
     };
 
@@ -739,10 +908,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const bmiEval = calculateBMI(data.weightKg, data.heightCm);
     const bmiValue = data.bmi || (bmiEval ? bmiEval.bmi : 22);
     const category = data.category || (bmiEval ? bmiEval.category : 'normal');
+    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
 
     const newRecord: BMIRecord = {
       ...data,
       id: 'bmi-' + Date.now(),
+      userId: resolvedUserId,
       bmi: bmiValue,
       category,
       createdAt: new Date().toISOString(),
@@ -772,9 +943,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Doctor Q&A Actions
   const addDoctorQuestion = async (data: Omit<DoctorQuestion, 'id' | 'createdAt' | 'status'>) => {
+    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
+    const resolvedPatientName = data.patientName || profile?.displayName || 'လူနာ';
+    const resolvedPatientEmail = data.patientEmail || profile?.email || '';
+
     const newQuestion: DoctorQuestion = {
       ...data,
       id: 'q-' + Date.now(),
+      userId: resolvedUserId,
+      patientName: resolvedPatientName,
+      patientEmail: resolvedPatientEmail,
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
