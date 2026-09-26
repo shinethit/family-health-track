@@ -363,7 +363,7 @@ const MainContent: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-xs">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
             <button
               onClick={() => setIsUserGuideOpen(true)}
               className="hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1"
@@ -371,7 +371,7 @@ const MainContent: React.FC = () => {
               <BookOpen className="w-3.5 h-3.5" />
               <span>အသုံးပြုနည်း လမ်းညွှန်</span>
             </button>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <button
               onClick={() => setIsPrivacyPolicyOpen(true)}
               className="hover:text-teal-600 transition-colors cursor-pointer flex items-center gap-1"
@@ -379,7 +379,7 @@ const MainContent: React.FC = () => {
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>မူဝါဒ & ဒေတာလုံခြုံရေး</span>
             </button>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <button
               onClick={() => setIsVersionHistoryOpen(true)}
               className="hover:text-purple-600 transition-colors cursor-pointer flex items-center gap-1"
