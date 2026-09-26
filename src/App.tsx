@@ -101,7 +101,7 @@ const MainContent: React.FC = () => {
             </span>
             {selectedPatient && isAdmin && (
               <span className="px-2 py-0.5 rounded-md font-semibold text-[10px] bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                စောင့်ကြည့်နေသောလူနာ: {selectedPatient.displayName}
+                ရွေးချယ်ထားသောလူနာ: {selectedPatient.displayName}
               </span>
             )}
           </div>
@@ -125,7 +125,7 @@ const MainContent: React.FC = () => {
               title="Version History (ဗားရှင်းမှတ်တမ်း)"
             >
               <History className="w-3.5 h-3.5" />
-              <span>v1.3.0</span>
+              <span>v1.3.1</span>
             </button>
 
             {/* Open Notifications */}
@@ -185,7 +185,7 @@ const MainContent: React.FC = () => {
                 }`}
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>လူနာများ စုစည်းစောင့်ကြည့်ရေး (Admin)</span>
+                <span>လူနာမှတ်တမ်း စီမံခန့်ခွဲမှု (Admin)</span>
               </button>
             )}
 
@@ -338,7 +338,7 @@ const MainContent: React.FC = () => {
               className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors cursor-pointer flex items-center gap-1"
             >
               <History className="w-3.5 h-3.5" />
-              <span>Version History (v1.3.0)</span>
+              <span>Version History (v1.3.1)</span>
             </button>
           </div>
 

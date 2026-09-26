@@ -24,6 +24,17 @@ export const isTargetAdminEmail = (email?: string | null): boolean => {
   return normalized === 'shinethitsmt@gmail.com' || normalized === 'shinethit.smt@gmail.com';
 };
 
+// Helper to remove any undefined fields before Firestore operations
+export const sanitizeForFirestore = <T extends Record<string, any>>(obj: T): Record<string, any> => {
+  const clean: Record<string, any> = {};
+  Object.keys(obj).forEach((k) => {
+    if (obj[k] !== undefined && obj[k] !== null) {
+      clean[k] = obj[k];
+    }
+  });
+  return clean;
+};
+
 interface AuthContextType {
   currentUser: FirebaseUser | null;
   profile: UserProfile | null;
@@ -107,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } else {
               setProfile(fallbackProf);
               localStorage.setItem('family_health_profile', JSON.stringify(fallbackProf));
-              await setDoc(userDocRef, fallbackProf, { merge: true });
+              await setDoc(userDocRef, sanitizeForFirestore(fallbackProf), { merge: true });
             }
           } catch {
             setProfile(fallbackProf);
@@ -163,7 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 2. Set Profile - Admin is guaranteed role: 'admin'
+      // 2. Set Profile
       const activeProf = buildDefaultProfile(loggedInUid, loggedInEmail, {
         role: isTargetAdmin ? 'admin' : 'patient',
         displayName: isTargetAdmin ? 'ရှိုင်းသစ်' : undefined,
@@ -188,10 +199,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(activeProf);
       localStorage.setItem('family_health_profile', JSON.stringify(activeProf));
 
-      // 3. Save to Firestore so Admin can see
+      // 3. Save to Firestore with clean non-undefined payload
       try {
-        await setDoc(doc(db, 'users', loggedInUid), activeProf, { merge: true });
-      } catch {}
+        await setDoc(doc(db, 'users', loggedInUid), sanitizeForFirestore(activeProf), { merge: true });
+      } catch (e) {
+        console.warn('Error saving profile on login:', e);
+      }
     } finally {
       setLoading(false);
     }
@@ -224,7 +237,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (authErr: any) {
         if (authErr.code === 'auth/email-already-in-use') {
-          // If already created, sign in
           const signRes = await signInWithEmailAndPassword(auth, cleanEmail, pass);
           createdUid = signRes.user.uid;
           createdEmail = signRes.user.email || cleanEmail;
@@ -235,18 +247,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const calculatedAge = dob ? calculateAge(dob)?.years : undefined;
-      const calculatedBMI = (heightCm && weightKg) ? calculateBMI(weightKg, heightCm)?.bmi : undefined;
+      const numH = heightCm ? Number(heightCm) : undefined;
+      const numW = weightKg ? Number(weightKg) : undefined;
+      const calculatedBMI = (numH && numW) ? calculateBMI(numW, numH)?.bmi : undefined;
 
       const newProf: UserProfile = {
         id: createdUid,
         email: createdEmail,
-        displayName: isTargetAdmin ? 'ရှိုင်းသစ်' : name.trim(),
+        displayName: isTargetAdmin ? 'ရှိုင်းသစ်' : (name.trim() || 'အသုံးပြုသူ'),
         role: isTargetAdmin ? 'admin' : 'patient',
         dateOfBirth: dob || undefined,
         age: calculatedAge,
         gender: gender || 'male',
-        heightCm: heightCm || undefined,
-        weightKg: weightKg || undefined,
+        heightCm: numH,
+        weightKg: numW,
         bmi: calculatedBMI,
         chronicConditions: chronicConditions || [],
         createdAt: new Date().toISOString(),
@@ -255,11 +269,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(newProf);
       localStorage.setItem('family_health_profile', JSON.stringify(newProf));
 
-      // Save to Firestore users collection so Admin immediately gets notified
+      // Save to Firestore users collection using sanitizeForFirestore so no undefined values cause rejection
       try {
-        await setDoc(doc(db, 'users', createdUid), newProf, { merge: true });
+        await setDoc(doc(db, 'users', createdUid), sanitizeForFirestore(newProf), { merge: true });
       } catch (e) {
-        console.warn('Firestore set user profile:', e);
+        console.warn('Firestore set user profile error:', e);
       }
     } finally {
       setLoading(false);
@@ -305,8 +319,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('family_health_profile', JSON.stringify(updated));
     if (profile?.id) {
       try {
-        await setDoc(doc(db, 'users', profile.id), updated, { merge: true });
-      } catch {}
+        await setDoc(doc(db, 'users', profile.id), sanitizeForFirestore(updated), { merge: true });
+      } catch (e) {
+        console.warn('Update profile error:', e);
+      }
     }
   };
 

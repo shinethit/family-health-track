@@ -11,7 +11,9 @@ import {
   Smartphone, 
   Activity, 
   Stethoscope,
-  Database
+  Database,
+  Lock,
+  Gauge
 } from 'lucide-react';
 
 interface VersionItem {
@@ -30,20 +32,53 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v1.3.0',
-    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ',
+    version: 'v1.3.1',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ (ယနေ့)',
     isLatest: true,
-    title: 'Admin Master Portal & Version History & User Guide System',
-    badge: 'လက်ရှိ ဗားရှင်း',
+    title: 'Free Quota Monitoring System & Patient Privacy & Database Hardening',
+    badge: 'နောက်ဆုံး ဗားရှင်း',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
     highlights: [
       {
-        title: '👑 Master Admin & Real-time User Tracking',
+        title: '📊 Free Quota & Database Health Monitoring System',
+        icon: Gauge,
+        items: [
+          'Firebase Firestore Spark Free Plan အခမဲ့ ကန့်သတ်ချက်များ (Daily Reads 50,000 / Writes 20,000 / Storage 1 GB) ကို Admin Portal တွင် တိုက်ရိုက် စောင့်ကြည့်နိုင်ခြင်း',
+          'Database အတွင်းရှိ Collection အသီးသီး၏ Document စုစုပေါင်းနှင့် Cloud Sync အခြေအနေကို အချိန်နှင့်တပြေးညီ တိုက်ရိုက် စစ်ဆေးနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '🔒 လူနာအချက်အလက် လုံခြုံရေးနှင့် သီးသန့်ဖြစ်မှု မူဝါဒ (Privacy Protection)',
+        icon: Lock,
+        items: [
+          'လူနာများ၏ ကျန်းမာရေးမှတ်တမ်းများကို သီးသန့် Encrypted Database တွင် လုံခြုံစွာ သိမ်းဆည်းခြင်း',
+          'ခွင့်ပြုချက်မရှိဘဲ စောင့်ကြည့်ခြင်းမရှိစေဘဲ မိမိကိုယ်တိုင်သာ စီမံနိုင်သော Privacy Protection စနစ်'
+        ]
+      },
+      {
+        title: '⚡ Real-time Patient Data Syncing & Null-Safe Pipeline',
+        icon: Database,
+        items: [
+          'လူနာအကောင့်ဖွင့်ချိန်တွင် Firestore Database သို့ အမှားအယွင်းမရှိ တိုက်ရိုက် ရောက်ရှိစေရန် Null-Safe Data Pipeline တပ်ဆင်ခြင်း',
+          'Firestore Security Rules များတွင် User Profile နှင့် ကျန်းမာရေးဒေတာများ Read/Write ချောမွေ့စွာ အလုပ်လုပ်နိုင်ရန် အဆင့်မြှင့်တင်ခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.3.0',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာ',
+    title: 'Admin Master Portal & Version History & User Guide System',
+    badge: 'Admin & Guides',
+    badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
+    highlights: [
+      {
+        title: '👑 Master Admin & Clinical Dashboard',
         icon: ShieldCheck,
         items: [
-          'အက်ဒမင် (Admin) မှ လူနာများ အကောင့်သစ်ဖွင့်သည်နှင့် အချိန်နှင့်တပြေးညီ သိရှိစောင့်ကြည့်နိုင်ခြင်း',
-          'လူနာတစ်ဦးချင်းစီ၏ အသက်၊ ကျား/မ၊ BMI၊ နာတာရှည်ရောဂါများနှင့် နေ့စဉ်ကျန်းမာရေး အချက်အလက်များကို Clinical Dashboard ဖြင့် စောင့်ကြည့်နိုင်ခြင်း',
-          'Firestore Real-time Syncing စနစ်ဖြင့် စက်အမျိုးမျိုး (Multi-device) မှ ဝင်ရောက်အသုံးပြုနိုင်ခြင်း'
+          'ဆေးခန်းနှင့် ကျန်းမာရေးစောင့်ရှောက်သူများအတွက် လူနာမှတ်တမ်းများကို Clinical Dashboard ဖြင့် စနစ်တကျ စစ်ဆေးနိုင်ခြင်း',
+          'လူနာတစ်ဦးချင်းစီ၏ BP, Glucose, BMI နှင့် ဆေးမှတ်တမ်းများအလိုက် သီးသန့် Doctor Advice ပေးပို့နိုင်ခြင်း',
+          'Multi-device နှင့် Cloud Firestore Real-time Syncing စနစ်'
         ]
       },
       {
@@ -52,14 +87,6 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         items: [
           'စနစ်အတွင်း ပြောင်းလဲပြင်ဆင်မှုများအားလုံးကို အသေးစိတ် ကြည့်ရှုနိုင်သော Version History System',
           'အသုံးပြုသူ လူနာများနှင့် မိသားစုဝင်များအတွက် ပြည့်စုံသော မြန်မာဘာသာ အသုံးပြုနည်းလမ်းညွှန် (User Guide) ထည့်သွင်းခြင်း'
-        ]
-      },
-      {
-        title: '⚡ Firebase Firestore Security Rules Hardening',
-        icon: Database,
-        items: [
-          'လူနာအချက်အလက် လုံခြုံရေးအတွက် Firestore Security Rules အဆင့်မြှင့်တင်ခြင်း',
-          'အင်တာနက်လိုင်း အားနည်းချိန်တွင်လည်း ဒေတာမပျောက်ပျက်စေရန် Offline Caching ပိုမိုကောင်းမွန်အောင် ပြင်ဆင်ခြင်း'
         ]
       }
     ]
@@ -140,7 +167,7 @@ interface VersionHistoryModalProps {
 }
 
 export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen, onClose }) => {
-  const [selectedVersion, setSelectedVersion] = useState<string>('v1.3.0');
+  const [selectedVersion, setSelectedVersion] = useState<string>('v1.3.1');
 
   if (!isOpen) return null;
 
@@ -272,7 +299,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
 
         {/* Footer */}
         <div className="px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 flex items-center justify-between text-xs text-slate-500">
-          <span>Family Health Track v1.3.0</span>
+          <span>Family Health Track v1.3.1</span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 font-semibold text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"

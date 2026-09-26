@@ -8,12 +8,11 @@ import {
   deleteDoc, 
   doc, 
   setDoc,
-  updateDoc,
-  getDocs,
-  orderBy 
+  updateDoc, 
+  getDocs 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { useAuth, isTargetAdminEmail } from './AuthContext';
+import { useAuth, isTargetAdminEmail, sanitizeForFirestore } from './AuthContext';
 import { 
   BloodPressureRecord, 
   BloodSugarRecord, 
@@ -26,7 +25,7 @@ import {
   DoctorQuestion,
   DoctorAnswer
 } from '../types/health';
-import { calculateBPCategory, calculateGlucoseStatus, calculateBMI, calculateAge } from '../lib/medicalCalculations';
+import { calculateBPCategory, calculateGlucoseStatus, calculateBMI } from '../lib/medicalCalculations';
 
 export const isPatientOnly = (p?: UserProfile | null): boolean => {
   if (!p) return false;
@@ -42,12 +41,6 @@ export const isPatientOnly = (p?: UserProfile | null): boolean => {
 // Clean Slate: No demo data pre-populated
 export const INITIAL_FAMILY_MEMBERS: FamilyMember[] = [];
 export const INITIAL_PATIENTS: UserProfile[] = [];
-const INITIAL_BP: BloodPressureRecord[] = [];
-const INITIAL_GLUCOSE: BloodSugarRecord[] = [];
-const INITIAL_LABS: LabTestRecord[] = [];
-const INITIAL_MEDICATIONS: Medication[] = [];
-const INITIAL_ADVICES: DoctorAdvice[] = [];
-const INITIAL_BMI: BMIRecord[] = [];
 
 // Helper to sanitize any legacy cached demo records from previous sessions
 const sanitizeDemoRecords = <T extends { id?: string; userId?: string }>(records: T[]): T[] => {
@@ -386,37 +379,35 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const prof = { ...(d.data() as UserProfile), id: d.id };
         if (isPatientOnly(prof)) uList.push(prof);
       });
-      if (uList.length > 0 || uSnap.size >= 0) {
-        setPatientsList(uList);
-      }
+      setPatientsList(uList);
 
       const vList: BloodPressureRecord[] = [];
       vSnap.forEach(d => vList.push({ ...(d.data() as BloodPressureRecord), id: d.id }));
-      if (vList.length > 0) setAllBP(vList);
+      setAllBP(vList);
 
       const gList: BloodSugarRecord[] = [];
       gSnap.forEach(d => gList.push({ ...(d.data() as BloodSugarRecord), id: d.id }));
-      if (gList.length > 0) setAllGlucose(gList);
+      setAllGlucose(gList);
 
       const bList: BMIRecord[] = [];
       bSnap.forEach(d => bList.push({ ...(d.data() as BMIRecord), id: d.id }));
-      if (bList.length > 0) setAllBMI(bList);
+      setAllBMI(bList);
 
       const lList: LabTestRecord[] = [];
       lSnap.forEach(d => lList.push({ ...(d.data() as LabTestRecord), id: d.id }));
-      if (lList.length > 0) setAllLabs(lList);
+      setAllLabs(lList);
 
       const mList: Medication[] = [];
       mSnap.forEach(d => mList.push({ ...(d.data() as Medication), id: d.id }));
-      if (mList.length > 0) setAllMeds(mList);
+      setAllMeds(mList);
 
       const qList: DoctorQuestion[] = [];
       qSnap.forEach(d => qList.push({ ...(d.data() as DoctorQuestion), id: d.id }));
-      if (qList.length > 0) setAllQuestions(qList);
+      setAllQuestions(qList);
 
       const aList: DoctorAdvice[] = [];
       aSnap.forEach(d => aList.push({ ...(d.data() as DoctorAdvice), id: d.id }));
-      if (aList.length > 0) setAllAdvices(aList);
+      setAllAdvices(aList);
 
       setLastSyncTime(new Date().toLocaleTimeString('my-MM'));
     } catch (err) {
@@ -517,7 +508,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (currentUser?.uid) {
       try {
-        await setDoc(doc(db, 'users', newId), newPatient);
+        await setDoc(doc(db, 'users', newId), sanitizeForFirestore(newPatient));
       } catch (e) {
         console.warn('Error saving patient to firestore:', e);
       }
@@ -590,7 +581,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (currentUser?.uid) {
       try {
-        await addDoc(collection(db, 'vitals'), newRecord);
+        await addDoc(collection(db, 'vitals'), sanitizeForFirestore(newRecord));
       } catch (e) {
         console.warn('Error saving vital to firestore:', e);
       }
@@ -628,7 +619,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (currentUser?.uid) {
       try {
-        await addDoc(collection(db, 'glucose'), newRecord);
+        await addDoc(collection(db, 'glucose'), sanitizeForFirestore(newRecord));
       } catch (e) {
         console.warn('Error saving glucose to firestore:', e);
       }
@@ -657,7 +648,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (currentUser?.uid) {
       try {
-        await addDoc(collection(db, 'labTests'), newRecord);
+        await addDoc(collection(db, 'labTests'), sanitizeForFirestore(newRecord));
       } catch (e) {
         console.warn('Error saving lab test to firestore:', e);
       }
@@ -686,7 +677,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (currentUser?.uid) {
       try {
-        await addDoc(collection(db, 'medications'), newMed);
+        await addDoc(collection(db, 'medications'), sanitizeForFirestore(newMed));
       } catch (e) {
         console.warn('Error saving medication to firestore:', e);
       }
@@ -733,7 +724,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (currentUser?.uid) {
       try {
-        await addDoc(collection(db, 'doctorAdvices'), newAdvice);
+        await addDoc(collection(db, 'doctorAdvices'), sanitizeForFirestore(newAdvice));
       } catch (e) {
         console.warn('Error saving doctor advice to firestore:', e);
       }
@@ -761,7 +752,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (currentUser?.uid) {
       try {
-        await addDoc(collection(db, 'bmi'), newRecord);
+        await addDoc(collection(db, 'bmi'), sanitizeForFirestore(newRecord));
       } catch (e) {
         console.warn('Error saving BMI record to firestore:', e);
       }
@@ -792,7 +783,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (currentUser?.uid) {
       try {
-        await addDoc(collection(db, 'doctorQuestions'), newQuestion);
+        await addDoc(collection(db, 'doctorQuestions'), sanitizeForFirestore(newQuestion));
       } catch (e) {
         console.warn('Error saving doctor question to firestore:', e);
       }
@@ -814,11 +805,11 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (currentUser?.uid) {
       try {
-        await updateDoc(doc(db, 'doctorQuestions', questionId), {
+        await updateDoc(doc(db, 'doctorQuestions', questionId), sanitizeForFirestore({
           status: 'answered',
           doctorAnswer: answer,
           updatedAt: new Date().toISOString(),
-        });
+        }));
       } catch (e) {
         console.warn('Error updating doctor question in firestore:', e);
       }
