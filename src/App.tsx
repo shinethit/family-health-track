@@ -204,6 +204,7 @@ const MainContent: React.FC = () => {
         onOpenUserGuide={() => setIsUserGuideOpen(true)}
         onOpenPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
         onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
+        onOpenPassportModal={() => setIsPassportOpen(true)}
       />
       {/* Fixed Top Section: Navbar & Marquee */}
       <div className="fixed top-0 left-0 right-0 z-40 w-full bg-white shadow-md">

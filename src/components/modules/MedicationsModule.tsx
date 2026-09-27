@@ -349,7 +349,7 @@ export const MedicationsModule: React.FC = () => {
                     onClick={() => applyPreset(p)}
                     className="px-2.5 py-1 rounded-lg text-[11px] bg-slate-100 dark:bg-slate-800 hover:bg-sky-50 hover:text-sky-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors"
                   >
-                    {p.name.split(' ')[0]}
+                    {p.trade.split(' ')[0]}
                   </button>
                 ))}
               </div>

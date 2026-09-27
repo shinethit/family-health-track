@@ -1196,6 +1196,7 @@ export const HEALTH_ARTICLES: HealthArticle[] = [
     content: ['ကောင်းမွန်စွာ အိပ်စက်ခြင်းသည် တစ်နေ့တာ လုပ်ငန်းဆောင်တာများအတွက် အခြေခံဖြစ်သည်။']
   },
   {
+    id: 'spec-derma-02',
     title: 'အရေပြားယားယံခြင်း (Eczema) ကို ထိန်းချုပ်နည်း',
     category: 'specialty_derma',
     readingTime: '၄ မိနစ် ဖတ်ရန်',
