@@ -37,10 +37,45 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.1.0',
-    type: 'major',
+    version: 'v2.1.1',
+    type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
+    title: '🛠️ [MINOR] Weight (lb) & Height (ft/in) Tracker Units, Forgot Password Feature & Navigation UX Fixes',
+    badge: 'Minor Release (v2.1.1)',
+    badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
+    highlights: [
+      {
+        title: '⚖️ BMI & Weight / Height Units Extension (ပေါင် နှင့် ပေ/လက်မ ဖြင့် ထည့်သွင်းနိုင်ခြင်း)',
+        icon: Activity,
+        items: [
+          'ကိုယ်အလေးချိန် (Weight) ကို ကီလိုဂရမ် (kg) အပြင် ပေါင် (lb) ဖြင့်ပါ ရွေးချယ်ထည့်သွင်းနိုင်ခြင်း',
+          'အရပ်အမောင်း (Height) ကို စင်တီမီတာ (cm) အပြင် ပေ နှင့် လက်မ (ft / in) ဖြင့်ပါ အလွယ်တကူ ရွေးချယ်တိုင်းတာနိုင်ခြင်း',
+          'စနစ်မှ kg နှင့် cm သို့ အလိုအလျောက် တွက်ချက်ပြီး BMI ကို တိကျစွာ ಲೆಕ್ಕထုတ်ပေးခြင်း'
+        ]
+      },
+      {
+        title: '🔒 Forgot Password (စကားဝှက်မေ့နေပါသလား?) အင်္ဂါရပ်',
+        icon: Lock,
+        items: [
+          'လော့ဂ်အင် ဝင်သည့်မျက်နှာပြင်တွင် စကားဝှက်မေ့ပါက အီးမေးလ်မှတစ်ဆင့် Password Reset လင့်ခ် တောင်းဆိုနိုင်သော ခလုတ်နှင့် Modal ထည့်သွင်းပေးခြင်း'
+        ]
+      },
+      {
+        title: '🔔 Notification Bell & Top Sticky Header Fixes',
+        icon: Sparkles,
+        items: [
+          'အပေါ်ဆုံး Navbar ရှိ အသိပေးချက် ခေါင်းလောင်း (Bell Icon) နှိပ်မရသည့် ပြဿနာအား အပြည့်အစုံ ဖြေရှင်းပေးခြင်း',
+          'Navbar နှင့် Marquee Banner တို့ကို Fixed Positioning ဖြင့် အခိုင်အမာ ချိတ်ဆက်ပေးပြီး Category Header သို့ Scroll ပြုလုပ်ရာတွင် တစ်ပါတည်း တွဲပါမသွားစေရန် စီစဉ်ပေးခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.1.0',
+    type: 'major',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
     title: '🌟 [MAJOR] Women’s Health, Pregnancy & Maternal Care, Child Care, Developmental Milestones & Geriatric Elderly Care Suite',
     badge: 'Major Release (v2.1.0)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
