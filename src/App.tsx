@@ -209,6 +209,7 @@ const MainContent: React.FC = () => {
       <div className="fixed top-0 left-0 right-0 z-40 w-full bg-white shadow-md">
         <Navbar 
           onOpenSidebar={() => setIsSidebarOpen(true)}
+          onOpenNotifications={() => setIsNotificationsOpen(true)}
           onOpenPassportModal={() => setIsPassportOpen(true)}
         />
         <BroadcastMarqueeBanner />
