@@ -205,15 +205,17 @@ const MainContent: React.FC = () => {
         onOpenPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
         onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
       />
-      <Navbar 
-        onOpenSidebar={() => setIsSidebarOpen(true)}
-        onOpenPassportModal={() => setIsPassportOpen(true)}
-        activeTab={activeTab} 
-        setActiveTab={(tab: any) => setActiveTab(tab)} 
-      />
+      {/* Fixed Top Section: Navbar & Marquee */}
+      <div className="fixed top-0 left-0 right-0 z-40 w-full bg-white shadow-md">
+        <Navbar 
+          onOpenSidebar={() => setIsSidebarOpen(true)}
+          onOpenPassportModal={() => setIsPassportOpen(true)}
+        />
+        <BroadcastMarqueeBanner />
+      </div>
 
-      {/* 📢 Live Broadcast Running Text (Marquee Ticker) */}
-      <BroadcastMarqueeBanner />
+      {/* Spacer to prevent content from hiding under fixed header */}
+      <div className="h-[105px] sm:h-[110px] shrink-0" />
 
       {/* Selected Patient Banner for Admin (Simple & Crisp) */}
       {selectedPatient && isAdmin && (
@@ -231,88 +233,33 @@ const MainContent: React.FC = () => {
         </div>
       )}
 
-      {/* Main Tab Navigation - Clean Grouped Navigation & Dropdown */}
-      <div className="bg-white border-b border-slate-200 sticky top-16 z-30 w-full max-w-full shadow-xs">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 space-y-2">
-          
-          {/* Top Row: Category Segmented Tabs & Quick Dropdown Select */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-            
-            {/* Category Segmented Tabs */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {moduleCategories.map(cat => {
-                const isCatActive = selectedCategoryGroup === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      setSelectedCategoryGroup(cat.id);
-                      if (!cat.tabs.some(t => t.id === activeTab)) {
-                        setActiveTab(cat.tabs[0].id as any);
-                      }
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                      isCatActive
-                        ? `${cat.activeColor} border-transparent shadow-xs`
-                        : `bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200`
-                    }`}
-                  >
-                    {cat.nameMm}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Direct Jump Dropdown Select */}
-            <div className="flex items-center gap-1.5 min-w-[220px]">
-              <span className="text-[11px] font-bold text-slate-500 shrink-0 hidden md:inline">တိုက်ရိုက် ရွေးရန်:</span>
-              <select
-                value={activeTab}
-                onChange={(e) => setActiveTab(e.target.value as any)}
-                className="w-full bg-emerald-50/90 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
-              >
-                {moduleCategories.map(cat => (
-                  <optgroup key={cat.id} label={cat.nameMm}>
-                    {cat.tabs.map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
+      {/* Sticky Active Category Title Header */}
+      <div className="bg-white border-b border-slate-200 sticky top-[105px] sm:top-[110px] z-30 w-full shadow-xs">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-900 text-xs font-extrabold flex items-center gap-1.5">
+              {moduleCategories.find(cat => cat.id === selectedCategoryGroup)?.nameMm || '📊 ကျန်းမာရေး မှတ်တမ်းများ'}
+            </span>
           </div>
 
-          {/* Bottom Row: Sub-Module Buttons for Current Selected Category */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100">
-            {moduleCategories
-              .find(cat => cat.id === selectedCategoryGroup)
-              ?.tabs.map(t => {
-                const Icon = t.icon;
-                const isTabActive = activeTab === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setActiveTab(t.id as any)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer relative ${
-                      isTabActive
-                        ? `${t.activeColor} font-bold shadow-xs`
-                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/90'
-                    }`}
-                  >
-                    <Icon className={`w-3.5 h-3.5 ${isTabActive ? 'text-white' : 'text-slate-500'}`} />
-                    <span>{t.label}</span>
-                    {t.badge && t.badge > 0 ? (
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold ml-0.5">
-                        {t.badge}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 font-semibold hidden sm:inline">ကဏ္ဍပြောင်းရန်:</span>
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as any)}
+              className="bg-slate-50 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
+            >
+              {moduleCategories.map(cat => (
+                <optgroup key={cat.id} label={cat.nameMm}>
+                  {cat.tabs.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
-
         </div>
       </div>
 
