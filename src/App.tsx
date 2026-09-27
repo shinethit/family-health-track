@@ -82,7 +82,7 @@ const MainContent: React.FC = () => {
     document.documentElement.classList.remove('dark');
     document.documentElement.classList.add('light');
 
-    // Check App Version against stored localStorage version
+    // Safe Version Check & Popup Trigger
     const CURRENT_SYSTEM_VERSION = 'v2.1.4';
     const lastSeenVersion = localStorage.getItem('myanmar_health_app_version');
     if (!lastSeenVersion || lastSeenVersion !== CURRENT_SYSTEM_VERSION) {

@@ -17,7 +17,8 @@ import {
   Pill,
   Megaphone,
   AlertTriangle,
-  FileText
+  FileText,
+  Users
 } from 'lucide-react';
 
 interface VersionItem {
