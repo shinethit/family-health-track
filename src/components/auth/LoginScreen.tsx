@@ -16,12 +16,14 @@ import {
   Scale,
   Ruler,
   Newspaper,
-  MessageSquareHeart
+  MessageSquareHeart,
+  X,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const LoginScreen: React.FC = () => {
-  const { login, register, loginWithGoogle } = useAuth();
+  const { login, register, loginWithGoogle, resetPassword } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -34,6 +36,13 @@ export const LoginScreen: React.FC = () => {
   const [chronicConditions, setChronicConditions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Forgot password modal state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
 
   const toggleCondition = (cond: string) => {
     if (chronicConditions.includes(cond)) {
@@ -93,6 +102,22 @@ export const LoginScreen: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotLoading(true);
+    try {
+      await resetPassword(forgotEmail);
+      setForgotSuccess(true);
+    } catch (err: any) {
+      console.error(err);
+      setForgotError(err.message || 'စကားဝှက်အသစ်တောင်းဆိုခြင်း မအောင်မြင်ပါ။ အီးမေးလ်မှန်ကန်ကြောင်း စစ်ဆေးပါ။');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between relative overflow-hidden selection:bg-emerald-500 selection:text-white">
@@ -306,9 +331,25 @@ export const LoginScreen: React.FC = () => {
 
               {/* Password Field */}
               <div>
-                <label className="block text-xs font-bold text-white mb-1.5">
-                  လျှို့ဝှက်နံပါတ် (Password) *
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-white">
+                    လျှို့ဝှက်နံပါတ် (Password) *
+                  </label>
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgotPassword(true);
+                        setForgotEmail(email);
+                        setForgotSuccess(false);
+                        setForgotError(null);
+                      }}
+                      className="text-[11px] font-semibold text-emerald-400 hover:underline cursor-pointer"
+                    >
+                      စကားဝှက်မေ့နေပါသလား?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
@@ -450,6 +491,95 @@ export const LoginScreen: React.FC = () => {
       <footer className="relative z-10 py-4 text-center text-xs text-slate-500 border-t border-slate-800/60">
         Family Health Track • Firebase Authentication & Firestore Persistent Database
       </footer>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setShowForgotPassword(false)}
+              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">စကားဝှက် ပြန်လည်ရယူရန်</h3>
+                <p className="text-xs text-slate-400">သင်၏အကောင့် အီးမေးလ်သို့ Password Reset လင့်ခ် ပို့ပေးပါမည်</p>
+              </div>
+            </div>
+
+            {forgotSuccess ? (
+              <div className="space-y-4 py-4 text-center">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-bold text-white">အီးမေးလ် ပို့ပြီးပါပြီ!</p>
+                <p className="text-xs text-slate-300">
+                  ကျေးဇူးပြု၍ သင့်အီးမေးလ် (<strong>{forgotEmail}</strong>) ၏ Inbox သို့မဟုတ် Spam ထဲတွင် စစ်ဆေးပြီး Password အသစ် ပြောင်းလဲပါ။
+                </p>
+                <button
+                  onClick={() => setShowForgotPassword(false)}
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer"
+                >
+                  အဆင်ပြေပါပြီ
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                {forgotError && (
+                  <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                    <span>{forgotError}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-white mb-1.5">
+                    အီးမေးလ် လိပ်စာ (Email Address) *
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(false)}
+                    className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer"
+                  >
+                    ပိတ်မည်
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {forgotLoading ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span>လင့်ခ် ပို့မည်</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

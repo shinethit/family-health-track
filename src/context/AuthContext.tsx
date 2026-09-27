@@ -6,6 +6,7 @@ import {
   signOut as fbSignOut, 
   onAuthStateChanged,
   updatePassword as fbUpdatePassword,
+  sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
@@ -61,6 +62,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const buildDefaultProfile = (uid: string, email: string, overrideData?: Partial<UserProfile>): UserProfile => {
@@ -402,6 +404,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await fbUpdatePassword(auth.currentUser, newPassword);
   };
 
+  const resetPassword = async (email: string) => {
+    if (!email || !email.trim()) {
+      throw new Error('ကျေးဇူးပြု၍ သင့်အီးမေးလ်လိပ်စာကို ထည့်သွင်းပါ');
+    }
+    await sendPasswordResetEmail(auth, email.trim());
+  };
+
   const isAdmin = profile?.role === 'admin' || isTargetAdminEmail(profile?.email);
 
   return (
@@ -416,6 +425,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout,
       updateProfile,
       changePassword,
+      resetPassword,
     }}>
       {children}
     </AuthContext.Provider>
