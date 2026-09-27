@@ -36,9 +36,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-0.5 shadow-sm flex items-center justify-center shrink-0">
                 <HeartPulse className="w-5 h-5 text-white animate-pulse" />
               </div>
-              <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
-                Family Health Track
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
+                  Family Health Track
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold font-mono">
+                  v2.1.0
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
