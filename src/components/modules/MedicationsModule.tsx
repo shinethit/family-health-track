@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pill, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Calendar, Sparkles } from 'lucide-react';
+import { Pill, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Calendar, Sparkles, X } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { Medication } from '../../types/health';
@@ -9,14 +9,16 @@ export const MedicationsModule: React.FC = () => {
   const { profile } = useAuth();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused'>('active');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused' | 'completed'>('active');
 
   // Form states
-  const [name, setName] = useState('');
-  const [genericName, setGenericName] = useState('');
+  const [tradeName, setTradeName] = useState('');
+  const [chemicalNamesInput, setChemicalNamesInput] = useState('');
+  const [chemicalNames, setChemicalNames] = useState<string[]>([]);
   const [dosage, setDosage] = useState('5 mg');
   const [frequency, setFrequency] = useState('မနက် ၁ ကြိမ် (၁ လုံး)');
   const [timing, setTiming] = useState<'before_meal' | 'after_meal' | 'with_meal' | 'bedtime' | 'anytime'>('after_meal');
+  const [durationDays, setDurationDays] = useState<string>('30'); // ဆေးသောက်ရမည့်ရက်ပေါင်း
   const [prescribedFor, setPrescribedFor] = useState('သွေးတိုးရောဂါ (Hypertension)');
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [prescribingDoctor, setPrescribingDoctor] = useState('');
@@ -35,6 +37,20 @@ export const MedicationsModule: React.FC = () => {
     localStorage.setItem('health_meds_checked_today', JSON.stringify(updated));
   };
 
+  const handleAddChemicalName = (e: React.KeyboardEvent | React.MouseEvent) => {
+    if (('key' in e && e.key === 'Enter') || e.type === 'click') {
+      e.preventDefault();
+      if (chemicalNamesInput.trim() && !chemicalNames.includes(chemicalNamesInput.trim())) {
+        setChemicalNames([...chemicalNames, chemicalNamesInput.trim()]);
+        setChemicalNamesInput('');
+      }
+    }
+  };
+
+  const removeChemicalName = (chem: string) => {
+    setChemicalNames(chemicalNames.filter(c => c !== chem));
+  };
+
   // Filtered meds
   const filteredMeds = filterStatus === 'all'
     ? medications
@@ -44,15 +60,16 @@ export const MedicationsModule: React.FC = () => {
 
   // Preset drug templates
   const presets = [
-    { name: 'Amlodipine (အမ်လိုဒီပင်း)', dose: '5 mg', freq: 'မနက် ၁ လုံး', timing: 'after_meal' as const, for: 'သွေးတိုးရောဂါ' },
-    { name: 'Metformin (မက်ဖော်မင်)', dose: '500 mg', freq: 'မနက် ၁ လုံး၊ ည ၁ လုံး', timing: 'with_meal' as const, for: 'ဆီးချိုရောဂါ' },
-    { name: 'Atorvastatin (အာတိုဗာစတာတင်)', dose: '10 mg', freq: 'ညအိပ်ရာဝင် ၁ လုံး', timing: 'bedtime' as const, for: 'သွေးတွင်းအဆီကျဆေး' },
-    { name: 'Losartan (လိုဆာတန်)', dose: '50 mg', freq: 'မနက် ၁ လုံး', timing: 'after_meal' as const, for: 'သွေးတိုးရောဂါ' },
-    { name: 'Allopurinol (အယ်လိုဖြူရီနော)', dose: '100 mg', freq: 'နေ့လယ် ၁ လုံး', timing: 'after_meal' as const, for: 'ယူရစ်အက်စစ်ကျဆေး' },
+    { trade: 'Norvasc', chem: ['Amlodipine'], dose: '5 mg', freq: 'မနက် ၁ လုံး', timing: 'after_meal' as const, for: 'သွေးတိုးရောဂါ' },
+    { trade: 'Glucophage', chem: ['Metformin HCl'], dose: '500 mg', freq: 'မနက် ၁ လုံး၊ ည ၁ လုံး', timing: 'with_meal' as const, for: 'ဆီးချိုရောဂါ' },
+    { trade: 'Lipitor', chem: ['Atorvastatin'], dose: '10 mg', freq: 'ညအိပ်ရာဝင် ၁ လုံး', timing: 'bedtime' as const, for: 'သွေးတွင်းအဆီကျဆေး' },
+    { trade: 'Cozaar', chem: ['Losartan Potassium'], dose: '50 mg', freq: 'မနက် ၁ လုံး', timing: 'after_meal' as const, for: 'သွေးတိုးရောဂါ' },
+    { trade: 'Zyloric', chem: ['Allopurinol'], dose: '100 mg', freq: 'နေ့လယ် ၁ လုံး', timing: 'after_meal' as const, for: 'ယူရစ်အက်စစ်ကျဆေး' },
   ];
 
   const applyPreset = (p: typeof presets[0]) => {
-    setName(p.name);
+    setTradeName(p.trade);
+    setChemicalNames(p.chem);
     setDosage(p.dose);
     setFrequency(p.freq);
     setTiming(p.timing);
@@ -61,13 +78,13 @@ export const MedicationsModule: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile || !name.trim()) return;
+    if (!profile || !tradeName.trim()) return;
     setIsSubmitting(true);
     try {
       await addMedication({
         userId: selectedPatient ? selectedPatient.id : (selectedFamilyMember ? selectedFamilyMember.id : profile.id),
-        name,
-        genericName,
+        name: tradeName,
+        genericName: chemicalNames.join(', '),
         dosage,
         frequency,
         timing,
@@ -75,10 +92,11 @@ export const MedicationsModule: React.FC = () => {
         startDate,
         status: 'active',
         prescribingDoctor,
-        notes,
+        notes: `သောက်ရမည့်ရက်: ${durationDays} ရက် | ${notes}`,
       });
       setIsOpenAdd(false);
-      setName('');
+      setTradeName('');
+      setChemicalNames([]);
       setNotes('');
     } finally {
       setIsSubmitting(false);
@@ -338,22 +356,58 @@ export const MedicationsModule: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-              {/* Name */}
+              {/* Trade Name */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  ဆေးအမည် (Medicine Name) *
+                  ဆေးအမည် (Trade Name / Commercial Name) *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="ဥပမာ- Amlodipine, Metformin"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  placeholder="ဥပမာ- Norvasc, Glucophage, Lipitor"
+                  value={tradeName}
+                  onChange={(e) => setTradeName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium"
                 />
               </div>
 
-              {/* Dosage & Target Condition */}
+              {/* Chemical Names (Multiple Input Tags) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  ပါဝင်သည့်ဆေး (Chemical / Generic Name) - တစ်ခုထက်ပိုပါက ထည့်သွင်းနိုင်သည်
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="ဥပမာ- Amlodipine, Metformin (Enter နှိပ်ပါ)"
+                    value={chemicalNamesInput}
+                    onChange={(e) => setChemicalNamesInput(e.target.value)}
+                    onKeyDown={handleAddChemicalName}
+                    className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddChemicalName}
+                    className="px-3 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    ထည့်မည်
+                  </button>
+                </div>
+                {chemicalNames.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {chemicalNames.map((chem, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300 text-[11px] font-semibold">
+                        {chem}
+                        <button type="button" onClick={() => removeChemicalName(chem)} className="hover:text-rose-600 cursor-pointer">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Dosage & Duration Days */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -371,13 +425,14 @@ export const MedicationsModule: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    ကုသရန် ရောဂါ (Condition)
+                    ဘယ်နှစ်ရက်သောက်ရန် (Duration) *
                   </label>
                   <input
                     type="text"
-                    placeholder="ဥပမာ- သွေးတိုး၊ ဆီးချို၊ အဆီကျ"
-                    value={prescribedFor}
-                    onChange={(e) => setPrescribedFor(e.target.value)}
+                    required
+                    placeholder="ဥပမာ- 30 ရက် (သို့) တစ်လစာ"
+                    value={durationDays}
+                    onChange={(e) => setDurationDays(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
                 </div>
@@ -416,17 +471,18 @@ export const MedicationsModule: React.FC = () => {
                 </div>
               </div>
 
-              {/* Start Date & Doctor */}
+              {/* Prescribed For & Doctor */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    စတင်သောက်သည့်ရက်
+                    ကုသရန် ရောဂါ (Condition)
                   </label>
                   <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono"
+                    type="text"
+                    placeholder="ဥပမာ- သွေးတိုး၊ ဆီးချို"
+                    value={prescribedFor}
+                    onChange={(e) => setPrescribedFor(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
                 </div>
 
@@ -446,11 +502,11 @@ export const MedicationsModule: React.FC = () => {
               {/* Notes */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  သတိပြုရန် သို့မဟုတ် မှတ်ချက် (Notes)
+                  မှတ်ချက် သို့မဟုတ် သတိပြုရန် (Notes)
                 </label>
                 <input
                   type="text"
-                  placeholder="ဥပမာ- ရေများများသောက်ရန်၊ ပုံမှန်မပြတ်သောက်ရန်"
+                  placeholder="ဥပမာ- ရေများများသောက်ရန်"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"

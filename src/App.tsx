@@ -26,6 +26,7 @@ import {
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { HealthDataProvider, useHealthData } from './context/HealthDataContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
+import { Sidebar } from './components/layout/Sidebar';
 import { Navbar } from './components/layout/Navbar';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { NotificationCenterModal } from './components/modules/NotificationCenterModal';
@@ -67,6 +68,7 @@ const MainContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
   >(isAdmin ? 'admin' : 'trends');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
@@ -194,12 +196,17 @@ const MainContent: React.FC = () => {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-white text-slate-900 flex flex-col font-sans">
-      {/* Top Navbar - Clean, Pristine White */}
-      <Navbar 
+    <div className="min-h-screen w-full bg-white text-slate-900 flex flex-col font-sans">
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         onOpenUserGuide={() => setIsUserGuideOpen(true)}
+        onOpenPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
         onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
+      />
+      <Navbar 
+        onOpenSidebar={() => setIsSidebarOpen(true)}
         onOpenPassportModal={() => setIsPassportOpen(true)}
         activeTab={activeTab} 
         setActiveTab={(tab: any) => setActiveTab(tab)} 
@@ -207,22 +214,6 @@ const MainContent: React.FC = () => {
 
       {/* 📢 Live Broadcast Running Text (Marquee Ticker) */}
       <BroadcastMarqueeBanner />
-
-      {/* Medical Knowledge Notice Banner (ဗဟုသုတ သီးသန့် အသိပေးချက်) */}
-      <div className="bg-slate-50 border-b border-slate-200 px-3 sm:px-6 py-1.5 text-[11px] text-slate-600 flex items-center justify-between gap-2">
-        <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
-          <div className="flex items-center gap-1.5 truncate">
-            <span className="font-bold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded text-[10px]">အသိပေးချက်</span>
-            <span className="truncate">ဤ App သည် အထွေထွေ ကျန်းမာရေး ဗဟုသုတနှင့် မိသားစု မှတ်တမ်းတင်ရန် သီးသန့် ဖြစ်ပါသည်။ ဆရာဝန်၏ တိုက်ရိုက် ကုသမှုကို အစားမထိုးပါ။</span>
-          </div>
-          <button 
-            onClick={() => setIsPrivacyPolicyOpen(true)}
-            className="text-teal-700 hover:text-teal-800 font-bold shrink-0 underline ml-2 cursor-pointer"
-          >
-            မူဝါဒ & ဒေတာလုံခြုံရေး
-          </button>
-        </div>
-      </div>
 
       {/* Selected Patient Banner for Admin (Simple & Crisp) */}
       {selectedPatient && isAdmin && (
@@ -364,29 +355,7 @@ const MainContent: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
-            <button
-              onClick={() => setIsUserGuideOpen(true)}
-              className="hover:text-emerald-600 transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>အသုံးပြုနည်း လမ်းညွှန်</span>
-            </button>
-            <span className="hidden sm:inline">•</span>
-            <button
-              onClick={() => setIsPrivacyPolicyOpen(true)}
-              className="hover:text-teal-600 transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>မူဝါဒ & ဒေတာလုံခြုံရေး</span>
-            </button>
-            <span className="hidden sm:inline">•</span>
-            <button
-              onClick={() => setIsVersionHistoryOpen(true)}
-              className="hover:text-purple-600 transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>Version History (v2.1.0)</span>
-            </button>
+            <span className="text-slate-400">© 2026 Family Health Portal</span>
           </div>
 
           <p className="text-slate-400">

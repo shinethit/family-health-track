@@ -42,24 +42,21 @@ export const BroadcastMarqueeBanner: React.FC = () => {
 
   return (
     <div className={`w-full text-xs py-2 px-3 sm:px-4 ${bannerStyle} shadow-xs relative z-30 transition-all flex items-center justify-between gap-3 overflow-hidden`}>
-      {/* Left Badge */}
+      {/* Left Badge - Only showing icon if no specific label needed, or just removing the label text */}
       <div className="flex items-center gap-1.5 shrink-0">
         <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1 uppercase tracking-wider ${badgeStyle}`}>
           {hasUrgent ? (
             <>
               <Flame className="w-3 h-3 text-rose-600 animate-bounce" />
-              <span>အရေးပေါ် အသိပေးချက်</span>
+              <span>အရေးပေါ်</span>
             </>
           ) : hasWarning ? (
             <>
               <AlertTriangle className="w-3 h-3 text-amber-600" />
-              <span>ကျန်းမာရေး သတိပေးချက်</span>
+              <span>သတိပေးချက်</span>
             </>
           ) : (
-            <>
-              <Volume2 className="w-3 h-3" />
-              <span>တိုက်ရိုက် အသိပေးစာတန်း</span>
-            </>
+            <Volume2 className="w-3 h-3" />
           )}
         </span>
       </div>
