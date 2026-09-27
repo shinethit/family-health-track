@@ -37,10 +37,30 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.1.2',
+    version: 'v2.1.3',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
+    title: '🚀 [MINOR] Automatic App Version Verification & Upgrade System',
+    badge: 'Minor Release (v2.1.3)',
+    badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
+    highlights: [
+      {
+        title: '🔄 Automatic Version Check & Upgrade Modal (အလိုအလျောက် ဗားရှင်းစစ်ဆေးခြင်းနှင့် အဆင့်မြှင့်တင်ခြင်း)',
+        icon: Sparkles,
+        items: [
+          'အပလီကေးရှင်းထဲသို့ ဝင်ရောက်လာသည်နှင့် တစ်ပြိုင်နက် နောက်ဆုံးထွက် ဗားရှင်း (`v2.1.3`) နှင့် ကိုက်ညီမှုရှိမရှိ အလိုအလျောက် စစ်ဆေးပေးခြင်း',
+          'ဗားရှင်းအသစ်သို့ တင်မြှင့်ပြီးပါက အသစ်ပါဝင်လာသော အဓိက လုပ်ဆောင်ချက်များနှင့်အတူ အသိပေးချက် ပေါ့ပ်အပ် (Upgrade Modal) ပေါ်လာစေခြင်း',
+          'Change Log ကို တိုက်ရိုက်ဝင်ရောက် ကြည့်ရှုနိုင်ပြီး အလွယ်တကူ စတင်အသုံးပြုနိုင်ခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.1.2',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
     title: '🛠️ [MINOR] Sidebar Category Navigation Fix',
     badge: 'Minor Release (v2.1.2)',
     badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
