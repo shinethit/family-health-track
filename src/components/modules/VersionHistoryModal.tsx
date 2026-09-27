@@ -37,10 +37,28 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.1.1',
+    version: 'v2.1.2',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
+    title: '🛠️ [MINOR] Sidebar Category Navigation Fix',
+    badge: 'Minor Release (v2.1.2)',
+    badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
+    highlights: [
+      {
+        title: '📂 Sidebar Menu Category Navigation (ဘေးဘား မီနူးကဏ္ဍများ နှိပ်၍မရခြင်း ပြုပြင်ခြင်း)',
+        icon: Activity,
+        items: [
+          'Sidebar ဘေးဘားရှိ ကျန်းမာရေး မှတ်တမ်းများ၊ သိမှတ်ဖွယ်ရာများ၊ မိခင်/ကလေး/သက်ကြီး၊ အထူးကုနှင့် ကုထုံးများ၊ အရေးပေါ် စသည့် ကဏ္ဍခေါင်းစဉ်များကို နှိပ်လိုက်ပါက သက်ဆိုင်ရာ ကဏ္ဍအလိုက် တိုက်ရိုက်ပြောင်းလဲ ပေါ်လာစေရန် အောင်မြင်စွာ ချိတ်ဆက်ပေးလိုက်ပါပြီ'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.1.1',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
     title: '🛠️ [MINOR] Weight (lb) & Height (ft/in) Tracker Units, Forgot Password Feature & Navigation UX Fixes',
     badge: 'Minor Release (v2.1.1)',
     badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
