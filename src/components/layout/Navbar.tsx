@@ -41,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Family Health Track
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold font-mono">
-                  v2.1.0
+                  v2.1.4
                 </span>
               </div>
             </div>

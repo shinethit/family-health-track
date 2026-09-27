@@ -64,7 +64,7 @@ export const aggregatePatientsFromRecords = (
     if (v.userId && !patientMap.has(v.userId) && !isTargetAdminEmail(v.patientEmail)) {
       const discovered: UserProfile = {
         id: v.userId,
-        displayName: v.patientName || 'လူနာ',
+        displayName: v.userName || v.patientName || 'လူနာ',
         email: v.patientEmail || `${v.userId}@patient.local`,
         role: 'patient',
         chronicConditions: ['သွေးတိုး'],
@@ -72,6 +72,11 @@ export const aggregatePatientsFromRecords = (
       };
       if (isPatientOnly(discovered)) {
         patientMap.set(v.userId, discovered);
+      }
+    } else if (v.userId && patientMap.has(v.userId)) {
+      const p = patientMap.get(v.userId)!;
+      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ') && (v.userName || v.patientName)) {
+        p.displayName = v.userName || v.patientName;
       }
     }
   });
@@ -81,7 +86,7 @@ export const aggregatePatientsFromRecords = (
     if (g.userId && !patientMap.has(g.userId) && !isTargetAdminEmail((g as any).patientEmail)) {
       const discovered: UserProfile = {
         id: g.userId,
-        displayName: g.patientName || 'လူနာ',
+        displayName: g.userName || g.patientName || 'လူနာ',
         email: (g as any).patientEmail || `${g.userId}@patient.local`,
         role: 'patient',
         chronicConditions: ['ဆီးချို'],
@@ -90,6 +95,38 @@ export const aggregatePatientsFromRecords = (
       if (isPatientOnly(discovered)) {
         patientMap.set(g.userId, discovered);
       }
+    } else if (g.userId && patientMap.has(g.userId)) {
+      const p = patientMap.get(g.userId)!;
+      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ') && (g.userName || g.patientName)) {
+        p.displayName = g.userName || g.patientName;
+      }
+    }
+  });
+
+  // 3.1. Discover from BMI Records
+  bmis.forEach(b => {
+    if (b.userId && !patientMap.has(b.userId)) {
+      const discovered: UserProfile = {
+        id: b.userId,
+        displayName: b.userName || 'လူနာ',
+        email: `${b.userId}@patient.local`,
+        role: 'patient',
+        heightCm: b.heightCm,
+        weightKg: b.weightKg,
+        waistCm: b.waistCm,
+        createdAt: b.date || b.createdAt || new Date().toISOString()
+      };
+      if (isPatientOnly(discovered)) {
+        patientMap.set(b.userId, discovered);
+      }
+    } else if (b.userId && patientMap.has(b.userId)) {
+      const p = patientMap.get(b.userId)!;
+      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ') && b.userName) {
+        p.displayName = b.userName;
+      }
+      if (!p.heightCm && b.heightCm) p.heightCm = b.heightCm;
+      if (!p.weightKg && b.weightKg) p.weightKg = b.weightKg;
+      if (!p.waistCm && b.waistCm) p.waistCm = b.waistCm;
     }
   });
 

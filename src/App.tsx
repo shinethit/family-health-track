@@ -75,7 +75,7 @@ const MainContent: React.FC = () => {
   const [isPassportOpen, setIsPassportOpen] = useState(false);
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
   const [showVersionUpdateModal, setShowVersionUpdateModal] = useState(false);
-  const [latestAppVersion, setLatestAppVersion] = useState('v2.1.2');
+  const [latestAppVersion, setLatestAppVersion] = useState('v2.1.4');
 
   // Force pure clean light theme by default ("အဖြူခံနဲ့ ရိုးရိုးလေး")
   useEffect(() => {
@@ -83,7 +83,7 @@ const MainContent: React.FC = () => {
     document.documentElement.classList.add('light');
 
     // Check App Version against stored localStorage version
-    const CURRENT_SYSTEM_VERSION = 'v2.1.2';
+    const CURRENT_SYSTEM_VERSION = 'v2.1.4';
     const lastSeenVersion = localStorage.getItem('myanmar_health_app_version');
     if (!lastSeenVersion || lastSeenVersion !== CURRENT_SYSTEM_VERSION) {
       setShowVersionUpdateModal(true);

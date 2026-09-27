@@ -37,10 +37,29 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.1.3',
+    version: 'v2.1.4',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
+    title: '🛠️ [MINOR] Admin Patient Card Name Aggregation & Multi-Source Discovery Fix',
+    badge: 'Minor Release (v2.1.4)',
+    badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
+    highlights: [
+      {
+        title: '👥 Patient Card Name & Profile Aggregation Fix (လူနာကတ်များတွင် နာမည်မပေါ်ခြင်း ပြဿနာ ဖြေရှင်းခြင်း)',
+        icon: Users,
+        items: [
+          'Admin ၏ လူနာစာရင်း (Patients Portal) တွင် Vitals, Glucose နှင့် BMI မှတ်တမ်းများမှ တစ်ဆင့် လူနာအမည်များကို အလိုအလျောက် ရှာဖွေပေါင်းစပ်ပေးခြင်း (Multi-Source Patient Discovery)',
+          'အမည်မပေါ်သေးသော လူနာကတ်များအတွက် `userName` သို့မဟုတ် `patientName` မှ နာမည်အမှန်ကို အလိုအလျောက် ဖြည့်တင်းဖော်ပြပေးခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.1.3',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
     title: '🚀 [MINOR] Automatic App Version Verification & Upgrade System',
     badge: 'Minor Release (v2.1.3)',
     badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
