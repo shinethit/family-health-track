@@ -26,8 +26,16 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
   const { bpRecords, glucoseRecords, labRecords, doctorAdvices, selectedPatient, latestBMI } = useHealthData();
   const { profile } = useAuth();
 
-  const latestBP = bpRecords.length > 0 ? bpRecords[bpRecords.length - 1] : null;
-  const latestGlucose = glucoseRecords.length > 0 ? glucoseRecords[glucoseRecords.length - 1] : null;
+  // Ensure chronological ascending sorting for chart and latest record calculation
+  const sortedBP = [...bpRecords].sort((a, b) => 
+    new Date(a.date || a.timestamp || 0).getTime() - new Date(b.date || b.timestamp || 0).getTime()
+  );
+  const sortedGlucose = [...glucoseRecords].sort((a, b) => 
+    new Date(a.date || a.timestamp || 0).getTime() - new Date(b.date || b.timestamp || 0).getTime()
+  );
+
+  const latestBP = sortedBP.length > 0 ? sortedBP[sortedBP.length - 1] : null;
+  const latestGlucose = sortedGlucose.length > 0 ? sortedGlucose[sortedGlucose.length - 1] : null;
   const latestLab = labRecords.length > 0 ? labRecords[0] : null;
 
   const bpEval = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic) : null;
@@ -235,10 +243,10 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
       {/* Main Dual Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <BloodPressureChart records={bpRecords} />
+          <BloodPressureChart records={sortedBP} />
         </div>
         <div>
-          <BloodSugarChart records={glucoseRecords} />
+          <BloodSugarChart records={sortedGlucose} />
         </div>
       </div>
 

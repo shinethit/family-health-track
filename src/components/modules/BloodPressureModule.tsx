@@ -18,8 +18,13 @@ export const BloodPressureModule: React.FC = () => {
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Latest record
-  const latestBP = bpRecords.length > 0 ? bpRecords[bpRecords.length - 1] : null;
+  // Ensure chronological ascending sorting for chart and latest record calculation
+  const sortedBP = [...bpRecords].sort((a, b) => 
+    new Date(a.date || a.timestamp || 0).getTime() - new Date(b.date || b.timestamp || 0).getTime()
+  );
+
+  // Latest record (most recent date)
+  const latestBP = sortedBP.length > 0 ? sortedBP[sortedBP.length - 1] : null;
   const latestEvaluation = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic) : null;
 
   // Real-time evaluation for the modal input
@@ -148,7 +153,7 @@ export const BloodPressureModule: React.FC = () => {
       </div>
 
       {/* SVG Trend Chart */}
-      <BloodPressureChart records={bpRecords} />
+      <BloodPressureChart records={sortedBP} />
 
       {/* History Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
@@ -157,7 +162,7 @@ export const BloodPressureModule: React.FC = () => {
             သွေးပေါင်ချိန် မှတ်တမ်းများ (Blood Pressure Log)
           </h3>
           <span className="text-xs text-slate-500 font-mono">
-            {bpRecords.length} records
+            {sortedBP.length} records
           </span>
         </div>
 
@@ -176,7 +181,7 @@ export const BloodPressureModule: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {bpRecords.slice().reverse().map((record) => {
+              {sortedBP.slice().reverse().map((record) => {
                 const evalInfo = calculateBPCategory(record.systolic, record.diastolic);
                 return (
                   <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">

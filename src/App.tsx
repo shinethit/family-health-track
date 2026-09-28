@@ -214,7 +214,7 @@ const MainContent: React.FC = () => {
         onOpenPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
         onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
         onOpenPassportModal={() => setIsPassportOpen(true)}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => setActiveTab(tab as any)}
         setCategoryGroup={setSelectedCategoryGroup}
       />
       {/* Fixed Top Section: Navbar & Marquee */}

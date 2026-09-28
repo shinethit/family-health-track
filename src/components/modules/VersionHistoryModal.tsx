@@ -21,7 +21,7 @@ import {
   Users
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.1.6';
+export const CURRENT_SYSTEM_VERSION = 'v2.1.8';
 
 interface VersionItem {
   version: string;
@@ -40,12 +40,89 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.1.6',
+    version: 'v2.1.8',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
+    title: '🛠️ [PATCH/MINOR] Syntax Error Fixes, System Stability & Comprehensive Version History Sync',
+    badge: 'Latest Release (v2.1.8)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🛠️ Syntax Error & TypeScript Type Fixes (စနစ်အမှား ပြင်ဆင်ခြင်းနှင့် တည်ငြိမ်မှု)',
+        icon: ShieldCheck,
+        items: [
+          'အပလီကေးရှင်းအတွင်း SyntaxError: Unexpected token \'<\' နှင့် TypeScript type mismatch error များကို လုံးဝရှင်းလင်း ပျောက်ကင်းအောင် ပြင်ဆင်ထားခြင်း',
+          'Sidebar နှင့် Tab လဲလှယ်မှုများအတွက် Type Safety ကို အပြည့်အဝ မြှင့်တင်ထားခြင်း'
+        ]
+      },
+      {
+        title: '📊 Blood Pressure Chronological Order & Latest Reading Fix (သွေးပေါင်ချိန် တိုင်းတာချက်နှင့် Graph ပြုပြင်ချက်)',
+        icon: Gauge,
+        items: [
+          'နောက်ဆုံး တိုင်းတာရရှိသော သွေးပေါင်ချိန် (ဥပမာ ၁၄၂/၇၅) ကို ထိပ်ဆုံး/နောက်ဆုံး မှတ်တမ်း ရက်စွဲ အမှန်အတိုင်း တိကျစွာ ရွေးချယ်ဖော်ပြပေးခြင်း',
+          'သွေးပေါင်ချိန် Graph Chart ကို ရက်စွဲအလိုက် (Chronological Ascending Order) ပြောင်းပြန်ဖြစ်နေမှု ပြင်ဆင်၍ ရက်စွဲပါ မှန်ကန်စွာ ဖော်ပြပေးခြင်း'
+        ]
+      },
+      {
+        title: '👥 User Terminology & Comparison Filter (အသုံးပြုသူ စကားလုံး ပြောင်းလဲခြင်းနှင့် နှိုင်းယှဉ်ချက် Filter)',
+        icon: Users,
+        items: [
+          'စနစ်တစ်ခုလုံးနှင့် Admin Portal အနှံ့ "လူနာ" အစား "အသုံးပြုသူ" (User) ဟု ပြောင်းလဲထားခြင်း',
+          'Admin Portal တွင် အသုံးပြုသူ တစ်ယောက်ချင်းစီအား Filter ပြုလုပ်ရှာဖွေနိုင်ခြင်းနှင့် တယောက်နှင့်တယောက် နှိုင်းယှဉ်ကြည့်ရှုနိုင်သည့် စနစ် ပါဝင်ခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.1.7',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '🧪 [MINOR] Chemical Name Mandatory Validation, BP Chronological Graph Fix, User Terminology & Comparison Filter',
+    badge: 'Previous Release (v2.1.7)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+    highlights: [
+      {
+        title: '🧪 Chemical Name Mandatory Field (ဆေးအမည် အစစ် / Active Ingredient မထည့်မဖြစ် စစ်ဆေးခြင်း)',
+        icon: Pill,
+        items: [
+          'Generic / Trade Name (Company ဆေးအမည် - ဥပမာ Biogesic, Norvasc) အပြင် Chemical Name (ဆေးအမည် အစစ် - ဥပမာ Paracetamol, Amlodipine) ကို မထည့်မဖြစ် (Required) စစ်ဆေး၍ ထည့်သွင်းစေခြင်း',
+          'ဆေးမှတ်တမ်းများနှင့် အသုံးပြုသူ စာမျက်နှာများတွင် Trade Name နှင့် Chemical Name ကို သီးသန့် အသားပေး ခွဲခြားဖော်ပြပေးခြင်း'
+        ]
+      },
+      {
+        title: '📊 Blood Pressure Chronological Graph & Latest Reading Fix (သွေးပေါင်ချိန် တိုင်းတာချက်နှင့် Graph ပြုပြင်ချက်)',
+        icon: Gauge,
+        items: [
+          'နောက်ဆုံး တိုင်းတာရရှိသော သွေးပေါင်ချိန် (Latest BP Reading) ကို မှတ်တမ်း ရက်စွဲ/အချိန်အလိုက် တိကျစွာ ရွေးချယ်ဖော်ပြပေးခြင်း',
+          'သွေးပေါင်ချိန် Trend Graph ကို ရက်စွဲအလိုက် ရှေ့နောက် မှန်ကန်စွာ (Chronological Ascending Order) ရေးဆွဲပြသပေးခြင်းနှင့် ရက်စွဲများကို အတိအကျ ပြသပေးခြင်း'
+        ]
+      },
+      {
+        title: '👥 User Terminology & Comparison Filter (အသုံးပြုသူ စကားလုံး ပြောင်းလဲခြင်းနှင့် သီးသန့် Filter / Comparison)',
+        icon: Users,
+        items: [
+          'စနစ်တစ်ခုလုံးနှင့် Admin Portal အနှံ့ "လူနာ" အစား "အသုံးပြုသူ" (User) ဟု ပိုမိုသင့်လျော်သော ဝေါဟာရအဖြစ် ပြောင်းလဲပြင်ဆင်ထားခြင်း',
+          'Admin Portal တွင် သိချင်သော အသုံးပြုသူ တစ်ယောက်ချင်းစီအား Filter ပြုလုပ်ရှာဖွေနိုင်ခြင်းနှင့် တယောက်နှင့်တယောက် နှိုင်းယှဉ်ကြည့်ရှုနိုင်သည့် စနစ်ပါဝင်ခြင်း'
+        ]
+      },
+      {
+        title: '📋 Medication Frequency Dropdown (ဆေးသောက်ရမည့် အကြိမ်အရေအတွက် Dropdown)',
+        icon: Pill,
+        items: [
+          'မနက် (၁) ကြိမ်၊ ည (၁) ကြိမ်၊ မနက် (၁) ကြိမ် + ည (၁) ကြိမ်၊ တရက် (၃) ကြိမ်၊ တရက် (၄) ကြိမ် စသည်တို့ကို Dropdown မှ တိုက်ရိုက်ရွေးချယ်နိုင်ခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.1.6',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
     title: '💊 [MINOR] Generic & Chemical Name Validation, Medication Frequency Dropdown & Admin Full Suite',
-    badge: 'Latest Release (v2.1.6)',
+    badge: 'Minor Release (v2.1.6)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
