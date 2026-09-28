@@ -49,6 +49,7 @@ import { useAuth } from '../../context/AuthContext';
 import { UserProfile, BroadcastTicker } from '../../types/health';
 import { BloodPressureChart, BloodSugarChart } from '../charts/HealthCharts';
 import { calculateBPCategory, calculateGlucoseStatus, calculateAge, calculateBMI, parseDateToMs } from '../../lib/medicalCalculations';
+import { resolveCleanName } from '../../context/HealthDataContext';
 import { EditPatientModal } from './EditPatientModal';
 import { DeletePatientModal } from './DeletePatientModal';
 
@@ -182,21 +183,7 @@ export const AdminPatientPortal: React.FC = () => {
   // Helper to reliably resolve clean user name
   const getResolvedName = (p: Partial<UserProfile> | null | undefined): string => {
     if (!p) return 'အသုံးပြုသူ';
-    const name = (p.displayName || (p as any).name || '').trim();
-    if (name && name !== 'လူနာ' && name !== 'အမည်မရှိ' && name !== 'Patient' && !name.startsWith('pat-') && !name.startsWith('user-')) {
-      return name;
-    }
-    const email = (p.email || '').trim();
-    if (email && email.includes('@')) {
-      const prefix = email.split('@')[0];
-      if (prefix && !prefix.startsWith('pat-') && !prefix.startsWith('user-')) {
-        return prefix;
-      }
-    }
-    if (p.phone) {
-      return `အသုံးပြုသူ (${p.phone})`;
-    }
-    return 'အသုံးပြုသူ';
+    return resolveCleanName(p.displayName || (p as any).name, p.email, p.phone);
   };
 
   // Incomplete record detector
@@ -1327,18 +1314,23 @@ export const AdminPatientPortal: React.FC = () => {
                       <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-indigo-500/20">
                         {initialLetter}
                       </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                          <span>{resolvedName}</span>
-                        </h4>
-                        <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-                          <Mail className="w-3 h-3 shrink-0" />
-                          <span className="truncate max-w-[130px]">{patient.email || '-'}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+                            အသုံးပြုသူ
+                          </span>
+                          <h4 className="font-extrabold text-base text-slate-900 dark:text-white leading-tight truncate">
+                            {resolvedName}
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-1">
+                          <Mail className="w-3 h-3 shrink-0 text-slate-400" />
+                          <span className="truncate max-w-[150px] font-mono">{patient.email || '-'}</span>
                         </div>
                         {patient.phone ? (
-                          <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5">
+                          <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                             <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{patient.phone}</span>
+                            <span className="font-mono">{patient.phone}</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 text-[10px] text-amber-500 font-medium mt-0.5">

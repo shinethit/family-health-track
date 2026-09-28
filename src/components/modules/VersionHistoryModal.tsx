@@ -21,7 +21,7 @@ import {
   Users
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.2.0';
+export const CURRENT_SYSTEM_VERSION = 'v2.2.2';
 
 interface VersionItem {
   version: string;
@@ -40,13 +40,51 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.2.0',
+    version: 'v2.2.2',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
-    title: '👤 [MINOR] System-Wide User Terminology Standardization, User Dropdown Filter & Real-Time Profile Name Sync',
-    badge: 'Latest Release (v2.2.0)',
+    title: '🛠️ [PATCH/MINOR] Syntax Error & Dev Server Asset Interception Fix',
+    badge: 'Latest Release (v2.2.2)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🛠️ Dev Server Asset Interception & Service Worker Fix (စနစ်အမှား ပြင်ဆင်ခြင်း)',
+        icon: ShieldCheck,
+        items: [
+          'Vite Dev Server အတွင်း Service Worker မှ JS Module Asset များကို Intercept ပြုလုပ်၍ HTML ရလဒ် ပြန်ပေးမိသဖြင့် ဖြစ်ပေါ်တတ်သော SyntaxError: Unexpected token \'<\' အမှားအား အပြီးတိုင် ပြင်ဆင်ထားခြင်း',
+          'Dev Server နှင့် Vite Build စနစ်၏ တည်ငြိမ်မှုကို ၁၀၀% အပြည့်အဝ အာမခံချက်ပေးနိုင်ရန် ပြုပြင်ထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.2.1',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '👤 [PATCH/MINOR] Prominent User Display Name Formatting & Intelligent Email-Prefix Title-Case Resolution',
+    badge: 'Previous Release (v2.2.1)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+    highlights: [
+      {
+        title: '👤 Prominent User Display Name Formatting (အသုံးပြုသူကတ်များတွင် နာမည် ထင်ရှားစွာ ဖော်ပြခြင်း)',
+        icon: Users,
+        items: [
+          'အသုံးပြုသူကတ်ပြားများပေါ်တွင် အမည်မပါဘဲ အီးမေးလ်သီးသန့် ပေါ်နေသည့် ပြဿနာကို အပြီးတိုင် ဖြေရှင်းထားခြင်း',
+          'အသုံးပြုသူကတ်တိုင်း၏ ထိပ်ဆုံးတွင် [အသုံးပြုသူ] Badge နှင့်အတူ ဖြည့်သွင်းထားသော အမည်အမှန် သို့မဟုတ် Auto-Formatted Title Case အမည် (ဥပမာ munwet -> Mu Nwet၊ khunthanshwe -> Khun Than Shwe) ကို ထင်ရှားစွာ ဖော်ပြပေးထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.2.0',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '👤 [MINOR] System-Wide User Terminology Standardization, User Dropdown Filter & Real-Time Profile Name Sync',
+    badge: 'Previous Release (v2.2.0)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
     highlights: [
       {
         title: '👤 User Terminology Standardization (စနစ်အနှံ့ အသုံးပြုသူ ဝေါဟာရ စံသတ်မှတ်ခြင်း)',

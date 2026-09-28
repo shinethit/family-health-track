@@ -40,18 +40,36 @@ export const isPatientOnly = (p?: UserProfile | null): boolean => {
 };
 
 // Helper to resolve clean display name for users
-export const resolveCleanName = (name?: string, email?: string): string => {
+export const resolveCleanName = (name?: string, email?: string, phone?: string): string => {
   const trimmed = (name || '').trim();
-  if (trimmed && trimmed !== 'လူနာ' && trimmed !== 'အမည်မရှိ' && trimmed !== 'Patient' && !trimmed.startsWith('pat-') && !trimmed.startsWith('user-')) {
+  if (
+    trimmed && 
+    trimmed !== 'လူနာ' && 
+    trimmed !== 'အမည်မရှိ' && 
+    trimmed !== 'Patient' && 
+    trimmed !== 'အသုံးပြုသူ' &&
+    !trimmed.startsWith('pat-') && 
+    !trimmed.startsWith('user-')
+  ) {
     return trimmed;
   }
   if (email && email.includes('@')) {
-    const prefix = email.split('@')[0];
-    if (prefix && !prefix.startsWith('pat-') && !prefix.startsWith('user-')) {
-      return prefix;
+    const rawPrefix = email.split('@')[0];
+    if (rawPrefix && !rawPrefix.startsWith('pat-') && !rawPrefix.startsWith('user-')) {
+      const formatted = rawPrefix
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/[._\-\d]+/g, ' ')
+        .trim();
+      if (formatted) {
+        return formatted.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      }
+      return rawPrefix.charAt(0).toUpperCase() + rawPrefix.slice(1);
     }
   }
-  return trimmed || 'အသုံးပြုသူ';
+  if (phone) {
+    return `အသုံးပြုသူ (${phone})`;
+  }
+  return 'အသုံးပြုသူ';
 };
 
 // Multi-Source Patient Discovery: Aggregates patient profiles from the users collection and all health record collections
