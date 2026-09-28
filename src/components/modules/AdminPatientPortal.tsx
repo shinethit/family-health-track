@@ -1209,11 +1209,28 @@ export const AdminPatientPortal: React.FC = () => {
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="လူနာအမည်၊ အီးမေးလ် သို့မဟုတ် ဖုန်းနံပါတ်ဖြင့် ရှာဖွေပါ..."
+            placeholder="အသုံးပြုသူအမည်၊ အီးမေးလ် သို့မဟုတ် ဖုန်းနံပါတ်ဖြင့် ရှာဖွေပါ..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-xs rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:border-indigo-500"
           />
+        </div>
+
+        {/* User Filter Dropdown */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">အသုံးပြုသူ Filter:</span>
+          <select
+            value={selectedPatientId || ''}
+            onChange={(e) => setSelectedPatientId(e.target.value || null)}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 focus:outline-none cursor-pointer"
+          >
+            <option value="">🌐 အသုံးပြုသူ အားလုံး (All Users)</option>
+            {actualPatients.map(p => (
+              <option key={p.id} value={p.id}>
+                👤 {getResolvedName(p)} ({p.email || p.phone || p.id})
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

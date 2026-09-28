@@ -120,7 +120,7 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!displayName.trim()) {
-      setErrorMsg('လူနာအမည် ထည့်သွင်းပေးပါရန် လိုအပ်ပါသည်');
+      setErrorMsg('အသုံးပြုသူအမည် ထည့်သွင်းပေးပါရန် လိုအပ်ပါသည်');
       return;
     }
 
@@ -170,10 +170,10 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
-                လူနာမှတ်တမ်း ပြင်ဆင်ခြင်း (Edit Patient Record)
+                အသုံးပြုသူမှတ်တမ်း ပြင်ဆင်ခြင်း (Edit User Record)
               </h3>
               <p className="text-xs text-slate-500">
-                လူနာ ID: <span className="font-mono text-indigo-600 dark:text-indigo-400">{patient.id}</span> • Cloud Firestore နှင့် အချိန်နှင့်တပြေးညီ ချိတ်ဆက်ပြင်ဆင်မည်
+                အသုံးပြုသူ ID: <span className="font-mono text-indigo-600 dark:text-indigo-400">{patient.id}</span> • Cloud Firestore နှင့် အချိန်နှင့်တပြေးညီ ချိတ်ဆက်ပြင်ဆင်မည်
               </p>
             </div>
           </div>
@@ -202,7 +202,7 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  လူနာအမည် <span className="text-rose-500">*</span>
+                  အသုံးပြုသူအမည် <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"

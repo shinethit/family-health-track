@@ -236,13 +236,13 @@ const MainContent: React.FC = () => {
         <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 text-xs text-emerald-900 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-            <span>လက်ရှိ ကြည့်ရှုနေသော လူနာ: <strong>{selectedPatient.displayName}</strong></span>
+            <span>လက်ရှိ ကြည့်ရှုနေသော အသုံးပြုသူ: <strong>{selectedPatient.displayName}</strong></span>
           </div>
           <button 
             onClick={() => setSelectedPatientId(null)}
             className="text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
           >
-            လူနာစာရင်းသို့ ပြန်သွားမည် ✕
+            အသုံးပြုသူများ စာရင်းသို့ ပြန်သွားမည် ✕
           </button>
         </div>
       )}

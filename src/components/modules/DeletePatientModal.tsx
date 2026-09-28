@@ -55,10 +55,10 @@ export const DeletePatientModal: React.FC<DeletePatientModalProps> = ({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
-                လူနာမှတ်တမ်း အပြီးဖျက်ပစ်မည်
+                အသုံးပြုသူမှတ်တမ်း အပြီးဖျက်ပစ်မည်
               </h3>
               <p className="text-xs text-rose-500 font-semibold">
-                Permanent Patient Deletion
+                Permanent User Profile Deletion
               </p>
             </div>
           </div>
@@ -84,7 +84,7 @@ export const DeletePatientModal: React.FC<DeletePatientModalProps> = ({
             <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
             <div className="text-xs text-rose-900 dark:text-rose-200 space-y-1">
               <p className="font-bold">
-                ဤလူနာမှတ်တမ်းအား အပြီးတိုင် ဖျက်ပစ်ရန် သေချာပါသလား?
+                ဤအသုံးပြုသူမှတ်တမ်းအား အပြီးတိုင် ဖျက်ပစ်ရန် သေချာပါသလား?
               </p>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[11px]">
                 ဖျက်ပစ်လိုက်သော အချက်အလက်များကို နောက်ပိုင်းတွင် ပြန်လည်ရယူနိုင်မည် မဟုတ်ပါ။ မှားယွင်းနေသော သို့မဟုတ် စမ်းသပ်ထည့်သွင်းထားသော မှတ်တမ်းများကို သန့်စင်ရန် ဤလုပ်ဆောင်ချက်ကို အသုံးပြုနိုင်ပါသည်။
@@ -127,7 +127,7 @@ export const DeletePatientModal: React.FC<DeletePatientModalProps> = ({
               ဆက်စပ် ဆေးမှတ်တမ်းများအားလုံးပါ တစ်ပြိုင်နက် ဖျက်မည် (Cascade Delete)
             </div>
             <div className="text-[11px] text-slate-500 leading-normal">
-              ဤလူနာ၏ သွေးပေါင်ချိန် (BP)၊ သွေးချို (Glucose)၊ BMI၊ ဓာတ်ခွဲခန်းစစ်ဆေးချက်များနှင့် သောက်ဆေးမှတ်တမ်းများအားလုံးပါ Cloud Database မှ အပြီးတိုင် ရှင်းထုတ်ပေးမည်ဖြစ်ပါသည်။
+              ဤအသုံးပြုသူ၏ သွေးပေါင်ချိန် (BP)၊ သွေးချို (Glucose)၊ BMI၊ ဓာတ်ခွဲခန်းစစ်ဆေးချက်များနှင့် သောက်ဆေးမှတ်တမ်းများအားလုံးပါ Cloud Database မှ အပြီးတိုင် ရှင်းထုတ်ပေးမည်ဖြစ်ပါသည်။
             </div>
           </div>
         </div>

@@ -21,7 +21,7 @@ import {
   Users
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.1.9';
+export const CURRENT_SYSTEM_VERSION = 'v2.2.0';
 
 interface VersionItem {
   version: string;
@@ -40,13 +40,45 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.1.9',
+    version: 'v2.2.0',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
-    title: '📊 [MINOR] Chronological Graph Order, Data Point Numeric Value Labels, Latest Reading Fix & User Filter',
-    badge: 'Latest Release (v2.1.9)',
+    title: '👤 [MINOR] System-Wide User Terminology Standardization, User Dropdown Filter & Real-Time Profile Name Sync',
+    badge: 'Latest Release (v2.2.0)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '👤 User Terminology Standardization (စနစ်အနှံ့ အသုံးပြုသူ ဝေါဟာရ စံသတ်မှတ်ခြင်း)',
+        icon: Users,
+        items: [
+          'Modals, Forms, Tables, Cards နှင့် Dashboard မျက်နှာပြင်များ အားလုံးတွင် "လူနာ" အစား "အသုံးပြုသူ" (User) ဟု စနစ်တကျ အစားထိုး ပြင်ဆင်ထားခြင်း'
+        ]
+      },
+      {
+        title: '🔍 User Selector Dropdown Filter (အသုံးပြုသူ သီးသန့် ရွေးချယ်မှု Filter)',
+        icon: ShieldCheck,
+        items: [
+          'Dashboard နှင့် Trends Overview တွင် အသုံးပြုသူ ရွေးချယ်နိုင်သော Dropdown Filter ထည့်သွင်းပေးထားသဖြင့် သီးသန့် အသုံးပြုသူတစ်ဦးချင်းစီ၏ သွေးပေါင်ချိန်၊ သွေးချို၊ BMI နှင့် ဆေးမှတ်တမ်း Trend များကို လွယ်ကူစွာ စစ်ဆေးနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '✨ Real-Time Profile Name Synchronization (အသုံးပြုသူ အမည် အချိန်နှင့်တပြေးညီ ချိတ်ဆက်ခြင်း)',
+        icon: Sparkles,
+        items: [
+          'အသုံးပြုသူ မိမိအမည် ဖြည့်သွင်းပါက Profile နှင့် Cloud Firestore ပေါ်တွင် နာမည်အမှန်အတိုင်း အချိန်နှင့်တပြေးညီ ချိတ်ဆက် ပေါ်လွင်စေခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.1.9',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '📊 [MINOR] Chronological Graph Order, Data Point Numeric Value Labels & Timestamp Precision',
+    badge: 'Previous Release (v2.1.9)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
     highlights: [
       {
         title: '📊 Blood Pressure Chronological Graph Order & Labels (သွေးပေါင်ချိန် Graph နှင့် ဂဏန်း Label များ)',
@@ -61,14 +93,6 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         icon: ShieldCheck,
         items: [
           'နောက်ဆုံး သွေးပေါင်ချိန် (Latest Blood Pressure) ကို အမှန်တကယ် နောက်ဆုံး တိုင်းတာရရှိသော ရက်စွဲ/အချိန် timestamp အတိုင်း တိကျစွာ ရွေးချယ်ဖော်ပြခြင်း'
-        ]
-      },
-      {
-        title: '👥 User Comparison & Search Filter (အသုံးပြုသူ ရှာဖွေမှုနှင့် နှိုင်းယှဉ်ချက် Filter)',
-        icon: Users,
-        items: [
-          'အသုံးပြုသူ တစ်ယောက်ချင်းစီအား Filter ပြုလုပ်ရှာဖွေနိုင်ခြင်းနှင့် တယောက်နှင့်တယောက် နှိုင်းယှဉ်ကြည့်ရှုနိုင်သည့် စနစ်ပါဝင်ခြင်း',
-          'စနစ်တစ်ခုလုံးအနှံ့ "လူနာ" အစား "အသုံးပြုသူ" (User) ဟူသော ဝေါဟာရဖြင့် ပြောင်းလဲထားခြင်း'
         ]
       }
     ]

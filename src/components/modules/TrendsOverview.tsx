@@ -6,7 +6,8 @@ import {
   Stethoscope,
   AlertTriangle,
   Scale,
-  Calendar
+  Calendar,
+  Users
 } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -24,7 +25,17 @@ interface TrendsOverviewProps {
 }
 
 export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab }) => {
-  const { bpRecords, glucoseRecords, labRecords, doctorAdvices, selectedPatient, latestBMI } = useHealthData();
+  const { 
+    bpRecords, 
+    glucoseRecords, 
+    labRecords, 
+    doctorAdvices, 
+    selectedPatient, 
+    selectedPatientId,
+    setSelectedPatientId,
+    patientsList,
+    latestBMI 
+  } = useHealthData();
   const { profile } = useAuth();
 
   // Ensure chronological ascending sorting for chart and latest record calculation using parseDateToMs
@@ -100,8 +111,8 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
               {selectedPatient 
                 ? `${selectedPatient.displayName} ၏ ကျန်းမာရေးအခြေအနေ` 
                 : profile?.role === 'admin' 
-                  ? 'လူနာများ၏ ဘက်စုံ ကျန်းမာရေးသုံးသပ်ချက် (Admin Portal)' 
-                  : `${profile?.displayName || 'လူနာ'} ၏ ဘက်စုံ ကျန်းမာရေးအခြေအနေ`}
+                  ? 'အသုံးပြုသူများ၏ ဘက်စုံ ကျန်းမာရေးသုံးသပ်ချက် (Admin Dashboard)' 
+                  : `${profile?.displayName || 'အသုံးပြုသူ'} ၏ ဘက်စုံ ကျန်းမာရေးအခြေအနေ`}
             </h2>
             <p className="text-xs text-emerald-100 mt-1 max-w-xl">
               သွေးတိုး၊ ဆီးချို၊ BMI & ခန္ဓာကိုယ်အချိုးအစား၊ အသည်း၊ ကျောက်ကပ်နှင့် အဆီဓာတ် ပေါင်းစပ်စောင့်ကြပ်မှု
@@ -118,6 +129,39 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
           </div>
         </div>
       </div>
+
+      {/* User Selector Filter Bar for Admin / Multi-user view */}
+      {profile?.role === 'admin' && patientsList.length > 0 && (
+        <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-xs font-extrabold text-slate-900 dark:text-white block">
+                အသုံးပြုသူ Filter (Select User for Trend Analysis)
+              </span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                {selectedPatient 
+                  ? `လက်ရှိ ပြသနေသော အသုံးပြုသူ: ${selectedPatient.displayName}` 
+                  : 'အသုံးပြုသူ အားလုံး၏ ဒေတာပေါင်းချုပ် ဖော်ပြထားပါသည်'}
+              </span>
+            </div>
+          </div>
+          <select
+            value={selectedPatientId || ''}
+            onChange={(e) => setSelectedPatientId(e.target.value || null)}
+            className="px-4 py-2 rounded-2xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-xs"
+          >
+            <option value="">🌐 အသုံးပြုသူ အားလုံး (All Users)</option>
+            {patientsList.map(p => (
+              <option key={p.id} value={p.id}>
+                👤 {p.displayName || 'အသုံးပြုသူ'} ({p.email || p.phone || p.id})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Alerts Banner if any */}
       {alerts.length > 0 && (

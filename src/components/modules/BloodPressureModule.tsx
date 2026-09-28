@@ -71,7 +71,7 @@ export const BloodPressureModule: React.FC = () => {
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {selectedPatient 
-              ? `လူနာ ${selectedPatient.displayName} ၏ သွေးပေါင်ချိန်စောင့်ကြည့်မှု` 
+              ? `အသုံးပြုသူ ${selectedPatient.displayName} ၏ သွေးပေါင်ချိန်စောင့်ကြည့်မှု` 
               : 'နေ့စဉ် သွေးပေါင်ချိန်ကို တိကျစွာမှတ်တမ်းတင်ပြီး နှလုံးနှင့် သွေးကြောကျန်းမာရေးကို စောင့်ကြပ်ပါ'}
           </p>
         </div>

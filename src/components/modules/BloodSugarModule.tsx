@@ -84,7 +84,7 @@ export const BloodSugarModule: React.FC = () => {
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {selectedPatient 
-              ? `လူနာ ${selectedPatient.displayName} ၏ သကြားဓာတ်စောင့်ကြည့်မှု`
+              ? `အသုံးပြုသူ ${selectedPatient.displayName} ၏ သကြားဓာတ်စောင့်ကြည့်မှု`
               : 'အစာမစားမီ၊ အစာစားပြီး ၂ နာရီနှင့် ၃ လပတ် သကြားဓာတ်တို့ကို စနစ်တကျ မှတ်တမ်းတင်ပါ'}
           </p>
         </div>
