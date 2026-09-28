@@ -21,7 +21,7 @@ import {
   Users
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.2.2';
+export const CURRENT_SYSTEM_VERSION = 'v2.2.3';
 
 interface VersionItem {
   version: string;
@@ -40,13 +40,32 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.2.2',
+    version: 'v2.2.3',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
-    title: '🛠️ [PATCH/MINOR] Syntax Error & Dev Server Asset Interception Fix',
-    badge: 'Latest Release (v2.2.2)',
+    title: '🎨 [PATCH/MINOR] Dark Mode Heading Contrast Fix & User Name Visibility Resolution',
+    badge: 'Latest Release (v2.2.3)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🎨 Dark Mode Heading Contrast & User Name Fix (အသုံးပြုသူအမည် မမြင်ရခြင်း ပြဿနာ အပြီးတိုင် ပြင်ဆင်ခြင်း)',
+        icon: Users,
+        items: [
+          'Dark Mode (အမှောင်ရောင်စနစ်) တွင် Global CSS ကြောင့် Heading စာလုံးများ အမည်းရောင်ဖြစ်ပြီး Background အမည်းနှင့် ထပ်တူကျကာ အသုံးပြုသူအမည် (ဥပမာ Mu Nwet Khint Zaw) မမြင်ရဘဲ ဖြစ်နေခဲ့သော Contrast ပြဿနာအား အပြီးတိုင် ပြင်ဆင်လိုက်ခြင်း',
+          'အသုံးပြုသူကတ်များနှင့် အသုံးပြုသူ Profile Header များတွင် အသုံးပြုသူအမည်ကို Theme အားလုံး (Light & Dark) ၌ ၁၀၀% အပြည့်အဝ ထင်ရှားစွာ ပေါ်လွင်စေရန် ပြုပြင်ထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.2.2',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '🛠️ [PATCH/MINOR] Syntax Error & Dev Server Asset Interception Fix',
+    badge: 'Previous Release (v2.2.2)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
     highlights: [
       {
         title: '🛠️ Dev Server Asset Interception & Service Worker Fix (စနစ်အမှား ပြင်ဆင်ခြင်း)',
