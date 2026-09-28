@@ -21,6 +21,8 @@ import {
   Users
 } from 'lucide-react';
 
+export const CURRENT_SYSTEM_VERSION = 'v2.1.6';
+
 interface VersionItem {
   version: string;
   type: 'major' | 'minor';
@@ -38,10 +40,72 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.1.4',
+    version: 'v2.1.6',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
+    title: '💊 [MINOR] Generic & Chemical Name Validation, Medication Frequency Dropdown & Admin Full Suite',
+    badge: 'Latest Release (v2.1.6)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🧪 Trade Name vs Chemical Name Validation (ဆေးအမည်နှင့် ဓာတုဆေးအမည် အစစ် မထည့်မဖြစ် ထည့်ခိုင်းခြင်း)',
+        icon: Pill,
+        items: [
+          'Generic / Trade Name (Company ဆေးအမည် - ဥပမာ Biogesic, Norvasc) နှင့် Chemical Name (ဆေးအမည် အစစ် - ဥပမာ Paracetamol, Amlodipine) ကို မထည့်မဖြစ် (Required) ထည့်သွင်းစေခြင်း',
+          'ဆေးမှတ်တမ်းများနှင့် Admin Portal တွင် Trade Name နှင့် Chemical Name ကို သီးသန့် အသားပေး ခွဲခြားဖော်ပြပေးခြင်း'
+        ]
+      },
+      {
+        title: '📋 Medication Frequency Dropdown (ဆေးသောက်ရမည့် အကြိမ်အရေအတွက် Dropdown)',
+        icon: Pill,
+        items: [
+          'မနက် (၁) ကြိမ်၊ ည (၁) ကြိမ်၊ မနက် (၁) ကြိမ် + ည (၁) ကြိမ်၊ တရက် (၃) ကြိမ်၊ တရက် (၄) ကြိမ်၊ တရက် (၅) ကြိမ် စသည်တို့ကို Dropdown မှ တိုက်ရိုက်ရွေးချယ်နိုင်ခြင်း',
+          'စိတ်ကြိုက် သောက်ရမည့် အကြိမ်အရေအတွက် ရေးသွင်းနိုင်သည့် Custom Option ပါဝင်ခြင်း'
+        ]
+      },
+      {
+        title: '🩺 Admin Complete Medication Records (အသုံးပြုသူများ၏ ဆေးမှတ်တမ်း အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း)',
+        icon: Stethoscope,
+        items: [
+          'Admin အနေဖြင့် အသုံးပြုသူတစ်ဦးချင်းစီ၏ ဆေးအမည်၊ ဓာတ်ခွဲဓာတုအမည်၊ ဆေးပမာဏ (Dosage)၊ သောက်ချိန် (Frequency)၊ အစာနှင့် ဆက်စပ်မှု (Meal Timing)၊ စတင်သောက်သည့်ရက်နှင့် ဆေးညွှန်းဆရာဝန် မှတ်ချက်များကို အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း',
+          'လူနာအစား "အသုံးပြုသူ" (User) ဟု ပိုမိုသင့်လျော်သော ဝေါဟာရအဖြစ် စနစ်အနှံ့ ပြောင်းလဲပြင်ဆင်ထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.1.5',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '💊 [MINOR] Medication Frequency Dropdown & Admin Full Medication Records Suite',
+    badge: 'Minor Release (v2.1.5)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '📋 Medication Frequency Dropdown (ဆေးသောက်ရမည့် အကြိမ်အရေအတွက် Dropdown)',
+        icon: Pill,
+        items: [
+          'မနက် (၁) ကြိမ်၊ ည (၁) ကြိမ်၊ မနက် (၁) ကြိမ် + ည (၁) ကြိမ်၊ တရက် (၃) ကြိမ်၊ တရက် (၄) ကြိမ်၊ တရက် (၅) ကြိမ် စသည်တို့ကို Dropdown မှ တိုက်ရိုက်ရွေးချယ်နိုင်ခြင်း',
+          'လိုအပ်ပါက စိတ်ကြိုက် သောက်ရမည့် အကြိမ်အရေအတွက် ရေးသွင်းနိုင်သည့် Custom Option ပါဝင်ခြင်း'
+        ]
+      },
+      {
+        title: '🩺 Admin Complete Medication Records (အသုံးပြုသူများ၏ ဆေးမှတ်တမ်း အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း)',
+        icon: Stethoscope,
+        items: [
+          'Admin အနေဖြင့် အသုံးပြုသူတစ်ဦးချင်းစီ၏ ဆေးအမည်၊ ဓာတ်ခွဲဓာတုအမည်၊ ဆေးပမာဏ (Dosage)၊ သောက်ချိန် (Frequency)၊ အစာနှင့် ဆက်စပ်မှု (Meal Timing)၊ စတင်သောက်သည့်ရက်နှင့် ဆေးညွှန်းဆရာဝန် မှတ်ချက်များကို အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း',
+          'လူနာအစား "အသုံးပြုသူ" (User) ဟု ပိုမိုသင့်လျော်သော ဝေါဟာရအဖြစ် စနစ်အနှံ့ ပြောင်းလဲပြင်ဆင်ထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.1.4',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
     title: '🛠️ [MINOR] Admin Patient Card Name Aggregation & Multi-Source Discovery Fix',
     badge: 'Minor Release (v2.1.4)',
     badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',

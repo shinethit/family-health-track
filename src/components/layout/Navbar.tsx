@@ -8,17 +8,20 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { ChangePasswordModal } from '../auth/ChangePasswordModal';
+import { CURRENT_SYSTEM_VERSION } from '../modules/VersionHistoryModal';
 
 interface NavbarProps {
   onOpenSidebar: () => void;
   onOpenNotifications: () => void;
   onOpenPassportModal?: () => void;
+  onOpenVersionHistory?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
   onOpenSidebar,
   onOpenNotifications,
-  onOpenPassportModal
+  onOpenPassportModal,
+  onOpenVersionHistory
 }) => {
   const { profile, isAdmin } = useAuth();
   const { unreadCount } = useNotifications();
@@ -40,9 +43,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
                   Family Health Track
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold font-mono">
-                  v2.1.4
-                </span>
+                <button
+                  onClick={onOpenVersionHistory}
+                  className="px-2 py-0.5 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-extrabold font-mono transition-colors cursor-pointer"
+                  title="Version History ကြည့်ရန် နှိပ်ပါ"
+                >
+                  {CURRENT_SYSTEM_VERSION}
+                </button>
               </div>
             </div>
 

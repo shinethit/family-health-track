@@ -179,13 +179,33 @@ export const AdminPatientPortal: React.FC = () => {
   // Pure patient list (excluding admin)
   const actualPatients = patientsList.filter(isPatientOnly);
 
+  // Helper to reliably resolve clean user name
+  const getResolvedName = (p: Partial<UserProfile> | null | undefined): string => {
+    if (!p) return 'အသုံးပြုသူ';
+    const name = (p.displayName || (p as any).name || '').trim();
+    if (name && name !== 'လူနာ' && name !== 'အမည်မရှိ' && name !== 'Patient' && !name.startsWith('pat-') && !name.startsWith('user-')) {
+      return name;
+    }
+    const email = (p.email || '').trim();
+    if (email && email.includes('@')) {
+      const prefix = email.split('@')[0];
+      if (prefix && !prefix.startsWith('pat-') && !prefix.startsWith('user-')) {
+        return prefix;
+      }
+    }
+    if (p.phone) {
+      return `အသုံးပြုသူ (${p.phone})`;
+    }
+    return 'အသုံးပြုသူ';
+  };
+
   // Incomplete record detector
   const isIncompletePatient = (p: UserProfile): boolean => {
-    const name = (p.displayName || '').trim();
+    const resolved = getResolvedName(p);
     const email = (p.email || '').toLowerCase().trim();
     const phone = (p.phone || '').trim();
 
-    const isGenericName = !name || name === 'လူနာ' || name === 'အမည်မရှိ' || name.startsWith('pat-') || name.startsWith('user-') || name.includes('6bce6599');
+    const isGenericName = !resolved || resolved === 'လူနာ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-') || resolved.includes('6bce6599');
     const isFakeEmail = !email || email.includes('@patient.local') || email.includes('demo');
     const missingPhone = !phone;
     const missingAge = (!p.age || p.age <= 0) && !p.dateOfBirth;
@@ -197,11 +217,11 @@ export const AdminPatientPortal: React.FC = () => {
 
   const getMissingFields = (p: UserProfile): string[] => {
     const missing: string[] = [];
-    const name = (p.displayName || '').trim();
+    const resolved = getResolvedName(p);
     const email = (p.email || '').toLowerCase().trim();
     const phone = (p.phone || '').trim();
 
-    if (!name || name === 'လူနာ' || name === 'အမည်မရှိ' || name.startsWith('pat-') || name.startsWith('user-') || name.includes('6bce6599')) {
+    if (!resolved || resolved === 'လူနာ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-') || resolved.includes('6bce6599')) {
       missing.push('အမည်မစုံ');
     }
     if (!email || email.includes('@patient.local')) {
@@ -226,7 +246,9 @@ export const AdminPatientPortal: React.FC = () => {
 
   // Filter patients
   const filteredPatients = actualPatients.filter(p => {
-    const matchesSearch = (p.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const resolvedName = getResolvedName(p);
+    const matchesSearch = resolvedName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (p.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (p.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (p.phone && p.phone.includes(searchTerm));
     
@@ -309,23 +331,23 @@ export const AdminPatientPortal: React.FC = () => {
           </div>
         )}
 
-        {/* Back navigation & Patient header */}
+        {/* Back navigation & User header */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSelectedPatientId(null)}
               className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
-              title="လူနာစာရင်းသို့ ပြန်သွားမည်"
+              title="အသုံးပြုသူများ စာရင်းသို့ ပြန်သွားမည်"
             >
               <X className="w-5 h-5" />
             </button>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                  {selectedPatient.displayName || 'အမည်မရှိ'}
+                  {getResolvedName(selectedPatient)}
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
-                  လူနာမှတ်တမ်း (Patient Record)
+                  အသုံးပြုသူမှတ်တမ်း (User Profile)
                 </span>
                 {patientBMI && (
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${patientBMI.bgColor} ${patientBMI.color} ${patientBMI.borderColor}`}>
@@ -351,7 +373,7 @@ export const AdminPatientPortal: React.FC = () => {
             <button
               onClick={() => setEditingPatient(selectedPatient)}
               className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
-              title="လူနာအချက်အလက်များ ပြင်ဆင်မည်"
+              title="အသုံးပြုသူ အချက်အလက်များ ပြင်ဆင်မည်"
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>ပြင်ဆင်မည်</span>
@@ -359,16 +381,16 @@ export const AdminPatientPortal: React.FC = () => {
             <button
               onClick={() => setDeletingPatient(selectedPatient)}
               className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/80 hover:bg-rose-600 hover:text-white text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer flex items-center gap-1.5"
-              title="လူနာမှတ်တမ်း ဖျက်ပစ်မည်"
+              title="အသုံးပြုသူ မှတ်တမ်း ဖျက်ပစ်မည်"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>လူနာဖျက်မည်</span>
+              <span>ဖျက်မည်</span>
             </button>
             <button
               onClick={() => setSelectedPatientId(null)}
               className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
             >
-              လူနာများစာရင်းသို့ ပြန်သွားမည်
+              အသုံးပြုသူများ စာရင်းသို့ ပြန်သွားမည်
             </button>
           </div>
         </div>
@@ -487,7 +509,7 @@ export const AdminPatientPortal: React.FC = () => {
           </div>
         </div>
 
-        {/* Charts & Trends for Selected Patient */}
+        {/* Charts & Trends for Selected User */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
@@ -514,11 +536,143 @@ export const AdminPatientPortal: React.FC = () => {
           </div>
         </div>
 
+        {/* 💊 Complete Medications Records Section for Admin */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-sky-100 dark:bg-sky-950/80 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                <Pill className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                  သောက်သုံးနေသော ဆေးဝါးမှတ်တမ်း အပြည့်အစုံ (Complete Medication Records)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  အသုံးပြုသူ သောက်သုံးနေသော ဆေးဝါးများ၊ ဆေးချိန်ညွှန်းချက်များနှင့် သောက်ရမည့် အကြိမ်များ
+                </p>
+              </div>
+            </div>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-sky-50 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 self-start sm:self-auto">
+              စုစုပေါင်း: {medications.length} မျိုး
+            </span>
+          </div>
+
+          {medications.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {medications.map((med) => {
+                return (
+                  <div
+                    key={med.id}
+                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-3 relative"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                              {med.name}
+                            </h4>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              (Trade/Brand Name)
+                            </span>
+                            {med.prescribedFor && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                {med.prescribedFor}
+                              </span>
+                            )}
+                          </div>
+                          {med.genericName && (
+                            <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded-md border border-sky-100 dark:border-sky-900/40 w-fit">
+                              <span>🧪 Chemical Name (ဆေးအမည် အစစ်):</span>
+                              <span className="font-mono text-slate-800 dark:text-slate-200">{med.genericName}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            med.status === 'active'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300'
+                          }`}
+                        >
+                          {med.status === 'active' ? '● Active သောက်ဆဲ' : '○ Paused ရပ်နား'}
+                        </span>
+                      </div>
+
+                      {/* Medicine detail matrix */}
+                      <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+                        <div className="p-2 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800">
+                          <span className="text-[10px] text-slate-400 block font-medium">ဆေးပမာဏ (Dosage)</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
+                            {med.dosage || '-'}
+                          </span>
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800">
+                          <span className="text-[10px] text-slate-400 block font-medium">သောက်ရမည့်အကြိမ်</span>
+                          <span className="font-bold text-sky-700 dark:text-sky-300">
+                            {med.frequency || '-'}
+                          </span>
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800">
+                          <span className="text-[10px] text-slate-400 block font-medium">အစားအသောက် ဆက်စပ်မှု</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">
+                            {med.timing === 'before_meal' && 'အစာမစားမီ'}
+                            {med.timing === 'after_meal' && 'အစာစားပြီး'}
+                            {med.timing === 'with_meal' && 'အစာစားနေစဉ်'}
+                            {med.timing === 'bedtime' && 'ညအိပ်ရာဝင်'}
+                            {med.timing === 'anytime' && 'အချိန်မရွေး'}
+                            {!med.timing && '-'}
+                          </span>
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800">
+                          <span className="text-[10px] text-slate-400 block font-medium">စတင်သောက်သည့်ရက်</span>
+                          <span className="font-mono text-slate-700 dark:text-slate-300">
+                            {med.startDate || '-'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Notes & Doctor */}
+                      {med.notes && (
+                        <div className="mt-2.5 p-2 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 text-xs text-slate-700 dark:text-slate-300 border border-sky-100 dark:border-sky-900/40">
+                          <span className="font-bold text-sky-800 dark:text-sky-300">မှတ်ချက်: </span>
+                          <span>{med.notes}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {med.prescribingDoctor && (
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                        <span>ဆေးညွှန်းဆရာဝန်:</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{med.prescribingDoctor}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1">
+              <Pill className="w-6 h-6 text-slate-400 mx-auto" />
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                သောက်သုံးနေသော ဆေးဝါးမှတ်တမ်း မရှိသေးပါ
+              </p>
+              <p className="text-[11px] text-slate-400">
+                အသုံးပြုသူမှ ဆေးဝါးမှတ်တမ်း ထည့်သွင်းထားပါက ဤနေရာတွင် ဆေးအမည်၊ ဆေးချိန်နှင့် အကြိမ်အရေအတွက် အပြည့်အစုံကို မြင်တွေ့ရမည်ဖြစ်ပါသည်။
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Doctor Clinical Advice Composer */}
         <div className="bg-gradient-to-br from-indigo-900/10 via-purple-900/10 to-transparent bg-white dark:bg-slate-900 p-6 rounded-3xl border border-indigo-200 dark:border-indigo-900/60 shadow-xs space-y-4">
           <div className="flex items-center gap-2.5 text-indigo-700 dark:text-indigo-300 font-bold text-base">
             <Stethoscope className="w-5 h-5" />
-            <span>လူနာထံသို့ ဆေးပညာဆိုင်ရာ အကြံပြုချက် ပေးပို့မည် (Doctor Advice)</span>
+            <span>အသုံးပြုသူထံသို့ ဆေးပညာဆိုင်ရာ အကြံပြုချက် ပေးပို့မည် (Doctor Advice)</span>
           </div>
 
           <form onSubmit={handleSendAdvice} className="space-y-4">
@@ -555,7 +709,7 @@ export const AdminPatientPortal: React.FC = () => {
               {adviceSuccess && (
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 animate-in fade-in">
                   <CheckCircle className="w-4 h-4" />
-                  <span>လူနာထံသို့ အကြံပြုချက် အောင်မြင်စွာ ပေးပို့ပြီးပါပြီ!</span>
+                  <span>အသုံးပြုသူထံသို့ အကြံပြုချက် အောင်မြင်စွာ ပေးပို့ပြီးပါပြီ!</span>
                 </div>
               )}
               <button
@@ -632,10 +786,10 @@ export const AdminPatientPortal: React.FC = () => {
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">
-              ဆေးခန်းနှင့် လူနာမှတ်တမ်း စီမံခန့်ခွဲမှု (Admin Portal)
+              ကျန်းမာရေးစနစ်နှင့် အသုံးပြုသူများ စီမံခန့်ခွဲမှု (Admin Portal)
             </h1>
             <p className="text-xs text-slate-600 max-w-2xl">
-              လူနာများ၏ သွေးပေါင်၊ ဆီးချို၊ BMI နှင့် ဓာတ်ခွဲခန်း ဆေးစစ်ချက် မှတ်တမ်းများကို သီးသန့် လုံခြုံစွာ စီမံခန့်ခွဲပြီး ဆေးပညာဆိုင်ရာ အကြံပြုချက်များ ပေးပို့နိုင်ပါသည်။
+              အသုံးပြုသူများ၏ သွေးပေါင်၊ ဆီးချို၊ BMI နှင့် ဓာတ်ခွဲခန်း ဆေးစစ်ချက် မှတ်တမ်းများကို သီးသန့် လုံခြုံစွာ စီမံခန့်ခွဲပြီး ဆေးပညာဆိုင်ရာ အကြံပြုချက်များ ပေးပို့နိုင်ပါသည်။
             </p>
           </div>
 
@@ -645,7 +799,7 @@ export const AdminPatientPortal: React.FC = () => {
               className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold text-white transition-all flex items-center gap-2 cursor-pointer shadow-sm"
             >
               <UserPlus className="w-4 h-4" />
-              <span>+ လူနာအသစ် စာရင်းသွင်းမည်</span>
+              <span>+ အသုံးပြုသူအသစ် စာရင်းသွင်းမည်</span>
             </button>
             <button
               onClick={handleRefresh}
@@ -1134,6 +1288,8 @@ export const AdminPatientPortal: React.FC = () => {
       {filteredPatients.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredPatients.map((patient) => {
+            const resolvedName = getResolvedName(patient);
+            const initialLetter = resolvedName ? resolvedName.charAt(0).toUpperCase() : 'U';
             const ageObj = calculateAge(patient.dateOfBirth);
             const resolvedAge = ageObj ? ageObj.years : (patient.age || null);
             const bmi = (patient.weightKg && patient.heightCm)
@@ -1150,11 +1306,11 @@ export const AdminPatientPortal: React.FC = () => {
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2.5">
                       <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-indigo-500/20">
-                        {patient.displayName ? patient.displayName.charAt(0) : 'P'}
+                        {initialLetter}
                       </div>
                       <div>
                         <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                          <span>{patient.displayName || 'အမည်မရှိ'}</span>
+                          <span>{resolvedName}</span>
                         </h4>
                         <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
                           <Mail className="w-3 h-3 shrink-0" />
@@ -1233,7 +1389,7 @@ export const AdminPatientPortal: React.FC = () => {
                     onClick={() => setSelectedPatientId(patient.id)}
                     className="w-full py-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 hover:text-white text-indigo-700 dark:text-indigo-300 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <span>လူနာမှတ်တမ်း အပြည့်အစုံ ကြည့်မည်</span>
+                    <span>အသုံးပြုသူမှတ်တမ်း အပြည့်အစုံ ကြည့်မည်</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
 
@@ -1241,7 +1397,7 @@ export const AdminPatientPortal: React.FC = () => {
                     <button
                       onClick={() => setEditingPatient(patient)}
                       className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-200 hover:text-indigo-700 dark:hover:text-indigo-300 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700"
-                      title="လူနာအချက်အလက် ပြင်ဆင်မည်"
+                      title="အသုံးပြုသူ အချက်အလက် ပြင်ဆင်မည်"
                     >
                       <Edit3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                       <span>ပြင်ဆင်မည်</span>
@@ -1249,7 +1405,7 @@ export const AdminPatientPortal: React.FC = () => {
                     <button
                       onClick={() => setDeletingPatient(patient)}
                       className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-slate-700 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-300 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700"
-                      title="လူနာမှတ်တမ်း ဖျက်ပစ်မည်"
+                      title="အသုံးပြုသူ မှတ်တမ်း ဖျက်ပစ်မည်"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                       <span>ဖျက်မည်</span>
@@ -1266,10 +1422,10 @@ export const AdminPatientPortal: React.FC = () => {
             <Users className="w-7 h-7" />
           </div>
           <h3 className="font-bold text-base text-slate-900 dark:text-white">
-            လူနာစာရင်း မရှိသေးပါ (သို့မဟုတ် ရှာမတွေ့ပါ)
+            အသုံးပြုသူစာရင်း မရှိသေးပါ (သို့မဟုတ် ရှာမတွေ့ပါ)
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            လူနာအကောင့်များနှင့် ကျန်းမာရေးမှတ်တမ်းများကို Database မှ စနစ်တကျ လုံခြုံစွာ စစ်ဆေးနိုင်ပါသည်။ အောက်ပါ "အချက်အလက်များ ပြန်လည်ဆွဲယူမည်" ခလုတ်ကို နှိပ်၍လည်း နောက်ဆုံးရဒေတာများကို တိုက်ရိုက် Sync ပြုလုပ်နိုင်ပါသည်။
+            အသုံးပြုသူ အကောင့်များနှင့် ကျန်းမာရေးမှတ်တမ်းများကို Database မှ စနစ်တကျ လုံခြုံစွာ စစ်ဆေးနိုင်ပါသည်။ အောက်ပါ "အချက်အလက်များ ပြန်လည်ဆွဲယူမည်" ခလုတ်ကို နှိပ်၍လည်း နောက်ဆုံးရဒေတာများကို တိုက်ရိုက် Sync ပြုလုပ်နိုင်ပါသည်။
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <button
@@ -1277,7 +1433,7 @@ export const AdminPatientPortal: React.FC = () => {
               className="px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer shadow-xs"
             >
               <UserPlus className="w-4 h-4" />
-              <span>လူနာအသစ် စာရင်းသွင်းမည်</span>
+              <span>+ အသုံးပြုသူအသစ် စာရင်းသွင်းမည်</span>
             </button>
             <button
               onClick={handleRefresh}
@@ -1290,7 +1446,7 @@ export const AdminPatientPortal: React.FC = () => {
         </div>
       )}
 
-      {/* Add Patient Modal */}
+      {/* Add Patient / User Modal */}
       {isAddPatientOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-4 my-8">
@@ -1301,7 +1457,7 @@ export const AdminPatientPortal: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                    လူနာအသစ် စာရင်းသွင်းရန်
+                    အသုံးပြုသူအသစ် စာရင်းသွင်းရန်
                   </h3>
                   <p className="text-[11px] text-slate-500">
                     Firestore Database ထဲသို့ တိုက်ရိုက် အချိန်နှင့်တပြေးညီ သိမ်းဆည်းပေးမည်ဖြစ်ပါသည်
@@ -1319,7 +1475,7 @@ export const AdminPatientPortal: React.FC = () => {
             <form onSubmit={handleCreatePatient} className="space-y-4 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  လူနာအမည် *
+                  အသုံးပြုသူ အမည် *
                 </label>
                 <input
                   type="text"

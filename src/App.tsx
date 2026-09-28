@@ -30,7 +30,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Navbar } from './components/layout/Navbar';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { NotificationCenterModal } from './components/modules/NotificationCenterModal';
-import { VersionHistoryModal } from './components/modules/VersionHistoryModal';
+import { VersionHistoryModal, CURRENT_SYSTEM_VERSION } from './components/modules/VersionHistoryModal';
 import { UserGuideModal } from './components/modules/UserGuideModal';
 import { HealthPassportModal } from './components/modules/HealthPassportModal';
 import { BloodPressureModule } from './components/modules/BloodPressureModule';
@@ -75,7 +75,7 @@ const MainContent: React.FC = () => {
   const [isPassportOpen, setIsPassportOpen] = useState(false);
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
   const [showVersionUpdateModal, setShowVersionUpdateModal] = useState(false);
-  const [latestAppVersion, setLatestAppVersion] = useState('v2.1.4');
+  const [latestAppVersion, setLatestAppVersion] = useState(CURRENT_SYSTEM_VERSION);
 
   // Force pure clean light theme by default ("အဖြူခံနဲ့ ရိုးရိုးလေး")
   useEffect(() => {
@@ -83,7 +83,6 @@ const MainContent: React.FC = () => {
     document.documentElement.classList.add('light');
 
     // Safe Version Check & Popup Trigger
-    const CURRENT_SYSTEM_VERSION = 'v2.1.4';
     const lastSeenVersion = localStorage.getItem('myanmar_health_app_version');
     if (!lastSeenVersion || lastSeenVersion !== CURRENT_SYSTEM_VERSION) {
       setShowVersionUpdateModal(true);
@@ -224,6 +223,7 @@ const MainContent: React.FC = () => {
           onOpenSidebar={() => setIsSidebarOpen(true)}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           onOpenPassportModal={() => setIsPassportOpen(true)}
+          onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
         />
         <BroadcastMarqueeBanner />
       </div>
@@ -368,10 +368,10 @@ const MainContent: React.FC = () => {
                 <span>ပါဝင်လာသော အဓိက ပြောင်းလဲမှုများ:</span>
               </div>
               <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
-                <li>Weight (lb) နှင့် Height (ft/in) ဖြင့် ထည့်သွင်းနိုင်ခြင်း</li>
-                <li>စကားဝှက်မေ့ပါက ပြန်လည်ရယူနိုင်သည့် အင်္ဂါရပ် (Forgot Password)</li>
-                <li>ဘေးဘား မီနူးကဏ္ဍများ အားလုံး တိုက်ရိုက်နှိပ်၍ ရသွားခြင်း</li>
-                <li>အလိုအလျောက် ဗားရှင်းစစ်ဆေးခြင်းနှင့် အပ်ဒိတ်တင်ပေးခြင်း</li>
+                <li>Trade Name အပြင် Chemical Name (ဆေးအမည် အစစ်) ကို မထည့်မဖြစ် ထည့်သွင်းစေခြင်း</li>
+                <li>ဆေးသောက်ရမည့်အကြိမ် (Frequency) Dropdown အသစ် ထည့်သွင်းခြင်း</li>
+                <li>Admin အနေဖြင့် အသုံးပြုသူများ၏ ဆေးမှတ်တမ်း အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း</li>
+                <li>လူနာအစား "အသုံးပြုသူ" ဟူသော သုံးနှုန်းမှုဖြင့် စနစ်အနှံ့ ပြင်ဆင်ထားရှိခြင်း</li>
               </ul>
             </div>
 

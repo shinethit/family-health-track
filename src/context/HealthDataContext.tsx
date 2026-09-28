@@ -39,6 +39,21 @@ export const isPatientOnly = (p?: UserProfile | null): boolean => {
   return true;
 };
 
+// Helper to resolve clean display name for users
+export const resolveCleanName = (name?: string, email?: string): string => {
+  const trimmed = (name || '').trim();
+  if (trimmed && trimmed !== 'လူနာ' && trimmed !== 'အမည်မရှိ' && trimmed !== 'Patient' && !trimmed.startsWith('pat-') && !trimmed.startsWith('user-')) {
+    return trimmed;
+  }
+  if (email && email.includes('@')) {
+    const prefix = email.split('@')[0];
+    if (prefix && !prefix.startsWith('pat-') && !prefix.startsWith('user-')) {
+      return prefix;
+    }
+  }
+  return trimmed || 'အသုံးပြုသူ';
+};
+
 // Multi-Source Patient Discovery: Aggregates patient profiles from the users collection and all health record collections
 export const aggregatePatientsFromRecords = (
   existingUsers: UserProfile[],
@@ -55,7 +70,11 @@ export const aggregatePatientsFromRecords = (
   // 1. Add all from existing users collection
   existingUsers.forEach(u => {
     if (u && u.id && isPatientOnly(u)) {
-      patientMap.set(u.id, u);
+      const cleanUser = {
+        ...u,
+        displayName: resolveCleanName(u.displayName || (u as any).name, u.email),
+      };
+      patientMap.set(u.id, cleanUser);
     }
   });
 
@@ -64,7 +83,7 @@ export const aggregatePatientsFromRecords = (
     if (v.userId && !patientMap.has(v.userId) && !isTargetAdminEmail(v.patientEmail)) {
       const discovered: UserProfile = {
         id: v.userId,
-        displayName: v.userName || v.patientName || 'လူနာ',
+        displayName: resolveCleanName(v.userName || v.patientName, v.patientEmail),
         email: v.patientEmail || `${v.userId}@patient.local`,
         role: 'patient',
         chronicConditions: ['သွေးတိုး'],
@@ -75,8 +94,8 @@ export const aggregatePatientsFromRecords = (
       }
     } else if (v.userId && patientMap.has(v.userId)) {
       const p = patientMap.get(v.userId)!;
-      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ') && (v.userName || v.patientName)) {
-        p.displayName = v.userName || v.patientName;
+      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && (v.userName || v.patientName)) {
+        p.displayName = resolveCleanName(v.userName || v.patientName, v.patientEmail || p.email);
       }
     }
   });
@@ -86,7 +105,7 @@ export const aggregatePatientsFromRecords = (
     if (g.userId && !patientMap.has(g.userId) && !isTargetAdminEmail((g as any).patientEmail)) {
       const discovered: UserProfile = {
         id: g.userId,
-        displayName: g.userName || g.patientName || 'လူနာ',
+        displayName: resolveCleanName(g.userName || g.patientName, (g as any).patientEmail),
         email: (g as any).patientEmail || `${g.userId}@patient.local`,
         role: 'patient',
         chronicConditions: ['ဆီးချို'],
@@ -97,8 +116,8 @@ export const aggregatePatientsFromRecords = (
       }
     } else if (g.userId && patientMap.has(g.userId)) {
       const p = patientMap.get(g.userId)!;
-      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ') && (g.userName || g.patientName)) {
-        p.displayName = g.userName || g.patientName;
+      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && (g.userName || g.patientName)) {
+        p.displayName = resolveCleanName(g.userName || g.patientName, (g as any).patientEmail || p.email);
       }
     }
   });
@@ -108,7 +127,7 @@ export const aggregatePatientsFromRecords = (
     if (b.userId && !patientMap.has(b.userId)) {
       const discovered: UserProfile = {
         id: b.userId,
-        displayName: b.userName || 'လူနာ',
+        displayName: resolveCleanName(b.userName, undefined),
         email: `${b.userId}@patient.local`,
         role: 'patient',
         heightCm: b.heightCm,
@@ -121,12 +140,33 @@ export const aggregatePatientsFromRecords = (
       }
     } else if (b.userId && patientMap.has(b.userId)) {
       const p = patientMap.get(b.userId)!;
-      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ') && b.userName) {
-        p.displayName = b.userName;
+      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && b.userName) {
+        p.displayName = resolveCleanName(b.userName, p.email);
       }
       if (!p.heightCm && b.heightCm) p.heightCm = b.heightCm;
       if (!p.weightKg && b.weightKg) p.weightKg = b.weightKg;
       if (!p.waistCm && b.waistCm) p.waistCm = b.waistCm;
+    }
+  });
+
+  // 3.2. Discover from Medications Records
+  meds.forEach(m => {
+    if (m.userId && !patientMap.has(m.userId)) {
+      const discovered: UserProfile = {
+        id: m.userId,
+        displayName: resolveCleanName((m as any).userName || (m as any).patientName, (m as any).patientEmail),
+        email: (m as any).patientEmail || `${m.userId}@patient.local`,
+        role: 'patient',
+        createdAt: m.startDate || (m as any).createdAt || new Date().toISOString()
+      };
+      if (isPatientOnly(discovered)) {
+        patientMap.set(m.userId, discovered);
+      }
+    } else if (m.userId && patientMap.has(m.userId)) {
+      const p = patientMap.get(m.userId)!;
+      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && ((m as any).userName || (m as any).patientName)) {
+        p.displayName = resolveCleanName((m as any).userName || (m as any).patientName, (m as any).patientEmail || p.email);
+      }
     }
   });
 

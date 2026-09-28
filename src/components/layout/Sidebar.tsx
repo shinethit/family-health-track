@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { CURRENT_SYSTEM_VERSION } from '../modules/VersionHistoryModal';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -90,7 +91,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="border-t border-slate-100 my-2 pt-2">
                 <MenuItem icon={ShieldCheck} label="မူဝါဒ & ဒေတာလုံခြုံရေး" onClick={() => { onOpenPrivacyPolicy(); onClose(); }} />
-                <MenuItem icon={History} label="Version History" onClick={() => { onOpenVersionHistory(); onClose(); }} />
+                <button 
+                  onClick={() => { onOpenVersionHistory(); onClose(); }} 
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-100 text-slate-700 cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <History className="w-5 h-5 text-emerald-600" />
+                    <span className="font-bold text-sm">Version History</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold font-mono">
+                      {CURRENT_SYSTEM_VERSION}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                  </div>
+                </button>
             </div>
           </div>
 
