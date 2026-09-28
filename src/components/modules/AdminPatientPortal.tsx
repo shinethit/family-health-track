@@ -48,7 +48,7 @@ import { useHealthData, isPatientOnly } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { UserProfile, BroadcastTicker } from '../../types/health';
 import { BloodPressureChart, BloodSugarChart } from '../charts/HealthCharts';
-import { calculateBPCategory, calculateGlucoseStatus, calculateAge, calculateBMI } from '../../lib/medicalCalculations';
+import { calculateBPCategory, calculateGlucoseStatus, calculateAge, calculateBMI, parseDateToMs } from '../../lib/medicalCalculations';
 import { EditPatientModal } from './EditPatientModal';
 import { DeletePatientModal } from './DeletePatientModal';
 
@@ -299,8 +299,10 @@ export const AdminPatientPortal: React.FC = () => {
 
   // If a patient is selected, display their comprehensive clinical dashboard!
   if (selectedPatientId && selectedPatient) {
-    const latestBP = bpRecords.length > 0 ? bpRecords[bpRecords.length - 1] : null;
-    const latestGlucose = glucoseRecords.length > 0 ? glucoseRecords[glucoseRecords.length - 1] : null;
+    const sortedUserBP = [...bpRecords].sort((a, b) => parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt));
+    const sortedUserGlu = [...glucoseRecords].sort((a, b) => parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt));
+    const latestBP = sortedUserBP.length > 0 ? sortedUserBP[sortedUserBP.length - 1] : null;
+    const latestGlucose = sortedUserGlu.length > 0 ? sortedUserGlu[sortedUserGlu.length - 1] : null;
     const latestLab = labRecords.length > 0 ? labRecords[0] : null;
 
     const patientAgeObj = calculateAge(selectedPatient.dateOfBirth);

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BloodPressureRecord, BloodSugarRecord } from '../../types/health';
-import { Activity, Droplets, Calendar, Filter } from 'lucide-react';
+import { Activity, Droplets } from 'lucide-react';
+import { parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
 
 interface BloodPressureChartProps {
   records: BloodPressureRecord[];
@@ -21,10 +22,17 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
     );
   }
 
+  // Explicitly sort records chronologically ascending (oldest on left, newest/latest on right)
+  const sortedRecords = [...records].sort((a, b) => {
+    const timeA = parseDateToMs(a.date || a.timestamp || a.createdAt);
+    const timeB = parseDateToMs(b.date || b.timestamp || b.createdAt);
+    return timeA - timeB;
+  });
+
   // Dimensions & Coordinates
   const width = 640;
-  const height = 260;
-  const padding = { top: 25, right: 30, bottom: 45, left: 45 };
+  const height = 270;
+  const padding = { top: 30, right: 30, bottom: 45, left: 45 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
 
@@ -41,20 +49,20 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
     return padding.left + (idx / (total - 1)) * chartW;
   };
 
-  const systolicPoints = records.map((r, i) => ({
-    x: getX(i, records.length),
+  const systolicPoints = sortedRecords.map((r, i) => ({
+    x: getX(i, sortedRecords.length),
     y: getY(r.systolic || 120),
     record: r,
   }));
 
-  const diastolicPoints = records.map((r, i) => ({
-    x: getX(i, records.length),
+  const diastolicPoints = sortedRecords.map((r, i) => ({
+    x: getX(i, sortedRecords.length),
     y: getY(r.diastolic || 80),
     record: r,
   }));
 
-  const pulsePoints = records.map((r, i) => ({
-    x: getX(i, records.length),
+  const pulsePoints = sortedRecords.map((r, i) => ({
+    x: getX(i, sortedRecords.length),
     y: getY(r.pulse || r.pulseRate || 75),
     record: r,
   }));
@@ -78,7 +86,7 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
           <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
-            သွေးပေါင်ချိန် ပြောင်းလဲမှု Trend (Blood Pressure)
+            သွေးပေါင်ချိန် ပြောင်းလဲမှု Trend (Blood Pressure Chart)
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             စံနှုန်း: 120/80 mmHg (ပုံမှန်) / ≥ 140/90 mmHg (သွေးတိုးအဆင့် ၂)
@@ -194,17 +202,17 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
             strokeLinejoin="round"
           />
 
-          {/* Data Points */}
-          {records.map((r, i) => {
-            const x = getX(i, records.length);
+          {/* Data Points and Value Labels */}
+          {sortedRecords.map((r, i) => {
+            const x = getX(i, sortedRecords.length);
             const ySys = getY(r.systolic || 120);
             const yDia = getY(r.diastolic || 80);
             const yPls = getY(r.pulse || r.pulseRate || 75);
             const isHovered = hoveredPoint?.id === r.id;
-            const dateStr = r.date || r.timestamp || '';
+            const dateObj = formatDateLabel(r.date || r.timestamp || r.createdAt);
 
             return (
-              <g key={r.id} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(r)} onMouseLeave={() => setHoveredPoint(null)}>
+              <g key={r.id || i} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(r)} onMouseLeave={() => setHoveredPoint(null)}>
                 {/* Vertical hover line */}
                 {isHovered && (
                   <line
@@ -218,6 +226,16 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
                     className="text-slate-400 dark:text-slate-600"
                   />
                 )}
+
+                {/* Systolic Value Label above dot */}
+                <text
+                  x={x}
+                  y={ySys - 8}
+                  textAnchor="middle"
+                  className="text-[10px] font-extrabold fill-rose-600 dark:fill-rose-400 font-mono"
+                >
+                  {r.systolic}
+                </text>
 
                 {/* Systolic dot */}
                 <circle
@@ -237,6 +255,16 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
                   strokeWidth="2"
                 />
 
+                {/* Diastolic Value Label below dot */}
+                <text
+                  x={x}
+                  y={yDia + 14}
+                  textAnchor="middle"
+                  className="text-[10px] font-extrabold fill-blue-600 dark:fill-blue-400 font-mono"
+                >
+                  {r.diastolic}
+                </text>
+
                 {/* Pulse dot */}
                 <circle
                   cx={x}
@@ -246,23 +274,25 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
                   strokeWidth="1.5"
                 />
 
-                {/* X axis Date label */}
+                {/* X axis Date label (DD-MM-YYYY) */}
                 <text
                   x={x}
                   y={height - padding.bottom + 16}
                   textAnchor="middle"
-                  className="text-[9.5px] fill-slate-500 dark:fill-slate-400 font-sans"
+                  className="text-[9.5px] fill-slate-700 dark:fill-slate-300 font-bold font-mono"
                 >
-                  {dateStr.includes('T') ? dateStr.split('T')[0].substring(5) : dateStr.substring(5)}
+                  {dateObj.date}
                 </text>
-                <text
-                  x={x}
-                  y={height - padding.bottom + 27}
-                  textAnchor="middle"
-                  className="text-[8px] fill-slate-400 font-mono"
-                >
-                  {dateStr.includes('T') ? dateStr.split('T')[1]?.substring(0, 5) : ''}
-                </text>
+                {dateObj.time && (
+                  <text
+                    x={x}
+                    y={height - padding.bottom + 27}
+                    textAnchor="middle"
+                    className="text-[8px] fill-slate-400 font-mono"
+                  >
+                    {dateObj.time}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -274,7 +304,7 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
         <div className="mt-2.5 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div>
             <span className="font-semibold text-slate-800 dark:text-slate-200">
-              ရက်စွဲ: {(hoveredPoint.date || hoveredPoint.timestamp || '').replace('T', ' ')}
+              ရက်စွဲ: {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).date} {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).time}
             </span>
             {hoveredPoint.notes && (
               <span className="text-slate-500 dark:text-slate-400 ml-2">
@@ -319,21 +349,27 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
     );
   }
 
-  // Filter records based on selected type
-  const filtered = records.filter(r => {
-    const t = r.type || r.timing;
-    if (filterType === 'all') return true;
-    if (filterType === 'fasting') return t === 'fasting';
-    if (filterType === 'post_prandial') return t === 'post_meal_2h' || t === 'post_prandial';
-    if (filterType === 'hba1c') return t === 'hba1c';
-    return true;
-  });
+  // Filter and sort chronologically ascending
+  const filtered = records
+    .filter(r => {
+      const t = r.type || r.timing;
+      if (filterType === 'all') return true;
+      if (filterType === 'fasting') return t === 'fasting';
+      if (filterType === 'post_prandial') return t === 'post_meal_2h' || t === 'post_prandial' || t === 'postprandial';
+      if (filterType === 'hba1c') return t === 'hba1c';
+      return true;
+    })
+    .sort((a, b) => {
+      const timeA = parseDateToMs(a.date || a.timestamp || a.createdAt);
+      const timeB = parseDateToMs(b.date || b.timestamp || b.createdAt);
+      return timeA - timeB;
+    });
 
   const isHbA1c = filterType === 'hba1c';
 
   const width = 640;
-  const height = 260;
-  const padding = { top: 25, right: 30, bottom: 45, left: 45 };
+  const height = 270;
+  const padding = { top: 30, right: 30, bottom: 45, left: 45 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
 
@@ -477,13 +513,13 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
             strokeLinejoin="round"
           />
 
-          {/* Points */}
+          {/* Points and Value Labels */}
           {filtered.map((r, i) => {
             const x = getX(i, filtered.length);
             const val = r.value || r.glucoseValue || 100;
             const y = getY(val);
             const isHovered = hoveredPoint?.id === r.id;
-            const dateStr = r.date || r.timestamp || '';
+            const dateObj = formatDateLabel(r.date || r.timestamp || r.createdAt);
             const tType = r.type || r.timing;
 
             let dotColor = '#10b981'; // normal
@@ -493,7 +529,7 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
             if (tType === 'hba1c') dotColor = '#8b5cf6';
 
             return (
-              <g key={r.id} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(r)} onMouseLeave={() => setHoveredPoint(null)}>
+              <g key={r.id || i} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(r)} onMouseLeave={() => setHoveredPoint(null)}>
                 {isHovered && (
                   <line
                     x1={x}
@@ -507,6 +543,16 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
                   />
                 )}
 
+                {/* Sugar Value Label above dot */}
+                <text
+                  x={x}
+                  y={y - 8}
+                  textAnchor="middle"
+                  className="text-[10px] font-extrabold fill-emerald-600 dark:fill-emerald-400 font-mono"
+                >
+                  {val}
+                </text>
+
                 <circle
                   cx={x}
                   cy={y}
@@ -516,13 +562,14 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
                   strokeWidth="2"
                 />
 
+                {/* X axis Date label (DD-MM-YYYY) */}
                 <text
                   x={x}
                   y={height - padding.bottom + 16}
                   textAnchor="middle"
-                  className="text-[9.5px] fill-slate-500 dark:fill-slate-400 font-sans"
+                  className="text-[9.5px] fill-slate-700 dark:fill-slate-300 font-bold font-mono"
                 >
-                  {dateStr.includes('T') ? dateStr.split('T')[0].substring(5) : dateStr.substring(5)}
+                  {dateObj.date}
                 </text>
               </g>
             );
@@ -534,7 +581,7 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
         <div className="mt-2.5 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div>
             <span className="font-semibold text-slate-800 dark:text-slate-200">
-              ရက်စွဲ: {(hoveredPoint.date || hoveredPoint.timestamp || '').replace('T', ' ')}
+              ရက်စွဲ: {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).date}
             </span>
             {hoveredPoint.mealInfo && (
               <span className="text-slate-500 dark:text-slate-400 ml-2">
@@ -555,3 +602,4 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
     </div>
   );
 };
+

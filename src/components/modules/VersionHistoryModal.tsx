@@ -21,7 +21,7 @@ import {
   Users
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.1.8';
+export const CURRENT_SYSTEM_VERSION = 'v2.1.9';
 
 interface VersionItem {
   version: string;
@@ -40,13 +40,47 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.1.8',
+    version: 'v2.1.9',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
-    title: '🛠️ [PATCH/MINOR] Syntax Error Fixes, System Stability & Comprehensive Version History Sync',
-    badge: 'Latest Release (v2.1.8)',
+    title: '📊 [MINOR] Chronological Graph Order, Data Point Numeric Value Labels, Latest Reading Fix & User Filter',
+    badge: 'Latest Release (v2.1.9)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '📊 Blood Pressure Chronological Graph Order & Labels (သွေးပေါင်ချိန် Graph နှင့် ဂဏန်း Label များ)',
+        icon: Gauge,
+        items: [
+          'သွေးပေါင်ချိန် Graph Trend ကို ရှေးကျသော ရက်စွဲမှ အသစ်ဆုံး ရက်စွဲသို့ (Chronological Ascending Order: ဥပမာ ၂၆-၉-၂၀၂၆၊ ၂၇-၉-၂၀၂၆၊ ၂၈-၉-၂၀၂၆) မှန်ကန်စွာ ရေးဆွဲပြသခြင်း',
+          'Graph အမှတ်တစ်ခုချင်းစီပေါ်တွင် အပေါ်သွေး/အောက်သွေး တန်ဖိုး ဂဏန်း Label (Systolic/Diastolic Numeric Labels) များကို တိုက်ရိုက် တပ်ဆင်ဖော်ပြပေးခြင်း'
+        ]
+      },
+      {
+        title: '⏱️ Timestamp Precision for Latest BP Reading (နောက်ဆုံး သွေးပေါင်ချိန် တိကျစွာ ရွေးချယ်ခြင်း)',
+        icon: ShieldCheck,
+        items: [
+          'နောက်ဆုံး သွေးပေါင်ချိန် (Latest Blood Pressure) ကို အမှန်တကယ် နောက်ဆုံး တိုင်းတာရရှိသော ရက်စွဲ/အချိန် timestamp အတိုင်း တိကျစွာ ရွေးချယ်ဖော်ပြခြင်း'
+        ]
+      },
+      {
+        title: '👥 User Comparison & Search Filter (အသုံးပြုသူ ရှာဖွေမှုနှင့် နှိုင်းယှဉ်ချက် Filter)',
+        icon: Users,
+        items: [
+          'အသုံးပြုသူ တစ်ယောက်ချင်းစီအား Filter ပြုလုပ်ရှာဖွေနိုင်ခြင်းနှင့် တယောက်နှင့်တယောက် နှိုင်းယှဉ်ကြည့်ရှုနိုင်သည့် စနစ်ပါဝင်ခြင်း',
+          'စနစ်တစ်ခုလုံးအနှံ့ "လူနာ" အစား "အသုံးပြုသူ" (User) ဟူသော ဝေါဟာရဖြင့် ပြောင်းလဲထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.1.8',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '🛠️ [PATCH/MINOR] Syntax Error Fixes, System Stability & Comprehensive Version History Sync',
+    badge: 'Previous Release (v2.1.8)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
     highlights: [
       {
         title: '🛠️ Syntax Error & TypeScript Type Fixes (စနစ်အမှား ပြင်ဆင်ခြင်းနှင့် တည်ငြိမ်မှု)',
@@ -60,7 +94,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         title: '📊 Blood Pressure Chronological Order & Latest Reading Fix (သွေးပေါင်ချိန် တိုင်းတာချက်နှင့် Graph ပြုပြင်ချက်)',
         icon: Gauge,
         items: [
-          'နောက်ဆုံး တိုင်းတာရရှိသော သွေးပေါင်ချိန် (ဥပမာ ၁၄၂/၇၅) ကို ထိပ်ဆုံး/နောက်ဆုံး မှတ်တမ်း ရက်စွဲ အမှန်အတိုင်း တိကျစွာ ရွေးချယ်ဖော်ပြပေးခြင်း',
+          'နောက်ဆုံး တိုင်းတာရရှိသော သွေးပေါင်ချိန်ကို ထိပ်ဆုံး/နောက်ဆုံး မှတ်တမ်း ရက်စွဲ အမှန်အတိုင်း တိကျစွာ ရွေးချယ်ဖော်ပြပေးခြင်း',
           'သွေးပေါင်ချိန် Graph Chart ကို ရက်စွဲအလိုက် (Chronological Ascending Order) ပြောင်းပြန်ဖြစ်နေမှု ပြင်ဆင်၍ ရက်စွဲပါ မှန်ကန်စွာ ဖော်ပြပေးခြင်း'
         ]
       },
@@ -68,8 +102,8 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         title: '👥 User Terminology & Comparison Filter (အသုံးပြုသူ စကားလုံး ပြောင်းလဲခြင်းနှင့် နှိုင်းယှဉ်ချက် Filter)',
         icon: Users,
         items: [
-          'စနစ်တစ်ခုလုံးနှင့် Admin Portal အနှံ့ "လူနာ" အစား "အသုံးပြုသူ" (User) ဟု ပြောင်းလဲထားခြင်း',
-          'Admin Portal တွင် အသုံးပြုသူ တစ်ယောက်ချင်းစီအား Filter ပြုလုပ်ရှာဖွေနိုင်ခြင်းနှင့် တယောက်နှင့်တယောက် နှိုင်းယှဉ်ကြည့်ရှုနိုင်သည့် စနစ် ပါဝင်ခြင်း'
+          'စနစ်တစ်ခုလုံးအနှံ့ "လူနာ" အစား "အသုံးပြုသူ" (User) ဟု ပြောင်းလဲထားခြင်း',
+          'အသုံးပြုသူ တစ်ယောက်ချင်းစီအား Filter ပြုလုပ်ရှာဖွေနိုင်ခြင်းနှင့် တယောက်နှင့်တယောက် နှိုင်းယှဉ်ကြည့်ရှုနိုင်သည့် စနစ် ပါဝင်ခြင်း'
         ]
       }
     ]
@@ -81,7 +115,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
     isLatest: false,
     title: '🧪 [MINOR] Chemical Name Mandatory Validation, BP Chronological Graph Fix, User Terminology & Comparison Filter',
     badge: 'Previous Release (v2.1.7)',
-    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+    badgeColor: 'bg-slate-100 text-slate-300 border-slate-300',
     highlights: [
       {
         title: '🧪 Chemical Name Mandatory Field (ဆေးအမည် အစစ် / Active Ingredient မထည့်မဖြစ် စစ်ဆေးခြင်း)',
@@ -103,8 +137,8 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         title: '👥 User Terminology & Comparison Filter (အသုံးပြုသူ စကားလုံး ပြောင်းလဲခြင်းနှင့် သီးသန့် Filter / Comparison)',
         icon: Users,
         items: [
-          'စနစ်တစ်ခုလုံးနှင့် Admin Portal အနှံ့ "လူနာ" အစား "အသုံးပြုသူ" (User) ဟု ပိုမိုသင့်လျော်သော ဝေါဟာရအဖြစ် ပြောင်းလဲပြင်ဆင်ထားခြင်း',
-          'Admin Portal တွင် သိချင်သော အသုံးပြုသူ တစ်ယောက်ချင်းစီအား Filter ပြုလုပ်ရှာဖွေနိုင်ခြင်းနှင့် တယောက်နှင့်တယောက် နှိုင်းယှဉ်ကြည့်ရှုနိုင်သည့် စနစ်ပါဝင်ခြင်း'
+          'စနစ်တစ်ခုလုံးအနှံ့ "လူနာ" အစား "အသုံးပြုသူ" (User) ဟု ပိုမိုသင့်လျော်သော ဝေါဟာရအဖြစ် ပြောင်းလဲပြင်ဆင်ထားခြင်း',
+          'သိချင်သော အသုံးပြုသူ တစ်ယောက်ချင်းစီအား Filter ပြုလုပ်ရှာဖွေနိုင်ခြင်းနှင့် တယောက်နှင့်တယောက် နှိုင်းယှဉ်ကြည့်ရှုနိုင်သည့် စနစ်ပါဝင်ခြင်း'
         ]
       },
       {
@@ -121,7 +155,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
     isLatest: false,
-    title: '💊 [MINOR] Generic & Chemical Name Validation, Medication Frequency Dropdown & Admin Full Suite',
+    title: '💊 [MINOR] Generic & Chemical Name Validation, Medication Frequency Dropdown',
     badge: 'Minor Release (v2.1.6)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
@@ -130,7 +164,7 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         icon: Pill,
         items: [
           'Generic / Trade Name (Company ဆေးအမည် - ဥပမာ Biogesic, Norvasc) နှင့် Chemical Name (ဆေးအမည် အစစ် - ဥပမာ Paracetamol, Amlodipine) ကို မထည့်မဖြစ် (Required) ထည့်သွင်းစေခြင်း',
-          'ဆေးမှတ်တမ်းများနှင့် Admin Portal တွင် Trade Name နှင့် Chemical Name ကို သီးသန့် အသားပေး ခွဲခြားဖော်ပြပေးခြင်း'
+          'ဆေးမှတ်တမ်းများနှင့် အသုံးပြုသူ ကဏ္ဍများတွင် Trade Name နှင့် Chemical Name ကို သီးသန့် အသားပေး ခွဲခြားဖော်ပြပေးခြင်း'
         ]
       },
       {
@@ -142,10 +176,10 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         ]
       },
       {
-        title: '🩺 Admin Complete Medication Records (အသုံးပြုသူများ၏ ဆေးမှတ်တမ်း အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း)',
+        title: '🩺 Medication Records Suite (အသုံးပြုသူများ၏ ဆေးမှတ်တမ်း ပြည့်စုံစွာ ပါဝင်ခြင်း)',
         icon: Stethoscope,
         items: [
-          'Admin အနေဖြင့် အသုံးပြုသူတစ်ဦးချင်းစီ၏ ဆေးအမည်၊ ဓာတ်ခွဲဓာတုအမည်၊ ဆေးပမာဏ (Dosage)၊ သောက်ချိန် (Frequency)၊ အစာနှင့် ဆက်စပ်မှု (Meal Timing)၊ စတင်သောက်သည့်ရက်နှင့် ဆေးညွှန်းဆရာဝန် မှတ်ချက်များကို အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း',
+          'အသုံးပြုသူတစ်ဦးချင်းစီ၏ ဆေးအမည်၊ ဓာတ်ခွဲဓာတုအမည်၊ ဆေးပမာဏ (Dosage)၊ သောက်ချိန် (Frequency)၊ အစာနှင့် ဆက်စပ်မှု (Meal Timing)၊ စတင်သောက်သည့်ရက်နှင့် ဆေးညွှန်းဆရာဝန် မှတ်ချက်များကို အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း',
           'လူနာအစား "အသုံးပြုသူ" (User) ဟု ပိုမိုသင့်လျော်သော ဝေါဟာရအဖြစ် စနစ်အနှံ့ ပြောင်းလဲပြင်ဆင်ထားခြင်း'
         ]
       }

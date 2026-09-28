@@ -15,7 +15,8 @@ import {
   calculateBPCategory, 
   calculateGlucoseStatus, 
   calculateBMI, 
-  calculateAge 
+  calculateAge,
+  parseDateToMs
 } from '../../lib/medicalCalculations';
 
 interface TrendsOverviewProps {
@@ -26,12 +27,12 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
   const { bpRecords, glucoseRecords, labRecords, doctorAdvices, selectedPatient, latestBMI } = useHealthData();
   const { profile } = useAuth();
 
-  // Ensure chronological ascending sorting for chart and latest record calculation
+  // Ensure chronological ascending sorting for chart and latest record calculation using parseDateToMs
   const sortedBP = [...bpRecords].sort((a, b) => 
-    new Date(a.date || a.timestamp || 0).getTime() - new Date(b.date || b.timestamp || 0).getTime()
+    parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
   );
   const sortedGlucose = [...glucoseRecords].sort((a, b) => 
-    new Date(a.date || a.timestamp || 0).getTime() - new Date(b.date || b.timestamp || 0).getTime()
+    parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
   );
 
   const latestBP = sortedBP.length > 0 ? sortedBP[sortedBP.length - 1] : null;

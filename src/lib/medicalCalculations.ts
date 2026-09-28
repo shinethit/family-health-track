@@ -590,3 +590,69 @@ export function evaluateThyroidFunction(tsh?: number, ft4?: number, ft3?: number
     symptomsMm: []
   };
 }
+
+/**
+ * Parse any date string or number into epoch milliseconds reliably.
+ * Supports ISO, YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY, etc.
+ */
+export function parseDateToMs(dateStr?: string | number): number {
+  if (!dateStr) return 0;
+  if (typeof dateStr === 'number') return dateStr;
+  
+  const str = String(dateStr).trim();
+  if (!str) return 0;
+
+  // Standard ISO / JS Date format test first
+  const parsedDirect = new Date(str).getTime();
+  if (!isNaN(parsedDirect)) return parsedDirect;
+
+  // DD-MM-YYYY or DD/MM/YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1;
+    const year = parseInt(dmyMatch[3], 10);
+    const hours = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 0;
+    const mins = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0;
+    const secs = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0;
+    const dt = new Date(year, month, day, hours, mins, secs);
+    if (!isNaN(dt.getTime())) return dt.getTime();
+  }
+
+  // YYYY-MM-DD or YYYY/MM/DD
+  const ymdMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (ymdMatch) {
+    const year = parseInt(ymdMatch[1], 10);
+    const month = parseInt(ymdMatch[2], 10) - 1;
+    const day = parseInt(ymdMatch[3], 10);
+    const hours = ymdMatch[4] ? parseInt(ymdMatch[4], 10) : 0;
+    const mins = ymdMatch[5] ? parseInt(ymdMatch[5], 10) : 0;
+    const secs = ymdMatch[6] ? parseInt(ymdMatch[6], 10) : 0;
+    const dt = new Date(year, month, day, hours, mins, secs);
+    if (!isNaN(dt.getTime())) return dt.getTime();
+  }
+
+  return 0;
+}
+
+/**
+ * Format date string into user-friendly DD-MM-YYYY format
+ */
+export function formatDateLabel(dateStr?: string | number): { date: string; time: string } {
+  const ms = parseDateToMs(dateStr);
+  if (!ms) {
+    return { date: String(dateStr || ''), time: '' };
+  }
+  const dt = new Date(ms);
+  const day = String(dt.getDate()).padStart(2, '0');
+  const month = String(dt.getMonth() + 1).padStart(2, '0');
+  const year = dt.getFullYear();
+  const hours = String(dt.getHours()).padStart(2, '0');
+  const mins = String(dt.getMinutes()).padStart(2, '0');
+
+  return {
+    date: `${day}-${month}-${year}`,
+    time: `${hours}:${mins}`
+  };
+}
+

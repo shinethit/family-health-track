@@ -3,7 +3,7 @@ import { Plus, Trash2, Heart, Activity, AlertCircle, Info, Calendar } from 'luci
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { BloodPressureChart } from '../charts/HealthCharts';
-import { calculateBPCategory } from '../../lib/medicalCalculations';
+import { calculateBPCategory, parseDateToMs } from '../../lib/medicalCalculations';
 
 export const BloodPressureModule: React.FC = () => {
   const { bpRecords, addBPRecord, deleteBPRecord, selectedPatient, selectedFamilyMember } = useHealthData();
@@ -18,12 +18,12 @@ export const BloodPressureModule: React.FC = () => {
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Ensure chronological ascending sorting for chart and latest record calculation
+  // Ensure chronological ascending sorting for chart and latest record calculation using parseDateToMs
   const sortedBP = [...bpRecords].sort((a, b) => 
-    new Date(a.date || a.timestamp || 0).getTime() - new Date(b.date || b.timestamp || 0).getTime()
+    parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
   );
 
-  // Latest record (most recent date)
+  // Latest record (most recent date/time timestamp)
   const latestBP = sortedBP.length > 0 ? sortedBP[sortedBP.length - 1] : null;
   const latestEvaluation = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic) : null;
 
