@@ -43,6 +43,9 @@ export interface BloodPressureRecord {
   pulse?: number;
   arm?: 'left' | 'right';
   posture?: 'sitting' | 'standing' | 'lying';
+  dietNotes?: string;
+  foodIntake?: string;
+  dietRecord?: string;
   notes?: string;
   category?: BloodPressureCategory;
   condition?: string;
@@ -65,6 +68,9 @@ export interface BloodSugarRecord {
   timing?: BloodSugarType;
   type?: BloodSugarType;
   mealInfo?: string;
+  dietNotes?: string;
+  foodIntake?: string;
+  dietRecord?: string;
   hba1c?: number;
   notes?: string;
   status?: GlucoseStatus;

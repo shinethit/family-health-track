@@ -616,23 +616,33 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                             <th className="p-2.5">သွေးပေါင်ချိန် (BP)</th>
                             <th className="p-2.5">နှလုံးခုန် (Pulse)</th>
                             <th className="p-2.5">အဆင့်</th>
-                            <th className="p-2.5">မှတ်ချက်</th>
+                            <th className="p-2.5">စားသုံးခဲ့သော အစားအသောက် / မှတ်ချက်</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
-                          {displayedBP.slice(0, 15).map((r: any) => (
-                            <tr key={r.id}>
-                              <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
-                              <td className="p-2.5 font-bold text-rose-600">{r.systolic} / {r.diastolic} mmHg</td>
-                              <td className="p-2.5">{r.pulseRate || r.pulse || '-'} bpm</td>
-                              <td className="p-2.5">
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                                  {r.category || (r.systolic >= 140 || r.diastolic >= 90 ? 'သွေးတိုး' : 'ပုံမှန်')}
-                                </span>
-                              </td>
-                              <td className="p-2.5 text-slate-500 text-[11px] truncate max-w-[150px]">{r.notes || '-'}</td>
-                            </tr>
-                          ))}
+                          {displayedBP.slice(0, 15).map((r: any) => {
+                            const diet = r.dietRecord || r.dietNotes || r.foodIntake;
+                            return (
+                              <tr key={r.id}>
+                                <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
+                                <td className="p-2.5 font-bold text-rose-600">{r.systolic} / {r.diastolic} mmHg</td>
+                                <td className="p-2.5">{r.pulseRate || r.pulse || '-'} bpm</td>
+                                <td className="p-2.5">
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                    {r.category || (r.systolic >= 140 || r.diastolic >= 90 ? 'သွေးတိုး' : 'ပုံမှန်')}
+                                  </span>
+                                </td>
+                                <td className="p-2.5 text-slate-700 text-[11px] max-w-[200px]">
+                                  {diet && (
+                                    <span className="block font-semibold text-amber-800">
+                                      🍲 {diet}
+                                    </span>
+                                  )}
+                                  <span className="text-slate-500">{r.notes || (!diet ? '-' : '')}</span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -659,27 +669,37 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                             <th className="p-2.5">သွေးသကြားဓာတ်</th>
                             <th className="p-2.5">စစ်ဆေးချိန် (Timing)</th>
                             <th className="p-2.5">အဆင့်</th>
-                            <th className="p-2.5">မှတ်ချက်</th>
+                            <th className="p-2.5">စားသုံးခဲ့သော အစားအသောက် / မှတ်ချက်</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
-                          {displayedSugar.slice(0, 15).map((r: any) => (
-                            <tr key={r.id}>
-                              <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
-                              <td className="p-2.5 font-bold text-emerald-700">{r.glucoseValue || r.value} mg/dL</td>
-                              <td className="p-2.5">
-                                {r.timing === 'fasting' ? 'မနက်စာမစားမီ (Fasting)' : 
-                                 r.timing === 'post_meal_2h' || r.timing === 'post_prandial' ? 'အစာစားပြီး ၂ နာရီ' : 
-                                 r.timing === 'random' ? 'ကျပန်းစစ်ဆေးမှု' : (r.timing || 'ပုံမှန်')}
-                              </td>
-                              <td className="p-2.5">
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                  {r.status || 'ပုံမှန်'}
-                                </span>
-                              </td>
-                              <td className="p-2.5 text-slate-500 text-[11px] truncate max-w-[150px]">{r.notes || '-'}</td>
-                            </tr>
-                          ))}
+                          {displayedSugar.slice(0, 15).map((r: any) => {
+                            const diet = r.dietRecord || r.dietNotes || r.foodIntake;
+                            return (
+                              <tr key={r.id}>
+                                <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
+                                <td className="p-2.5 font-bold text-emerald-700">{r.glucoseValue || r.value} mg/dL</td>
+                                <td className="p-2.5">
+                                  {r.timing === 'fasting' ? 'မနက်စာမစားမီ (Fasting)' : 
+                                   r.timing === 'post_meal_2h' || r.timing === 'post_prandial' ? 'အစာစားပြီး ၂ နာရီ' : 
+                                   r.timing === 'random' ? 'ကျပန်းစစ်ဆေးမှု' : (r.timing || 'ပုံမှန်')}
+                                </td>
+                                <td className="p-2.5">
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                    {r.status || 'ပုံမှန်'}
+                                  </span>
+                                </td>
+                                <td className="p-2.5 text-slate-700 text-[11px] max-w-[200px]">
+                                  {diet && (
+                                    <span className="block font-semibold text-emerald-800">
+                                      🥗 {diet}
+                                    </span>
+                                  )}
+                                  <span className="text-slate-500">{r.notes || r.mealInfo || (!diet ? '-' : '')}</span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

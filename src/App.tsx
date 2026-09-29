@@ -62,6 +62,7 @@ import { PregnancyCareModule } from './components/modules/PregnancyCareModule';
 import { ChildCareModule } from './components/modules/ChildCareModule';
 import { ChildMilestonesModule } from './components/modules/ChildMilestonesModule';
 import { ElderlyCareModule } from './components/modules/ElderlyCareModule';
+import { SpecialNeedsCareModule } from './components/modules/SpecialNeedsCareModule';
 import { PrivacyPolicyModal } from './components/modules/PrivacyPolicyModal';
 import { BroadcastMarqueeBanner } from './components/layout/BroadcastMarqueeBanner';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
@@ -71,7 +72,7 @@ const MainContent: React.FC = () => {
   const { selectedPatient, setSelectedPatientId, doctorQuestions } = useHealthData();
   const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState<
-    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'home_testing_guide' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
+    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'home_testing_guide' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'special_needs' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
   >(isAdmin ? 'admin' : 'trends');
   const [selectedCategoryGroup, setSelectedCategoryGroup] = useState<string>('records');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -104,10 +105,11 @@ const MainContent: React.FC = () => {
     },
     {
       id: 'family_care',
-      nameMm: '👶 မိခင်၊ ကလေးနှင့် သက်ကြီးစောင့်ရှောက်မှု',
+      nameMm: '🤝 အထူး ဂရုစိုက်ပေးရန် လိုသူများ',
       badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
       activeColor: 'bg-amber-600 text-white shadow-xs',
       tabs: [
+        { id: 'special_needs', label: 'မသန်စွမ်းနှင့် အထူးလိုအပ်ချက်', icon: Users, activeColor: 'bg-indigo-600 text-white' },
         { id: 'womens_health', label: 'အမျိုးသမီးကျန်းမာရေး', icon: Sparkles, activeColor: 'bg-rose-600 text-white' },
         { id: 'pregnancy', label: 'ကိုယ်ဝန်ဆောင်စောင့်ရှောက်မှု', icon: Heart, activeColor: 'bg-teal-700 text-white' },
         { id: 'child_care', label: 'ကလေးငယ်ပြုစုရေး', icon: Baby, activeColor: 'bg-sky-600 text-white' },
@@ -349,6 +351,7 @@ const MainContent: React.FC = () => {
         {activeTab === 'news' && <HealthNewsModule />}
         {activeTab === 'investigations_guide' && <LabInvestigationGuideModule />}
         {activeTab === 'reminders' && <RemindersModule />}
+        {activeTab === 'special_needs' && <SpecialNeedsCareModule />}
         {activeTab === 'womens_health' && <WomensHealthModule />}
         {activeTab === 'pregnancy' && <PregnancyCareModule />}
         {activeTab === 'child_care' && <ChildCareModule />}

@@ -13,10 +13,30 @@ export const BloodSugarModule: React.FC = () => {
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   const [value, setValue] = useState<number>(110);
   const [type, setType] = useState<BloodSugarType>('fasting');
-  const [mealInfo, setMealInfo] = useState<string>('မနက်အစာမစားမီ');
+  const [mealInfo, setMealInfo] = useState<string>('မနက်အစာမစားမီ ၈ နာရီအစာငတ်');
+  const [dietRecord, setDietRecord] = useState<string>('');
   const [date, setDate] = useState<string>(() => new Date().toISOString().substring(0, 16));
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Quick food/diet suggestions for blood sugar tracking
+  const quickSugarDietPresets = [
+    '🍚 ထမင်းဖြူ/ကောက်ညှင်း/ခေါက်ဆွဲ',
+    '🥤 သကြားပါသောအချိုရည်/လက်ဖက်ရည်',
+    '🥭 အသီးချို/ဒူးရင်း/သရက်/ငှက်ပျော',
+    '🍲 မုန့်ဟင်းခါး/မုန့်တီ/အကြော်စုံ',
+    '🥖 ပေါင်မုန့်/ကိတ်မုန့်/ဘီစကွတ်',
+    '🥗 ဟင်းသီးဟင်းရွက်/သခွား/ပဲသီး',
+    '🥩 အသား/ငါး/ကြက်ဥ အဆီနည်းဟင်း',
+  ];
+
+  const handleAddDietTag = (tag: string) => {
+    if (!dietRecord) {
+      setDietRecord(tag);
+    } else if (!dietRecord.includes(tag)) {
+      setDietRecord(`${dietRecord}၊ ${tag}`);
+    }
+  };
 
   // View state: 'both' | 'graph' | 'table'
   const [viewMode, setViewMode] = useState<'both' | 'graph' | 'table'>('both');
@@ -89,11 +109,15 @@ export const BloodSugarModule: React.FC = () => {
         userName: selectedPatient ? selectedPatient.displayName : (selectedFamilyMember ? selectedFamilyMember.name : profile.displayName),
         value: Number(value),
         type,
-        mealInfo,
+        mealInfo: mealInfo.trim() || undefined,
+        dietNotes: dietRecord.trim() || undefined,
+        foodIntake: dietRecord.trim() || undefined,
+        dietRecord: dietRecord.trim() || undefined,
         date,
-        notes,
+        notes: notes.trim() || undefined,
       });
       setIsOpenAdd(false);
+      setDietRecord('');
       setNotes('');
     } finally {
       setIsSubmitting(false);
@@ -319,7 +343,8 @@ export const BloodSugarModule: React.FC = () => {
                   <th className="py-3 px-4 font-medium">အမျိုးအစား (Type)</th>
                   <th className="py-3 px-4 font-medium">ပမာဏ (Reading)</th>
                   <th className="py-3 px-4 font-medium">အခြေအနေ</th>
-                  <th className="py-3 px-4 font-medium">အစားအသောက် ဆက်စပ်မှု</th>
+                  <th className="py-3 px-4 font-medium">စားသုံးခဲ့သော အစားအသောက်</th>
+                  <th className="py-3 px-4 font-medium">စစ်ဆေးချိန် ဆက်စပ်မှု</th>
                   <th className="py-3 px-4 font-medium">မှတ်ချက်</th>
                   <th className="py-3 px-4 font-medium text-right">လုပ်ဆောင်ချက်</th>
                 </tr>
@@ -330,6 +355,7 @@ export const BloodSugarModule: React.FC = () => {
                   const rType = record.type || record.timing || 'fasting';
                   const evalInfo = calculateGlucoseStatus(rVal, rType);
                   const rDate = record.date || record.timestamp || '';
+                  const diet = record.dietRecord || record.dietNotes || record.foodIntake;
                   return (
                     <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">
@@ -353,6 +379,16 @@ export const BloodSugarModule: React.FC = () => {
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
                           {evalInfo.labelMm}
                         </span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-800 dark:text-slate-200">
+                        {diet ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 font-medium text-[11px]">
+                            <Utensils className="w-3 h-3 text-emerald-600" />
+                            {diet}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
                         {record.mealInfo || '-'}
@@ -381,15 +417,15 @@ export const BloodSugarModule: React.FC = () => {
       {/* Add Modal */}
       {isOpenAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Droplets className="w-5 h-5 text-emerald-500" />
                 သကြားဓာတ် အသစ်ထည့်သွင်းခြင်း
               </h3>
               <button
                 onClick={() => setIsOpenAdd(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none cursor-pointer"
               >
                 ✕
               </button>
@@ -452,18 +488,52 @@ export const BloodSugarModule: React.FC = () => {
                 </span>
               </div>
 
-              {/* Meal & Date */}
+              {/* 🥗 Dedicated Diet / Food Intake Section */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
+                    <Utensils className="w-3.5 h-3.5 text-emerald-600" />
+                    စားသုံးခဲ့သော အစားအသောက် မှတ်တမ်း (Diet / Food Intake)
+                  </label>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
+                    ဆီးချိုတက်မှု အကြောင်းရင်း သုံးသပ်ရန်
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="ဥပမာ- ထမင်းဖြူ ၂ ပန်းကန်၊ ဒူးရင်းသီး ၂ မြွှာ၊ သကြားပါ လက်ဖက်ရည်"
+                  value={dietRecord}
+                  onChange={(e) => setDietRecord(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-400"
+                />
+                
+                {/* Quick Pick Chips */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {quickSugarDietPresets.map((tag, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleAddDietTag(tag)}
+                      className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-800 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Meal Timing & Date */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                     <Utensils className="w-3.5 h-3.5 text-slate-400" />
-                    အစားအသောက် အခြေအနေ
+                    တိုင်းတာသည့် အခြေအနေ / အချိန်
                   </label>
                   <input
                     type="text"
                     value={mealInfo}
                     onChange={(e) => setMealInfo(e.target.value)}
-                    placeholder="ဥပမာ- ညစာစားပြီး ၈ နာရီအကြာ"
+                    placeholder="ဥပမာ- နေ့လယ်စာစားပြီး ၂ နာရီ၊ ညအိပ်ရာဝင်"
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
@@ -500,7 +570,7 @@ export const BloodSugarModule: React.FC = () => {
               {/* Notes */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  ထပ်ဆောင်းမှတ်ချက် (Notes)
+                  ထပ်ဆောင်းမှတ်ချက် (General Notes)
                 </label>
                 <input
                   type="text"
@@ -516,7 +586,7 @@ export const BloodSugarModule: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsOpenAdd(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   မလုပ်တော့ပါ
                 </button>

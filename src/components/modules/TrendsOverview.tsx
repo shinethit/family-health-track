@@ -15,7 +15,8 @@ import {
   Clock,
   Heart,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  Utensils
 } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -495,6 +496,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                       <th className="py-2.5 px-4 font-semibold">အောက်သွေး (DIA)</th>
                       <th className="py-2.5 px-4 font-semibold">နှလုံးခုန် (Pulse)</th>
                       <th className="py-2.5 px-4 font-semibold">အခြေအနေ</th>
+                      <th className="py-2.5 px-4 font-semibold">စားသုံးခဲ့သော အစားအသောက်</th>
                       <th className="py-2.5 px-4 font-semibold">မှတ်ချက်</th>
                     </tr>
                   </thead>
@@ -502,6 +504,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                     {filteredBP.slice().reverse().map((r, i) => {
                       const evalB = calculateBPCategory(r.systolic, r.diastolic);
                       const dInfo = formatDateLabel(r.date || r.timestamp || r.createdAt);
+                      const diet = r.dietRecord || r.dietNotes || r.foodIntake;
                       return (
                         <tr key={r.id || i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="py-2.5 px-4 font-mono text-slate-700 dark:text-slate-300">
@@ -520,6 +523,16 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                             <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${evalB.bgColor} ${evalB.color} ${evalB.borderColor}`}>
                               {evalB.labelMm}
                             </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-slate-800 dark:text-slate-200">
+                            {diet ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60 font-medium text-[11px]">
+                                <Utensils className="w-3 h-3 text-amber-600" />
+                                {diet}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
                           </td>
                           <td className="py-2.5 px-4 text-slate-500 max-w-xs truncate">
                             {r.notes || '-'}
@@ -560,6 +573,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                       <th className="py-2.5 px-4 font-semibold">သကြားဓာတ်တန်ဖိုး</th>
                       <th className="py-2.5 px-4 font-semibold">တိုင်းတာသည့်အမျိုးအစား</th>
                       <th className="py-2.5 px-4 font-semibold">အခြေအနေ သုံးသပ်ချက်</th>
+                      <th className="py-2.5 px-4 font-semibold">စားသုံးခဲ့သော အစားအသောက်</th>
                       <th className="py-2.5 px-4 font-semibold">မှတ်ချက်</th>
                     </tr>
                   </thead>
@@ -569,6 +583,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                       const type = r.type || r.timing || 'fasting';
                       const evalG = calculateGlucoseStatus(val, type);
                       const dInfo = formatDateLabel(r.date || r.timestamp || r.createdAt);
+                      const diet = r.dietRecord || r.dietNotes || r.foodIntake;
                       return (
                         <tr key={r.id || i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="py-2.5 px-4 font-mono text-slate-700 dark:text-slate-300">
@@ -589,8 +604,18 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                               {evalG.labelMm}
                             </span>
                           </td>
+                          <td className="py-2.5 px-4 text-slate-800 dark:text-slate-200">
+                            {diet ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 font-medium text-[11px]">
+                                <Utensils className="w-3 h-3 text-emerald-600" />
+                                {diet}
+                              </span>
+                            ) : (
+                              <span className="text-slate-500">{r.mealInfo || '-'}</span>
+                            )}
+                          </td>
                           <td className="py-2.5 px-4 text-slate-500 max-w-xs truncate">
-                            {r.notes || r.mealInfo || '-'}
+                            {r.notes || '-'}
                           </td>
                         </tr>
                       );
