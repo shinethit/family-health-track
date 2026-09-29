@@ -34,7 +34,7 @@ import {
   BookOpen
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.4.0';
+export const CURRENT_SYSTEM_VERSION = 'v2.4.1';
 
 export interface VersionItem {
   version: string;
@@ -53,12 +53,38 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.0',
-    type: 'major',
+    version: 'v2.4.1',
+    type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
-    title: '🤝 [MAJOR RELEASE v2.4.0] အထူး ဂရုစိုက်ပေးရန် လိုသူများ (မသန်စွမ်း၊ မျက်စိမမြင်၊ နားမကြား၊ လေဖြတ်၊ ကိုယ်အင်္ဂါချို့ယွင်းမှု စောင့်ရှောက်ရေး) မော်ဂျူးသစ်နှင့် Mobile Dropdown Selector စနစ်',
-    badge: 'Major Release (v2.4.0)',
+    title: '🛠️ [STABILITY & UI FIXES] Data ဖြည့်သွင်းသည့် မိုဒယ်လ်များ ဘေးသို့ယိုင်ရွှေ့မှု မရှိစေဘဲ ဗဟိုငြိမ်ဖြစ်စေခြင်းနှင့် တက်ဘ်ပြောင်းပါက အပေါ်ဆုံးသို့ တိုက်ရိုက်ရောက်ရှိစေသော Auto Scroll-to-Top စနစ်',
+    badge: 'Latest Release (v2.4.1)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🎯 Data ထည့်သွင်းသည့် မိုဒယ်လ် (Modal Form) များ တည်ငြိမ်မှု အပြည့်အဝ ပြင်ဆင်ခြင်း',
+        icon: ShieldCheck,
+        items: [
+          'သွေးပေါင်ချိန်၊ သကြားဓာတ်၊ BMI စသည့် Form မိုဒယ်လ်များ ဖွင့်သည့်အခါ ဖုန်းမျက်နှာပြင်ငယ်များတွင် ဘေးသို့ ယိုင်ရွှေ့/ပြိုထွက်မသွားစေရန် တည်ငြိမ်သော Centered Modal Container စနစ်ဖြင့် ပြင်ဆင်ခြင်း',
+          'ဖုန်းများတွင် Input ကွက်များ ဘေးသို့ လျှံမထွက်စေရန် Single-Column Grid Layout သို့ အလိုအလျောက် ပรับပေးထားခြင်း'
+        ]
+      },
+      {
+        title: '⬆️ App တစ်ခုလုံးအတွက် Tab Navigation Auto Scroll-to-Top စနစ်',
+        icon: TrendingUp,
+        items: [
+          'ကျန်းမာရေးမှတ်တမ်းများ၊ သွေးတိုး၊ ဆီးချို၊ ဓာတ်ခွဲခန်း၊ Sidebar နှင့် Dropdowns မည်သည့်နေရာမှ မဆို ကဏ္ဍသစ်သို့ ပြောင်းလဲနှိပ်လိုက်ပါက စာမျက်နှာ အလယ်သို့ ရောက်မနေစေဘဲ အပေါ်ဆုံး (Top Banner) သို့ တိုက်ရိုက် သပ်ရပ်စွာ ရောက်ရှိစေခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.4.0',
+    type: 'major',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '🤝 [MAJOR RELEASE v2.4.0] အထူး ဂရုစိုက်ပေးရန် လိုသူများ မော်ဂျူးသစ်နှင့် Mobile Dropdown Selector စနစ်',
+    badge: 'Release (v2.4.0)',
     badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-300',
     highlights: [
       {

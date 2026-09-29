@@ -416,16 +416,17 @@ export const BloodSugarModule: React.FC = () => {
 
       {/* Add Modal */}
       {isOpenAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Droplets className="w-5 h-5 text-emerald-500" />
-                သကြားဓာတ် အသစ်ထည့်သွင်းခြင်း
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-x-hidden overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md sm:max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 my-auto shrink-0 max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Droplets className="w-5 h-5 text-emerald-500 shrink-0" />
+                <span>သကြားဓာတ် အသစ်ထည့်သွင်းခြင်း</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsOpenAdd(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center justify-center text-sm font-bold cursor-pointer transition-colors shrink-0"
               >
                 ✕
               </button>

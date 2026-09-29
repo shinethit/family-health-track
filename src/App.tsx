@@ -164,12 +164,14 @@ const MainContent: React.FC = () => {
     }] : [])
   ];
 
-  // Sync category group when activeTab changes
+  // Sync category group and scroll cleanly to top when activeTab changes
   useEffect(() => {
     const found = moduleCategories.find(cat => cat.tabs.some(t => t.id === activeTab));
     if (found) {
       setSelectedCategoryGroup(found.id);
     }
+    // Instantly scroll window to top so user always lands at the top of the selected tab
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
 
   // Force pure clean light theme by default ("အဖြူခံနဲ့ ရိုးရိုးလေး")

@@ -395,24 +395,25 @@ export const BloodPressureModule: React.FC = () => {
 
       {/* Add New BP Modal */}
       {isOpenAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Activity className="w-5 h-5 text-rose-500" />
-                သွေးပေါင်ချိန် အသစ်ထည့်သွင်းခြင်း
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-x-hidden overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md sm:max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 my-auto shrink-0 max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Activity className="w-5 h-5 text-rose-500 shrink-0" />
+                <span>သွေးပေါင်ချိန် အသစ်ထည့်သွင်းခြင်း</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsOpenAdd(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center justify-center text-sm font-bold cursor-pointer transition-colors shrink-0"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+            <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
               {/* Systolic & Diastolic Inputs */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     အပေါ်သွေး (Systolic mmHg) *
@@ -424,7 +425,7 @@ export const BloodPressureModule: React.FC = () => {
                     value={systolic}
                     onChange={(e) => setSystolic(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-lg font-bold focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-base sm:text-lg font-bold focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
                   />
                   <span className="text-[11px] text-slate-400">စံနှုန်း: 120 အောက်</span>
                 </div>
@@ -440,14 +441,14 @@ export const BloodPressureModule: React.FC = () => {
                     value={diastolic}
                     onChange={(e) => setDiastolic(Number(e.target.value))}
                     required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-lg font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-base sm:text-lg font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   />
                   <span className="text-[11px] text-slate-400">စံနှုန်း: 80 အောက်</span>
                 </div>
               </div>
 
               {/* Pulse & Condition */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     နှလုံးခုန်နှုန်း (Pulse bpm) *
@@ -471,7 +472,7 @@ export const BloodPressureModule: React.FC = () => {
                   <select
                     value={condition}
                     onChange={(e: any) => setCondition(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden truncate"
                   >
                     <option value="morning">မနက်နိုးနိုးချင်း</option>
                     <option value="resting">နားနေချိန်</option>
@@ -483,11 +484,11 @@ export const BloodPressureModule: React.FC = () => {
               </div>
 
               {/* 🍲 Dedicated Diet / Food Intake Section */}
-              <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 space-y-2">
-                <div className="flex items-center justify-between">
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 space-y-2 overflow-x-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <label className="text-xs font-bold text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
-                    <Utensils className="w-3.5 h-3.5 text-amber-600" />
-                    စားသုံးခဲ့သော အစားအသောက် မှတ်တမ်း (Diet / Food Intake)
+                    <Utensils className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>စားသုံးခဲ့သော အစားအသောက် မှတ်တမ်း</span>
                   </label>
                   <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
                     သွေးတိုး/အဆစ်ကိုက်မှု သုံးသပ်ရန်
@@ -502,13 +503,13 @@ export const BloodPressureModule: React.FC = () => {
                 />
                 
                 {/* Quick Pick Chips */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                <div className="flex flex-wrap gap-1.5 pt-1 max-w-full overflow-hidden">
                   {quickDietPresets.map((tag, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => handleAddDietTag(tag)}
-                      className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-800 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
+                      className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-800 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors cursor-pointer shrink-0"
                     >
                       + {tag}
                     </button>
