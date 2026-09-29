@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { BloodPressureRecord, BloodSugarRecord } from '../../types/health';
-import { Activity, Droplets } from 'lucide-react';
+import { BloodPressureRecord, BloodSugarRecord, BMIRecord } from '../../types/health';
+import { Activity, Droplets, Scale } from 'lucide-react';
 import { parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
 
 interface BloodPressureChartProps {
@@ -595,6 +595,206 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
             </span>
             <span className="text-slate-400">
               ({hoveredPoint.type || hoveredPoint.timing})
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface BMIWeightChartProps {
+  records: BMIRecord[];
+  className?: string;
+}
+
+export const BMIWeightChart: React.FC<BMIWeightChartProps> = ({ records, className = '' }) => {
+  const [hoveredPoint, setHoveredPoint] = useState<BMIRecord | null>(null);
+
+  if (!records || records.length === 0) {
+    return (
+      <div className={`p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-center ${className}`}>
+        <Scale className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+        <p className="text-xs font-bold text-slate-800">
+          ကိုယ်အလေးချိန် & BMI မှတ်တမ်းမရှိသေးပါ။ Chart ပြသရန် အနည်းဆုံး မှတ်တမ်း ၁ ခု ထည့်သွင်းပါ။
+        </p>
+      </div>
+    );
+  }
+
+  // Sort chronologically ascending
+  const sortedRecords = [...records].sort((a, b) => {
+    const timeA = parseDateToMs(a.date || a.timestamp || a.createdAt);
+    const timeB = parseDateToMs(b.date || b.timestamp || b.createdAt);
+    return timeA - timeB;
+  });
+
+  const width = 640;
+  const height = 270;
+  const padding = { top: 30, right: 30, bottom: 45, left: 45 };
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
+
+  // Weight scale (kg) & BMI scale
+  const minWeight = Math.min(...sortedRecords.map(r => r.weightKg || 50));
+  const maxWeight = Math.max(...sortedRecords.map(r => r.weightKg || 80));
+  const minY = Math.max(30, Math.floor(minWeight - 10));
+  const maxY = Math.min(160, Math.ceil(maxWeight + 15));
+
+  const getY = (val: number) => {
+    const clamped = Math.min(maxY, Math.max(minY, val));
+    return padding.top + chartH - ((clamped - minY) / (maxY - minY)) * chartH;
+  };
+
+  const getX = (idx: number, total: number) => {
+    if (total <= 1) return padding.left + chartW / 2;
+    return padding.left + (idx / (total - 1)) * chartW;
+  };
+
+  const weightPoints = sortedRecords.map((r, i) => ({
+    x: getX(i, sortedRecords.length),
+    y: getY(r.weightKg || 60),
+    record: r,
+  }));
+
+  const weightPath = weightPoints.reduce((acc, p, i) => 
+    i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
+
+  return (
+    <div className="relative bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div>
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+            ကိုယ်အလေးချိန် & BMI ပြောင်းလဲမှု Trend (Weight & BMI Chart)
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            စံနှုန်း: BMI 18.5 - 24.9 kg/m² (ပုံမှန် ကိုယ်အလေးချိန်) / ≥ 25 (အဝလွန်)
+          </p>
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
+            <span className="text-slate-600 dark:text-slate-400">ကိုယ်အလေးချိန် (kg)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+            <span className="text-slate-600 dark:text-slate-400">BMI (kg/m²)</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full overflow-hidden">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto max-w-full select-none">
+          {/* Grid lines */}
+          {[40, 50, 60, 70, 80, 90, 100, 120].filter(v => v >= minY && v <= maxY).map((val) => {
+            const y = getY(val);
+            return (
+              <g key={val}>
+                <line
+                  x1={padding.left}
+                  y1={y}
+                  x2={width - padding.right}
+                  y2={y}
+                  stroke="currentColor"
+                  strokeDasharray="2 4"
+                  className="text-slate-200 dark:text-slate-800"
+                  strokeWidth="0.8"
+                />
+                <text
+                  x={padding.left - 8}
+                  y={y + 3}
+                  textAnchor="end"
+                  className="text-[10px] fill-slate-400 dark:fill-slate-500 font-mono"
+                >
+                  {val}kg
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Weight Line (Teal) */}
+          <path
+            d={weightPath}
+            fill="none"
+            stroke="#0d9488"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Points & Value Labels */}
+          {sortedRecords.map((r, i) => {
+            const x = getX(i, sortedRecords.length);
+            const y = getY(r.weightKg || 60);
+            const isHovered = hoveredPoint?.id === r.id;
+            const dateObj = formatDateLabel(r.date || r.timestamp || r.createdAt);
+
+            return (
+              <g key={r.id || i} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(r)} onMouseLeave={() => setHoveredPoint(null)}>
+                {isHovered && (
+                  <line
+                    x1={x}
+                    y1={padding.top}
+                    x2={x}
+                    y2={height - padding.bottom}
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeDasharray="3 3"
+                    className="text-slate-400 dark:text-slate-600"
+                  />
+                )}
+
+                {/* Weight and BMI Value Label */}
+                <text
+                  x={x}
+                  y={y - 10}
+                  textAnchor="middle"
+                  className="text-[10px] font-extrabold fill-teal-700 dark:fill-teal-300 font-mono"
+                >
+                  {r.weightKg}kg ({r.bmi?.toFixed(1)})
+                </text>
+
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={isHovered ? 6 : 4.5}
+                  className="fill-teal-600 stroke-white dark:stroke-slate-900 transition-all"
+                  strokeWidth="2"
+                />
+
+                {/* X axis Date label (DD-MM-YYYY) */}
+                <text
+                  x={x}
+                  y={height - padding.bottom + 16}
+                  textAnchor="middle"
+                  className="text-[9.5px] fill-slate-700 dark:fill-slate-300 font-bold font-mono"
+                >
+                  {dateObj.date}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {hoveredPoint && (
+        <div className="mt-2.5 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div>
+            <span className="font-semibold text-slate-800 dark:text-slate-200">
+              ရက်စွဲ: {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).date}
+            </span>
+            <span className="text-slate-500 dark:text-slate-400 ml-2">
+              အရပ်: {hoveredPoint.heightCm} cm
+            </span>
+          </div>
+          <div className="flex items-center gap-3 font-mono">
+            <span className="font-bold text-teal-700 dark:text-teal-300">
+              အလေးချိန်: {hoveredPoint.weightKg} kg
+            </span>
+            <span className="font-bold text-indigo-600 dark:text-indigo-400">
+              BMI: {hoveredPoint.bmi?.toFixed(1)} kg/m² ({hoveredPoint.category || 'ပုံမှန်'})
             </span>
           </div>
         </div>

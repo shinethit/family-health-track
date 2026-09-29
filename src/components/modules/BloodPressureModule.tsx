@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Heart, Activity, AlertCircle, Info, Calendar } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Plus, Trash2, Heart, Activity, AlertCircle, Info, Calendar, BarChart2, Table, TrendingUp } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { BloodPressureChart } from '../charts/HealthCharts';
@@ -18,10 +18,33 @@ export const BloodPressureModule: React.FC = () => {
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // View state: 'both' | 'graph' | 'table'
+  const [viewMode, setViewMode] = useState<'both' | 'graph' | 'table'>('both');
+  // Timeframe state: 'all' | '1m' | '3m' | '6m'
+  const [timeframe, setTimeframe] = useState<'all' | '1m' | '3m' | '6m'>('all');
+
+  // Time boundaries for filtering
+  const now = new Date();
+  const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).getTime();
+  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()).getTime();
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()).getTime();
+
   // Ensure chronological ascending sorting for chart and latest record calculation using parseDateToMs
-  const sortedBP = [...bpRecords].sort((a, b) => 
-    parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
-  );
+  const sortedBP = useMemo(() => {
+    return [...bpRecords].sort((a, b) => 
+      parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
+    );
+  }, [bpRecords]);
+
+  const filteredBP = useMemo(() => {
+    return sortedBP.filter(r => {
+      const ms = parseDateToMs(r.date || r.timestamp || r.createdAt);
+      if (timeframe === '1m') return ms >= oneMonthAgo;
+      if (timeframe === '3m') return ms >= threeMonthsAgo;
+      if (timeframe === '6m') return ms >= sixMonthsAgo;
+      return true;
+    });
+  }, [sortedBP, timeframe]);
 
   // Latest record (most recent date/time timestamp)
   const latestBP = sortedBP.length > 0 ? sortedBP[sortedBP.length - 1] : null;
@@ -30,12 +53,13 @@ export const BloodPressureModule: React.FC = () => {
   // Real-time evaluation for the modal input
   const currentPreview = calculateBPCategory(systolic, diastolic);
 
-  // Averages
-  const avgSystolic = bpRecords.length > 0
-    ? Math.round(bpRecords.reduce((acc, cur) => acc + cur.systolic, 0) / bpRecords.length)
+  // Averages (computed on filtered subset)
+  const targetForAvg = filteredBP.length > 0 ? filteredBP : sortedBP;
+  const avgSystolic = targetForAvg.length > 0
+    ? Math.round(targetForAvg.reduce((acc, cur) => acc + cur.systolic, 0) / targetForAvg.length)
     : 0;
-  const avgDiastolic = bpRecords.length > 0
-    ? Math.round(bpRecords.reduce((acc, cur) => acc + cur.diastolic, 0) / bpRecords.length)
+  const avgDiastolic = targetForAvg.length > 0
+    ? Math.round(targetForAvg.reduce((acc, cur) => acc + cur.diastolic, 0) / targetForAvg.length)
     : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -152,83 +176,187 @@ export const BloodPressureModule: React.FC = () => {
         </div>
       </div>
 
-      {/* SVG Trend Chart */}
-      <BloodPressureChart records={sortedBP} />
-
-      {/* History Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
-            သွေးပေါင်ချိန် မှတ်တမ်းများ (Blood Pressure Log)
-          </h3>
-          <span className="text-xs text-slate-500 font-mono">
-            {sortedBP.length} records
-          </span>
+      {/* Control Bar: View Switcher (Graph vs Table vs Both) + Timeframe Filter */}
+      <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-2xl bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              သွေးပေါင်ချိန် သမိုင်းမှတ်တမ်း ပြသမှု (BP History Views)
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Graph မျဉ်းကွေးဖြင့် ဖြစ်စေ၊ Data ဇယားဖြင့် ဖြစ်စေ ကာလအလိုက် စောင့်ကြည့်နိုင်ပါသည်
+            </p>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="py-3 px-4 font-medium">ရက်စွဲ / အချိန်</th>
-                <th className="py-3 px-4 font-medium">အပေါ်သွေး (Sys)</th>
-                <th className="py-3 px-4 font-medium">အောက်သွေး (Dia)</th>
-                <th className="py-3 px-4 font-medium">နှလုံးခုန် (Pulse)</th>
-                <th className="py-3 px-4 font-medium">အခြေအနေ သတ်မှတ်ချက်</th>
-                <th className="py-3 px-4 font-medium">တိုင်းတာချိန်</th>
-                <th className="py-3 px-4 font-medium">မှတ်ချက်</th>
-                <th className="py-3 px-4 font-medium text-right">လုပ်ဆောင်ချက်</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {sortedBP.slice().reverse().map((record) => {
-                const evalInfo = calculateBPCategory(record.systolic, record.diastolic);
-                return (
-                  <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">
-                      {(record.date || record.timestamp || '').replace('T', ' ')}
-                    </td>
-                    <td className="py-3 px-4 font-bold text-rose-600 dark:text-rose-400 font-mono text-sm">
-                      {record.systolic} <span className="text-[10px] text-slate-400 font-normal">mmHg</span>
-                    </td>
-                    <td className="py-3 px-4 font-bold text-blue-600 dark:text-blue-400 font-mono text-sm">
-                      {record.diastolic} <span className="text-[10px] text-slate-400 font-normal">mmHg</span>
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-amber-600 dark:text-amber-400 font-mono">
-                      {record.pulse} <span className="text-[10px] text-slate-400 font-normal">bpm</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
-                        {evalInfo.labelMm}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
-                      {record.condition === 'morning' && 'မနက်နိုးနိုးချင်း'}
-                      {record.condition === 'night' && 'ညအိပ်ရာဝင်'}
-                      {record.condition === 'resting' && 'နားနေချိန်'}
-                      {record.condition === 'after_exercise' && 'လှုပ်ရှားပြီးစ'}
-                      {record.condition === 'stress' && 'စိတ်ဖိစီးချိန်'}
-                      {!record.condition && '-'}
-                    </td>
-                    <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
-                      {record.notes || '-'}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => deleteBPRecord(record.id)}
-                        className="text-slate-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
-                        title="ဖျက်မည်"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* View Toggle */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
+            <button
+              onClick={() => setViewMode('both')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'both'
+                  ? 'bg-white dark:bg-slate-900 text-rose-800 dark:text-rose-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5 text-rose-600" />
+              <span>📊 Graph & Data</span>
+            </button>
+            <button
+              onClick={() => setViewMode('graph')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'graph'
+                  ? 'bg-white dark:bg-slate-900 text-rose-800 dark:text-rose-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-rose-600" />
+              <span>📈 Graph View</span>
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-slate-900 text-rose-800 dark:text-rose-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <Table className="w-3.5 h-3.5 text-rose-600" />
+              <span>📋 Data ဇယား</span>
+            </button>
+          </div>
+
+          {/* Timeframe Filter */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
+            <button
+              onClick={() => setTimeframe('all')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === 'all'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              အားလုံး
+            </button>
+            <button
+              onClick={() => setTimeframe('1m')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === '1m'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              ၁ လ
+            </button>
+            <button
+              onClick={() => setTimeframe('3m')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === '3m'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              ၃ လ
+            </button>
+            <button
+              onClick={() => setTimeframe('6m')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === '6m'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              ၆ လ
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* GRAPH VIEW: SVG Trend Chart */}
+      {(viewMode === 'both' || viewMode === 'graph') && (
+        <BloodPressureChart records={filteredBP} />
+      )}
+
+      {/* DATA TABLE VIEW: History Table */}
+      {(viewMode === 'both' || viewMode === 'table') && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
+              သွေးပေါင်ချိန် မှတ်တမ်းများ (Blood Pressure Log - {timeframe === 'all' ? 'အားလုံး' : timeframe === '1m' ? '၁ လစာ' : timeframe === '3m' ? '၃ လစာ' : '၆ လစာ'})
+            </h3>
+            <span className="text-xs text-slate-500 font-mono">
+              {filteredBP.length} records
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="py-3 px-4 font-medium">ရက်စွဲ / အချိန်</th>
+                  <th className="py-3 px-4 font-medium">အပေါ်သွေး (Sys)</th>
+                  <th className="py-3 px-4 font-medium">အောက်သွေး (Dia)</th>
+                  <th className="py-3 px-4 font-medium">နှလုံးခုန် (Pulse)</th>
+                  <th className="py-3 px-4 font-medium">အခြေအနေ သတ်မှတ်ချက်</th>
+                  <th className="py-3 px-4 font-medium">တိုင်းတာချိန်</th>
+                  <th className="py-3 px-4 font-medium">မှတ်ချက်</th>
+                  <th className="py-3 px-4 font-medium text-right">လုပ်ဆောင်ချက်</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filteredBP.slice().reverse().map((record) => {
+                  const evalInfo = calculateBPCategory(record.systolic, record.diastolic);
+                  return (
+                    <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">
+                        {(record.date || record.timestamp || '').replace('T', ' ')}
+                      </td>
+                      <td className="py-3 px-4 font-bold text-rose-600 dark:text-rose-400 font-mono text-sm">
+                        {record.systolic} <span className="text-[10px] text-slate-400 font-normal">mmHg</span>
+                      </td>
+                      <td className="py-3 px-4 font-bold text-blue-600 dark:text-blue-400 font-mono text-sm">
+                        {record.diastolic} <span className="text-[10px] text-slate-400 font-normal">mmHg</span>
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-amber-600 dark:text-amber-400 font-mono">
+                        {record.pulse} <span className="text-[10px] text-slate-400 font-normal">bpm</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
+                          {evalInfo.labelMm}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                        {record.condition === 'morning' && 'မနက်နိုးနိုးချင်း'}
+                        {record.condition === 'night' && 'ညအိပ်ရာဝင်'}
+                        {record.condition === 'resting' && 'နားနေချိန်'}
+                        {record.condition === 'after_exercise' && 'လှုပ်ရှားပြီးစ'}
+                        {record.condition === 'stress' && 'စိတ်ဖိစီးချိန်'}
+                        {!record.condition && '-'}
+                      </td>
+                      <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
+                        {record.notes || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => deleteBPRecord(record.id)}
+                          className="text-slate-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
+                          title="ဖျက်မည်"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Add New BP Modal */}
       {isOpenAdd && (

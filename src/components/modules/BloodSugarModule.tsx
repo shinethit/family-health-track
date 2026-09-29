@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Droplets, AlertCircle, Info, Calendar, Utensils } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Plus, Trash2, Droplets, AlertCircle, Info, Calendar, Utensils, BarChart2, Table, TrendingUp } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { BloodSugarChart } from '../charts/HealthCharts';
-import { calculateGlucoseStatus } from '../../lib/medicalCalculations';
+import { calculateGlucoseStatus, parseDateToMs } from '../../lib/medicalCalculations';
 import { BloodSugarType } from '../../types/health';
 
 export const BloodSugarModule: React.FC = () => {
@@ -18,16 +18,43 @@ export const BloodSugarModule: React.FC = () => {
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // View state: 'both' | 'graph' | 'table'
+  const [viewMode, setViewMode] = useState<'both' | 'graph' | 'table'>('both');
+  // Timeframe state: 'all' | '1m' | '3m' | '6m'
+  const [timeframe, setTimeframe] = useState<'all' | '1m' | '3m' | '6m'>('all');
+
+  // Time boundaries for filtering
+  const now = new Date();
+  const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).getTime();
+  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()).getTime();
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()).getTime();
+
+  const sortedGlucose = useMemo(() => {
+    return [...glucoseRecords].sort((a, b) => 
+      parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
+    );
+  }, [glucoseRecords]);
+
+  const filteredGlucose = useMemo(() => {
+    return sortedGlucose.filter(r => {
+      const ms = parseDateToMs(r.date || r.timestamp || r.createdAt);
+      if (timeframe === '1m') return ms >= oneMonthAgo;
+      if (timeframe === '3m') return ms >= threeMonthsAgo;
+      if (timeframe === '6m') return ms >= sixMonthsAgo;
+      return true;
+    });
+  }, [sortedGlucose, timeframe]);
+
   // Latest records
-  const latestRecord = glucoseRecords.length > 0 ? glucoseRecords[glucoseRecords.length - 1] : null;
+  const latestRecord = sortedGlucose.length > 0 ? sortedGlucose[sortedGlucose.length - 1] : null;
   const latestEvaluation = latestRecord ? calculateGlucoseStatus(latestRecord.value || latestRecord.glucoseValue || 100, latestRecord.type || latestRecord.timing || 'fasting') : null;
 
   // Latest HbA1c
-  const hba1cRecords = glucoseRecords.filter(r => (r.type || r.timing) === 'hba1c');
+  const hba1cRecords = sortedGlucose.filter(r => (r.type || r.timing) === 'hba1c');
   const latestHbA1c = hba1cRecords.length > 0 ? hba1cRecords[hba1cRecords.length - 1] : null;
 
   // Fasting records avg
-  const fastingRecords = glucoseRecords.filter(r => (r.type || r.timing) === 'fasting');
+  const fastingRecords = filteredGlucose.filter(r => (r.type || r.timing) === 'fasting');
   const avgFasting = fastingRecords.length > 0
     ? Math.round(fastingRecords.reduce((acc, c) => acc + (c.value || c.glucoseValue || 0), 0) / fastingRecords.length)
     : 0;
@@ -167,85 +194,189 @@ export const BloodSugarModule: React.FC = () => {
         </div>
       </div>
 
-      {/* SVG Trend Chart */}
-      <BloodSugarChart records={glucoseRecords} />
-
-      {/* History Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
-            သကြားဓာတ် စစ်ဆေးမှုမှတ်တမ်းများ (Glucose Logs)
-          </h3>
-          <span className="text-xs text-slate-500 font-mono">
-            {glucoseRecords.length} records
-          </span>
+      {/* Control Bar: View Switcher (Graph vs Table vs Both) + Timeframe Filter */}
+      <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              ဆီးချို / သကြားဓာတ် သမိုင်းမှတ်တမ်း ပြသမှု (Glucose History Views)
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Graph မျဉ်းကွေးဖြင့် ဖြစ်စေ၊ Data ဇယားဖြင့် ဖြစ်စေ ကာလအလိုက် စောင့်ကြည့်နိုင်ပါသည်
+            </p>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="py-3 px-4 font-medium">ရက်စွဲ / အချိန်</th>
-                <th className="py-3 px-4 font-medium">အမျိုးအစား (Type)</th>
-                <th className="py-3 px-4 font-medium">ပမာဏ (Reading)</th>
-                <th className="py-3 px-4 font-medium">အခြေအနေ</th>
-                <th className="py-3 px-4 font-medium">အစားအသောက် ဆက်စပ်မှု</th>
-                <th className="py-3 px-4 font-medium">မှတ်ချက်</th>
-                <th className="py-3 px-4 font-medium text-right">လုပ်ဆောင်ချက်</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {glucoseRecords.slice().reverse().map((record) => {
-                const rVal = record.value || record.glucoseValue || 100;
-                const rType = record.type || record.timing || 'fasting';
-                const evalInfo = calculateGlucoseStatus(rVal, rType);
-                const rDate = record.date || record.timestamp || '';
-                return (
-                  <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">
-                      {rDate.replace('T', ' ')}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                        {rType === 'fasting' && 'အစာမစားမီ (Fasting)'}
-                        {rType === 'post_prandial' && 'အစာစားပြီး ၂ နာရီ'}
-                        {rType === 'random' && 'အချိန်မရွေး (Random)'}
-                        {rType === 'hba1c' && 'HbA1c (၃ လပတ်)'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-bold text-slate-900 dark:text-white font-mono text-sm">
-                      {rVal}{' '}
-                      <span className="text-[10px] text-slate-400 font-normal">
-                        {rType === 'hba1c' ? '%' : 'mg/dL'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
-                        {evalInfo.labelMm}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
-                      {record.mealInfo || '-'}
-                    </td>
-                    <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
-                      {record.notes || '-'}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => deleteGlucoseRecord(record.id)}
-                        className="text-slate-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
-                        title="ဖျက်မည်"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* View Toggle */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
+            <button
+              onClick={() => setViewMode('both')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'both'
+                  ? 'bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>📊 Graph & Data</span>
+            </button>
+            <button
+              onClick={() => setViewMode('graph')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'graph'
+                  ? 'bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+              <span>📈 Graph View</span>
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <Table className="w-3.5 h-3.5 text-emerald-600" />
+              <span>📋 Data ဇယား</span>
+            </button>
+          </div>
+
+          {/* Timeframe Filter */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
+            <button
+              onClick={() => setTimeframe('all')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === 'all'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              အားလုံး
+            </button>
+            <button
+              onClick={() => setTimeframe('1m')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === '1m'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              ၁ လ
+            </button>
+            <button
+              onClick={() => setTimeframe('3m')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === '3m'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              ၃ လ
+            </button>
+            <button
+              onClick={() => setTimeframe('6m')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === '6m'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              ၆ လ
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* GRAPH VIEW: SVG Trend Chart */}
+      {(viewMode === 'both' || viewMode === 'graph') && (
+        <BloodSugarChart records={filteredGlucose} />
+      )}
+
+      {/* DATA TABLE VIEW: History Table */}
+      {(viewMode === 'both' || viewMode === 'table') && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
+              သကြားဓာတ် စစ်ဆေးမှုမှတ်တမ်းများ (Glucose Logs - {timeframe === 'all' ? 'အားလုံး' : timeframe === '1m' ? '၁ လစာ' : timeframe === '3m' ? '၃ လစာ' : '၆ လစာ'})
+            </h3>
+            <span className="text-xs text-slate-500 font-mono">
+              {filteredGlucose.length} records
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="py-3 px-4 font-medium">ရက်စွဲ / အချိန်</th>
+                  <th className="py-3 px-4 font-medium">အမျိုးအစား (Type)</th>
+                  <th className="py-3 px-4 font-medium">ပမာဏ (Reading)</th>
+                  <th className="py-3 px-4 font-medium">အခြေအနေ</th>
+                  <th className="py-3 px-4 font-medium">အစားအသောက် ဆက်စပ်မှု</th>
+                  <th className="py-3 px-4 font-medium">မှတ်ချက်</th>
+                  <th className="py-3 px-4 font-medium text-right">လုပ်ဆောင်ချက်</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filteredGlucose.slice().reverse().map((record) => {
+                  const rVal = record.value || record.glucoseValue || 100;
+                  const rType = record.type || record.timing || 'fasting';
+                  const evalInfo = calculateGlucoseStatus(rVal, rType);
+                  const rDate = record.date || record.timestamp || '';
+                  return (
+                    <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">
+                        {rDate.replace('T', ' ')}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          {rType === 'fasting' && 'အစာမစားမီ (Fasting)'}
+                          {rType === 'post_prandial' && 'အစာစားပြီး ၂ နာရီ'}
+                          {rType === 'random' && 'အချိန်မရွေး (Random)'}
+                          {rType === 'hba1c' && 'HbA1c (၃ လပတ်)'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-white font-mono text-sm">
+                        {rVal}{' '}
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          {rType === 'hba1c' ? '%' : 'mg/dL'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
+                          {evalInfo.labelMm}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                        {record.mealInfo || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
+                        {record.notes || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => deleteGlucoseRecord(record.id)}
+                          className="text-slate-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
+                          title="ဖျက်မည်"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Add Modal */}
       {isOpenAdd && (

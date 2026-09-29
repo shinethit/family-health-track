@@ -18,10 +18,13 @@ import {
   History,
   Scale,
   CheckCircle2,
-  Clock
+  Clock,
+  BarChart2,
+  Table
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
+import { BloodPressureChart, BloodSugarChart, BMIWeightChart } from '../charts/HealthCharts';
 
 interface HealthPassportModalProps {
   isOpen: boolean;
@@ -42,6 +45,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
   } = useHealthData();
 
   const [historyTimeframe, setHistoryTimeframe] = useState<'all' | '1m' | '3m' | '6m'>('all');
+  const [displayMode, setDisplayMode] = useState<'both' | 'graph' | 'table'>('both');
 
   if (!isOpen) return null;
 
@@ -467,185 +471,257 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             </div>
           </div>
 
-          {/* SECTION 3: Detailed Historical Logs (ရက်စွဲအလိုက် တိုင်းတာမှု သမိုင်းမှတ်တမ်း ဇယားများ) */}
+          {/* SECTION 3: Detailed Historical Data, Trend Graphs & Logs */}
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2.5">
               <div className="flex items-center gap-2">
                 <History className="w-4 h-4 text-emerald-600" />
                 <h3 className="text-sm font-bold text-slate-900">
-                  ၃။ ရက်စွဲအလိုက် စစ်ဆေးတိုင်းတာမှု သမိုင်းမှတ်တမ်းများ (Detailed Historical Logs)
+                  ၃။ ရက်စွဲအလိုက် စစ်ဆေးတိုင်းတာမှု သမိုင်းမှတ်တမ်းနှင့် Trend Graph များ (Historical Data & Trend Charts)
                 </h3>
               </div>
 
-              {/* Timeframe Filter Tabs (No-Print for screen toggling) */}
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold no-print">
-                <button
-                  onClick={() => setHistoryTimeframe('all')}
-                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                    historyTimeframe === 'all' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  မှတ်တမ်းအားလုံး
-                </button>
-                <button
-                  onClick={() => setHistoryTimeframe('1m')}
-                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                    historyTimeframe === '1m' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  နောက်ဆုံး ၁ လ
-                </button>
-                <button
-                  onClick={() => setHistoryTimeframe('3m')}
-                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                    historyTimeframe === '3m' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  နောက်ဆုံး ၃ လ
-                </button>
-                <button
-                  onClick={() => setHistoryTimeframe('6m')}
-                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                    historyTimeframe === '6m' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  နောက်ဆုံး ၆ လ
-                </button>
+              <div className="flex flex-wrap items-center gap-2 no-print">
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                  <button
+                    onClick={() => setDisplayMode('both')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      displayMode === 'both' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    📊 Graph & Table (နှစ်မျိုးလုံး)
+                  </button>
+                  <button
+                    onClick={() => setDisplayMode('graph')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      displayMode === 'graph' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    📈 Graph သာ
+                  </button>
+                  <button
+                    onClick={() => setDisplayMode('table')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      displayMode === 'table' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    📋 Table ဇယားသာ
+                  </button>
+                </div>
+
+                {/* Timeframe Filter Tabs */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                  <button
+                    onClick={() => setHistoryTimeframe('all')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      historyTimeframe === 'all' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    မှတ်တမ်းအားလုံး
+                  </button>
+                  <button
+                    onClick={() => setHistoryTimeframe('1m')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      historyTimeframe === '1m' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    ၁ လ
+                  </button>
+                  <button
+                    onClick={() => setHistoryTimeframe('3m')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      historyTimeframe === '3m' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    ၃ လ
+                  </button>
+                  <button
+                    onClick={() => setHistoryTimeframe('6m')}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      historyTimeframe === '6m' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    ၆ လ
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Blood Pressure Historical Log Table */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
-              <div className="bg-rose-50 px-3.5 py-2 font-bold text-rose-950 flex items-center justify-between border-b border-rose-200">
-                <span className="flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-rose-600" />
-                  <span>သွေးပေါင်ချိန် သမိုင်းမှတ်တမ်း (Blood Pressure Log - {displayedBP.length} ကြိမ်)</span>
-                </span>
-                <span className="text-[10px] text-rose-700 font-semibold">mmHg / bpm</span>
-              </div>
-              {displayedBP.length === 0 ? (
-                <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း သွေးပေါင်ချိန် မှတ်တမ်း မရှိပါ။</p>
-              ) : (
-                <div className="max-h-60 overflow-y-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
-                      <tr>
-                        <th className="p-2.5">ရက်စွဲ</th>
-                        <th className="p-2.5">သွေးပေါင်ချိန် (BP)</th>
-                        <th className="p-2.5">နှလုံးခုန် (Pulse)</th>
-                        <th className="p-2.5">အဆင့်</th>
-                        <th className="p-2.5">မှတ်ချက်</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
-                      {displayedBP.slice(0, 15).map((r: any) => (
-                        <tr key={r.id}>
-                          <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
-                          <td className="p-2.5 font-bold text-rose-600">{r.systolic} / {r.diastolic} mmHg</td>
-                          <td className="p-2.5">{r.pulseRate || r.pulse || '-'} bpm</td>
-                          <td className="p-2.5">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                              {r.category || (r.systolic >= 140 || r.diastolic >= 90 ? 'သွေးတိုး' : 'ပုံမှန်')}
-                            </span>
-                          </td>
-                          <td className="p-2.5 text-slate-500 text-[11px] truncate max-w-[150px]">{r.notes || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {/* Visual Trend Graphs (Rendered when displayMode === 'both' or 'graph', and in print) */}
+            {(displayMode === 'both' || displayMode === 'graph') && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  <BarChart2 className="w-4 h-4 text-emerald-600" />
+                  <span>ကာလအလိုက် ပြောင်းလဲမှု Trend Graphs (Visual Curves & Target Zones):</span>
                 </div>
-              )}
-            </div>
 
-            {/* Blood Sugar Historical Log Table */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
-              <div className="bg-emerald-50 px-3.5 py-2 font-bold text-emerald-950 flex items-center justify-between border-b border-emerald-200">
-                <span className="flex items-center gap-1.5">
-                  <Droplets className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>ဆီးချို/သွေးချို သမိုင်းမှတ်တမ်း (Blood Sugar Log - {displayedSugar.length} ကြိမ်)</span>
-                </span>
-                <span className="text-[10px] text-emerald-700 font-semibold">mg/dL</span>
-              </div>
-              {displayedSugar.length === 0 ? (
-                <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း သွေးချို မှတ်တမ်း မရှိပါ။</p>
-              ) : (
-                <div className="max-h-60 overflow-y-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
-                      <tr>
-                        <th className="p-2.5">ရက်စွဲ</th>
-                        <th className="p-2.5">သွေးသကြားဓာတ်</th>
-                        <th className="p-2.5">စစ်ဆေးချိန် (Timing)</th>
-                        <th className="p-2.5">အဆင့်</th>
-                        <th className="p-2.5">မှတ်ချက်</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
-                      {displayedSugar.slice(0, 15).map((r: any) => (
-                        <tr key={r.id}>
-                          <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
-                          <td className="p-2.5 font-bold text-emerald-700">{r.glucoseValue || r.value} mg/dL</td>
-                          <td className="p-2.5">
-                            {r.timing === 'fasting' ? 'မနက်စာမစားမီ (Fasting)' : 
-                             r.timing === 'post_meal_2h' || r.timing === 'post_prandial' ? 'အစာစားပြီး ၂ နာရီ' : 
-                             r.timing === 'random' ? 'ကျပန်းစစ်ဆေးမှု' : (r.timing || 'ပုံမှန်')}
-                          </td>
-                          <td className="p-2.5">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              {r.status || 'ပုံမှန်'}
-                            </span>
-                          </td>
-                          <td className="p-2.5 text-slate-500 text-[11px] truncate max-w-[150px]">{r.notes || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                <div className="grid grid-cols-1 gap-4">
+                  {displayedBP.length > 0 && (
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                      <BloodPressureChart records={displayedBP} />
+                    </div>
+                  )}
 
-            {/* BMI & Weight Historical Log Table */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
-              <div className="bg-teal-50 px-3.5 py-2 font-bold text-teal-950 flex items-center justify-between border-b border-teal-200">
-                <span className="flex items-center gap-1.5">
-                  <Scale className="w-3.5 h-3.5 text-teal-600" />
-                  <span>ကိုယ်အလေးချိန်နှင့် BMI သမိုင်းမှတ်တမ်း (Weight & BMI Log - {displayedBMI.length} ကြိမ်)</span>
-                </span>
-                <span className="text-[10px] text-teal-700 font-semibold">kg / kg/m²</span>
-              </div>
-              {displayedBMI.length === 0 ? (
-                <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း ကိုယ်အလေးချိန် မှတ်တမ်း မရှိပါ။</p>
-              ) : (
-                <div className="max-h-60 overflow-y-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
-                      <tr>
-                        <th className="p-2.5">ရက်စွဲ</th>
-                        <th className="p-2.5">ကိုယ်အလေးချိန်</th>
-                        <th className="p-2.5">အရပ်</th>
-                        <th className="p-2.5">BMI</th>
-                        <th className="p-2.5">အဆင့်</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
-                      {displayedBMI.slice(0, 10).map((r: any) => (
-                        <tr key={r.id}>
-                          <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
-                          <td className="p-2.5 font-bold text-slate-900">{r.weightKg} kg</td>
-                          <td className="p-2.5">{r.heightCm} cm</td>
-                          <td className="p-2.5 font-bold text-teal-600">{r.bmi.toFixed(1)}</td>
-                          <td className="p-2.5">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
-                              {r.category === 'normal' ? 'ပုံမှန်' : r.category === 'overweight' ? 'အဝလွန်' : (r.category || 'ပုံမှန်')}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  {displayedSugar.length > 0 && (
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                      <BloodSugarChart records={displayedSugar} />
+                    </div>
+                  )}
+
+                  {displayedBMI.length > 0 && (
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                      <BMIWeightChart records={displayedBMI} />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Detailed Data Table Logs (Rendered when displayMode === 'both' or 'table', and in print) */}
+            {(displayMode === 'both' || displayMode === 'table') && (
+              <div className="space-y-4">
+                {(displayMode === 'both') && (
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200 mt-2">
+                    <Table className="w-4 h-4 text-emerald-600" />
+                    <span>ရက်စွဲအလိုက် အသေးစိတ် စစ်ဆေးတိုင်းတာချက် ဇယားများ (Data Table Logs):</span>
+                  </div>
+                )}
+
+                {/* Blood Pressure Historical Log Table */}
+                <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+                  <div className="bg-rose-50 px-3.5 py-2 font-bold text-rose-950 flex items-center justify-between border-b border-rose-200">
+                    <span className="flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 text-rose-600" />
+                      <span>သွေးပေါင်ချိန် သမိုင်းမှတ်တမ်း (Blood Pressure Log - {displayedBP.length} ကြိမ်)</span>
+                    </span>
+                    <span className="text-[10px] text-rose-700 font-semibold">mmHg / bpm</span>
+                  </div>
+                  {displayedBP.length === 0 ? (
+                    <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း သွေးပေါင်ချိန် မှတ်တမ်း မရှိပါ။</p>
+                  ) : (
+                    <div className="max-h-60 overflow-y-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
+                          <tr>
+                            <th className="p-2.5">ရက်စွဲ</th>
+                            <th className="p-2.5">သွေးပေါင်ချိန် (BP)</th>
+                            <th className="p-2.5">နှလုံးခုန် (Pulse)</th>
+                            <th className="p-2.5">အဆင့်</th>
+                            <th className="p-2.5">မှတ်ချက်</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
+                          {displayedBP.slice(0, 15).map((r: any) => (
+                            <tr key={r.id}>
+                              <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
+                              <td className="p-2.5 font-bold text-rose-600">{r.systolic} / {r.diastolic} mmHg</td>
+                              <td className="p-2.5">{r.pulseRate || r.pulse || '-'} bpm</td>
+                              <td className="p-2.5">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                  {r.category || (r.systolic >= 140 || r.diastolic >= 90 ? 'သွေးတိုး' : 'ပုံမှန်')}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-slate-500 text-[11px] truncate max-w-[150px]">{r.notes || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Blood Sugar Historical Log Table */}
+                <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+                  <div className="bg-emerald-50 px-3.5 py-2 font-bold text-emerald-950 flex items-center justify-between border-b border-emerald-200">
+                    <span className="flex items-center gap-1.5">
+                      <Droplets className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>ဆီးချို/သွေးချို သမိုင်းမှတ်တမ်း (Blood Sugar Log - {displayedSugar.length} ကြိမ်)</span>
+                    </span>
+                    <span className="text-[10px] text-emerald-700 font-semibold">mg/dL</span>
+                  </div>
+                  {displayedSugar.length === 0 ? (
+                    <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း သွေးချို မှတ်တမ်း မရှိပါ။</p>
+                  ) : (
+                    <div className="max-h-60 overflow-y-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
+                          <tr>
+                            <th className="p-2.5">ရက်စွဲ</th>
+                            <th className="p-2.5">သွေးသကြားဓာတ်</th>
+                            <th className="p-2.5">စစ်ဆေးချိန် (Timing)</th>
+                            <th className="p-2.5">အဆင့်</th>
+                            <th className="p-2.5">မှတ်ချက်</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
+                          {displayedSugar.slice(0, 15).map((r: any) => (
+                            <tr key={r.id}>
+                              <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
+                              <td className="p-2.5 font-bold text-emerald-700">{r.glucoseValue || r.value} mg/dL</td>
+                              <td className="p-2.5">
+                                {r.timing === 'fasting' ? 'မနက်စာမစားမီ (Fasting)' : 
+                                 r.timing === 'post_meal_2h' || r.timing === 'post_prandial' ? 'အစာစားပြီး ၂ နာရီ' : 
+                                 r.timing === 'random' ? 'ကျပန်းစစ်ဆေးမှု' : (r.timing || 'ပုံမှန်')}
+                              </td>
+                              <td className="p-2.5">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  {r.status || 'ပုံမှန်'}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-slate-500 text-[11px] truncate max-w-[150px]">{r.notes || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* BMI & Weight Historical Log Table */}
+                <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+                  <div className="bg-teal-50 px-3.5 py-2 font-bold text-teal-950 flex items-center justify-between border-b border-teal-200">
+                    <span className="flex items-center gap-1.5">
+                      <Scale className="w-3.5 h-3.5 text-teal-600" />
+                      <span>ကိုယ်အလေးချိန်နှင့် BMI သမိုင်းမှတ်တမ်း (Weight & BMI Log - {displayedBMI.length} ကြိမ်)</span>
+                    </span>
+                    <span className="text-[10px] text-teal-700 font-semibold">kg / kg/m²</span>
+                  </div>
+                  {displayedBMI.length === 0 ? (
+                    <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း ကိုယ်အလေးချိန် မှတ်တမ်း မရှိပါ။</p>
+                  ) : (
+                    <div className="max-h-60 overflow-y-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
+                          <tr>
+                            <th className="p-2.5">ရက်စွဲ</th>
+                            <th className="p-2.5">ကိုယ်အလေးချိန်</th>
+                            <th className="p-2.5">အရပ်</th>
+                            <th className="p-2.5">BMI</th>
+                            <th className="p-2.5">အဆင့်</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
+                          {displayedBMI.slice(0, 10).map((r: any) => (
+                            <tr key={r.id}>
+                              <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
+                              <td className="p-2.5 font-bold text-slate-900">{r.weightKg} kg</td>
+                              <td className="p-2.5">{r.heightCm} cm</td>
+                              <td className="p-2.5 font-bold text-teal-600">{r.bmi.toFixed(1)}</td>
+                              <td className="p-2.5">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                                  {r.category === 'normal' ? 'ပုံမှန်' : r.category === 'overweight' ? 'အဝလွန်' : (r.category || 'ပုံမှန်')}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Active Medications List */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Scale, 
   Ruler, 
@@ -14,10 +14,13 @@ import {
   TrendingUp, 
   Sparkles,
   HeartPulse,
-  UserCheck
+  UserCheck,
+  BarChart2,
+  Table
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
+import { BMIWeightChart } from '../charts/HealthCharts';
 import { 
   calculateAge, 
   calculateBMI, 
@@ -25,7 +28,8 @@ import {
   ftInToCm, 
   cmToFtIn, 
   lbToKg, 
-  kgToLb 
+  kgToLb,
+  parseDateToMs 
 } from '../../lib/medicalCalculations';
 
 export const BMIModule: React.FC = () => {
@@ -34,6 +38,33 @@ export const BMIModule: React.FC = () => {
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   const [isOpenEditProfile, setIsOpenEditProfile] = useState(false);
+
+  // View state: 'both' | 'graph' | 'table'
+  const [viewMode, setViewMode] = useState<'both' | 'graph' | 'table'>('both');
+  // Timeframe state: 'all' | '1m' | '3m' | '6m'
+  const [timeframe, setTimeframe] = useState<'all' | '1m' | '3m' | '6m'>('all');
+
+  // Time boundaries for filtering
+  const now = new Date();
+  const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).getTime();
+  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()).getTime();
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()).getTime();
+
+  const sortedBMI = useMemo(() => {
+    return [...bmiRecords].sort((a, b) => 
+      parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
+    );
+  }, [bmiRecords]);
+
+  const filteredBMI = useMemo(() => {
+    return sortedBMI.filter(r => {
+      const ms = parseDateToMs(r.date || r.timestamp || r.createdAt);
+      if (timeframe === '1m') return ms >= oneMonthAgo;
+      if (timeframe === '3m') return ms >= threeMonthsAgo;
+      if (timeframe === '6m') return ms >= sixMonthsAgo;
+      return true;
+    });
+  }, [sortedBMI, timeframe]);
 
   // Form states
   const [heightUnit, setHeightUnit] = useState<'cm' | 'ft'>('cm');
@@ -414,106 +445,215 @@ export const BMIModule: React.FC = () => {
         )}
       </div>
 
-      {/* BMI Log History Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      {/* Control Bar: View Switcher (Graph vs Table vs Both) + Timeframe Filter */}
+      <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-9 h-9 rounded-2xl bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-5 h-5" />
+          </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              ကိုယ်အလေးချိန် နှင့် BMI မှတ်တမ်းများ (BMI History Log)
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              ကိုယ်အလေးချိန် & BMI သမိုင်းမှတ်တမ်း ပြသမှု (BMI History Views)
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              အချိန်နှင့်အမျှ ကိုယ်အလေးချိန် အတက်အကျနှင့် ကျန်းမာရေး တိုးတက်မှု အခြေအနေ
+            <p className="text-[11px] text-slate-500">
+              Graph မျဉ်းကွေးဖြင့် ဖြစ်စေ၊ Data ဇယားဖြင့် ဖြစ်စေ ကာလအလိုက် စောင့်ကြည့်နိုင်ပါသည်
             </p>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-            စုစုပေါင်း: {bmiRecords.length} ခု
-          </span>
         </div>
 
-        {bmiRecords.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3">
-              <Scale className="w-6 h-6" />
-            </div>
-            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              BMI မှတ်တမ်း မရှိသေးပါ (No BMI Records Yet)
-            </h4>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              သင်၏ အရပ်နှင့် ကိုယ်အလေးချိန်ကို နေ့စဉ် သို့မဟုတ် အပတ်စဉ် မှတ်သားခြင်းဖြင့် သွေးတိုးနှင့် ဆီးချိုရောဂါ ကာကွယ်မှု တိုးတက်စေနိုင်ပါသည်
-            </p>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* View Toggle */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
             <button
-              onClick={() => setIsOpenAdd(true)}
-              className="mt-4 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+              onClick={() => setViewMode('both')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'both'
+                  ? 'bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
             >
-              ပထမဆုံး BMI မှတ်တမ်း ထည့်သွင်းမည်
+              <BarChart2 className="w-3.5 h-3.5 text-teal-600" />
+              <span>📊 Graph & Data</span>
+            </button>
+            <button
+              onClick={() => setViewMode('graph')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'graph'
+                  ? 'bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-teal-600" />
+              <span>📈 Graph View</span>
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              <Table className="w-3.5 h-3.5 text-teal-600" />
+              <span>📋 Data ဇယား</span>
             </button>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                <tr>
-                  <th className="py-3 px-4 font-semibold">ရက်စွဲ</th>
-                  <th className="py-3 px-4 font-semibold">အရပ် (Height)</th>
-                  <th className="py-3 px-4 font-semibold">ကိုယ်အလေးချိန် (Weight)</th>
-                  <th className="py-3 px-4 font-semibold">BMI တန်ဖိုး</th>
-                  <th className="py-3 px-4 font-semibold">အဆင့်ခွဲခြားချက်</th>
-                  <th className="py-3 px-4 font-semibold">ခါးအတိုင်းအတာ</th>
-                  <th className="py-3 px-4 font-semibold">မှတ်ချက်</th>
-                  <th className="py-3 px-4 font-semibold text-right">လုပ်ဆောင်ချက်</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {bmiRecords.map((r) => {
-                  const evalB = calculateBMI(r.weightKg, r.heightCm);
-                  return (
-                    <tr key={r.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3.5 px-4 font-medium text-slate-900 dark:text-white">
-                        {r.date}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300">
-                        {r.heightCm} cm
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-200">
-                        {r.weightKg} kg <span className="font-normal text-slate-400 text-[11px]">({kgToLb(r.weightKg)} lb)</span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                          {r.bmi}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {evalB ? (
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${evalB.bgColor} ${evalB.color} ${evalB.borderColor}`}>
-                            {evalB.labelMm}
-                          </span>
-                        ) : (
-                          r.category
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                        {r.waistCm ? `${r.waistCm} cm` : '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">
-                        {r.notes || '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={() => deleteBMIRecord(r.id)}
-                          className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                          title="မှတ်တမ်းဖျက်မည်"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+
+          {/* Timeframe Filter */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
+            <button
+              onClick={() => setTimeframe('all')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === 'all'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              အားလုံး
+            </button>
+            <button
+              onClick={() => setTimeframe('1m')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === '1m'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              ၁ လ
+            </button>
+            <button
+              onClick={() => setTimeframe('3m')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === '3m'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              ၃ လ
+            </button>
+            <button
+              onClick={() => setTimeframe('6m')}
+              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                timeframe === '6m'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              ၆ လ
+            </button>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* GRAPH VIEW: BMI & Weight Trend Curve */}
+      {(viewMode === 'both' || viewMode === 'graph') && (
+        <div>
+          <BMIWeightChart records={filteredBMI} />
+        </div>
+      )}
+
+      {/* DATA TABLE VIEW */}
+      {(viewMode === 'both' || viewMode === 'table') && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                ကိုယ်အလေးချိန် နှင့် BMI မှတ်တမ်းများ (BMI History Log)
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                အချိန်နှင့်အမျှ ကိုယ်အလေးချိန် အတက်အကျနှင့် ကျန်းမာရေး တိုးတက်မှု အခြေအနေ ({timeframe === 'all' ? 'အားလုံး' : timeframe === '1m' ? '၁ လစာ' : timeframe === '3m' ? '၃ လစာ' : '၆ လစာ'})
+              </p>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              စုစုပေါင်း: {filteredBMI.length} ခု
+            </span>
+          </div>
+
+          {filteredBMI.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3">
+                <Scale className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                ရွေးချယ်ထားသော ကာလအတွင်း BMI မှတ်တမ်း မရှိပါ
+              </h4>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                သင်၏ အရပ်နှင့် ကိုယ်အလေးချိန်ကို နေ့စဉ် သို့မဟုတ် အပတ်စဉ် မှတ်သားခြင်းဖြင့် သွေးတိုးနှင့် ဆီးချိုရောဂါ ကာကွယ်မှု တိုးတက်စေနိုင်ပါသည်
+              </p>
+              <button
+                onClick={() => setIsOpenAdd(true)}
+                className="mt-4 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                ပထမဆုံး BMI မှတ်တမ်း ထည့်သွင်းမည်
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th className="py-3 px-4 font-semibold">ရက်စွဲ</th>
+                    <th className="py-3 px-4 font-semibold">အရပ် (Height)</th>
+                    <th className="py-3 px-4 font-semibold">ကိုယ်အလေးချိန် (Weight)</th>
+                    <th className="py-3 px-4 font-semibold">BMI တန်ဖိုး</th>
+                    <th className="py-3 px-4 font-semibold">အဆင့်ခွဲခြားချက်</th>
+                    <th className="py-3 px-4 font-semibold">ခါးအတိုင်းအတာ</th>
+                    <th className="py-3 px-4 font-semibold">မှတ်ချက်</th>
+                    <th className="py-3 px-4 font-semibold text-right">လုပ်ဆောင်ချက်</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredBMI.slice().reverse().map((r) => {
+                    const evalB = calculateBMI(r.weightKg, r.heightCm);
+                    return (
+                      <tr key={r.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3.5 px-4 font-medium text-slate-900 dark:text-white">
+                          {r.date}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300">
+                          {r.heightCm} cm
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-200">
+                          {r.weightKg} kg <span className="font-normal text-slate-400 text-[11px]">({kgToLb(r.weightKg)} lb)</span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                            {r.bmi}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {evalB ? (
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${evalB.bgColor} ${evalB.color} ${evalB.borderColor}`}>
+                              {evalB.labelMm}
+                            </span>
+                          ) : (
+                            r.category
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
+                          {r.waistCm ? `${r.waistCm} cm` : '-'}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">
+                          {r.notes || '-'}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            onClick={() => deleteBMIRecord(r.id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                            title="ဖျက်မည်"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal 1: Add BMI Record */}
       {isOpenAdd && (

@@ -24,10 +24,12 @@ import {
   ShieldAlert,
   Eye,
   LifeBuoy,
-  Waves
+  Waves,
+  BarChart2,
+  TrendingUp
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.3.5';
+export const CURRENT_SYSTEM_VERSION = 'v2.3.6';
 
 export interface VersionItem {
   version: string;
@@ -46,13 +48,49 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
+    version: 'v2.3.6',
+    type: 'major',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
+    isLatest: true,
+    title: '📈 [MAJOR] Interactive Health Historical Graph View & Multi-Timeframe Analysis (ကျန်းမာရေး သမိုင်းမှတ်တမ်းများအား Graph မျဉ်းကွေးဖြင့် ပိုမိုမြင်သာစွာ ကြည့်ရှုနိုင်ခြင်း၊ Graph & Table နှစ်မျိုးလုံး တပြိုင်တည်းကြည့်ရှုနိုင်ခြင်းနှင့် ၁ လ၊ ၃ လ၊ ၆ လ စာ Filter စနစ်)',
+    badge: 'Latest Release (v2.3.6)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '📊 Graph View & Data Table ပေါင်းစပ်ခလုတ်များ (Dual View Modes)',
+        icon: BarChart2,
+        items: [
+          'အသုံးပြုသူ တောင်းဆိုချက်နှင့်အညီ သမိုင်းမှတ်တမ်း ဒေတာဇယား (Table) များကို ဆက်လက်ထိန်းသိမ်းထားရှိသည့်အပြင် ပိုမိုမြင်သာထင်ရှားစေမည့် Graph View ကို အသစ်ထပ်မံ ထည့်သွင်းပေးထားခြင်း',
+          'အသုံးပြုသူအနေဖြင့် "📊 Graph & Data (နှစ်မျိုးလုံး)"၊ "📈 Graph View သာ"၊ "📋 Data ဇယားသာ" ဟူ၍ လွတ်လပ်စွာ စိတ်ကြိုက် ပြောင်းလဲကြည့်ရှုနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '📅 ၁ လ ၊ ၃ လ ၊ ၆ လ စာ ကာလအလိုက် Filter စနစ် (Timeframe Filtering)',
+        icon: Calendar,
+        items: [
+          'မှတ်တမ်းအားလုံး၊ နောက်ဆုံး ၁ လစာ၊ ၃ လစာနှင့် ၆ လစာ ကာလများအလိုက် သွေးပေါင်ချိန် (BP)၊ သွေးတွင်းသကြားဓာတ် (Glucose) နှင့် ကိုယ်အလေးချိန်/BMI များကို သီးသန့်ခွဲထုတ် စစ်ဆေးနိုင်ခြင်း',
+          'ဆရာဝန်များနှင့် ပြသတိုင်ပင်ရာတွင် ကာလအပိုင်းအခြားအလိုက် တိုးတက်မှု သို့မဟုတ် အပြောင်းအလဲများကို အလွယ်တကူ သုံးသပ်နိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '📉 သွေးပေါင်ချိန်၊ သကြားဓာတ်နှင့် BMI မျဉ်းကွေး Graph စနစ်များ (Visual Trend Curves)',
+        icon: TrendingUp,
+        items: [
+          'သွေးပေါင်ချိန် ဂရပ်တွင် အပေါ်သွေး (SYS)၊ အောက်သွေး (DIA)၊ နှလုံးခုန်နှုန်း (Pulse) နှင့် ပုံမှန်စံနှုန်း Target Zone (120/80 mmHg) တို့အား အချိန်နှင့်အမျှ ပုံဖော်ပြသခြင်း',
+          'သကြားဓာတ် ဂရပ်တွင် Fasting, Post-meal 2h, Random နှင့် ၃ လပတ် HbA1c သကြားဓာတ် စံနှုန်း Target Band များကို တိကျစွာ ပြသခြင်း',
+          'BMI Module နှင့် ကျန်းမာရေးသုံးသပ်ချက်တွင် အရပ်၊ ကိုယ်အလေးချိန်နှင့် Asian Criteria BMI ပစ်မှတ်ဇုန် (18.5 - 22.9 kg/m²) မျဉ်းကွေးကို အပြည့်အစုံ ထည့်သွင်းထားရှိခြင်း'
+        ]
+      }
+    ]
+  },
+  {
     version: 'v2.3.5',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
-    isLatest: true,
+    isLatest: false,
     title: '🛡️ [PATCH/AUDIT] Medical Article Author Integrity & Clinical Advisory Notice (ဆောင်းပါးများမှ အတည်မပြုနိုင်သော ဆရာဝန်အမည်များ ဖယ်ရှားခြင်းနှင့် ဆေးပညာ လမ်းညွှန် အသိပေးချက် စနစ်သစ်)',
-    badge: 'Latest Release (v2.3.5)',
-    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    badge: 'Previous Release (v2.3.5)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
     highlights: [
       {
         title: '🩺 ဆောင်းပါးများမှ စိတ်ကူးယဉ် Placeholder ဆရာဝန် အမည်များအား အပြီးတိုင် ဖယ်ရှားရှင်းလင်းခြင်း',
