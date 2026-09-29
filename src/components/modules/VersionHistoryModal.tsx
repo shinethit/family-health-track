@@ -34,7 +34,7 @@ import {
   BookOpen
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.3.9';
+export const CURRENT_SYSTEM_VERSION = 'v2.4.0';
 
 export interface VersionItem {
   version: string;
@@ -53,12 +53,12 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.3.9',
+    version: 'v2.4.0',
     type: 'major',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
-    title: '🤝 [FEATURE & UI] အထူး ဂရုစိုက်ပေးရန် လိုသူများ (မသန်စွမ်း၊ မျက်စိမမြင်၊ နားမကြား၊ လေဖြတ်၊ ကိုယ်အင်္ဂါချို့ယွင်းမှု စောင့်ရှောက်ရေး) နှင့် Sidebar လမ်းညွှန်များ သပ်ရပ်စွာ အဆင့်မြှင့်တင်ခြင်း',
-    badge: 'Latest Release (v2.3.9)',
+    title: '🤝 [MAJOR RELEASE v2.4.0] အထူး ဂရုစိုက်ပေးရန် လိုသူများ (မသန်စွမ်း၊ မျက်စိမမြင်၊ နားမကြား၊ လေဖြတ်၊ ကိုယ်အင်္ဂါချို့ယွင်းမှု စောင့်ရှောက်ရေး) မော်ဂျူးသစ်နှင့် Mobile Dropdown Selector စနစ်',
+    badge: 'Major Release (v2.4.0)',
     badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-300',
     highlights: [
       {
