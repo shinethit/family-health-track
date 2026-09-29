@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Heart, 
   Users, 
@@ -14,6 +14,7 @@ import {
   Search, 
   BookOpen, 
   ChevronRight, 
+  ChevronDown,
   ShieldCheck,
   Eye,
   Ear,
@@ -27,7 +28,8 @@ import {
   CheckSquare,
   Square,
   HelpCircle,
-  Stethoscope
+  Stethoscope,
+  ListFilter
 } from 'lucide-react';
 
 interface SpecialCareTopic {
@@ -272,6 +274,14 @@ export const SpecialNeedsCareModule: React.FC = () => {
     }
   });
   const [showChecklistModal, setShowChecklistModal] = useState<boolean>(false);
+  const detailContainerRef = useRef<HTMLDivElement>(null);
+
+  const selectTopic = (id: string) => {
+    setActiveTopicId(id);
+    setTimeout(() => {
+      detailContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
 
   const toggleChecklist = (id: string) => {
     const updated = { ...checklistState, [id]: !checklistState[id] };
@@ -350,7 +360,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
       </div>
 
       {/* Category Tabs & Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3.5">
         {/* Search Bar */}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -392,12 +402,38 @@ export const SpecialNeedsCareModule: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Mobile Topic Selector Dropdown (ဖုန်းဖြင့်ကြည့်ရှုရာတွင် ဆောင်းပါးခေါင်းစဉ် ချက်ချင်းရွေးနိုင်သော Dropdown) */}
+        <div className="lg:hidden pt-2 border-t border-slate-100 flex flex-col gap-1.5">
+          <label htmlFor="special-care-topic-select-mobile" className="text-xs font-bold text-slate-700 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-indigo-900 font-extrabold">
+              <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+              ဆောင်းပါး ခေါင်းစဉ် ရွေးချယ်ရန်:
+            </span>
+            <span className="text-[11px] text-slate-500 font-normal">({filteredTopics.length} ပုဒ် ရှိသည်)</span>
+          </label>
+          <div className="relative w-full">
+            <select
+              id="special-care-topic-select-mobile"
+              value={activeTopic.id}
+              onChange={(e) => selectTopic(e.target.value)}
+              className="w-full bg-indigo-50/80 hover:bg-indigo-100/80 border border-indigo-300 text-indigo-950 text-xs sm:text-sm font-bold rounded-xl pl-3.5 pr-9 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden cursor-pointer truncate transition-all shadow-2xs"
+            >
+              {filteredTopics.map(topic => (
+                <option key={topic.id} value={topic.id}>
+                  {topic.icon} {topic.titleMm}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-indigo-700 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
       </div>
 
       {/* Main 2-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Side: Topic Cards List */}
-        <div className="lg:col-span-5 space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" ref={detailContainerRef}>
+        {/* Left Side: Topic Cards List (Hidden on mobile to show article directly, shown on desktop) */}
+        <div className="hidden lg:block lg:col-span-5 space-y-2.5">
           <div className="flex items-center justify-between mb-1 px-1">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
@@ -415,10 +451,10 @@ export const SpecialNeedsCareModule: React.FC = () => {
               return (
                 <div
                   key={topic.id}
-                  onClick={() => setActiveTopicId(topic.id)}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left relative overflow-hidden ${
+                  onClick={() => selectTopic(topic.id)}
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer text-left relative overflow-hidden ${
                     isSelected
-                      ? 'bg-indigo-50/80 border-indigo-400 shadow-sm ring-2 ring-indigo-500/20'
+                      ? 'bg-indigo-50/90 border-indigo-400 shadow-sm ring-2 ring-indigo-500/20'
                       : 'bg-white hover:bg-slate-50 border-slate-200 shadow-2xs'
                   }`}
                 >
@@ -432,12 +468,12 @@ export const SpecialNeedsCareModule: React.FC = () => {
                           {topic.badge}
                         </span>
                       </div>
-                      <h4 className={`text-sm font-extrabold leading-snug line-clamp-1 ${
+                      <h4 className={`text-xs sm:text-sm font-extrabold leading-snug line-clamp-1 ${
                         isSelected ? 'text-indigo-950' : 'text-slate-900'
                       }`}>
                         {topic.titleMm}
                       </h4>
-                      <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">
+                      <p className="text-[11px] text-slate-500 line-clamp-2 mt-1 leading-relaxed">
                         {topic.summary}
                       </p>
                     </div>
@@ -452,22 +488,40 @@ export const SpecialNeedsCareModule: React.FC = () => {
         </div>
 
         {/* Right Side: Detailed Guide View */}
-        <div className="lg:col-span-7">
+        <div className="col-span-1 lg:col-span-7">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden sticky top-36">
-            {/* Topic Header */}
-            <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-indigo-50/30">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">{activeTopic.icon}</span>
-                <div>
-                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${activeTopic.badgeColor}`}>
-                    {activeTopic.badge}
-                  </span>
-                  <h2 className="text-lg sm:text-xl font-black text-slate-900 mt-1">
-                    {activeTopic.titleMm}
-                  </h2>
+            {/* Topic Header & Dropdown Switcher */}
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-indigo-50/30">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{activeTopic.icon}</span>
+                  <div>
+                    <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${activeTopic.badgeColor}`}>
+                      {activeTopic.badge}
+                    </span>
+                    <h2 className="text-base sm:text-xl font-black text-slate-900 mt-1 leading-snug">
+                      {activeTopic.titleMm}
+                    </h2>
+                  </div>
+                </div>
+
+                {/* Quick Desktop Dropdown / Indicator */}
+                <div className="hidden sm:block shrink-0">
+                  <select
+                    value={activeTopic.id}
+                    onChange={(e) => selectTopic(e.target.value)}
+                    aria-label="အထူးစောင့်ရှောက်မှု ဆောင်းပါး ရွေးချယ်ရန်"
+                    className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden cursor-pointer shadow-2xs"
+                  >
+                    {filteredTopics.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.titleMm}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
-              <p className="text-xs sm:text-sm text-indigo-900/80 font-medium">
+              <p className="text-xs sm:text-sm text-indigo-900/80 font-medium leading-relaxed">
                 {activeTopic.subtitleMm}
               </p>
             </div>

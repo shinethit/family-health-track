@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Heart, 
   Users, 
@@ -15,6 +15,7 @@ import {
   Search,
   BookOpen,
   ChevronRight,
+  ChevronDown,
   ShieldCheck
 } from 'lucide-react';
 
@@ -163,6 +164,14 @@ export const ElderlyCareModule: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTopic, setActiveTopic] = useState<GeriatricTopic>(ELDERLY_TOPICS[0]);
+  const detailContainerRef = useRef<HTMLDivElement>(null);
+
+  const selectTopic = (topic: GeriatricTopic) => {
+    setActiveTopic(topic);
+    setTimeout(() => {
+      detailContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
 
   // Interactive Home Fall Risk Assessment Checklist
   const [fallRiskAnswers, setFallRiskAnswers] = useState<{ [key: string]: boolean }>({
@@ -362,9 +371,38 @@ export const ElderlyCareModule: React.FC = () => {
           </div>
         </div>
 
+        {/* Mobile Topic Selector Dropdown */}
+        <div className="lg:hidden bg-white p-3 rounded-2xl border border-teal-200 shadow-2xs flex flex-col gap-1.5">
+          <label htmlFor="elderly-care-topic-select-mobile" className="text-xs font-bold text-slate-700 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-teal-950 font-extrabold">
+              <BookOpen className="w-3.5 h-3.5 text-teal-700" />
+              ဆောင်းပါး ခေါင်းစဉ် ရွေးချယ်ရန်:
+            </span>
+            <span className="text-[11px] text-slate-500 font-normal">({filteredTopics.length} ပုဒ် ရှိသည်)</span>
+          </label>
+          <div className="relative w-full">
+            <select
+              id="elderly-care-topic-select-mobile"
+              value={activeTopic.id}
+              onChange={(e) => {
+                const found = ELDERLY_TOPICS.find(t => t.id === e.target.value);
+                if (found) selectTopic(found);
+              }}
+              className="w-full bg-teal-50/80 hover:bg-teal-100/80 border border-teal-300 text-teal-950 text-xs sm:text-sm font-bold rounded-xl pl-3.5 pr-9 py-2.5 focus:ring-2 focus:ring-teal-500 focus:outline-hidden cursor-pointer truncate transition-all shadow-2xs"
+            >
+              {filteredTopics.map(topic => (
+                <option key={topic.id} value={topic.id}>
+                  {topic.icon} {topic.titleMm}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-teal-700 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
+
         {/* 2-Col Topics View */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-4 space-y-2.5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" ref={detailContainerRef}>
+          <div className="hidden lg:block lg:col-span-4 space-y-2.5">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">
               စောင့်ရှောက်ရေး အကြောင်းအရာများ ({filteredTopics.length})
             </span>
@@ -374,7 +412,7 @@ export const ElderlyCareModule: React.FC = () => {
                 return (
                   <button
                     key={topic.id}
-                    onClick={() => setActiveTopic(topic)}
+                    onClick={() => selectTopic(topic)}
                     className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
                       isSelected
                         ? 'bg-teal-50 border-teal-500 shadow-xs ring-1 ring-teal-500'
@@ -398,7 +436,7 @@ export const ElderlyCareModule: React.FC = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
+          <div className="col-span-1 lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
             <div className="border-b border-slate-100 pb-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-3xl">{activeTopic.icon}</span>
