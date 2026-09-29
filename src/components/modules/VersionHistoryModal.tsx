@@ -31,10 +31,11 @@ import {
   Table,
   HeartHandshake,
   Accessibility,
-  BookOpen
+  BookOpen,
+  RefreshCw
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.4.1';
+export const CURRENT_SYSTEM_VERSION = 'v2.4.2';
 
 export interface VersionItem {
   version: string;
@@ -53,12 +54,39 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.1',
+    version: 'v2.4.2',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
+    title: '🔄 [FEATURE] Live Background Version Auto-Polling, Real-Time Update Popups & Manual "Check for Updates" System',
+    badge: 'Latest Release (v2.4.2)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '⚡ 30-Second Live Background Auto-Polling (အလိုအလျောက် ဗားရှင်း စစ်ဆေးမှု)',
+        icon: RefreshCw,
+        items: [
+          'အပလီကေးရှင်းကို အသုံးပြုနေစဉ် နောက်ကွယ်မှ စက္ကန့် ၃၀ တိုင်း အလိုအလျောက် ဗားရှင်းသစ် စစ်ဆေးပေးသော Background Polling စနစ်',
+          'Window Focus သို့မဟုတ် Tab သို့ ပြန်လည်ရောက်ရှိချိန်တိုင်း ဗားရှင်းသစ်ရှိမရှိ အလိုအလျောက် ချက်ချင်းစစ်ဆေးပေးခြင်း'
+        ]
+      },
+      {
+        title: '🔔 Live Popup & Manual "Check for Updates" Button (ဗားရှင်း စစ်ဆေးရန် ခလုတ်)',
+        icon: Sparkles,
+        items: [
+          'ဗားရှင်းသစ် ထွက်ရှိလာသည်နှင့် အသုံးပြုသူထံသို့ အလိုအလျောက် Pop-up တက်၍ အဆင့်မြှင့်တင်ပေးခြင်း',
+          'Navbar၊ Sidebar မီနူးနှင့် Version History တို့တွင် အသုံးပြုသူကိုယ်တိုင် စက္ကန့်ပိုင်းအတွင်း စစ်ဆေးနိုင်သည့် "🔄 စနစ်ဗားရှင်း စစ်ဆေးမည် (Check for Updates)" ခလုတ် ထည့်သွင်းပေးထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.4.1',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
     title: '🛠️ [STABILITY & UI FIXES] Data ဖြည့်သွင်းသည့် မိုဒယ်လ်များ ဘေးသို့ယိုင်ရွှေ့မှု မရှိစေဘဲ ဗဟိုငြိမ်ဖြစ်စေခြင်းနှင့် တက်ဘ်ပြောင်းပါက အပေါ်ဆုံးသို့ တိုက်ရိုက်ရောက်ရှိစေသော Auto Scroll-to-Top စနစ်',
-    badge: 'Latest Release (v2.4.1)',
+    badge: 'Release (v2.4.1)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
@@ -1341,9 +1369,10 @@ export const VERSION_HISTORY_DATA: VersionItem[] = [
 interface VersionHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onManualCheckVersion?: () => void;
 }
 
-export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen, onClose }) => {
+export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen, onClose, onManualCheckVersion }) => {
   const [selectedVersion, setSelectedVersion] = useState<string>(VERSION_HISTORY_DATA[0].version);
   const [filterType, setFilterType] = useState<'all' | 'major' | 'minor'>('all');
 
@@ -1365,26 +1394,37 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-purple-50 via-teal-50 to-transparent">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-600/30">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-600/30 shrink-0">
               <History className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="font-extrabold text-base sm:text-lg text-slate-900">
-                  Version History & Change Log (ပြောင်းလဲမှု မှတ်တမ်း)
+                  Version History & Change Log
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                   {VERSION_HISTORY_DATA[0].version}
                 </span>
+
+                {onManualCheckVersion && (
+                  <button
+                    onClick={onManualCheckVersion}
+                    className="px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                    title="စနစ်ဗားရှင်း အသစ် စစ်ဆေးမည်"
+                  >
+                    <RefreshCw className="w-3 h-3 text-purple-200 animate-spin-hover" />
+                    <span>ဗားရှင်း စစ်ဆေးမည်</span>
+                  </button>
+                )}
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 mt-0.5">
                 စနစ်အတွင်း ပြုပြင်ခဲ့သမျှ Major / Minor ပြောင်းလဲမှု မှတ်တမ်းများ အပြည့်အစုံ
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>

@@ -25,7 +25,9 @@ import {
   Folder,
   Layers,
   ChevronDown,
-  HeartPulse
+  HeartPulse,
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { HealthDataProvider, useHealthData } from './context/HealthDataContext';
@@ -83,6 +85,8 @@ const MainContent: React.FC = () => {
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
   const [showVersionUpdateModal, setShowVersionUpdateModal] = useState(false);
   const [latestAppVersion, setLatestAppVersion] = useState(CURRENT_SYSTEM_VERSION);
+  const [versionToast, setVersionToast] = useState<{ message: string; type: 'checking' | 'success' | 'updated' } | null>(null);
+  const [isCheckingVersion, setIsCheckingVersion] = useState(false);
 
   const pendingQuestionsCount = doctorQuestions.filter(q => q.status === 'pending').length;
 
@@ -174,17 +178,56 @@ const MainContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
 
+  // Live Version Check Handler (Manual Click or Auto Polling)
+  const handleCheckVersion = (isManual = false) => {
+    setIsCheckingVersion(true);
+    if (isManual) {
+      setVersionToast({ message: 'စနစ်ဗားရှင်း စစ်ဆေးနေပါသည်...', type: 'checking' });
+    }
+
+    setTimeout(() => {
+      const lastSeen = localStorage.getItem('myanmar_health_app_version');
+      if (!lastSeen || lastSeen !== CURRENT_SYSTEM_VERSION) {
+        localStorage.setItem('myanmar_health_app_version', CURRENT_SYSTEM_VERSION);
+        setShowVersionUpdateModal(true);
+        setVersionToast({ 
+          message: `🔄 စနစ်ဗားရှင်းသစ် ${CURRENT_SYSTEM_VERSION} သို့ အောင်မြင်စွာ အဆင့်မြှင့်လိုက်ပါပြီ!`, 
+          type: 'updated' 
+        });
+      } else if (isManual) {
+        setVersionToast({ 
+          message: `✅ သင်သည် နောက်ဆုံးပေါ် စနစ်ဗားရှင်း ${CURRENT_SYSTEM_VERSION} ကို အသုံးပြုနေပါသည်!`, 
+          type: 'success' 
+        });
+      }
+      setIsCheckingVersion(false);
+      setTimeout(() => setVersionToast(null), 3500);
+    }, isManual ? 600 : 200);
+  };
+
+  // Background Auto-Check Version Engine (Runs every 30s + on focus/visibility change)
+  useEffect(() => {
+    handleCheckVersion(false);
+
+    const intervalId = setInterval(() => {
+      handleCheckVersion(false);
+    }, 30000);
+
+    const handleFocus = () => handleCheckVersion(false);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, []);
+
   // Force pure clean light theme by default ("အဖြူခံနဲ့ ရိုးရိုးလေး")
   useEffect(() => {
     document.documentElement.classList.remove('dark');
     document.documentElement.classList.add('light');
-
-    // Safe Version Check & Popup Trigger
-    const lastSeenVersion = localStorage.getItem('myanmar_health_app_version');
-    if (!lastSeenVersion || lastSeenVersion !== CURRENT_SYSTEM_VERSION) {
-      setShowVersionUpdateModal(true);
-      localStorage.setItem('myanmar_health_app_version', CURRENT_SYSTEM_VERSION);
-    }
   }, []);
 
   // Automatically ensure Admin opens to Admin Dashboard by default
@@ -229,6 +272,30 @@ const MainContent: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-white text-slate-900 flex flex-col font-sans">
+      {/* Live Version Check Toast Notification */}
+      {versionToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl shadow-xl border border-indigo-200 bg-white/95 text-slate-900 flex items-center gap-2.5 text-xs font-bold animate-in fade-in slide-in-from-top-2 backdrop-blur-md">
+          {versionToast.type === 'checking' && (
+            <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin shrink-0" />
+          )}
+          {versionToast.type === 'success' && (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          )}
+          {versionToast.type === 'updated' && (
+            <Sparkles className="w-4 h-4 text-amber-500 shrink-0 animate-bounce" />
+          )}
+          <span className={
+            versionToast.type === 'updated' 
+              ? 'text-indigo-950 font-extrabold' 
+              : versionToast.type === 'success' 
+              ? 'text-emerald-900' 
+              : 'text-indigo-900'
+          }>
+            {versionToast.message}
+          </span>
+        </div>
+      )}
+
       <Sidebar 
         isOpen={isSidebarOpen} 
         onClose={() => setIsSidebarOpen(false)}
@@ -237,6 +304,7 @@ const MainContent: React.FC = () => {
         onOpenPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
         onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
         onOpenPassportModal={() => setIsPassportOpen(true)}
+        onManualCheckVersion={() => handleCheckVersion(true)}
         setActiveTab={(tab) => setActiveTab(tab as any)}
         setCategoryGroup={setSelectedCategoryGroup}
       />
@@ -247,6 +315,7 @@ const MainContent: React.FC = () => {
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           onOpenPassportModal={() => setIsPassportOpen(true)}
           onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
+          onManualCheckVersion={() => handleCheckVersion(true)}
         />
         <BroadcastMarqueeBanner />
       </div>
@@ -393,6 +462,7 @@ const MainContent: React.FC = () => {
       <VersionHistoryModal
         isOpen={isVersionHistoryOpen}
         onClose={() => setIsVersionHistoryOpen(false)}
+        onManualCheckVersion={() => handleCheckVersion(true)}
       />
       <UserGuideModal
         isOpen={isUserGuideOpen}

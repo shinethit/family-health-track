@@ -13,7 +13,8 @@ import {
   Baby,
   Users,
   Stethoscope,
-  ShieldAlert
+  ShieldAlert,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -27,6 +28,7 @@ interface SidebarProps {
   onOpenPrivacyPolicy: () => void;
   onOpenVersionHistory: () => void;
   onOpenPassportModal: () => void;
+  onManualCheckVersion?: () => void;
   setActiveTab: (tab: string) => void;
   setCategoryGroup: (group: string) => void;
 }
@@ -39,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenPrivacyPolicy,
   onOpenVersionHistory,
   onOpenPassportModal,
+  onManualCheckVersion,
   setActiveTab,
   setCategoryGroup
 }) => {
@@ -91,6 +94,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="border-t border-slate-100 my-2 pt-2">
                 <MenuItem icon={ShieldCheck} label="မူဝါဒ & ဒေတာလုံခြုံရေး" onClick={() => { onOpenPrivacyPolicy(); onClose(); }} />
+                
+                {onManualCheckVersion && (
+                  <button 
+                    onClick={() => { onManualCheckVersion(); onClose(); }} 
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-emerald-50 text-emerald-900 cursor-pointer font-bold text-sm my-1 bg-emerald-50/50 border border-emerald-100/80 transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <RefreshCw className="w-5 h-5 text-emerald-600" />
+                      <span>စနစ်ဗားရှင်း စစ်ဆေးမည်</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold font-mono">
+                      Check
+                    </span>
+                  </button>
+                )}
+
                 <button 
                   onClick={() => { onOpenVersionHistory(); onClose(); }} 
                   className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-100 text-slate-700 cursor-pointer"
