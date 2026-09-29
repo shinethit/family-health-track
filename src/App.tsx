@@ -34,7 +34,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Navbar } from './components/layout/Navbar';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { NotificationCenterModal } from './components/modules/NotificationCenterModal';
-import { VersionHistoryModal, CURRENT_SYSTEM_VERSION } from './components/modules/VersionHistoryModal';
+import { VersionHistoryModal, CURRENT_SYSTEM_VERSION, VERSION_HISTORY_DATA } from './components/modules/VersionHistoryModal';
 import { UserGuideModal } from './components/modules/UserGuideModal';
 import { HealthPassportModal } from './components/modules/HealthPassportModal';
 import { BloodPressureModule } from './components/modules/BloodPressureModule';
@@ -399,53 +399,69 @@ const MainContent: React.FC = () => {
       />
 
       {/* Automatic Version Upgrade / Update Popup Modal */}
-      {showVersionUpdateModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-4 mx-auto">
-              <Sparkles className="w-6 h-6 animate-pulse" />
-            </div>
-
-            <h3 className="text-lg font-bold text-center text-slate-900 dark:text-white">
-              🎉 အက်ပ်ဗားရှင်းအသစ်သို့ တင်မြှင့်ပြီးပါပြီ!
-            </h3>
-            <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-1">
-              ဗားရှင်း <strong className="text-teal-600 font-bold">{latestAppVersion}</strong> သို့ အလိုအလျောက် အပ်ဒိတ်လုပ်ပြီးစီးပါပြီ။
-            </p>
-
-            <div className="mt-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2 text-xs text-slate-700 dark:text-slate-300">
-              <div className="font-bold flex items-center gap-1.5 text-teal-700 dark:text-teal-300">
-                <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping" />
-                <span>ပါဝင်လာသော အဓိက ပြောင်းလဲမှုများ:</span>
+      {showVersionUpdateModal && (() => {
+        const currentVersionInfo = VERSION_HISTORY_DATA.find(v => v.version === latestAppVersion) || VERSION_HISTORY_DATA[0];
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-200">
+              <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 mx-auto">
+                <Sparkles className="w-6 h-6 animate-pulse" />
               </div>
-              <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
-                <li>သွေးပေါင်ချိန် တိုင်းတာချက်နှင့် Graph ကို Chronological Order အမှန်အတိုင်း ပြသခြင်း</li>
-                <li>Graph တွင် သွေးပေါင်ချိန် တန်ဖိုး ဂဏန်း Label များ တိုက်ရိုက် တပ်ဆင်ထားခြင်း</li>
-                <li>နောက်ဆုံး တိုင်းတာချက်ကို အတိအကျ timestamp အလိုက် ရွေးချယ်ဖော်ပြခြင်း</li>
-                <li>အသုံးပြုသူများအလိုက် Filter ပြုလုပ် ရှာဖွေ/နှိုင်းယှဉ်နိုင်သော စနစ် ပါဝင်ခြင်း</li>
-              </ul>
-            </div>
 
-            <div className="mt-6 flex items-center gap-3">
-              <button
-                onClick={() => {
-                  setShowVersionUpdateModal(false);
-                  setIsVersionHistoryOpen(true);
-                }}
-                className="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
-              >
-                ပြောင်းလဲမှုမှတ်တမ်း (Change Log) ကြည့်ရန်
-              </button>
-              <button
-                onClick={() => setShowVersionUpdateModal(false)}
-                className="flex-1 py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
-              >
-                စတင်အသုံးပြုမည်
-              </button>
+              <h3 className="text-lg font-bold text-center text-slate-900 dark:text-white">
+                🎉 အက်ပ်ဗားရှင်းအသစ်သို့ တင်မြှင့်ပြီးပါပြီ!
+              </h3>
+              <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-1">
+                ဗားရှင်း <strong className="text-teal-600 font-bold">{latestAppVersion}</strong> သို့ အလိုအလျောက် အပ်ဒိတ်လုပ်ပြီးစီးပါပြီ။
+              </p>
+
+              {/* Dynamic highlights directly from the active version */}
+              <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs text-slate-700 dark:text-slate-300 max-h-64 overflow-y-auto">
+                <div className="font-bold flex items-center gap-1.5 text-teal-700 dark:text-teal-300 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping shrink-0" />
+                  <span>{currentVersionInfo.title}</span>
+                </div>
+
+                <div className="space-y-3 pt-2 border-t border-slate-200/80 dark:border-slate-700">
+                  {currentVersionInfo.highlights.map((h, i) => (
+                    <div key={i} className="space-y-1">
+                      <p className="font-bold text-[11px] text-slate-800 dark:text-slate-200">
+                        {h.title}
+                      </p>
+                      <ul className="space-y-1 text-[11px] text-slate-600 dark:text-slate-400 pl-2">
+                        {h.items.slice(0, 3).map((item, idx) => (
+                          <li key={idx} className="leading-relaxed flex items-start gap-1.5">
+                            <span className="text-teal-500 shrink-0 font-bold">›</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setShowVersionUpdateModal(false);
+                    setIsVersionHistoryOpen(true);
+                  }}
+                  className="flex-1 py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer text-center"
+                >
+                  Change Log အပြည့်အစုံ
+                </button>
+                <button
+                  onClick={() => setShowVersionUpdateModal(false)}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer text-center"
+                >
+                  စတင်အသုံးပြုမည်
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <OfflineIndicator />
     </div>

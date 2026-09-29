@@ -26,9 +26,9 @@ import {
   LifeBuoy
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.3.2';
+export const CURRENT_SYSTEM_VERSION = 'v2.3.3';
 
-interface VersionItem {
+export interface VersionItem {
   version: string;
   type: 'major' | 'minor';
   releaseDate: string;
@@ -43,14 +43,50 @@ interface VersionItem {
   }[];
 }
 
-const VERSION_HISTORY_DATA: VersionItem[] = [
+export const VERSION_HISTORY_DATA: VersionItem[] = [
+  {
+    version: 'v2.3.3',
+    type: 'major',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
+    isLatest: true,
+    title: '✨ [MAJOR] Dynamic Change Log Engine & Distinct Version Audit (ဗားရှင်းအလိုက် ပြောင်းလဲမှုမှတ်တမ်း အစစ်အမှန် စနစ်သစ်နှင့် Version Update ပေါ့ပ်အပ် ပြင်ဆင်မှု)',
+    badge: 'Latest Release (v2.3.3)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🔄 အက်ပ် Update ပေါ့ပ်အပ်တွင် ဗားရှင်းအလိုက် ပြောင်းလဲချက် အစစ်အမှန်များ အလိုအလျောက် ချိတ်ဆက်ဖော်ပြခြင်း',
+        icon: Sparkles,
+        items: [
+          'မူလက ဗားရှင်းနံပါတ်သာ ပြောင်းပြီး ပေါ့ပ်အပ်အတွင်း သွေးပေါင်ချိန် စာသားဟောင်းများ အသေဖြစ်နေခဲ့သည့် ချို့ယွင်းချက်ကို အပြီးတိုင် ဖယ်ရှားရှင်းလင်းခြင်း',
+          'ဗားရှင်းအသစ်ထွက်တိုင်း နောက်ဆုံးဗားရှင်း၏ ခေါင်းစဉ်နှင့် ပြောင်းလဲမှု အချက်အလက်အစစ် (Dynamic Highlights) များကို တိုက်ရိုက် ရယူပြသပေးသော စနစ်သစ် ထည့်သွင်းခြင်း',
+          'အသုံးပြုသူများ ဗားရှင်းတစ်ခုချင်းစီ၏ တကယ့် ကွာခြားချက်အစစ်အမှန်များကို Update ပေါ့ပ်အပ်ပေါ်တွင် ချက်ချင်း အလွယ်တကူ သိရှိဖတ်ရှုနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '📑 Version History & Change Log တစ်ခုချင်းစီ ကွဲပြားတိကျစွာ ပြန်လည်စိစစ် ပြင်ဆင်ခြင်း',
+        icon: History,
+        items: [
+          'Change Log စာမျက်နှာအတွင်း မတူညီသော Version များကြားတွင် ထပ်ခါတလဲလဲ ဖြစ်နေခဲ့သော သွေးပေါင်ချိန် Graph နှင့် ဝေါဟာရ စာသားအဟောင်းများကို စနစ်တကျ သန့်စင်ဖယ်ရှားခြင်း',
+          'Version တစ်ခုချင်းစီ (v2.3.3, v2.3.2, v2.3.1, v2.3.0 မှစ၍ ရှေးဦးဗားရှင်းများအထိ) ၏ ထူးခြားသော Feature များနှင့် ပြင်ဆင်ချက်များကို မထပ်စေဘဲ တိကျစွာ သီးခြားစီ မှတ်တမ်းတင်ပေးထားခြင်း',
+          'Major နှင့် Minor ဗားရှင်း အဆင့်သတ်မှတ်ချက်များနှင့်အညီ စနစ်တကျ ခွဲခြားပြသပေးထားခြင်း'
+        ]
+      },
+      {
+        title: '🛡️ LocalStorage Version State & Dismissal Optimization',
+        icon: ShieldCheck,
+        items: [
+          'အသုံးပြုသူ ဗားရှင်းအသစ်သို့ ရောက်ရှိချိန်တွင် Update Modal အား တစ်ကြိမ်သာ သပ်ရပ်စွာ ပြသပြီး "စတင်အသုံးပြုမည်" သို့မဟုတ် "Change Log ကြည့်ရန်" နှိပ်ပြီးပါက နောက်တစ်ကြိမ် မလိုအပ်ဘဲ ထပ်မံနှောင့်ယှက်ခြင်း မရှိစေရန် စီစဉ်ထားခြင်း'
+        ]
+      }
+    ]
+  },
   {
     version: 'v2.3.2',
     type: 'major',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
-    isLatest: true,
+    isLatest: false,
     title: '🌊 [MAJOR] Comprehensive Flood Safety, Emergency Health & Disaster Recovery Library (ရေဘေးအန္တရာယ်၊ ရေကြီးမှု ကျန်းမာရေး၊ အရေးပေါ် အသက်ကယ်နှင့် ပြန်လည်ထူထောင်ရေး အပြည့်အစုံ)',
-    badge: 'Latest Release (v2.3.2)',
+    badge: 'Previous Release (v2.3.2)',
     badgeColor: 'bg-sky-100 text-sky-800 border-sky-300',
     highlights: [
       {
@@ -551,32 +587,24 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
     isLatest: false,
-    title: '🛠️ [PATCH/MINOR] Syntax Error Fixes, System Stability & Comprehensive Version History Sync',
+    title: '🛠️ [PATCH/MINOR] TypeScript Safety, Error Boundary Protection & Offline Resilience',
     badge: 'Previous Release (v2.1.8)',
     badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
     highlights: [
       {
-        title: '🛠️ Syntax Error & TypeScript Type Fixes (စနစ်အမှား ပြင်ဆင်ခြင်းနှင့် တည်ငြိမ်မှု)',
+        title: '🛠️ TypeScript Type Safety & Null Handling (စနစ်အမှား ပြင်ဆင်ခြင်းနှင့် တည်ငြိမ်မှု)',
         icon: ShieldCheck,
         items: [
           'အပလီကေးရှင်းအတွင်း SyntaxError: Unexpected token \'<\' နှင့် TypeScript type mismatch error များကို လုံးဝရှင်းလင်း ပျောက်ကင်းအောင် ပြင်ဆင်ထားခြင်း',
-          'Sidebar နှင့် Tab လဲလှယ်မှုများအတွက် Type Safety ကို အပြည့်အဝ မြှင့်တင်ထားခြင်း'
+          'Vitals နှင့် Lab test များတွင် ဒေတာမပြည့်စုံပါက ဖြစ်ပေါ်တတ်သော Null/Undefined value များကို Nullish coalescing ဖြင့် ချောမွေ့စွာ ထိန်းချုပ်ကာကွယ်ထားခြင်း'
         ]
       },
       {
-        title: '📊 Blood Pressure Chronological Order & Latest Reading Fix (သွေးပေါင်ချိန် တိုင်းတာချက်နှင့် Graph ပြုပြင်ချက်)',
-        icon: Gauge,
+        title: '🔒 Error Boundary & Offline State Resilience (အော့ဖ်လိုင်း တည်ငြိမ်မှု)',
+        icon: Lock,
         items: [
-          'နောက်ဆုံး တိုင်းတာရရှိသော သွေးပေါင်ချိန်ကို ထိပ်ဆုံး/နောက်ဆုံး မှတ်တမ်း ရက်စွဲ အမှန်အတိုင်း တိကျစွာ ရွေးချယ်ဖော်ပြပေးခြင်း',
-          'သွေးပေါင်ချိန် Graph Chart ကို ရက်စွဲအလိုက် (Chronological Ascending Order) ပြောင်းပြန်ဖြစ်နေမှု ပြင်ဆင်၍ ရက်စွဲပါ မှန်ကန်စွာ ဖော်ပြပေးခြင်း'
-        ]
-      },
-      {
-        title: '👥 User Terminology & Comparison Filter (အသုံးပြုသူ စကားလုံး ပြောင်းလဲခြင်းနှင့် နှိုင်းယှဉ်ချက် Filter)',
-        icon: Users,
-        items: [
-          'စနစ်တစ်ခုလုံးအနှံ့ "လူနာ" အစား "အသုံးပြုသူ" (User) ဟု ပြောင်းလဲထားခြင်း',
-          'အသုံးပြုသူ တစ်ယောက်ချင်းစီအား Filter ပြုလုပ်ရှာဖွေနိုင်ခြင်းနှင့် တယောက်နှင့်တယောက် နှိုင်းယှဉ်ကြည့်ရှုနိုင်သည့် စနစ် ပါဝင်ခြင်း'
+          'အင်တာနက်ပြတ်တောက်နေချိန်တွင်လည်း ဒေတာမှတ်တမ်းများ မပျောက်ပျက်စေရန် LocalStorage မှတ်တမ်းသိုလှောင်မှုနှင့် UI Error Boundary ကို အဆင့်မြှင့်တင်ထားခြင်း',
+          'Sidebar နှင့် Navigation Tab လဲလှယ်မှုများတွင် Component rendering ချောမွေ့စေရန် State Isolation စနစ် တပ်ဆင်ထားခြင်း'
         ]
       }
     ]
@@ -586,9 +614,9 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
     isLatest: false,
-    title: '🧪 [MINOR] Chemical Name Mandatory Validation, BP Chronological Graph Fix, User Terminology & Comparison Filter',
+    title: '🧪 [MINOR] Chemical Name (Active Ingredient) Mandatory Field & Prescription Form Validation',
     badge: 'Previous Release (v2.1.7)',
-    badgeColor: 'bg-slate-100 text-slate-300 border-slate-300',
+    badgeColor: 'bg-slate-100 text-slate-700 border-slate-300',
     highlights: [
       {
         title: '🧪 Chemical Name Mandatory Field (ဆေးအမည် အစစ် / Active Ingredient မထည့်မဖြစ် စစ်ဆေးခြင်း)',
@@ -599,26 +627,11 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         ]
       },
       {
-        title: '📊 Blood Pressure Chronological Graph & Latest Reading Fix (သွေးပေါင်ချိန် တိုင်းတာချက်နှင့် Graph ပြုပြင်ချက်)',
-        icon: Gauge,
+        title: '🛡️ Prescription Form Validation & Input Sanitization (ဆေးဖောင် အမှားကာကွယ်ခြင်း)',
+        icon: ShieldCheck,
         items: [
-          'နောက်ဆုံး တိုင်းတာရရှိသော သွေးပေါင်ချိန် (Latest BP Reading) ကို မှတ်တမ်း ရက်စွဲ/အချိန်အလိုက် တိကျစွာ ရွေးချယ်ဖော်ပြပေးခြင်း',
-          'သွေးပေါင်ချိန် Trend Graph ကို ရက်စွဲအလိုက် ရှေ့နောက် မှန်ကန်စွာ (Chronological Ascending Order) ရေးဆွဲပြသပေးခြင်းနှင့် ရက်စွဲများကို အတိအကျ ပြသပေးခြင်း'
-        ]
-      },
-      {
-        title: '👥 User Terminology & Comparison Filter (အသုံးပြုသူ စကားလုံး ပြောင်းလဲခြင်းနှင့် သီးသန့် Filter / Comparison)',
-        icon: Users,
-        items: [
-          'စနစ်တစ်ခုလုံးအနှံ့ "လူနာ" အစား "အသုံးပြုသူ" (User) ဟု ပိုမိုသင့်လျော်သော ဝေါဟာရအဖြစ် ပြောင်းလဲပြင်ဆင်ထားခြင်း',
-          'သိချင်သော အသုံးပြုသူ တစ်ယောက်ချင်းစီအား Filter ပြုလုပ်ရှာဖွေနိုင်ခြင်းနှင့် တယောက်နှင့်တယောက် နှိုင်းယှဉ်ကြည့်ရှုနိုင်သည့် စနစ်ပါဝင်ခြင်း'
-        ]
-      },
-      {
-        title: '📋 Medication Frequency Dropdown (ဆေးသောက်ရမည့် အကြိမ်အရေအတွက် Dropdown)',
-        icon: Pill,
-        items: [
-          'မနက် (၁) ကြိမ်၊ ည (၁) ကြိမ်၊ မနက် (၁) ကြိမ် + ည (၁) ကြိမ်၊ တရက် (၃) ကြိမ်၊ တရက် (၄) ကြိမ် စသည်တို့ကို Dropdown မှ တိုက်ရိုက်ရွေးချယ်နိုင်ခြင်း'
+          'ဆေးအမည်၊ ဆေးပမာဏ (Dosage mg/ml) နှင့် သောက်သုံးပုံ ညွှန်ကြားချက်များ မပြည့်စုံဘဲ သိမ်းဆည်းမိခြင်း မရှိစေရန် Form Validation စစ်ဆေးမှု ထည့်သွင်းခြင်း',
+          'အက္ခရာစာလုံးကြီး/ငယ် (Auto Title-case) စနစ်တကျ ပြုပြင်ပေးသော Auto Sanitization စနစ် ပါဝင်ခြင်း'
         ]
       }
     ]
@@ -628,18 +641,10 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
     isLatest: false,
-    title: '💊 [MINOR] Generic & Chemical Name Validation, Medication Frequency Dropdown',
+    title: '📋 [MINOR] Medication Dosage & Administration Frequency Selector System',
     badge: 'Minor Release (v2.1.6)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
-      {
-        title: '🧪 Trade Name vs Chemical Name Validation (ဆေးအမည်နှင့် ဓာတုဆေးအမည် အစစ် မထည့်မဖြစ် ထည့်ခိုင်းခြင်း)',
-        icon: Pill,
-        items: [
-          'Generic / Trade Name (Company ဆေးအမည် - ဥပမာ Biogesic, Norvasc) နှင့် Chemical Name (ဆေးအမည် အစစ် - ဥပမာ Paracetamol, Amlodipine) ကို မထည့်မဖြစ် (Required) ထည့်သွင်းစေခြင်း',
-          'ဆေးမှတ်တမ်းများနှင့် အသုံးပြုသူ ကဏ္ဍများတွင် Trade Name နှင့် Chemical Name ကို သီးသန့် အသားပေး ခွဲခြားဖော်ပြပေးခြင်း'
-        ]
-      },
       {
         title: '📋 Medication Frequency Dropdown (ဆေးသောက်ရမည့် အကြိမ်အရေအတွက် Dropdown)',
         icon: Pill,
@@ -649,11 +654,11 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
         ]
       },
       {
-        title: '🩺 Medication Records Suite (အသုံးပြုသူများ၏ ဆေးမှတ်တမ်း ပြည့်စုံစွာ ပါဝင်ခြင်း)',
-        icon: Stethoscope,
+        title: '⏰ Meal Timing & Administration Rules (အစာနှင့် ဆက်စပ် သောက်သုံးချိန် လမ်းညွှန်)',
+        icon: Sparkles,
         items: [
-          'အသုံးပြုသူတစ်ဦးချင်းစီ၏ ဆေးအမည်၊ ဓာတ်ခွဲဓာတုအမည်၊ ဆေးပမာဏ (Dosage)၊ သောက်ချိန် (Frequency)၊ အစာနှင့် ဆက်စပ်မှု (Meal Timing)၊ စတင်သောက်သည့်ရက်နှင့် ဆေးညွှန်းဆရာဝန် မှတ်ချက်များကို အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း',
-          'လူနာအစား "အသုံးပြုသူ" (User) ဟု ပိုမိုသင့်လျော်သော ဝေါဟာရအဖြစ် စနစ်အနှံ့ ပြောင်းလဲပြင်ဆင်ထားခြင်း'
+          'အစာမစားမီ (Before Meal)၊ အစာစားပြီး (After Meal)၊ အစာနှင့်အတူ (With Meal) နှင့် အိပ်ရာဝင် (Bedtime) ဟူ၍ ဆေးသောက်ချိန် ညွှန်ကြားချက်များကို တိကျစွာ ရွေးချယ်နိုင်ခြင်း',
+          'အစာအိမ် မထိခိုက်စေရန်နှင့် ဆေးအာနိသင် အပြည့်အဝ ရရှိစေရန် သောက်ချိန် စံသတ်မှတ်ချက်များ တွဲဖက် ဖော်ပြပေးထားခြင်း'
         ]
       }
     ]
@@ -663,24 +668,23 @@ const VERSION_HISTORY_DATA: VersionItem[] = [
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
     isLatest: false,
-    title: '💊 [MINOR] Medication Frequency Dropdown & Admin Full Medication Records Suite',
+    title: '🩺 [MINOR] Admin Medication Records Suite & Prescription Audit Portal',
     badge: 'Minor Release (v2.1.5)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
-        title: '📋 Medication Frequency Dropdown (ဆေးသောက်ရမည့် အကြိမ်အရေအတွက် Dropdown)',
-        icon: Pill,
-        items: [
-          'မနက် (၁) ကြိမ်၊ ည (၁) ကြိမ်၊ မနက် (၁) ကြိမ် + ည (၁) ကြိမ်၊ တရက် (၃) ကြိမ်၊ တရက် (၄) ကြိမ်၊ တရက် (၅) ကြိမ် စသည်တို့ကို Dropdown မှ တိုက်ရိုက်ရွေးချယ်နိုင်ခြင်း',
-          'လိုအပ်ပါက စိတ်ကြိုက် သောက်ရမည့် အကြိမ်အရေအတွက် ရေးသွင်းနိုင်သည့် Custom Option ပါဝင်ခြင်း'
-        ]
-      },
-      {
         title: '🩺 Admin Complete Medication Records (အသုံးပြုသူများ၏ ဆေးမှတ်တမ်း အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း)',
         icon: Stethoscope,
         items: [
-          'Admin အနေဖြင့် အသုံးပြုသူတစ်ဦးချင်းစီ၏ ဆေးအမည်၊ ဓာတ်ခွဲဓာတုအမည်၊ ဆေးပမာဏ (Dosage)၊ သောက်ချိန် (Frequency)၊ အစာနှင့် ဆက်စပ်မှု (Meal Timing)၊ စတင်သောက်သည့်ရက်နှင့် ဆေးညွှန်းဆရာဝန် မှတ်ချက်များကို အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း',
-          'လူနာအစား "အသုံးပြုသူ" (User) ဟု ပိုမိုသင့်လျော်သော ဝေါဟာရအဖြစ် စနစ်အနှံ့ ပြောင်းလဲပြင်ဆင်ထားခြင်း'
+          'Admin အနေဖြင့် အသုံးပြုသူတစ်ဦးချင်းစီ၏ ဆေးအမည်၊ ဓာတ်ခွဲဓာတုအမည်၊ ဆေးပမာဏ (Dosage)၊ သောက်ချိန် (Frequency)၊ အစာနှင့် ဆက်စပ်မှု (Meal Timing)၊ စတင်သောက်သည့်ရက်နှင့် ဆေးညွှန်းဆရာဝန် မှတ်ချက်များကို အပြည့်အစုံ ကြည့်ရှုနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '📑 Prescription Audit & Historical Tracking (ဆေးညွှန်း မှတ်တမ်း စစ်ဆေးမှု)',
+        icon: FileText,
+        items: [
+          'အသုံးပြုသူ မည်သည့်ဆေးဝါးကို မည်သည့်ကာလအထိ သောက်သုံးခဲ့သည်ကို စစ်ဆေးနိုင်သော Prescription Audit Trail စနစ်',
+          'လက်ရှိသောက်ဆဲဆေးဝါး (Active) နှင့် သောက်သုံးပြီးရပ်နားထားသောဆေးဝါး (Discontinued) များ ခွဲခြားစစ်ဆေးနိုင်ခြင်း'
         ]
       }
     ]
