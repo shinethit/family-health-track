@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
   Printer, 
@@ -13,7 +13,12 @@ import {
   AlertTriangle,
   Calendar,
   ShieldCheck,
-  Stethoscope
+  Stethoscope,
+  TrendingUp,
+  History,
+  Scale,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
@@ -36,6 +41,8 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
     doctorQuestions
   } = useHealthData();
 
+  const [historyTimeframe, setHistoryTimeframe] = useState<'all' | '1m' | '3m' | '6m'>('all');
+
   if (!isOpen) return null;
 
   // Determine active patient data
@@ -43,23 +50,122 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
   const patientName = currentPatient?.displayName || 'လူနာအမည် မသတ်မှတ်ရသေးပါ';
   const patientEmail = currentPatient?.email || '-';
 
-  // Filter patient specific data
-  const patientBP = bpRecords.filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id);
-  const patientSugar = glucoseRecords.filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id);
-  const patientBMI = bmiRecords.filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id);
-  const patientLabs = labRecords.filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id);
+  // Helper to parse dates reliably
+  const parseRecordDate = (r: any): Date => {
+    const raw = r.date || r.timestamp || r.recordedAt || r.createdAt;
+    if (!raw) return new Date(0);
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  };
+
+  const formatRecordDate = (r: any): string => {
+    const d = parseRecordDate(r);
+    if (d.getTime() === 0) return r.date || '-';
+    return d.toLocaleDateString('my-MM', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Filter and sort patient specific data (Newest first)
+  const patientBP = [...bpRecords]
+    .filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id)
+    .sort((a, b) => parseRecordDate(b).getTime() - parseRecordDate(a).getTime());
+
+  const patientSugar = [...glucoseRecords]
+    .filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id)
+    .sort((a, b) => parseRecordDate(b).getTime() - parseRecordDate(a).getTime());
+
+  const patientBMI = [...bmiRecords]
+    .filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id)
+    .sort((a, b) => parseRecordDate(b).getTime() - parseRecordDate(a).getTime());
+
+  const patientLabs = [...labRecords]
+    .filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id)
+    .sort((a, b) => parseRecordDate(b).getTime() - parseRecordDate(a).getTime());
+
   const patientMeds = medications.filter((r: any) => (!currentPatient?.id || r.userId === currentPatient.id) && r.status === 'active');
   const patientAdvices = doctorAdvices.filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id);
   const patientQuestions = doctorQuestions.filter((r: any) => (!currentPatient?.id || r.userId === currentPatient.id) && r.status === 'answered');
 
-  // Compute Vitals Averages
+  // Compute Latest Single Readings for Top Overview
   const latestBP = patientBP[0];
-  const avgSystolic = patientBP.length > 0 ? Math.round(patientBP.slice(0, 5).reduce((acc, r) => acc + r.systolic, 0) / Math.min(5, patientBP.length)) : null;
-  const avgDiastolic = patientBP.length > 0 ? Math.round(patientBP.slice(0, 5).reduce((acc, r) => acc + r.diastolic, 0) / Math.min(5, patientBP.length)) : null;
-
   const latestSugar = patientSugar[0];
   const latestBMI = patientBMI[0];
   const latestLab = patientLabs[0];
+
+  // Time boundaries for 1 Month, 3 Months, 6 Months
+  const now = new Date();
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setDate(now.getDate() - 30);
+  const threeMonthsAgo = new Date();
+  threeMonthsAgo.setDate(now.getDate() - 90);
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setDate(now.getDate() - 180);
+
+  // Timeframe calculation for BP
+  const bp1m = patientBP.filter(r => parseRecordDate(r) >= oneMonthAgo);
+  const bp3m = patientBP.filter(r => parseRecordDate(r) >= threeMonthsAgo);
+  const bp6m = patientBP.filter(r => parseRecordDate(r) >= sixMonthsAgo);
+
+  const calcBPAvg = (records: any[]) => {
+    if (records.length === 0) return null;
+    const avgSys = Math.round(records.reduce((acc, r) => acc + (r.systolic || 0), 0) / records.length);
+    const avgDia = Math.round(records.reduce((acc, r) => acc + (r.diastolic || 0), 0) / records.length);
+    const avgPulse = Math.round(records.reduce((acc, r) => acc + (r.pulseRate || r.pulse || 72), 0) / records.length);
+    return { avgSys, avgDia, avgPulse, count: records.length };
+  };
+
+  const bpStats1m = calcBPAvg(bp1m);
+  const bpStats3m = calcBPAvg(bp3m);
+  const bpStats6m = calcBPAvg(bp6m);
+
+  // Timeframe calculation for Glucose
+  const sugar1m = patientSugar.filter(r => parseRecordDate(r) >= oneMonthAgo);
+  const sugar3m = patientSugar.filter(r => parseRecordDate(r) >= threeMonthsAgo);
+  const sugar6m = patientSugar.filter(r => parseRecordDate(r) >= sixMonthsAgo);
+
+  const calcSugarAvg = (records: any[]) => {
+    if (records.length === 0) return null;
+    const values = records.map(r => r.glucoseValue || r.value || 0).filter(v => v > 0);
+    if (values.length === 0) return null;
+    const avg = Math.round(values.reduce((acc, v) => acc + v, 0) / values.length);
+    return { avg, count: records.length };
+  };
+
+  const sugarStats1m = calcSugarAvg(sugar1m);
+  const sugarStats3m = calcSugarAvg(sugar3m);
+  const sugarStats6m = calcSugarAvg(sugar6m);
+
+  // Timeframe calculation for BMI
+  const bmi1m = patientBMI.filter(r => parseRecordDate(r) >= oneMonthAgo);
+  const bmi3m = patientBMI.filter(r => parseRecordDate(r) >= threeMonthsAgo);
+  const bmi6m = patientBMI.filter(r => parseRecordDate(r) >= sixMonthsAgo);
+
+  const calcBMIAvg = (records: any[]) => {
+    if (records.length === 0) return null;
+    const avgBmi = (records.reduce((acc, r) => acc + (r.bmi || 0), 0) / records.length).toFixed(1);
+    const avgWeight = (records.reduce((acc, r) => acc + (r.weightKg || 0), 0) / records.length).toFixed(1);
+    return { avgBmi, avgWeight, count: records.length };
+  };
+
+  const bmiStats1m = calcBMIAvg(bmi1m);
+  const bmiStats3m = calcBMIAvg(bmi3m);
+  const bmiStats6m = calcBMIAvg(bmi6m);
+
+  // Filtered tables by selected timeframe
+  const getFilteredRecords = (records: any[]) => {
+    if (historyTimeframe === '1m') return records.filter(r => parseRecordDate(r) >= oneMonthAgo);
+    if (historyTimeframe === '3m') return records.filter(r => parseRecordDate(r) >= threeMonthsAgo);
+    if (historyTimeframe === '6m') return records.filter(r => parseRecordDate(r) >= sixMonthsAgo);
+    return records;
+  };
+
+  const displayedBP = getFilteredRecords(patientBP);
+  const displayedSugar = getFilteredRecords(patientSugar);
+  const displayedBMI = getFilteredRecords(patientBMI);
+  const displayedLabs = getFilteredRecords(patientLabs);
 
   const handlePrint = () => {
     window.print();
@@ -95,6 +201,13 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
           .no-print {
             display: none !important;
           }
+          table {
+            page-break-inside: auto;
+          }
+          tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+          }
         }
       `}</style>
 
@@ -107,7 +220,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             </div>
             <div>
               <h2 className="text-lg font-bold">ကျန်းမာရေး အစီရင်ခံစာ PDF / Print Passport</h2>
-              <p className="text-xs text-emerald-100">ဆရာဝန်ပြသရန်နှင့် ဆေးခန်းတွင် တင်ပြရန် အပြည့်အစုံထုတ်ယူခြင်း</p>
+              <p className="text-xs text-emerald-100">နောက်ဆုံးအခြေအနေနှင့် ၁ လ ၊ ၃ လ ၊ ၆ လ စာ သမိုင်းမှတ်တမ်း အပြည့်အစုံ</p>
             </div>
           </div>
 
@@ -141,7 +254,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               <div>
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">Family Health Track</h1>
                 <p className="text-xs text-slate-600 font-medium">
-                  မိသားစု ကျန်းမာရေးနှင့် ဆေးမှတ်တမ်း အစီရင်ခံစာ (Medical Health Passport)
+                  မိသားစု ကျန်းမာရေးနှင့် ဆေးမှတ်တမ်း အစီရင်ခံစာ (Medical Health Passport & Historical Trends)
                 </p>
               </div>
             </div>
@@ -155,7 +268,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
           {/* Patient Personal Information Card */}
           <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">လူနာအမည်</p>
+              <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">အသုံးပြုသူ / လူနာအမည်</p>
               <p className="text-base font-extrabold text-slate-900">{patientName}</p>
             </div>
 
@@ -192,55 +305,346 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             </div>
           </div>
 
-          {/* Vitals Summary Grid */}
+          {/* SECTION 1: Latest Vital Signs at a Glance (နောက်ဆုံး တိုင်းတာချက်များ အနှစ်ချုပ်) */}
           <div>
             <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
               <Activity className="w-4 h-4 text-emerald-600" />
-              <span>လက်ရှိ ကျန်းမာရေး တိုင်းတာချက်များ (Vital Signs Overview)</span>
+              <span>၁။ လက်ရှိ နောက်ဆုံး တိုင်းတာချက်များ (Latest Vital Signs at a Glance)</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* BP Summary */}
-              <div className="border border-slate-200 rounded-xl p-3 bg-white">
-                <p className="text-xs text-slate-500 font-medium">သွေးပေါင်ချိန် (Blood Pressure)</p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-xl font-extrabold text-rose-600">
+              <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
+                <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
+                  <span>နောက်ဆုံး သွေးပေါင်ချိန်</span>
+                  <span className="text-[10px] text-slate-400">{latestBP ? formatRecordDate(latestBP) : '-'}</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-rose-600">
                     {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : '120/80'}
                   </span>
-                  <span className="text-[10px] text-slate-400">mmHg</span>
+                  <span className="text-xs text-slate-500 font-semibold">mmHg</span>
                 </div>
-                <p className="text-[11px] text-slate-600 mt-1 font-medium">
-                  {avgSystolic ? `နောက်ဆုံး (၅) ကြိမ် ပျမ်းမျှ: ${avgSystolic}/${avgDiastolic} mmHg` : 'ပုံမှန်အဆင့်'}
+                <p className="text-[11px] text-slate-600 mt-2 font-medium">
+                  {latestBP?.pulseRate || latestBP?.pulse ? `နှလုံးခုန်နှုန်း: ${latestBP.pulseRate || latestBP.pulse} bpm` : 'သွေးပေါင်အခြေအနေ ပုံမှန်'}
                 </p>
               </div>
 
               {/* Glucose Summary */}
-              <div className="border border-slate-200 rounded-xl p-3 bg-white">
-                <p className="text-xs text-slate-500 font-medium">ဆီးချို / သွေးသကြား (Blood Glucose)</p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-xl font-extrabold text-emerald-600">
+              <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
+                <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
+                  <span>နောက်ဆုံး ဆီးချို/သွေးချို</span>
+                  <span className="text-[10px] text-slate-400">{latestSugar ? formatRecordDate(latestSugar) : '-'}</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-emerald-600">
                     {latestSugar ? `${latestSugar.glucoseValue || latestSugar.value}` : '110'}
                   </span>
-                  <span className="text-[10px] text-slate-400">mg/dL</span>
+                  <span className="text-xs text-slate-500 font-semibold">mg/dL</span>
                 </div>
-                <p className="text-[11px] text-slate-600 mt-1 font-medium">
-                  {latestSugar?.hba1c ? `HbA1c: ${latestSugar.hba1c}%` : 'မနက်စာမစားမီ စစ်ဆေးချက်'}
+                <p className="text-[11px] text-slate-600 mt-2 font-medium">
+                  {latestSugar?.hba1c ? `HbA1c: ${latestSugar.hba1c}%` : latestSugar?.timing === 'fasting' ? 'မနက်စာမစားမီ စစ်ဆေးချက်' : 'သွေးသကြားဓာတ် အဆင့်'}
                 </p>
               </div>
 
               {/* BMI Summary */}
-              <div className="border border-slate-200 rounded-xl p-3 bg-white">
-                <p className="text-xs text-slate-500 font-medium">ကိုယ်အလေးချိန် & BMI</p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-xl font-extrabold text-teal-600">
+              <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
+                <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
+                  <span>ကိုယ်အလေးချိန် & BMI</span>
+                  <span className="text-[10px] text-slate-400">{latestBMI ? formatRecordDate(latestBMI) : '-'}</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-teal-600">
                     {latestBMI ? latestBMI.bmi.toFixed(1) : '22.5'}
                   </span>
-                  <span className="text-[10px] text-slate-400">kg/m²</span>
+                  <span className="text-xs text-slate-500 font-semibold">kg/m²</span>
                 </div>
-                <p className="text-[11px] text-slate-600 mt-1 font-medium">
+                <p className="text-[11px] text-slate-600 mt-2 font-medium">
                   {latestBMI ? `အလေးချိန်: ${latestBMI.weightKg} kg | အရပ်: ${latestBMI.heightCm} cm` : 'ပုံမှန် ကိုယ်အလေးချိန်'}
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* SECTION 2: Historical Trends Summary (၁ လ ၊ ၃ လ ၊ ၆ လ စာ ကျန်းမာရေး အနှစ်ချုပ်နှင့် ပျမ်းမျှတန်ဖိုးများ) */}
+          <div className="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  ၂။ ၁ လ ၊ ၃ လ ၊ ၆ လ စာ ကျန်းမာရေး အနှစ်ချုပ်နှင့် နှိုင်းယှဉ်ချက် (Historical Trends Overview)
+                </h3>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500">
+                ဆရာဝန် ကြည့်ရှုလွယ်ကူစေရန် ကာလအလိုက် ပျမ်းမျှတန်ဖိုးများ
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              {/* 1 Month Summary Card */}
+              <div className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2 shadow-xs">
+                <div className="flex items-center justify-between font-bold text-slate-900 pb-1.5 border-b border-slate-100">
+                  <span className="text-emerald-700">နောက်ဆုံး ၁ လအတွင်း</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">1 Month</span>
+                </div>
+                <div className="space-y-1.5 text-slate-700">
+                  <p className="flex justify-between">
+                    <span>သွေးပေါင်ချိန် ပျမ်းမျှ:</span>
+                    <strong className="text-rose-600">
+                      {bpStats1m ? `${bpStats1m.avgSys}/${bpStats1m.avgDia} mmHg (${bpStats1m.count} ကြိမ်)` : 'မှတ်တမ်းမရှိ'}
+                    </strong>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>သွေးချို ပျမ်းမျှ:</span>
+                    <strong className="text-emerald-600">
+                      {sugarStats1m ? `${sugarStats1m.avg} mg/dL (${sugarStats1m.count} ကြိမ်)` : 'မှတ်တမ်းမရှိ'}
+                    </strong>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>BMI ပျမ်းမျှ:</span>
+                    <strong className="text-teal-600">
+                      {bmiStats1m ? `${bmiStats1m.avgBmi} (${bmiStats1m.avgWeight} kg)` : 'မှတ်တမ်းမရှိ'}
+                    </strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* 3 Months Summary Card */}
+              <div className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2 shadow-xs">
+                <div className="flex items-center justify-between font-bold text-slate-900 pb-1.5 border-b border-slate-100">
+                  <span className="text-indigo-700">နောက်ဆုံး ၃ လအတွင်း</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">3 Months</span>
+                </div>
+                <div className="space-y-1.5 text-slate-700">
+                  <p className="flex justify-between">
+                    <span>သွေးပေါင်ချိန် ပျမ်းမျှ:</span>
+                    <strong className="text-rose-600">
+                      {bpStats3m ? `${bpStats3m.avgSys}/${bpStats3m.avgDia} mmHg (${bpStats3m.count} ကြိမ်)` : 'မှတ်တမ်းမရှိ'}
+                    </strong>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>သွေးချို ပျမ်းမျှ:</span>
+                    <strong className="text-emerald-600">
+                      {sugarStats3m ? `${sugarStats3m.avg} mg/dL (${sugarStats3m.count} ကြိမ်)` : 'မှတ်တမ်းမရှိ'}
+                    </strong>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>BMI ပျမ်းမျှ:</span>
+                    <strong className="text-teal-600">
+                      {bmiStats3m ? `${bmiStats3m.avgBmi} (${bmiStats3m.avgWeight} kg)` : 'မှတ်တမ်းမရှိ'}
+                    </strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* 6 Months Summary Card */}
+              <div className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2 shadow-xs">
+                <div className="flex items-center justify-between font-bold text-slate-900 pb-1.5 border-b border-slate-100">
+                  <span className="text-purple-700">နောက်ဆုံး ၆ လအတွင်း</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">6 Months</span>
+                </div>
+                <div className="space-y-1.5 text-slate-700">
+                  <p className="flex justify-between">
+                    <span>သွေးပေါင်ချိန် ပျမ်းမျှ:</span>
+                    <strong className="text-rose-600">
+                      {bpStats6m ? `${bpStats6m.avgSys}/${bpStats6m.avgDia} mmHg (${bpStats6m.count} ကြိမ်)` : 'မှတ်တမ်းမရှိ'}
+                    </strong>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>သွေးချို ပျမ်းမျှ:</span>
+                    <strong className="text-emerald-600">
+                      {sugarStats6m ? `${sugarStats6m.avg} mg/dL (${sugarStats6m.count} ကြိမ်)` : 'မှတ်တမ်းမရှိ'}
+                    </strong>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>BMI ပျမ်းမျှ:</span>
+                    <strong className="text-teal-600">
+                      {bmiStats6m ? `${bmiStats6m.avgBmi} (${bmiStats6m.avgWeight} kg)` : 'မှတ်တမ်းမရှိ'}
+                    </strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 3: Detailed Historical Logs (ရက်စွဲအလိုက် တိုင်းတာမှု သမိုင်းမှတ်တမ်း ဇယားများ) */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  ၃။ ရက်စွဲအလိုက် စစ်ဆေးတိုင်းတာမှု သမိုင်းမှတ်တမ်းများ (Detailed Historical Logs)
+                </h3>
+              </div>
+
+              {/* Timeframe Filter Tabs (No-Print for screen toggling) */}
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold no-print">
+                <button
+                  onClick={() => setHistoryTimeframe('all')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    historyTimeframe === 'all' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  မှတ်တမ်းအားလုံး
+                </button>
+                <button
+                  onClick={() => setHistoryTimeframe('1m')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    historyTimeframe === '1m' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  နောက်ဆုံး ၁ လ
+                </button>
+                <button
+                  onClick={() => setHistoryTimeframe('3m')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    historyTimeframe === '3m' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  နောက်ဆုံး ၃ လ
+                </button>
+                <button
+                  onClick={() => setHistoryTimeframe('6m')}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    historyTimeframe === '6m' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  နောက်ဆုံး ၆ လ
+                </button>
+              </div>
+            </div>
+
+            {/* Blood Pressure Historical Log Table */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+              <div className="bg-rose-50 px-3.5 py-2 font-bold text-rose-950 flex items-center justify-between border-b border-rose-200">
+                <span className="flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-rose-600" />
+                  <span>သွေးပေါင်ချိန် သမိုင်းမှတ်တမ်း (Blood Pressure Log - {displayedBP.length} ကြိမ်)</span>
+                </span>
+                <span className="text-[10px] text-rose-700 font-semibold">mmHg / bpm</span>
+              </div>
+              {displayedBP.length === 0 ? (
+                <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း သွေးပေါင်ချိန် မှတ်တမ်း မရှိပါ။</p>
+              ) : (
+                <div className="max-h-60 overflow-y-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
+                      <tr>
+                        <th className="p-2.5">ရက်စွဲ</th>
+                        <th className="p-2.5">သွေးပေါင်ချိန် (BP)</th>
+                        <th className="p-2.5">နှလုံးခုန် (Pulse)</th>
+                        <th className="p-2.5">အဆင့်</th>
+                        <th className="p-2.5">မှတ်ချက်</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
+                      {displayedBP.slice(0, 15).map((r: any) => (
+                        <tr key={r.id}>
+                          <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
+                          <td className="p-2.5 font-bold text-rose-600">{r.systolic} / {r.diastolic} mmHg</td>
+                          <td className="p-2.5">{r.pulseRate || r.pulse || '-'} bpm</td>
+                          <td className="p-2.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                              {r.category || (r.systolic >= 140 || r.diastolic >= 90 ? 'သွေးတိုး' : 'ပုံမှန်')}
+                            </span>
+                          </td>
+                          <td className="p-2.5 text-slate-500 text-[11px] truncate max-w-[150px]">{r.notes || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Blood Sugar Historical Log Table */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+              <div className="bg-emerald-50 px-3.5 py-2 font-bold text-emerald-950 flex items-center justify-between border-b border-emerald-200">
+                <span className="flex items-center gap-1.5">
+                  <Droplets className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>ဆီးချို/သွေးချို သမိုင်းမှတ်တမ်း (Blood Sugar Log - {displayedSugar.length} ကြိမ်)</span>
+                </span>
+                <span className="text-[10px] text-emerald-700 font-semibold">mg/dL</span>
+              </div>
+              {displayedSugar.length === 0 ? (
+                <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း သွေးချို မှတ်တမ်း မရှိပါ။</p>
+              ) : (
+                <div className="max-h-60 overflow-y-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
+                      <tr>
+                        <th className="p-2.5">ရက်စွဲ</th>
+                        <th className="p-2.5">သွေးသကြားဓာတ်</th>
+                        <th className="p-2.5">စစ်ဆေးချိန် (Timing)</th>
+                        <th className="p-2.5">အဆင့်</th>
+                        <th className="p-2.5">မှတ်ချက်</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
+                      {displayedSugar.slice(0, 15).map((r: any) => (
+                        <tr key={r.id}>
+                          <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
+                          <td className="p-2.5 font-bold text-emerald-700">{r.glucoseValue || r.value} mg/dL</td>
+                          <td className="p-2.5">
+                            {r.timing === 'fasting' ? 'မနက်စာမစားမီ (Fasting)' : 
+                             r.timing === 'post_meal_2h' || r.timing === 'post_prandial' ? 'အစာစားပြီး ၂ နာရီ' : 
+                             r.timing === 'random' ? 'ကျပန်းစစ်ဆေးမှု' : (r.timing || 'ပုံမှန်')}
+                          </td>
+                          <td className="p-2.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              {r.status || 'ပုံမှန်'}
+                            </span>
+                          </td>
+                          <td className="p-2.5 text-slate-500 text-[11px] truncate max-w-[150px]">{r.notes || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* BMI & Weight Historical Log Table */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
+              <div className="bg-teal-50 px-3.5 py-2 font-bold text-teal-950 flex items-center justify-between border-b border-teal-200">
+                <span className="flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5 text-teal-600" />
+                  <span>ကိုယ်အလေးချိန်နှင့် BMI သမိုင်းမှတ်တမ်း (Weight & BMI Log - {displayedBMI.length} ကြိမ်)</span>
+                </span>
+                <span className="text-[10px] text-teal-700 font-semibold">kg / kg/m²</span>
+              </div>
+              {displayedBMI.length === 0 ? (
+                <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း ကိုယ်အလေးချိန် မှတ်တမ်း မရှိပါ။</p>
+              ) : (
+                <div className="max-h-60 overflow-y-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
+                      <tr>
+                        <th className="p-2.5">ရက်စွဲ</th>
+                        <th className="p-2.5">ကိုယ်အလေးချိန်</th>
+                        <th className="p-2.5">အရပ်</th>
+                        <th className="p-2.5">BMI</th>
+                        <th className="p-2.5">အဆင့်</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
+                      {displayedBMI.slice(0, 10).map((r: any) => (
+                        <tr key={r.id}>
+                          <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
+                          <td className="p-2.5 font-bold text-slate-900">{r.weightKg} kg</td>
+                          <td className="p-2.5">{r.heightCm} cm</td>
+                          <td className="p-2.5 font-bold text-teal-600">{r.bmi.toFixed(1)}</td>
+                          <td className="p-2.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                              {r.category === 'normal' ? 'ပုံမှန်' : r.category === 'overweight' ? 'အဝလွန်' : (r.category || 'ပုံမှန်')}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
 
@@ -248,7 +652,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
           <div>
             <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
               <Pill className="w-4 h-4 text-sky-600" />
-              <span>လက်ရှိ သောက်သုံးနေသော ဆေးဝါးများ (Active Medications)</span>
+              <span>၄။ လက်ရှိ သောက်သုံးနေသော ဆေးဝါးများ (Active Medications)</span>
             </h3>
 
             {patientMeds.length === 0 ? (
@@ -256,7 +660,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                 လက်ရှိ သောက်သုံးနေသော ဆေးဝါးမှတ်တမ်း ထည့်သွင်းထားခြင်း မရှိသေးပါ။
               </p>
             ) : (
-              <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+              <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                     <tr>
@@ -287,11 +691,11 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
           <div>
             <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
               <FlaskConical className="w-4 h-4 text-purple-600" />
-              <span>ဓာတ်ခွဲခန်း စစ်ဆေးချက်မှတ်တမ်း (Recent Lab Results)</span>
+              <span>၅။ ဓာတ်ခွဲခန်း စစ်ဆေးချက်မှတ်တမ်း (Recent Lab Results)</span>
             </h3>
 
             {latestLab ? (
-              <div className="bg-purple-50/50 border border-purple-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+              <div className="bg-purple-50/50 border border-purple-200 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                 {/* CBC if available */}
                 {(latestLab.cbc?.hemoglobin !== undefined || latestLab.cbc?.wbc !== undefined || latestLab.cbc?.platelets !== undefined) && (
                   <div>
@@ -387,7 +791,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             <div>
               <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
                 <Stethoscope className="w-4 h-4 text-indigo-600" />
-                <span>ဆရာဝန် အကြံပြုချက်နှင့် လမ်းညွှန်ချက်များ (Doctor Consult Summary)</span>
+                <span>၆။ ဆရာဝန် အကြံပြုချက်နှင့် လမ်းညွှန်ချက်များ (Doctor Consult Summary)</span>
               </h3>
 
               <div className="space-y-2 text-xs">
@@ -453,3 +857,4 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
     </div>
   );
 };
+

@@ -23,10 +23,11 @@ import {
   Droplets,
   ShieldAlert,
   Eye,
-  LifeBuoy
+  LifeBuoy,
+  Waves
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.3.3';
+export const CURRENT_SYSTEM_VERSION = 'v2.3.4';
 
 export interface VersionItem {
   version: string;
@@ -45,13 +46,51 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.3.3',
+    version: 'v2.3.4',
     type: 'major',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
-    title: '✨ [MAJOR] Dynamic Change Log Engine & Distinct Version Audit (ဗားရှင်းအလိုက် ပြောင်းလဲမှုမှတ်တမ်း အစစ်အမှန် စနစ်သစ်နှင့် Version Update ပေါ့ပ်အပ် ပြင်ဆင်မှု)',
-    badge: 'Latest Release (v2.3.3)',
+    title: '🌊 [MAJOR] Flood & Health Articles Touch Scrolling Fix, Strict Category Isolation & 1/3/6-Month Historical Health Passport (ဆောင်းပါးများ Touch Scroll ပြင်ဆင်ခြင်း၊ ရေဘေးကဏ္ဍတွင် သိုင်းရွိုက်ရောနှောမှု မရှိစေဘဲ သီးသန့်ခွဲထုတ်ခြင်းနှင့် ၁ လ၊ ၃ လ၊ ၆ လ စာ သမိုင်းမှတ်တမ်း အပြည့်အစုံပါဝင်သော ကျန်းမာရေး Passport စနစ်သစ်)',
+    badge: 'Latest Release (v2.3.4)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '📱 မိုဘိုင်းဖုန်းနှင့် ကွန်ပျူတာ အားလုံးတွင် ရေဘေးနှင့် ကျန်းမာရေး ဆောင်းပါးများ ချောမွေ့စွာ Scroll ပြုလုပ်ဖတ်ရှုနိုင်ခြင်း',
+        icon: Smartphone,
+        items: [
+          'ရေဘေးအရေးပေါ် ဆောင်းပါးများနှင့် အထွေထွေ ကျန်းမာရေး ဆောင်းပါးများ ဖတ်ရှုသည့် Modal ပေါ့ပ်အပ်တွင် မိုဘိုင်းဖုန်း Touch Scroll (iOS WebKit / Android) မလုပ်နိုင်ဖြစ်နေသည့် ချို့ယွင်းချက်အား min-h-0, overflow-y-auto နှင့် -webkit-overflow-scrolling: touch တို့ဖြင့် အပြီးတိုင် ပြင်ဆင်ပြီးစီးခြင်း',
+          'ခေါင်းစဉ် (Header) နှင့် ပိတ်ရန်ခလုတ် (Footer) များအား နေရာမရွေ့ Fixed ထားရှိပြီး ဆောင်းပါးစာသားနှင့် အဓိက လိုက်နာရန်အချက်များအား အပေါ်အောက် လွတ်လပ်စွာ ချောမွေ့စွာ Scroll ဖတ်ရှုနိုင်ခြင်း',
+          'အိမ်သုံးဆေးဝါး လမ်းညွှန် (Home Medicines Guide) နှင့် အခြား လမ်းညွှန် Modal များတွင်ပါ မိုဘိုင်း Scroll စွမ်းဆောင်ရည် အဆင့်မြှင့်တင်ခြင်း'
+        ]
+      },
+      {
+        title: '🌊 ရေဘေးအရေးပေါ်ကဏ္ဍနှင့် အထွေထွေ ဆေးပညာကဏ္ဍတို့အား တိကျစွာ သီးခြားစီ ခွဲထုတ်ထားခြင်း (သိုင်းရွိုက်ဆောင်းပါး ရောနှောမှု ရှင်းလင်းခြင်း)',
+        icon: Waves,
+        items: [
+          'ရေဘေးဆောင်းပါးများ စုစည်းထားရာနေရာတွင် သိုင်းရွိုက် (Thyroid) ဆောင်းပါးများ ရောနှောမနေစေရန် "🌊 ရေဘေး အရေးပေါ် ကျန်းမာရေး လမ်းညွှန်များ (၈ ပုဒ် သီးသန့်)" နှင့် "📚 အထွေထွေ ဆေးပညာ & ရောဂါများ ဗဟုသုတ (၇၃ ပုဒ်)" ဟူ၍ ခလုတ်ခွဲကာ သီးသန့်စီ စနစ်တကျ ခွဲထုတ်ပေးထားခြင်း',
+          'ရေဘေးကဏ္ဍတွင် ရေဘေးနှင့် တိုက်ရိုက်ဆိုင်သော ဆောင်ရန်/ရှောင်ရန်၊ ကြွက်ဖျားနှင့် ရေဘေးရောဂါများ၊ CPR နှင့် ရှေးဦးပြုစုနည်း၊ သောက်ရေသန့်စင်၊ ကိုယ်ဝန်ဆောင်/ကလေး/နာတာရှည်လူနာ စောင့်ရှောက်မှု၊ ပြန်လည်ထူထောင်ရေး ဆောင်းပါး ၈ ပုဒ်သာ သီးသန့် ပြသပေးခြင်း',
+          'သိုင်းရွိုက်၊ သွေးတိုး၊ ဆီးချို၊ မျက်စိ၊ သွား၊ နှလုံး၊ ကလေးကျန်းမာရေး စသည့် အထွေထွေ ရောဂါဆောင်းပါးများကို အထွေထွေ ဆေးပညာကဏ္ဍတွင် သီးခြား အမျိုးအစားအလိုက် အဆင်ပြေစွာ ရှာဖွေဖတ်ရှုနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '📑 ဆရာဝန် ကြည့်ရှုလွယ်ကူစေရန် ၁ လ ၊ ၃ လ ၊ ၆ လ စာ Historical Data အပြည့်အစုံပါဝင်သော ကျန်းမာရေးမှတ်တမ်း (Health Passport) ထုတ်ယူမှု စနစ်သစ်',
+        icon: FileText,
+        items: [
+          'မူလက နောက်ဆုံး ၁ ကြိမ်သာ ထုတ်ပေးနေသည့် အခြေအနေမှ ပြင်ဆင်ပြီး ထိပ်ဆုံးတွင် နောက်ဆုံး ၁ ကြိမ်တိုင်းတာချက်များ (Latest Vital Signs) ကို အနှစ်ချုပ်ပြသခြင်း',
+          '၎င်းနောက်တွင် ဆရာဝန် ကြည့်ရှုလွယ်ကူစေရန် နောက်ဆုံး ၁ လ၊ ၃ လ၊ ၆ လ စာ ကာလအလိုက် သွေးပေါင်ချိန် ပျမ်းမျှ၊ သွေးချို/ဆီးချို ပျမ်းမျှ၊ BMI ပျမ်းမျှတန်ဖိုးများနှင့် တိုင်းတာမှု အကြိမ်အရေအတွက် နှိုင်းယှဉ်ချက် (Historical Trends Overview) အား ဇယားဖြင့် တိကျစွာ တွက်ချက်ဖော်ပြခြင်း',
+          'ရက်စွဲအလိုက် အသေးစိတ် စစ်ဆေးချက်မှတ်တမ်းများ (Blood Pressure Log, Blood Glucose Log, Weight/BMI Log, Lab Panel Results, Active Prescriptions, Doctor Advice) အား စုံလင်စွာ A4 Size Printable PDF Health Passport အဖြစ် ပုံနှိပ်ထုတ်ယူနိုင်ခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.3.3',
+    type: 'major',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
+    isLatest: false,
+    title: '✨ [MAJOR] Dynamic Change Log Engine & Distinct Version Audit (ဗားရှင်းအလိုက် ပြောင်းလဲမှုမှတ်တမ်း အစစ်အမှန် စနစ်သစ်နှင့် Version Update ပေါ့ပ်အပ် ပြင်ဆင်မှု)',
+    badge: 'Previous Release (v2.3.3)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
     highlights: [
       {
         title: '🔄 အက်ပ် Update ပေါ့ပ်အပ်တွင် ဗားရှင်းအလိုက် ပြောင်းလဲချက် အစစ်အမှန်များ အလိုအလျောက် ချိတ်ဆက်ဖော်ပြခြင်း',

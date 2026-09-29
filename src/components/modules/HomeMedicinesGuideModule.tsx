@@ -225,7 +225,10 @@ export const HomeMedicinesGuideModule: React.FC = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto py-4 space-y-4 text-xs pr-1">
+            <div 
+              className="flex-1 overflow-y-auto min-h-0 py-4 space-y-4 text-xs pr-1 overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               
               {/* Indications */}
               <div className="bg-teal-50/60 p-3.5 rounded-2xl border border-teal-200/80 space-y-1.5">
