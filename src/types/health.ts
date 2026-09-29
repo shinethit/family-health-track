@@ -96,6 +96,24 @@ export interface BMIRecord {
   createdAt?: string;
 }
 
+export interface CBCTest {
+  hemoglobin?: number;       // g/dL (ref: 12 - 17)
+  wbc?: number;              // /µL (ref: 4,000 - 11,000)
+  platelets?: number;        // /µL (ref: 150,000 - 450,000)
+  rbc?: number;              // 10^6/µL (ref: 4.0 - 5.9)
+  pcv_hematocrit?: number;   // % (ref: 36 - 50)
+  esr?: number;              // mm/1st hr (ref: 0 - 20)
+  neutrophils?: number;      // % (ref: 40 - 75)
+  lymphocytes?: number;      // % (ref: 20 - 45)
+}
+
+export interface GlucosePanelTest {
+  fbs?: number;              // Fasting Blood Sugar, mg/dL (ref: 70 - 99)
+  ppbs?: number;             // 2-hr Postprandial, mg/dL (ref: < 140)
+  rbs?: number;              // Random Blood Sugar, mg/dL (ref: < 140)
+  hba1c?: number;            // Glycated Hemoglobin, % (ref: < 5.7)
+}
+
 export interface LiverFunctionTest {
   alt?: number;
   alt_sgpt?: number;
@@ -106,6 +124,7 @@ export interface LiverFunctionTest {
   alp?: number;
   albumin?: number;
   totalProtein?: number;
+  globulin?: number;
 }
 
 export interface RenalAndUricTest {
@@ -113,6 +132,9 @@ export interface RenalAndUricTest {
   uricAcid?: number;
   bun?: number;
   egfr?: number;
+  sodium?: number;           // Na+, mEq/L (ref: 135 - 145)
+  potassium?: number;        // K+, mEq/L (ref: 3.5 - 5.0)
+  chloride?: number;         // Cl-, mEq/L (ref: 96 - 106)
 }
 
 export interface LipidProfileTest {
@@ -120,6 +142,7 @@ export interface LipidProfileTest {
   triglycerides?: number;
   hdl?: number;
   ldl?: number;
+  vldl?: number;
 }
 
 export interface ThyroidFunctionTest {
@@ -129,6 +152,38 @@ export interface ThyroidFunctionTest {
   totalT4?: number;    // Total T4 (µg/dL, ref: 4.5 - 12.0)
   totalT3?: number;    // Total T3 (ng/dL, ref: 80 - 200)
   antiTpo?: number;    // Anti-Thyroid Peroxidase (IU/mL, ref: < 35)
+}
+
+export interface UrineRoutineTest {
+  protein?: string;          // Negative, Trace, 1+, 2+, 3+
+  glucose?: string;          // Negative, Trace, 1+, 2+
+  pusCells?: string;         // /HPF (ref: 0 - 5)
+  rbc?: string;              // /HPF (ref: 0 - 2)
+  epithelial?: string;       // /HPF (ref: 0 - 5)
+  microalbumin?: number;     // mg/g Cr (ref: < 30)
+}
+
+export interface InflammatoryAndVitaminsTest {
+  crp?: number;              // C-Reactive Protein, mg/L (ref: < 5.0)
+  ferritin?: number;         // Serum Ferritin, ng/mL (ref: 20 - 250)
+  vitaminD?: number;         // 25-OH Vit D, ng/mL (ref: 30 - 100)
+  vitaminB12?: number;       // Vitamin B12, pg/mL (ref: 200 - 900)
+}
+
+export interface RecordedLabItem {
+  id: string;                    // Test unique key (e.g. 'alt_sgpt', 'fbs')
+  nameMm: string;                // Myanmar display name (e.g. 'SGPT / ALT (အသည်းအင်ဇိုင်း)')
+  nameEn: string;                // English name (e.g. 'SGPT / ALT')
+  category: string;              // Category code (e.g. 'liver', 'renal', 'cbc')
+  categoryLabelMm: string;       // Category label in MM (e.g. 'အသည်းလုပ်ဆောင်ချက်')
+  value: number;                 // Numeric test result
+  unit: string;                  // Test unit (e.g. 'U/L', 'mg/dL')
+  refMin?: number;               // Effective lower reference bound
+  refMax?: number;               // Effective upper reference bound
+  refRangeText?: string;         // Human-readable reference range (e.g. '7 - 56 U/L')
+  isCustomRef?: boolean;         // True if user adjusted the reference range to match their lab
+  status: 'normal' | 'low' | 'high' | 'critical';
+  statusLabelMm: string;         // e.g. 'ပုံမှန်', 'များနေသည်', 'နည်းနေသည်', 'အလွန်မြင့်'
 }
 
 export interface LabTestRecord {
@@ -141,10 +196,16 @@ export interface LabTestRecord {
   recordedAt?: string;
   testDate: string;
   labName: string;
+  // Specific tests recorded (only the tests the user actually entered!)
+  tests?: RecordedLabItem[];
+  cbc?: CBCTest;
+  glucose?: GlucosePanelTest;
   liver?: LiverFunctionTest;
   renal?: RenalAndUricTest;
   lipid?: LipidProfileTest;
   thyroid?: ThyroidFunctionTest;
+  urine?: UrineRoutineTest;
+  inflammatory?: InflammatoryAndVitaminsTest;
   notes?: string;
   doctorReview?: string;
   createdAt?: string;

@@ -291,22 +291,89 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             </h3>
 
             {latestLab ? (
-              <div className="bg-purple-50/50 border border-purple-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div>
-                  <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
-                    အသည်းလုပ်ဆောင်ချက် (Liver Function)
-                  </p>
-                  <p>ALT (SGPT): <strong>{latestLab.liver?.alt || latestLab.liver?.alt_sgpt || 28} U/L</strong> (Ref: &lt; 40)</p>
-                  <p>AST (SGOT): <strong>{latestLab.liver?.ast || latestLab.liver?.ast_sgot || 24} U/L</strong> (Ref: &lt; 40)</p>
-                </div>
+              <div className="bg-purple-50/50 border border-purple-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                {/* CBC if available */}
+                {(latestLab.cbc?.hemoglobin !== undefined || latestLab.cbc?.wbc !== undefined || latestLab.cbc?.platelets !== undefined) && (
+                  <div>
+                    <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
+                      သွေးဆဲလ်အစုံ (CBC)
+                    </p>
+                    {latestLab.cbc?.hemoglobin !== undefined && <p>Hb (သွေးအား): <strong>{latestLab.cbc.hemoglobin} g/dL</strong> (Ref: 12 - 17)</p>}
+                    {latestLab.cbc?.wbc !== undefined && <p>WBC (သွေးဖြူဥ): <strong>{latestLab.cbc.wbc} /µL</strong> (Ref: 4,000 - 11,000)</p>}
+                    {latestLab.cbc?.platelets !== undefined && <p>Platelet (သွေးဥမွှား): <strong>{latestLab.cbc.platelets} /µL</strong> (Ref: 150k - 450k)</p>}
+                  </div>
+                )}
 
-                <div>
-                  <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
-                    ကျောက်ကပ်နှင့် ဂေါက် (Renal & Uric Acid)
-                  </p>
-                  <p>Creatinine: <strong>{latestLab.renal?.creatinine || 0.9} mg/dL</strong> (Ref: 0.6 - 1.2)</p>
-                  <p>Uric Acid: <strong>{latestLab.renal?.uricAcid || 5.2} mg/dL</strong> (Ref: 3.5 - 7.2)</p>
-                </div>
+                {/* Glucose if available */}
+                {(latestLab.glucose?.fbs !== undefined || latestLab.glucose?.hba1c !== undefined) && (
+                  <div>
+                    <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
+                      သွေးချို/သကြားဓာတ် (Glucose & HbA1c)
+                    </p>
+                    {latestLab.glucose?.fbs !== undefined && <p>FBS: <strong>{latestLab.glucose.fbs} mg/dL</strong> (Ref: 70 - 99)</p>}
+                    {latestLab.glucose?.hba1c !== undefined && <p>HbA1c: <strong>{latestLab.glucose.hba1c} %</strong> (Ref: &lt; 5.7)</p>}
+                  </div>
+                )}
+
+                {/* Liver */}
+                {(latestLab.liver?.alt_sgpt !== undefined || latestLab.liver?.ast_sgot !== undefined || latestLab.liver?.alt !== undefined || latestLab.liver?.ast !== undefined) && (
+                  <div>
+                    <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
+                      အသည်းလုပ်ဆောင်ချက် (Liver Function)
+                    </p>
+                    {(latestLab.liver?.alt_sgpt !== undefined || latestLab.liver?.alt !== undefined) && (
+                      <p>ALT (SGPT): <strong>{latestLab.liver.alt_sgpt ?? latestLab.liver.alt} U/L</strong> (Ref: 7 - 56)</p>
+                    )}
+                    {(latestLab.liver?.ast_sgot !== undefined || latestLab.liver?.ast !== undefined) && (
+                      <p>AST (SGOT): <strong>{latestLab.liver.ast_sgot ?? latestLab.liver.ast} U/L</strong> (Ref: 10 - 40)</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Renal */}
+                {(latestLab.renal?.creatinine !== undefined || latestLab.renal?.uricAcid !== undefined) && (
+                  <div>
+                    <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
+                      ကျောက်ကပ်နှင့် ဂေါက် (Renal & Uric Acid)
+                    </p>
+                    {latestLab.renal?.creatinine !== undefined && (
+                      <p>Creatinine: <strong>{latestLab.renal.creatinine} mg/dL</strong> (Ref: 0.6 - 1.2)</p>
+                    )}
+                    {latestLab.renal?.uricAcid !== undefined && (
+                      <p>Uric Acid: <strong>{latestLab.renal.uricAcid} mg/dL</strong> (Ref: 3.5 - 7.2)</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Lipid */}
+                {(latestLab.lipid?.totalCholesterol !== undefined || latestLab.lipid?.triglycerides !== undefined) && (
+                  <div>
+                    <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
+                      သွေးတွင်းအဆီဓာတ် (Lipid Profile)
+                    </p>
+                    {latestLab.lipid?.totalCholesterol !== undefined && (
+                      <p>Cholesterol: <strong>{latestLab.lipid.totalCholesterol} mg/dL</strong> (Ref: &lt; 200)</p>
+                    )}
+                    {latestLab.lipid?.triglycerides !== undefined && (
+                      <p>Triglyceride: <strong>{latestLab.lipid.triglycerides} mg/dL</strong> (Ref: &lt; 150)</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Thyroid */}
+                {(latestLab.thyroid?.tsh !== undefined || latestLab.thyroid?.ft4 !== undefined) && (
+                  <div>
+                    <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
+                      သိုင်းရွိုက်ဟော်မုန်း (TFT)
+                    </p>
+                    {latestLab.thyroid?.tsh !== undefined && (
+                      <p>TSH: <strong>{latestLab.thyroid.tsh} µIU/mL</strong> (Ref: 0.4 - 4.0)</p>
+                    )}
+                    {latestLab.thyroid?.ft4 !== undefined && (
+                      <p>FT4: <strong>{latestLab.thyroid.ft4} ng/dL</strong> (Ref: 0.8 - 1.8)</p>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-xs text-slate-500 italic p-3 bg-slate-50 rounded-xl">

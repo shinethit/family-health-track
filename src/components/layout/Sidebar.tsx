@@ -84,7 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <MenuItem icon={Bell} label="သတိပေးချက်များ" badge={unreadCount} onClick={() => { onOpenNotifications(); onClose(); }} />
             <div className="border-t border-slate-100 my-2 pt-2">
                 <MenuItem icon={Activity} label="ကျန်းမာရေး မှတ်တမ်းများ" onClick={() => { setActiveTab('trends'); setCategoryGroup('records'); onClose(); }} />
-                <MenuItem icon={BookOpen} label="သိမှတ်ဖွယ်ရာများ" onClick={() => { setActiveTab('otc_meds'); setCategoryGroup('knowledge'); onClose(); }} />
+                <MenuItem icon={BookOpen} label="သိမှတ်ဖွယ်ရာများ (အိမ်တွင်းစစ်ဆေးမှု)" onClick={() => { setActiveTab('home_testing_guide'); setCategoryGroup('knowledge'); onClose(); }} />
                 <MenuItem icon={Baby} label="မိခင်၊ ကလေး၊ သက်ကြီး" onClick={() => { setActiveTab('womens_health'); setCategoryGroup('family_care'); onClose(); }} />
                 <MenuItem icon={Stethoscope} label="အထူးကုနှင့် ကုထုံးများ" onClick={() => { setActiveTab('physio'); setCategoryGroup('specialty'); onClose(); }} />
                 <MenuItem icon={ShieldAlert} label="အရေးပေါ်နှင့် ကာကွယ်ရေး" onClick={() => { setActiveTab('firstaid'); setCategoryGroup('emergency'); onClose(); }} />

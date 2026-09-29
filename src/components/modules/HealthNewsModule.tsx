@@ -18,7 +18,8 @@ import {
   BookOpen,
   Info,
   Syringe,
-  Check
+  Check,
+  ChevronDown
 } from 'lucide-react';
 import { HealthArticle } from '../../types/health';
 import { HEALTH_ARTICLES } from '../../data/healthArticles';
@@ -206,7 +207,24 @@ export const HealthNewsModule: React.FC = () => {
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          {/* Mobile Category Dropdown Selector (ဖုန်းတွင် မျက်စိမရှုပ်စေဘဲ သပ်ရပ်စွာ ရွေးချယ်နိုင်ခြင်း) */}
+          <div className="md:hidden relative w-full">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full bg-white border border-emerald-300 text-slate-900 text-xs font-bold rounded-2xl pl-3.5 pr-8 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden shadow-xs cursor-pointer"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-emerald-600 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Desktop/Tablet Category Pills */}
+          <div className="hidden md:flex flex-wrap items-center gap-1.5 text-xs">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}

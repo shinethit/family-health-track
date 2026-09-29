@@ -307,7 +307,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                 ဆရာဝန်၏ ကျန်းမာရေးလမ်းညွှန်ချက်များနှင့် ဆေးညွှန်းများ (Doctor Consultations)
               </h3>
               <p className="text-xs text-slate-600">
-                လူနာအတွက် ဆရာဝန်မှ အကြံပြုထားသော အစားအသောက်နှင့် ဆေးဝါးသုံးစွဲမှု လမ်းညွှန်ချက်များ
+                အသုံးပြုသူအတွက် ဆရာဝန်မှ အကြံပြုထားသော အစားအသောက်နှင့် ဆေးဝါးသုံးစွဲမှု လမ်းညွှန်ချက်များ
               </p>
             </div>
           </div>
@@ -347,12 +347,30 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+            {/* Hb */}
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-slate-500 block text-[10px] font-bold">သွေးအား (Hb)</span>
+              <span className="text-base font-extrabold font-mono text-slate-900">
+                {latestLab.cbc?.hemoglobin != null ? `${latestLab.cbc.hemoglobin} g/dL` : '--'}
+              </span>
+              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">စံ: 12 - 17</span>
+            </div>
+
+            {/* FBS */}
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-slate-500 block text-[10px] font-bold">ဆီးချို (FBS)</span>
+              <span className="text-base font-extrabold font-mono text-slate-900">
+                {latestLab.glucose?.fbs != null ? `${latestLab.glucose.fbs} mg/dL` : '--'}
+              </span>
+              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">စံ: 70 - 99</span>
+            </div>
+
             {/* ALT */}
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
               <span className="text-slate-500 block text-[10px] font-bold">အသည်း (SGPT/ALT)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
-                {latestLab.liver?.alt_sgpt ?? '--'} U/L
+                {latestLab.liver?.alt_sgpt != null ? `${latestLab.liver.alt_sgpt} U/L` : '--'}
               </span>
               <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 7 - 56</span>
             </div>
@@ -361,7 +379,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
               <span className="text-slate-500 block text-[10px] font-bold">ကျောက်ကပ် (Creatinine)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
-                {latestLab.renal?.creatinine ?? '--'} mg/dL
+                {latestLab.renal?.creatinine != null ? `${latestLab.renal.creatinine} mg/dL` : '--'}
               </span>
               <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 0.6 - 1.2</span>
             </div>
@@ -370,16 +388,16 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
               <span className="text-slate-500 block text-[10px] font-bold">ဂေါက်/ယူရစ် (Uric Acid)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
-                {latestLab.renal?.uricAcid ?? '--'} mg/dL
+                {latestLab.renal?.uricAcid != null ? `${latestLab.renal.uricAcid} mg/dL` : '--'}
               </span>
               <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 3.5 - 7.2</span>
             </div>
 
             {/* Cholesterol */}
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-slate-500 block text-[10px] font-bold">ကိုလက်စထရော (Total Chol)</span>
+              <span className="text-slate-500 block text-[10px] font-bold">ကိုလက်စထရော (Chol)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
-                {latestLab.lipid?.totalCholesterol ?? '--'} mg/dL
+                {latestLab.lipid?.totalCholesterol != null ? `${latestLab.lipid.totalCholesterol} mg/dL` : '--'}
               </span>
               <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">စံနှုန်း: &lt; 200</span>
             </div>

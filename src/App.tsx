@@ -21,7 +21,11 @@ import {
   Flame,
   Baby,
   Users,
-  Award
+  Award,
+  Folder,
+  Layers,
+  ChevronDown,
+  HeartPulse
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { HealthDataProvider, useHealthData } from './context/HealthDataContext';
@@ -51,6 +55,7 @@ import { SpecialtyCareModule } from './components/modules/SpecialtyCareModule';
 import { DermatologyModule } from './components/modules/DermatologyModule';
 import { EmergencyFirstAidModule } from './components/modules/EmergencyFirstAidModule';
 import { HomeMedicinesGuideModule } from './components/modules/HomeMedicinesGuideModule';
+import { HomeTestingGuideModule } from './components/modules/HomeTestingGuideModule';
 import { LabInvestigationGuideModule } from './components/modules/LabInvestigationGuideModule';
 import { WomensHealthModule } from './components/modules/WomensHealthModule';
 import { PregnancyCareModule } from './components/modules/PregnancyCareModule';
@@ -66,8 +71,9 @@ const MainContent: React.FC = () => {
   const { selectedPatient, setSelectedPatientId, doctorQuestions } = useHealthData();
   const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState<
-    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
+    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'home_testing_guide' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
   >(isAdmin ? 'admin' : 'trends');
+  const [selectedCategoryGroup, setSelectedCategoryGroup] = useState<string>('records');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
@@ -76,43 +82,6 @@ const MainContent: React.FC = () => {
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
   const [showVersionUpdateModal, setShowVersionUpdateModal] = useState(false);
   const [latestAppVersion, setLatestAppVersion] = useState(CURRENT_SYSTEM_VERSION);
-
-  // Force pure clean light theme by default ("အဖြူခံနဲ့ ရိုးရိုးလေး")
-  useEffect(() => {
-    document.documentElement.classList.remove('dark');
-    document.documentElement.classList.add('light');
-
-    // Safe Version Check & Popup Trigger
-    const lastSeenVersion = localStorage.getItem('myanmar_health_app_version');
-    if (!lastSeenVersion || lastSeenVersion !== CURRENT_SYSTEM_VERSION) {
-      setShowVersionUpdateModal(true);
-      localStorage.setItem('myanmar_health_app_version', CURRENT_SYSTEM_VERSION);
-    }
-  }, []);
-
-  // Automatically ensure Admin opens to Admin Dashboard by default
-  useEffect(() => {
-    if (isAdmin) {
-      setActiveTab('admin');
-    }
-  }, [isAdmin]);
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center text-slate-800">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-600 text-xs font-semibold">ကျန်းမာရေးစနစ် စစ်ဆေးနေပါသည်...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Login Screen
-  if (!profile) {
-    return <LoginScreen />;
-  }
 
   const pendingQuestionsCount = doctorQuestions.filter(q => q.status === 'pending').length;
 
@@ -152,8 +121,9 @@ const MainContent: React.FC = () => {
       badgeColor: 'bg-indigo-50 text-indigo-800 border-indigo-200',
       activeColor: 'bg-indigo-600 text-white shadow-xs',
       tabs: [
-        { id: 'otc_meds', label: 'အိမ်သုံးဆေးဝါးလမ်းညွှန်', icon: Pill, activeColor: 'bg-teal-700 text-white' },
+        { id: 'home_testing_guide', label: 'အိမ်တွင်းစစ်ဆေးမှုလမ်းညွှန်', icon: HeartPulse, activeColor: 'bg-rose-600 text-white' },
         { id: 'news', label: 'ကျန်းမာရေးဆောင်းပါး', icon: Newspaper, activeColor: 'bg-teal-600 text-white' },
+        { id: 'otc_meds', label: 'အိမ်သုံးဆေးဝါးလမ်းညွှန်', icon: Pill, activeColor: 'bg-teal-700 text-white' },
         { id: 'investigations_guide', label: 'ဓာတ်ခွဲ/စမ်းသပ်မှုလမ်းညွှန်', icon: FlaskConical, activeColor: 'bg-indigo-600 text-white' },
       ]
     },
@@ -192,10 +162,6 @@ const MainContent: React.FC = () => {
     }] : [])
   ];
 
-  // Active Category Group State
-  const initialGroup = moduleCategories.find(cat => cat.tabs.some(t => t.id === activeTab))?.id || 'records';
-  const [selectedCategoryGroup, setSelectedCategoryGroup] = useState<string>(initialGroup);
-
   // Sync category group when activeTab changes
   useEffect(() => {
     const found = moduleCategories.find(cat => cat.tabs.some(t => t.id === activeTab));
@@ -203,6 +169,59 @@ const MainContent: React.FC = () => {
       setSelectedCategoryGroup(found.id);
     }
   }, [activeTab]);
+
+  // Force pure clean light theme by default ("အဖြူခံနဲ့ ရိုးရိုးလေး")
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+
+    // Safe Version Check & Popup Trigger
+    const lastSeenVersion = localStorage.getItem('myanmar_health_app_version');
+    if (!lastSeenVersion || lastSeenVersion !== CURRENT_SYSTEM_VERSION) {
+      setShowVersionUpdateModal(true);
+      localStorage.setItem('myanmar_health_app_version', CURRENT_SYSTEM_VERSION);
+    }
+  }, []);
+
+  // Automatically ensure Admin opens to Admin Dashboard by default
+  useEffect(() => {
+    if (isAdmin) {
+      setActiveTab('admin');
+    }
+  }, [isAdmin]);
+
+  // Handler when user selects a Category from the Category (Cat) Dropdown
+  const handleCategoryChange = (newCatId: string) => {
+    setSelectedCategoryGroup(newCatId);
+    const targetCat = moduleCategories.find(cat => cat.id === newCatId);
+    if (targetCat && targetCat.tabs.length > 0) {
+      const isAlreadyInCat = targetCat.tabs.some(t => t.id === activeTab);
+      if (!isAlreadyInCat) {
+        setActiveTab(targetCat.tabs[0].id as any);
+      }
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center text-slate-800">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-600 text-xs font-semibold">ကျန်းမာရေးစနစ် စစ်ဆေးနေပါသည်...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Login Screen
+  if (!profile) {
+    return <LoginScreen />;
+  }
+
+  // Get current active Category and ONLY its sub-category tabs
+  const currentCategory = moduleCategories.find(cat => cat.id === selectedCategoryGroup) || moduleCategories[0];
+  const currentCategoryTabs = currentCategory.tabs;
 
   return (
     <div className="min-h-screen w-full bg-white text-slate-900 flex flex-col font-sans">
@@ -247,32 +266,63 @@ const MainContent: React.FC = () => {
         </div>
       )}
 
-      {/* Sticky Active Category Title Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-[105px] sm:top-[110px] z-30 w-full shadow-xs">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-900 text-xs font-extrabold flex items-center gap-1.5">
-              {moduleCategories.find(cat => cat.id === selectedCategoryGroup)?.nameMm || '📊 ကျန်းမာရေး မှတ်တမ်းများ'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-semibold hidden sm:inline">ကဏ္ဍပြောင်းရန်:</span>
-            <select
-              value={activeTab}
-              onChange={(e) => setActiveTab(e.target.value as any)}
-              className="bg-slate-50 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
-            >
-              {moduleCategories.map(cat => (
-                <optgroup key={cat.id} label={cat.nameMm}>
-                  {cat.tabs.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
+      {/* Sticky Dual Cascading Dropdowns: Category (Cat) & Sub-Category (Sub Cat) */}
+      <div className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-[105px] sm:top-[110px] z-30 w-full shadow-xs">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4">
+            
+            {/* 1. Category (Cat) Dropdown - အဓိက ကဏ္ဍ Dropdown */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <label 
+                htmlFor="main-category-select" 
+                className="text-[11px] sm:text-xs font-bold text-slate-700 shrink-0 flex items-center gap-1.5"
+              >
+                <Folder className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="whitespace-nowrap">အဓိကကဏ္ဍ (Cat):</span>
+              </label>
+              <div className="relative flex-1 min-w-0">
+                <select
+                  id="main-category-select"
+                  value={selectedCategoryGroup}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  className="w-full bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-xl pl-3 pr-8 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer truncate transition-all shadow-2xs"
+                >
+                  {moduleCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nameMm}
                     </option>
                   ))}
-                </optgroup>
-              ))}
-            </select>
+                </select>
+                <ChevronDown className="w-4 h-4 text-emerald-700 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* 2. Sub-Category (Sub Cat) Dropdown - သူ့ Sub Cat များကိုသာ ရွေးချယ်ပြသခြင်း */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <label 
+                htmlFor="sub-category-select" 
+                className="text-[11px] sm:text-xs font-bold text-slate-700 shrink-0 flex items-center gap-1.5"
+              >
+                <Layers className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <span className="whitespace-nowrap">အခန်းခွဲ (Sub Cat):</span>
+              </label>
+              <div className="relative flex-1 min-w-0">
+                <select
+                  id="sub-category-select"
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value as any)}
+                  className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl pl-3 pr-8 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-hidden cursor-pointer truncate transition-all shadow-2xs"
+                >
+                  {currentCategoryTabs.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.label} {t.badge ? `(${t.badge})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -294,6 +344,7 @@ const MainContent: React.FC = () => {
         {activeTab === 'specialty' && <SpecialtyCareModule />}
         {activeTab === 'derma' && <DermatologyModule />}
         {activeTab === 'firstaid' && <EmergencyFirstAidModule />}
+        {activeTab === 'home_testing_guide' && <HomeTestingGuideModule onNavigateTab={(t: any) => setActiveTab(t)} />}
         {activeTab === 'otc_meds' && <HomeMedicinesGuideModule />}
         {activeTab === 'news' && <HealthNewsModule />}
         {activeTab === 'investigations_guide' && <LabInvestigationGuideModule />}

@@ -18,10 +18,12 @@ import {
   Megaphone,
   AlertTriangle,
   FileText,
-  Users
+  Users,
+  FlaskConical,
+  Droplets
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.2.3';
+export const CURRENT_SYSTEM_VERSION = 'v2.2.7';
 
 interface VersionItem {
   version: string;
@@ -40,13 +42,179 @@ interface VersionItem {
 
 const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.2.3',
-    type: 'minor',
+    version: 'v2.2.7',
+    type: 'major',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
-    title: '🎨 [PATCH/MINOR] Dark Mode Heading Contrast Fix & User Name Visibility Resolution',
-    badge: 'Latest Release (v2.2.3)',
+    title: '🩺 [MAJOR] Home Self-Testing Guide: Accurate Blood Pressure & Glucose Protocols (အိမ်တွင်း စစ်ဆေးမှု လမ်းညွှန်)',
+    badge: 'Latest Release (v2.2.7)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🩺 မှန်ကန်စွာ သွေးပေါင်ချိန်တိုင်းနည်း အဆင့်ဆင့်လမ်းညွှန် (Accurate Blood Pressure Protocol)',
+        icon: Activity,
+        items: [
+          'မတိုင်းမီ ၅ မိနစ် အနားယူရန်၊ မိနစ် ၃၀ အတွင်း လက်ဖက်ရည်/ကော်ဖီ/ဆေးလိပ် ရှောင်ကြဉ်ရန်နှင့် ဆီးအောင့်မထားရန် ကြိုတင်ပြင်ဆင်မှုများ',
+          'ကျောမှီပါသော ကုလားထိုင်တွင် ခြေထောက်မချိတ်ဘဲ ခါးမတ်မတ်ထိုင်ရန်၊ လက်မောင်းပတ် (Cuff) ကို တံတောင်ဆစ်အထက် ၁ လက်မအကွာတွင် နှလုံးအမြင့်နှင့် တစ်တန်းတည်း ပတ်ရန်',
+          'တိုင်းနေစဉ် စကားမပြောဘဲ တိတ်ဆိတ်စွာနေရန်နှင့် ၂ မိနစ်ခြားပြီး ၂ ကြိမ်တိုင်းကာ ပျမ်းမျှတန်ဖိုးကို ယူရန် စံဆေးပညာ လမ်းညွှန်ချက်များ'
+        ]
+      },
+      {
+        title: '🩸 မှန်ကန်စွာ ဆီးချို/သွေးချို စစ်နည်း အဆင့်ဆင့်လမ်းညွှန် (Accurate Blood Glucose Protocol)',
+        icon: Droplets,
+        items: [
+          'လက်ကို ရေနွေးနွေးနှင့် ဆပ်ပြာဖြင့် စင်ကြယ်စွာဆေးပြီး လုံးဝခြောက်သွေ့အောင် သုတ်ရန် (အသီးအနှံ/သကြားဓာတ် ကျန်ရှိနေပါက အဖြေမှားတတ်သည်)',
+          'လက်ချောင်းထိပ် အလယ်မဟုတ်ဘဲ နာကျင်မှုသက်သာသည့် ဘေးဘောင်နံဘေးကို ထိုးရန်၊ ပထမဆုံးထွက်သော သွေးစက်ကို သုတ်ပစ်ပြီး ဒုတိယထွက်သော သွေးစက်ကိုသာ စတြစ်ပေါ်တင်ရန် (Golden Rule)',
+          'အစာမစားမီ (Fasting FBS)၊ အစာစားပြီး ၂ နာရီ (PPBS) စစ်ဆေးချိန်များနှင့် ပန်းတိုင်စံနှုန်းများ၊ သွေးချို ၇၀ အောက်ကျဆင်းပါက ကယ်ဆယ်နိုင်မည့် Rule of 15 လမ်းညွှန်ချက်များ'
+        ]
+      },
+      {
+        title: '🌡️ ကိုယ်အပူချိန်၊ အောက်ဆီဂျင် (SpO2) နှင့် ကိုယ်အလေးချိန် စစ်ဆေးမှု လမ်းညွှန်များ',
+        icon: Sparkles,
+        items: [
+          'ဒစ်ဂျစ်တယ်သာမိုမီတာဖြင့် လျှာအောက်နှင့် ချိုင်းကြား ကိုယ်အပူချိန် တိုင်းတာနည်းများ',
+          'Pulse Oximeter လက်ထိပ်ညှပ်စက်ဖြင့် အောက်ဆီဂျင်စစ်ဆေးရာတွင် လက်သည်းဆိုးဆေးဖျက်ရန်နှင့် လက်အေးမနေစေရန် သတိပေးချက်များ',
+          'ဆေးရုံ/ဆေးခန်းသို့ အရေးပေါ် သွားရောက်ပြသရမည့် Red Flag Warnings အချက်အလက်များ'
+        ]
+      },
+      {
+        title: '✅ အပြန်အလှန် တုံ့ပြန်နိုင်သော Pre-Test Checklists (Interactive Readiness Check)',
+        icon: ShieldCheck,
+        items: [
+          'သွေးပေါင်မတိုင်းမီနှင့် ဆီးချိုမစစ်မီ မိမိကိုယ်တိုင် ပြင်ဆင်မှု ၅ ချက် အဆင်သင့်ဖြစ်မဖြစ် တိုက်ဆိုင်စစ်ဆေးနိုင်သည့် Interactive Checklists စနစ် ထည့်သွင်းပေးထားခြင်း'
+        ]
+      },
+      {
+        title: '⚡ React Rules of Hooks အစဉ်လိုက် လိုက်နာမှုနှင့် Runtime တည်ငြိမ်မှု အဆင့်မြှင့်တင်ခြင်း',
+        icon: Gauge,
+        items: [
+          'Conditional return များ မတိုင်မီ Hooks အားလုံးကို တပြေးညီ sequential order အတိုင်း ခေါ်ယူစေပြီး Safari/iOS တွင် ဖြစ်ပေါ်တတ်သော resolveDispatcher Hook call error အား လုံးဝ အပြီးတိုင် ရှင်းလင်းဖြေရှင်းခြင်း',
+          'Vite bundle deduplication ဖြင့် React 19 instance အငြင်းပွားမှု ကင်းဝေးစေရန် စနစ်ချောမွေ့အောင် ပြင်ဆင်ထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.2.6',
+    type: 'major',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '🗂️ [MAJOR] Dual Cascading Category (Cat) & Sub-Category (Sub Cat) Dropdowns Navigation System',
+    badge: 'Previous Release (v2.2.6)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+    highlights: [
+      {
+        title: '📂 အဓိကကဏ္ဍ (Cat) Dropdown စနစ်သစ် ထည့်သွင်းခြင်း (Category Dropdown)',
+        icon: FileText,
+        items: [
+          'မူလက ဘေးတွင် စာသား Badge အဖြစ်သာရှိခဲ့သော အဓိကကဏ္ဍ (Category) ကို အသုံးပြုသူ စိတ်ကြိုက်ပြောင်းလဲနိုင်သော Dropdown အဖြစ် အဆင့်မြှင့်တင်လိုက်ခြင်း',
+          'ကျန်းမာရေး မှတ်တမ်းများ၊ မိခင်/ကလေး/သက်ကြီး စောင့်ရှောက်မှု၊ သိမှတ်ဖွယ်ရာများ၊ အထူးကုနှင့် ကုထုံးများ၊ အရေးပေါ်နှင့် ကာကွယ်ရေး စသည့် ကဏ္ဍကြီးများကို အလွယ်တကူ ရွေးချယ်နိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '📑 ရွေးထားသော ကဏ္ဍ၏ Sub Cat များကိုသာ Dropdown တွင် သီးသန့်ပြသခြင်း (Isolated Sub-Category Dropdown)',
+        icon: Users,
+        items: [
+          'မူလက စနစ်တစ်ခုလုံးရှိ အခန်း ၂၅ ခုကျော် Dropdown ထဲတွင် တစ်ပြုံတည်း ရောနှောပေါ်နေ၍ မျက်စိရှုပ်ထွေးခဲ့သော ပြဿနာအား အပြီးတိုင် ဖယ်ရှားရှင်းလင်းလိုက်ခြင်း',
+          'အဓိကကဏ္ဍ (Cat) တွင် "ကျန်းမာရေး မှတ်တမ်းများ" ရွေးထားပါက Sub Cat Dropdown တွင် သွေးပေါင်ချိန်၊ ဆီးချို၊ BMI၊ ဓာတ်ခွဲခန်း၊ ဆေးမှတ်တမ်း စသည့် ၎င်း၏ Sub Cat သီးသန့် ၇ မျိုးသာ ပေါ်လာမည်ဖြစ်ခြင်း',
+          'အခြားကဏ္ဍ (ဥပမာ - သိမှတ်ဖွယ်ရာများ) ရွေးပါကလည်း ထိုကဏ္ဍနှင့် သက်ဆိုင်သော ဆောင်းပါး၊ အိမ်သုံးဆေးဝါး၊ ဓာတ်ခွဲစမ်းသပ်မှုလမ်းညွှန် စသည့် Sub Cat များသာ သန့်ရှင်းစွာ ပေါ်လာမည်ဖြစ်ခြင်း'
+        ]
+      },
+      {
+        title: '📱 ဖုန်းမျက်နှာပြင် အထူးသပ်ရပ်မှု (Mobile Responsive Category Selectors)',
+        icon: Sparkles,
+        items: [
+          'ဖုန်း (iOS / Android) ပေါ်တွင် Dropdown ဖွင့်လိုက်ပါက စာမျက်နှာအပြည့် ဖုံးအုပ်ရှုပ်ထွေးနေခြင်း မရှိစေဘဲ ကဏ္ဍအလိုက် အလွန်ရှင်းလင်းစွာ ရွေးချယ်နိုင်ခြင်း',
+          'ကျန်းမာရေးဆောင်းပါးများ (Health News) စာမျက်နှာတွင်လည်း ဖုန်းမျက်နှာပြင်၌ ခလုတ် ၁၈ ခု အတန်းလိုက် ရှုပ်နေခြင်းမရှိစေဘဲ Mobile Category Select Dropdown ဖြင့် သပ်ရပ်စွာ ထိန်းညှိပေးထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.2.5',
+    type: 'major',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '🔬 [MAJOR] 1-Test-Per-Row Layout, Editable Lab Reference Ranges, Live Range Comparison & Selective Data Persistence',
+    badge: 'Previous Release (v2.2.5)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+    highlights: [
+      {
+        title: '📋 စာတစ်ကြောင်းလျှင် စစ်ဆေးချက်တစ်ခုသာ ရှင်းလင်းစွာ ပြသခြင်း (1-Row-Per-Test Clean Layout)',
+        icon: FileText,
+        items: [
+          'ကဏ္ဍပေါင်းစုံမှ စစ်ဆေးချက်များကို မျက်စိမရှုပ်စေဘဲ အတန်းတစ်တန်းလျှင် စစ်ဆေးချက် ၁ မျိုးစီ (စစ်ဆေးချက်အမည် + ရလဒ်ထည့်သွင်းရန်အကွက် + စံသတ်မှတ်ချက် + အခြေအနေပြတံဆိပ်) သပ်ရပ်ရှင်းလင်းစွာ စီစဉ်ပေးထားခြင်း',
+          'အမျိုးအမည်ရှာဖွေရန် Search Bar နှင့် ကဏ္ဍခွဲ Filters များဖြင့် လွယ်ကူလျင်မြန်စွာ ရှာဖွေနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '⚙️ ဓာတ်ခွဲခန်းစံနှုန်း ယှဉ်ပြခြင်းနှင့် စိတ်ကြိုက်ပြင်ဆင်နိုင်ခြင်း (Side-by-Side & Editable Reference Ranges)',
+        icon: Activity,
+        items: [
+          'စစ်ဆေးချက်တိုင်း၏ ဘေးတွင် Normal Lab Reference Value (ပုံမှန်စံနှုန်း) ကို ယှဉ်တွဲပြသပေးထားခြင်း',
+          'အသုံးပြုသူ ပြသစစ်ဆေးခဲ့သော ဓာတ်ခွဲခန်း၏ စံသတ်မှတ်ချက်နှင့် မတူညီပါက "စံနှုန်းပြင်မည် ✏️" ခလုတ်ကို နှိပ်၍ မိမိဓာတ်ခွဲခန်း၏ Min/Max စံနှုန်းများကို စိတ်ကြိုက် ပြင်ဆင်သတ်မှတ်နိုင်ခြင်း',
+          'လိုအပ်ပါက "မူလစံနှုန်းအတိုင်း ပြန်ထားမည်" ခလုတ်ဖြင့် စနစ်၏ ပုံမှန်စံနှုန်းသို့ ချက်ချင်း ပြန်လည်ပြောင်းလဲနိုင်ခြင်း'
+        ]
+      },
+      {
+        title: '⚡ စံနှုန်းနှင့်ချိန်ပြီး အချိန်နှင့်တပြေးညီ အခြေအနေပြသခြင်း (Real-Time Live Status Evaluation)',
+        icon: Sparkles,
+        items: [
+          'ရလဒ်ဂဏန်း သို့မဟုတ် ဓာတ်ခွဲခန်းစံနှုန်း ရိုက်ထည့်လိုက်သည်နှင့် တစ်ပြိုင်နက် ပုံမှန် (Normal)၊ များနေသည် (High)၊ နည်းနေသည် (Low) သို့မဟုတ် အလွန်မြင့် (Critical) အခြေအနေများကို အရောင်နှင့် တံဆိပ်ဖြင့် တခါတည်း ချက်ချင်း တွက်ချက်ပြသပေးခြင်း'
+        ]
+      },
+      {
+        title: '💾 စစ်ဆေးထားသော အချက်အလက်များကိုသာ ရွေးချယ်သိမ်းဆည်းခြင်း (Selective Data Persistence)',
+        icon: ShieldCheck,
+        items: [
+          'အသုံးပြုသူ မထည့်သွင်းခဲ့သော စစ်ဆေးချက်များကို Profile နှင့် Database ထဲတွင် အပိုသိမ်းဆည်းခြင်း မရှိစေဘဲ အမှန်တကယ် စစ်ဆေးဖြည့်သွင်းခဲ့သော ဓာတ်ခွဲချက်များကိုသာ (ဥပမာ ၃ မျိုးဖြည့်လျှင် ၃ မျိုးတည်းသာ) တိကျသန့်ရှင်းစွာ သိမ်းဆည်းပေးခြင်း',
+          'သမိုင်းမှတ်တမ်းနှင့် အသေးစိတ်စာမျက်နှာများတွင်လည်း စစ်ဆေးခဲ့သည့် အရေအတွက်အတိုင်း ၁ ကြောင်းစီ သန့်ရှင်းစွာ ပြသပေးခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.2.4',
+    type: 'major',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '🧪 [MAJOR] Comprehensive Lab Test Suite (8 Panels) & Zero Pre-filled Numbers Data Integrity',
+    badge: 'Previous Release (v2.2.4)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+    highlights: [
+      {
+        title: '🧪 Comprehensive Lab Test Suite (ဓာတ်ခွဲခန်းစစ်ဆေးချက် ၈ ကဏ္ဍ အစုံအလင် တိုးမြှင့်ခြင်း)',
+        icon: FlaskConical,
+        items: [
+          'မူလ ၄ မျိုးသာရှိခဲ့ရာမှ ဆေးပညာဆိုင်ရာ အခြေခံနှင့် အဆင့်မြင့် ဓာတ်ခွဲစစ်ဆေးချက် ၈ ကဏ္ဍစလုံးကို အပြည့်အစုံ ထည့်သွင်းပေးထားခြင်း',
+          '၁။ သွေးဆဲလ်အစုံ (CBC - Hemoglobin, WBC, Platelets, RBC, PCV, ESR, Neutrophils, Lymphocytes)',
+          '၂။ သွေးချို/သကြားဓာတ် (Glucose - Fasting FBS, 2-hr PPBS, RBS, 3-Month HbA1c)',
+          '၃။ အသည်းလုပ်ဆောင်ချက် (LFT - SGPT/ALT, SGOT/AST, Bilirubin, ALP, Albumin, Total Protein, Globulin)',
+          '၄။ ကျောက်ကပ်နှင့် ဓာတ်ဆားများ (RFT/Electrolytes - Creatinine, Uric Acid, BUN, eGFR, Sodium, Potassium, Chloride)',
+          '၅။ သွေးတွင်းအဆီဓာတ် (Lipid Profile - Total Cholesterol, Triglycerides, HDL, LDL, VLDL)',
+          '၆။ လည်ပင်းကြီးသိုင်းရွိုက်ဟော်မုန်း (TFT - TSH, Free T4, Free T3, Total T4, Total T3, Anti-TPO)',
+          '၇။ ဆီးစစ်ဆေးခြင်း (Urine Routine & Microalbumin - Protein, Glucose, Pus Cells, RBC, Microalbumin)',
+          '၈။ ရောင်ရမ်းမှုနှင့် ဗီတာမင်ဓာတ်များ (CRP, Ferritin, Vitamin D, Vitamin B12)'
+        ]
+      },
+      {
+        title: '🚫 Zero Pre-filled Numbers (ကြိုတင်ဖြည့်ဂဏန်းများ မပါရှိဘဲ သန့်ရှင်းစွာ ပြင်ဆင်ခြင်း)',
+        icon: ShieldCheck,
+        items: [
+          'ဓာတ်ခွဲခန်း Form အကွက်များတွင် မူလက ကြိုတင်ထည့်သွင်းထားသော ဂဏန်းများ (Default pre-filled dummy numbers) အားလုံးကို လုံးဝ ဖယ်ရှားရှင်းလင်းပြီး သန့်ရှင်းသော Empty State ပြုလုပ်ပေးထားခြင်း',
+          'အသုံးပြုသူ မဖျက်မိဘဲ မှားယွင်းသိမ်းဆည်းမိနိုင်သည့် ဆေးဘက်ဆိုင်ရာ အန္တရာယ်နှင့် ဒေတာမှားယွင်းမှုများကို ၁၀၀% အပြည့်အဝ ကာကွယ်ပေးထားခြင်း'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.2.3',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
+    title: '🎨 [PATCH/MINOR] Dark Mode Heading Contrast Fix & User Name Visibility Resolution',
+    badge: 'Previous Release (v2.2.3)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
     highlights: [
       {
         title: '🎨 Dark Mode Heading Contrast & User Name Fix (အသုံးပြုသူအမည် မမြင်ရခြင်း ပြဿနာ အပြီးတိုင် ပြင်ဆင်ခြင်း)',

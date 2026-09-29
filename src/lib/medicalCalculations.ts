@@ -406,6 +406,59 @@ export interface LabParamEvaluation {
 
 export function evaluateLabParam(param: string, value: number): LabParamEvaluation {
   switch (param) {
+    // Complete Blood Count (CBC)
+    case 'hemoglobin':
+      if (value < 8.0) return { status: 'critical', labelMm: 'ပြင်းထန်သွေးအားနည်း (Severe Anemia)', labelEn: 'Severe Anemia', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '12 - 17 g/dL' };
+      if (value < 12.0) return { status: 'low', labelMm: 'သွေးအားနည်းသည် (Mild/Mod Anemia)', labelEn: 'Low Hb (Anemia)', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '12 - 17 g/dL' };
+      if (value > 17.5) return { status: 'high', labelMm: 'သွေးပျစ်/မြင့်သည် (Polycythemia)', labelEn: 'High Hb', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '12 - 17 g/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန် (Normal)', labelEn: 'Normal Hb', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '12 - 17 g/dL' };
+
+    case 'wbc':
+      if (value > 15000) return { status: 'critical', labelMm: 'အလွန်မြင့် (ပြင်းထန်ပိုးဝင်ခြင်း)', labelEn: 'High Leukocytosis', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '4,000 - 11,000 /µL' };
+      if (value > 11000) return { status: 'high', labelMm: 'မြင့်သည် (ပိုးဝင်/ရောင်ရမ်းမှု)', labelEn: 'Elevated WBC', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '4,000 - 11,000 /µL' };
+      if (value < 4000) return { status: 'low', labelMm: 'နည်းသည် (ခုခံအားနည်း)', labelEn: 'Low WBC (Leukopenia)', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '4,000 - 11,000 /µL' };
+      return { status: 'normal', labelMm: 'ပုံမှန် (Normal)', labelEn: 'Normal WBC', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '4,000 - 11,000 /µL' };
+
+    case 'platelets':
+      if (value < 50000) return { status: 'critical', labelMm: 'အလွန်နည်း (သွေးယိုစိမ့်မှုသတိပြု)', labelEn: 'Critical Thrombocytopenia', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '150,000 - 450,000 /µL' };
+      if (value < 150000) return { status: 'low', labelMm: 'နည်းနေသည် (သွေးလွန်တုပ်ကွေးစစ်ဆေး)', labelEn: 'Low Platelets', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '150,000 - 450,000 /µL' };
+      if (value > 450000) return { status: 'high', labelMm: 'မြင့်နေသည် (Thrombocytosis)', labelEn: 'High Platelets', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '150,000 - 450,000 /µL' };
+      return { status: 'normal', labelMm: 'ပုံမှန် (Normal)', labelEn: 'Normal Platelets', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '150,000 - 450,000 /µL' };
+
+    case 'rbc':
+      if (value < 4.0) return { status: 'low', labelMm: 'နည်းသည်', labelEn: 'Low RBC', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '4.0 - 5.9 10^6/µL' };
+      if (value > 5.9) return { status: 'high', labelMm: 'မြင့်သည်', labelEn: 'High RBC', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '4.0 - 5.9 10^6/µL' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '4.0 - 5.9 10^6/µL' };
+
+    case 'pcv_hematocrit':
+      if (value < 36) return { status: 'low', labelMm: 'နည်းသည်', labelEn: 'Low PCV', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '36 - 50 %' };
+      if (value > 50) return { status: 'high', labelMm: 'မြင့်သည် (သွေးပျစ်)', labelEn: 'High PCV', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '36 - 50 %' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '36 - 50 %' };
+
+    case 'esr':
+      if (value > 50) return { status: 'critical', labelMm: 'အလွန်မြင့် (ရောင်ရမ်းမှု/ပိုးဝင်)', labelEn: 'High ESR', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '0 - 20 mm/hr' };
+      if (value > 20) return { status: 'high', labelMm: 'မြင့်နေသည် (Elevated)', labelEn: 'Elevated ESR', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '0 - 20 mm/hr' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal ESR', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '0 - 20 mm/hr' };
+
+    // Blood Glucose & HbA1c Panel
+    case 'fbs':
+      if (value >= 126) return { status: 'critical', labelMm: 'ဆီးချိုအဆင့် (Diabetes)', labelEn: 'Diabetic Range', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '70 - 99 mg/dL' };
+      if (value >= 100) return { status: 'high', labelMm: 'ဆီးချိုမဖြစ်မီ (Prediabetes)', labelEn: 'Prediabetes (Impaired)', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '70 - 99 mg/dL' };
+      if (value < 70) return { status: 'low', labelMm: 'သကြားဓာတ်နည်း (Hypoglycemia)', labelEn: 'Low Sugar', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '70 - 99 mg/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန် (Normal)', labelEn: 'Normal FBS', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '70 - 99 mg/dL' };
+
+    case 'ppbs':
+    case 'rbs':
+      if (value >= 200) return { status: 'critical', labelMm: 'ဆီးချိုအဆင့် (Diabetes)', labelEn: 'Diabetic Range', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '< 140 mg/dL' };
+      if (value >= 140) return { status: 'high', labelMm: 'အနည်းငယ်မြင့် (Impaired)', labelEn: 'Elevated Glucose', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '< 140 mg/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန် (Normal)', labelEn: 'Normal Glucose', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '< 140 mg/dL' };
+
+    case 'hba1c':
+      if (value >= 8.0) return { status: 'critical', labelMm: 'ထိန်းချုပ်မှုမကောင်း (Poor Control)', labelEn: 'Poorly Controlled', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '< 5.7 %' };
+      if (value >= 6.5) return { status: 'high', labelMm: 'ဆီးချိုရောဂါ (Diabetes)', labelEn: 'Diabetes', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '< 5.7 %' };
+      if (value >= 5.7) return { status: 'high', labelMm: 'ဆီးချိုမဖြစ်မီ (Prediabetes)', labelEn: 'Prediabetes', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '< 5.7 %' };
+      return { status: 'normal', labelMm: 'ပုံမှန် ကောင်းမွန် (Normal)', labelEn: 'Optimal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '< 5.7 %' };
+
     // Liver
     case 'ast_sgot':
       if (value > 80) return { status: 'critical', labelMm: 'အလွန်မြင့်', labelEn: 'Very High', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '10 - 40 U/L' };
@@ -423,12 +476,28 @@ export function evaluateLabParam(param: string, value: number): LabParamEvaluati
       if (value > 1.2) return { status: 'high', labelMm: 'အနည်းငယ်မြင့်', labelEn: 'Elevated', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '0.2 - 1.2 mg/dL' };
       return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '0.2 - 1.2 mg/dL' };
 
+    case 'directBilirubin':
+      if (value > 0.3) return { status: 'high', labelMm: 'မြင့်နေသည် (သည်းခြေပြွန်သတိပြု)', labelEn: 'Elevated', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '0.0 - 0.3 mg/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '0.0 - 0.3 mg/dL' };
+
     case 'alp':
       if (value > 147) return { status: 'high', labelMm: 'မြင့်နေသည်', labelEn: 'High', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '44 - 147 U/L' };
       if (value < 44) return { status: 'low', labelMm: 'နည်းသည်', labelEn: 'Low', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '44 - 147 U/L' };
       return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '44 - 147 U/L' };
 
-    // Renal
+    case 'albumin':
+      if (value < 3.5) return { status: 'low', labelMm: 'နည်းသည် (အသည်း/အာဟာရ)', labelEn: 'Low Albumin', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '3.5 - 5.0 g/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal Albumin', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '3.5 - 5.0 g/dL' };
+
+    case 'totalProtein':
+      if (value < 6.0) return { status: 'low', labelMm: 'နည်းသည်', labelEn: 'Low Protein', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '6.0 - 8.3 g/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal Protein', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '6.0 - 8.3 g/dL' };
+
+    case 'globulin':
+      if (value > 3.5) return { status: 'high', labelMm: 'မြင့်နေသည်', labelEn: 'High Globulin', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '2.0 - 3.5 g/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '2.0 - 3.5 g/dL' };
+
+    // Renal & Electrolytes
     case 'creatinine':
       if (value > 2.0) return { status: 'critical', labelMm: 'ကျောက်ကပ်ထိခိုက်မှု သတိပြု', labelEn: 'Critical Renal Impairment', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '0.6 - 1.2 mg/dL' };
       if (value > 1.2) return { status: 'high', labelMm: 'မြင့်နေသည် (သတိပြုရန်)', labelEn: 'Elevated Creatinine', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '0.6 - 1.2 mg/dL' };
@@ -442,6 +511,26 @@ export function evaluateLabParam(param: string, value: number): LabParamEvaluati
     case 'bun':
       if (value > 20) return { status: 'high', labelMm: 'မြင့်နေသည်', labelEn: 'High BUN', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '7 - 20 mg/dL' };
       return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '7 - 20 mg/dL' };
+
+    case 'egfr':
+      if (value < 60) return { status: 'critical', labelMm: 'ကျောက်ကပ်လုပ်ဆောင်မှု ကျဆင်း (CKD)', labelEn: 'Low eGFR (<60)', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '> 90 mL/min' };
+      if (value < 90) return { status: 'high', labelMm: 'အနည်းငယ်ကျဆင်းနေသည်', labelEn: 'Mildly Decreased', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '> 90 mL/min' };
+      return { status: 'normal', labelMm: 'ကောင်းမွန် (Optimal)', labelEn: 'Normal eGFR', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '> 90 mL/min' };
+
+    case 'sodium':
+      if (value < 135) return { status: 'low', labelMm: 'ဆိုဒီယမ်နည်း (Hyponatremia)', labelEn: 'Low Sodium', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '135 - 145 mEq/L' };
+      if (value > 145) return { status: 'high', labelMm: 'ဆိုဒီယမ်များ (Hypernatremia)', labelEn: 'High Sodium', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '135 - 145 mEq/L' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal Sodium', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '135 - 145 mEq/L' };
+
+    case 'potassium':
+      if (value < 3.5) return { status: 'low', labelMm: 'ပိုတက်စီယမ်နည်း (Hypokalemia)', labelEn: 'Low Potassium', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '3.5 - 5.0 mEq/L' };
+      if (value > 5.0) return { status: 'critical', labelMm: 'ပိုတက်စီယမ်များ (နှလုံးခုန်သတိပြု)', labelEn: 'High Potassium (Critical)', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '3.5 - 5.0 mEq/L' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal Potassium', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '3.5 - 5.0 mEq/L' };
+
+    case 'chloride':
+      if (value < 96) return { status: 'low', labelMm: 'နည်းသည်', labelEn: 'Low Chloride', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300', refRange: '96 - 106 mEq/L' };
+      if (value > 106) return { status: 'high', labelMm: 'များနေသည်', labelEn: 'High Chloride', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '96 - 106 mEq/L' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '96 - 106 mEq/L' };
 
     // Lipid
     case 'totalCholesterol':
@@ -462,6 +551,10 @@ export function evaluateLabParam(param: string, value: number): LabParamEvaluati
     case 'hdl':
       if (value < 40) return { status: 'low', labelMm: 'ကောင်းသောအဆီနည်းနေသည်', labelEn: 'Low HDL (Need > 40)', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '> 40 - 50 mg/dL' };
       return { status: 'normal', labelMm: 'ကောင်းမွန်သည်', labelEn: 'Good HDL', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '> 40 - 50 mg/dL' };
+
+    case 'vldl':
+      if (value > 30) return { status: 'high', labelMm: 'မြင့်နေသည်', labelEn: 'High VLDL', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '< 30 mg/dL' };
+      return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Normal VLDL', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '< 30 mg/dL' };
 
     // Thyroid Function Test (TFT)
     case 'tsh':
@@ -495,9 +588,137 @@ export function evaluateLabParam(param: string, value: number): LabParamEvaluati
       if (value >= 35) return { status: 'high', labelMm: 'ပိုးတွေ့ရှိ (Autoimmune Risk)', labelEn: 'Positive Antibodies', badgeClass: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300', refRange: '< 35 IU/mL' };
       return { status: 'normal', labelMm: 'အနုတ်လက္ခဏာ (Negative)', labelEn: 'Normal / Negative', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '< 35 IU/mL' };
 
+    // Inflammatory Markers & Vitamins
+    case 'crp':
+      if (value > 10.0) return { status: 'critical', labelMm: 'ရောင်ရမ်းမှု အလွန်မြင့်မား (High Inflammation)', labelEn: 'High CRP', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '< 5.0 mg/L' };
+      if (value > 5.0) return { status: 'high', labelMm: 'ရောင်ရမ်းမှု အနည်းငယ်ရှိ (Elevated)', labelEn: 'Elevated CRP', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '< 5.0 mg/L' };
+      return { status: 'normal', labelMm: 'ပုံမှန် (Normal)', labelEn: 'Normal CRP', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '< 5.0 mg/L' };
+
+    case 'ferritin':
+      if (value < 20) return { status: 'low', labelMm: 'သံဓာတ်သိုလှောင်မှုနည်း (Iron Deficiency)', labelEn: 'Low Ferritin', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '20 - 250 ng/mL' };
+      if (value > 300) return { status: 'high', labelMm: 'သံဓာတ်များနေသည် (Elevated)', labelEn: 'High Ferritin', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '20 - 250 ng/mL' };
+      return { status: 'normal', labelMm: 'ပုံမှန် (Normal)', labelEn: 'Normal Ferritin', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '20 - 250 ng/mL' };
+
+    case 'vitaminD':
+      if (value < 20) return { status: 'critical', labelMm: 'ဗီတာမင် D ချို့တဲ့ (Deficient)', labelEn: 'Vitamin D Deficiency', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '30 - 100 ng/mL' };
+      if (value < 30) return { status: 'low', labelMm: 'ဗီတာမင် D မလုံလောက် (Insufficient)', labelEn: 'Insufficient', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '30 - 100 ng/mL' };
+      return { status: 'normal', labelMm: 'လုံလောက် ကောင်းမွန် (Sufficient)', labelEn: 'Optimal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '30 - 100 ng/mL' };
+
+    case 'vitaminB12':
+      if (value < 200) return { status: 'low', labelMm: 'ဗီတာမင် B12 နည်း (အာရုံကြော/သွေး)', labelEn: 'Low B12', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '200 - 900 pg/mL' };
+      return { status: 'normal', labelMm: 'ပုံမှန် (Normal)', labelEn: 'Normal B12', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '200 - 900 pg/mL' };
+
+    case 'microalbumin':
+      if (value >= 300) return { status: 'critical', labelMm: 'ကျောက်ကပ်သိသာစွာထိခိုက် (Macroalbuminuria)', labelEn: 'Macroalbuminuria', badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300', refRange: '< 30 mg/g' };
+      if (value >= 30) return { status: 'high', labelMm: 'ကနဦး ကျောက်ကပ်ထိခိုက် (Microalbuminuria)', labelEn: 'Microalbuminuria', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', refRange: '< 30 mg/g' };
+      return { status: 'normal', labelMm: 'ပုံမှန် ကောင်းမွန် (Normal)', labelEn: 'Normal', badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300', refRange: '< 30 mg/g' };
+
     default:
       return { status: 'normal', labelMm: 'ပုံမှန်', labelEn: 'Recorded', badgeClass: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300', refRange: '-' };
   }
+}
+
+/**
+ * Dynamically evaluate a lab value against custom lab reference bounds or standard bounds.
+ * Allows user-adjusted lab ranges to immediately reflect in clinical status evaluation.
+ */
+export function evaluateCustomLabValue(
+  value: number,
+  refMin?: number,
+  refMax?: number,
+  fallbackParamKey?: string
+): LabParamEvaluation {
+  // If user provided custom bounds
+  if (refMin !== undefined && refMax !== undefined) {
+    if (value < refMin) {
+      const isSevere = value < refMin * 0.7;
+      return {
+        status: isSevere ? 'critical' : 'low',
+        labelMm: isSevere ? `အလွန်နည်း (< ${refMin})` : `နည်းနေသည် (< ${refMin})`,
+        labelEn: isSevere ? `Very Low (< ${refMin})` : `Low (< ${refMin})`,
+        badgeClass: isSevere 
+          ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300' 
+          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+        refRange: `${refMin} - ${refMax}`
+      };
+    }
+    if (value > refMax) {
+      const isSevere = value >= refMax * 1.4;
+      return {
+        status: isSevere ? 'critical' : 'high',
+        labelMm: isSevere ? `အလွန်မြင့် (> ${refMax})` : `များနေသည် (> ${refMax})`,
+        labelEn: isSevere ? `Very High (> ${refMax})` : `High (> ${refMax})`,
+        badgeClass: isSevere 
+          ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300' 
+          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
+        refRange: `${refMin} - ${refMax}`
+      };
+    }
+    return {
+      status: 'normal',
+      labelMm: 'ပုံမှန် (Normal)',
+      labelEn: 'Normal',
+      badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
+      refRange: `${refMin} - ${refMax}`
+    };
+  }
+
+  if (refMax !== undefined) {
+    if (value > refMax) {
+      const isSevere = value >= refMax * 1.5;
+      return {
+        status: isSevere ? 'critical' : 'high',
+        labelMm: isSevere ? `အလွန်မြင့် (> ${refMax})` : `များနေသည် (> ${refMax})`,
+        labelEn: isSevere ? `Very High (> ${refMax})` : `High (> ${refMax})`,
+        badgeClass: isSevere 
+          ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300' 
+          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
+        refRange: `< ${refMax}`
+      };
+    }
+    return {
+      status: 'normal',
+      labelMm: 'ပုံမှန် (Normal)',
+      labelEn: 'Normal',
+      badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
+      refRange: `< ${refMax}`
+    };
+  }
+
+  if (refMin !== undefined) {
+    if (value < refMin) {
+      const isSevere = value < refMin * 0.7;
+      return {
+        status: isSevere ? 'critical' : 'low',
+        labelMm: isSevere ? `အလွန်နည်း (< ${refMin})` : `နည်းနေသည် (< ${refMin})`,
+        labelEn: isSevere ? `Very Low (< ${refMin})` : `Low (< ${refMin})`,
+        badgeClass: isSevere 
+          ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300' 
+          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+        refRange: `> ${refMin}`
+      };
+    }
+    return {
+      status: 'normal',
+      labelMm: 'ပုံမှန် (Normal)',
+      labelEn: 'Normal',
+      badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
+      refRange: `> ${refMin}`
+    };
+  }
+
+  // Fallback to built-in dictionary
+  if (fallbackParamKey) {
+    return evaluateLabParam(fallbackParamKey, value);
+  }
+
+  return {
+    status: 'normal',
+    labelMm: 'စံနှုန်းမှတ်တမ်းတင်ထားသည်',
+    labelEn: 'Recorded',
+    badgeClass: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
+    refRange: '-'
+  };
 }
 
 export interface ThyroidEvaluation {
