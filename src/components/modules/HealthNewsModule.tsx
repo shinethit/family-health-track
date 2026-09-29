@@ -126,8 +126,7 @@ export const HealthNewsModule: React.FC = () => {
         const matchQuery = !q || 
           art.title.toLowerCase().includes(q) || 
           art.summary.toLowerCase().includes(q) || 
-          art.tags.some(t => t.toLowerCase().includes(q)) ||
-          art.author.toLowerCase().includes(q);
+          art.tags.some(t => t.toLowerCase().includes(q));
 
         return matchFilter && matchQuery;
       });
@@ -142,8 +141,7 @@ export const HealthNewsModule: React.FC = () => {
         const matchQuery = !q || 
           art.title.toLowerCase().includes(q) || 
           art.summary.toLowerCase().includes(q) || 
-          art.tags.some(t => t.toLowerCase().includes(q)) ||
-          art.author.toLowerCase().includes(q);
+          art.tags.some(t => t.toLowerCase().includes(q));
 
         return matchCat && matchQuery;
       });
@@ -538,8 +536,9 @@ export const HealthNewsModule: React.FC = () => {
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900 leading-snug">
                   {activeArticle.title}
                 </h2>
-                <p className="text-xs text-emerald-700 font-semibold">
-                  ရေးသားသူ: {activeArticle.author}
+                <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>Family Health Track ဆေးပညာနှင့် ပြည်သူ့ကျန်းမာရေး အသိပညာပေး လမ်းညွှန်</span>
                 </p>
               </div>
 
@@ -579,6 +578,11 @@ export const HealthNewsModule: React.FC = () => {
                     {paragraph}
                   </p>
                 ))}
+              </div>
+
+              {/* Medical Advisory Notice */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-600 leading-relaxed">
+                <strong>ဆေးပညာဆိုင်ရာ သတိပေးချက်:</strong> ဤဆောင်းပါးပါ အချက်အလက်များသည် ပြည်သူလူထု ကျန်းမာရေး အသိပညာ ဗဟုသုတ တိုးပွားစေရန် ရည်ရွယ်ပြီး၊ တိကျသော ရောဂါရှာဖွေကုသမှုများအတွက် သက်ဆိုင်ရာ ဆရာဝန်နှင့် တိုက်ရိုက် ပြသတိုင်ပင်ဆွေးနွေးရန် လိုအပ်ပါသည်။
               </div>
 
               {/* Tags */}

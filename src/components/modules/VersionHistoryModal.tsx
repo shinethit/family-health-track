@@ -27,7 +27,7 @@ import {
   Waves
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.3.4';
+export const CURRENT_SYSTEM_VERSION = 'v2.3.5';
 
 export interface VersionItem {
   version: string;
@@ -46,13 +46,46 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
+    version: 'v2.3.5',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
+    isLatest: true,
+    title: '🛡️ [PATCH/AUDIT] Medical Article Author Integrity & Clinical Advisory Notice (ဆောင်းပါးများမှ အတည်မပြုနိုင်သော ဆရာဝန်အမည်များ ဖယ်ရှားခြင်းနှင့် ဆေးပညာ လမ်းညွှန် အသိပေးချက် စနစ်သစ်)',
+    badge: 'Latest Release (v2.3.5)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🩺 ဆောင်းပါးများမှ စိတ်ကူးယဉ် Placeholder ဆရာဝန် အမည်များအား အပြီးတိုင် ဖယ်ရှားရှင်းလင်းခြင်း',
+        icon: ShieldCheck,
+        items: [
+          'မူလနမူနာ ဆောင်းပါးများတွင် ပါရှိခဲ့သော အတည်မပြုနိုင်သည့် ဆရာဝန် အမည်များကို လုံးဝ (လုံးဝ) ဖယ်ရှားရှင်းလင်းခြင်း',
+          'ဆောင်းပါး အချက်အလက်များအား အများပြည်သူ ကျန်းမာရေး လမ်းညွှန်ချက်များနှင့် ဆေးပညာ ဗဟုသုတများအဖြစ် Family Health Track Editorial Reference Guide အဖြစ် သတ်မှတ်ဖော်ပြခြင်း'
+        ]
+      },
+      {
+        title: '⚖️ ဆေးပညာဆိုင်ရာ သတိပေးချက် (Medical Advisory Notice) တိကျစွာ ထည့်သွင်းခြင်း',
+        icon: FileText,
+        items: [
+          'ဆောင်းပါးတိုင်း၏ အောက်ခြေတွင် "ဤဆောင်းပါးပါ အချက်အလက်များသည် ပြည်သူလူထု ကျန်းမာရေး အသိပညာ ဗဟုသုတ တိုးပွားစေရန် ရည်ရွယ်ပြီး၊ တိကျသော ရောဂါရှာဖွေကုသမှုများအတွက် သက်ဆိုင်ရာ ဆရာဝန်နှင့် တိုက်ရိုက် ပြသတိုင်ပင်ဆွေးနွေးရန် လိုအပ်ပါသည်" ဟူသော ဆေးပညာ စံသတ်မှတ်ချက် သတိပေးချက်အား ထည့်သွင်းထားခြင်း'
+        ]
+      },
+      {
+        title: '🔍 Search Filter & Data Schema Optimization',
+        icon: Sparkles,
+        items: [
+          'ရှာဖွေမှု Filter မှ မလိုအပ်သော Author field ကို ဖယ်ရှားပြီး ဆောင်းပါး ခေါင်းစဉ်၊ အကျဉ်းချုပ်နှင့် Tags များဖြင့်သာ တိကျစွာ ရှာဖွေနိုင်ရန် ပြင်ဆင်ခြင်း'
+        ]
+      }
+    ]
+  },
+  {
     version: 'v2.3.4',
     type: 'major',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
-    isLatest: true,
+    isLatest: false,
     title: '🌊 [MAJOR] Flood & Health Articles Touch Scrolling Fix, Strict Category Isolation & 1/3/6-Month Historical Health Passport (ဆောင်းပါးများ Touch Scroll ပြင်ဆင်ခြင်း၊ ရေဘေးကဏ္ဍတွင် သိုင်းရွိုက်ရောနှောမှု မရှိစေဘဲ သီးသန့်ခွဲထုတ်ခြင်းနှင့် ၁ လ၊ ၃ လ၊ ၆ လ စာ သမိုင်းမှတ်တမ်း အပြည့်အစုံပါဝင်သော ကျန်းမာရေး Passport စနစ်သစ်)',
-    badge: 'Latest Release (v2.3.4)',
-    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    badge: 'Previous Release (v2.3.4)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
     highlights: [
       {
         title: '📱 မိုဘိုင်းဖုန်းနှင့် ကွန်ပျူတာ အားလုံးတွင် ရေဘေးနှင့် ကျန်းမာရေး ဆောင်းပါးများ ချောမွေ့စွာ Scroll ပြုလုပ်ဖတ်ရှုနိုင်ခြင်း',

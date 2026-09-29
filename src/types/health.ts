@@ -328,7 +328,7 @@ export interface HealthArticle {
   content: string[];
   readingTime: string;
   publishedDate: string;
-  author: string;
+  author?: string;
   tags: string[];
   keyTakeaways: string[];
   badgeColor?: string;
