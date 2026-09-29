@@ -101,8 +101,27 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
           </div>
         </div>
 
-        {/* Filter Navigation Pills */}
-        <div className="mt-6 flex flex-wrap items-center gap-2 text-xs">
+        {/* Mobile Dropdown Selector (No Horizontal Scroll on Mobile) */}
+        <div className="mt-4 sm:hidden">
+          <label className="block text-xs font-bold text-slate-800 mb-1">
+            စစ်ဆေးမှု လမ်းညွှန် ရွေးချယ်ပါ:
+          </label>
+          <select
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value as any)}
+            className="w-full px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white text-slate-800 border border-emerald-300 shadow-2xs focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+          >
+            <option value="all">အားလုံး (All Guides)</option>
+            <option value="bp">🩺 မှန်ကန်စွာ သွေးပေါင်ချိန်တိုင်းနည်း</option>
+            <option value="sugar">🩸 မှန်ကန်စွာ ဆီးချိုစစ်နည်း</option>
+            <option value="temp">🌡️ ကိုယ်အပူချိန်တိုင်းနည်း</option>
+            <option value="oximeter">💨 အောက်ဆီဂျင် (SpO2) တိုင်းနည်း</option>
+            <option value="weight">⚖️ ကိုယ်အလေးချိန် & BMI</option>
+          </select>
+        </div>
+
+        {/* Desktop Filter Navigation Pills */}
+        <div className="mt-6 hidden sm:flex flex-wrap items-center gap-2 text-xs">
           <button
             onClick={() => setActiveTab('all')}
             className={`px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer shadow-xs ${

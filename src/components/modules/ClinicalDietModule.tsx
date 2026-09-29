@@ -112,43 +112,62 @@ export const ClinicalDietModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Category Tabs */}
-      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 border-b border-slate-200 pb-3">
-        <button
-          onClick={() => setSelectedCategory('hypertension')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            selectedCategory === 'hypertension'
-              ? 'bg-rose-600 text-white shadow-xs'
-              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          <Heart className="w-4 h-4" />
-          <span>သွေးတိုး ရောဂါရှင် (DASH Diet)</span>
-        </button>
+      {/* Category Tabs / Mobile Dropdown */}
+      <div className="border-b border-slate-200 pb-3">
+        {/* Mobile Dropdown */}
+        <div className="sm:hidden w-full">
+          <label className="block text-xs font-bold text-slate-800 mb-1">
+            ရောဂါအလိုက် အာဟာရ ရွေးချယ်ပါ:
+          </label>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value as any)}
+            className="w-full bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer shadow-2xs"
+          >
+            <option value="hypertension">❤️ သွေးတိုး ရောဂါရှင် (DASH Diet)</option>
+            <option value="diabetes">💧 ဆီးချို ရောဂါရှင် (Low GI Diet)</option>
+            <option value="kidney">💜 ကျောက်ကပ်/အသည်း အာဟာရ</option>
+          </select>
+        </div>
 
-        <button
-          onClick={() => setSelectedCategory('diabetes')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            selectedCategory === 'diabetes'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          <Droplet className="w-4 h-4" />
-          <span>ဆီးချို ရောဂါရှင် (Low GI Diet)</span>
-        </button>
+        {/* Desktop Buttons */}
+        <div className="hidden sm:flex flex-wrap items-center justify-start gap-2">
+          <button
+            onClick={() => setSelectedCategory('hypertension')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              selectedCategory === 'hypertension'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Heart className="w-4 h-4" />
+            <span>သွေးတိုး ရောဂါရှင် (DASH Diet)</span>
+          </button>
 
-        <button
-          onClick={() => setSelectedCategory('kidney')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            selectedCategory === 'kidney'
-              ? 'bg-purple-600 text-white shadow-xs'
-              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          <Activity className="w-4 h-4" />
-          <span>ကျောက်ကပ်/အသည်း အာဟာရ</span>
-        </button>
+          <button
+            onClick={() => setSelectedCategory('diabetes')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              selectedCategory === 'diabetes'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Droplet className="w-4 h-4" />
+            <span>ဆီးချို ရောဂါရှင် (Low GI Diet)</span>
+          </button>
+
+          <button
+            onClick={() => setSelectedCategory('kidney')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              selectedCategory === 'kidney'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>ကျောက်ကပ်/အသည်း အာဟာရ</span>
+          </button>
+        </div>
       </div>
 
       {/* Water Hydration Tracker Card */}

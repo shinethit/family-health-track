@@ -88,7 +88,23 @@ export const HomeMedicinesGuideModule: React.FC = () => {
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          {/* Mobile Category Dropdown Selector (No Horizontal Scroll) */}
+          <div className="md:hidden relative w-full">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full bg-white border border-teal-300 text-slate-900 text-xs font-bold rounded-2xl px-3.5 py-2.5 focus:ring-2 focus:ring-teal-500 focus:outline-hidden shadow-xs cursor-pointer"
+            >
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Desktop/Tablet Category Pills */}
+          <div className="hidden md:flex flex-wrap items-center gap-1.5 text-xs">
             {categories.map((cat) => (
               <button
                 key={cat.id}

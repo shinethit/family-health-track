@@ -88,11 +88,15 @@ export const HealthNewsModule: React.FC = () => {
   const dermaCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_derma').length, []);
   const orthoCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_ortho').length, []);
   const neuroCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_neuro').length, []);
+  const mosquitoCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'mosquito_borne').length, []);
+  const floodCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'flood_disaster').length, []);
 
   const CATEGORIES = [
     { id: 'all', label: `အားလုံး (${HEALTH_ARTICLES.length} ပုဒ်)` },
+    { id: 'flood_disaster', label: `🌊 ရေဘေးနှင့် ရေကြီးမှု ကျန်းမာရေး (${floodCount})` },
+    { id: 'mosquito_borne', label: `🦟 ခြင်မှကူးစက်ရောဂါများ (${mosquitoCount})` },
+    { id: 'specialty_eye', label: `👁️ မျက်စိနှင့် အမြင်အာရုံ (${eyeCount})` },
     { id: 'specialty_dental', label: `🦷 သွားနှင့် ခံတွင်း (${dentalCount})` },
-    { id: 'specialty_eye', label: `👁️ မျက်စိ (${eyeCount})` },
     { id: 'specialty_ent', label: `👂 နား၊ နှာ၊ လည် (${entCount})` },
     { id: 'specialty_derma', label: `✨ အရေပြား (${dermaCount})` },
     { id: 'specialty_ortho', label: `🦴 အရိုးနှင့် အဆစ် (${orthoCount})` },
@@ -112,8 +116,10 @@ export const HealthNewsModule: React.FC = () => {
 
   const getCategoryLabel = (cat: string) => {
     switch (cat) {
+      case 'flood_disaster': return '🌊 ရေဘေးနှင့် ရေကြီးမှု ကျန်းမာရေး';
+      case 'mosquito_borne': return '🦟 ခြင်မှကူးစက်ရောဂါများ';
       case 'specialty_dental': return 'သွားနှင့် ခံတွင်း';
-      case 'specialty_eye': return 'မျက်စိ';
+      case 'specialty_eye': return '👁️ မျက်စိနှင့် အမြင်အာရုံ';
       case 'specialty_ent': return 'နား၊ နှာခေါင်း၊ လည်ချောင်း';
       case 'specialty_derma': return 'အရေပြားနှင့် အလှအပ';
       case 'specialty_ortho': return 'အရိုးနှင့် အဆစ်';
@@ -135,6 +141,8 @@ export const HealthNewsModule: React.FC = () => {
 
   const getCategoryBadgeColor = (cat: string) => {
     switch (cat) {
+      case 'flood_disaster': return 'bg-cyan-100 text-cyan-900 border-cyan-300 font-bold';
+      case 'mosquito_borne': return 'bg-amber-100 text-amber-900 border-amber-300 font-bold';
       case 'specialty_dental': return 'bg-cyan-50 text-cyan-800 border-cyan-200';
       case 'specialty_eye': return 'bg-sky-50 text-sky-800 border-sky-200';
       case 'specialty_ent': return 'bg-teal-50 text-teal-800 border-teal-200';
@@ -238,6 +246,40 @@ export const HealthNewsModule: React.FC = () => {
                 {cat.label}
               </button>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Emergency Flood Action Alert Banner (လက်ရှိ ရေဘေးသင့် ကာလ အရေးပေါ် ကျန်းမာရေး လမ်းညွှန်) */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-sky-50 via-cyan-50 to-blue-50 border-2 border-sky-300 shadow-sm relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-700 text-white text-xs font-bold shadow-xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+              </span>
+              <span>🌊 လက်ရှိ ရေကြီးရေလျှံမှု အရေးပေါ် ကာကွယ်ရေး လမ်းညွှန် (စုစုပေါင်း {floodCount} ပုဒ်)</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
+              ရေဘေးကာလ အသက်ကယ် ဆောင်ရန်/ရှောင်ရန်နှင့် အရေးပေါ် ကျန်းမာရေး လမ်းညွှန်
+            </h3>
+            <p className="text-xs text-slate-700 max-w-3xl leading-relaxed">
+              • <strong>မကြီးမီ:</strong> အရေးပေါ်အိတ် (Go Bag)၊ သောက်ရေသန့်၊ နာတာရှည်ဆေးများ | • <strong>ကြီးနေစဉ်:</strong> လျှပ်စစ်မိန်းပိတ်ရန်၊ ရေစီးထဲမဆင်းရန်၊ မြွေသတိပြုရန် | • <strong>ရောဂါများ:</strong> ကြွက်ဖျား (Leptospirosis)၊ ကာလဝမ်း၊ မျက်စိနာ | • <strong>အရေးပေါ်:</strong> ရေနစ်သူ CPR၊ SOS အချက်ပြ၊ လှေစီးနင်းမှု | • <strong>ကြီးပြီး:</strong> ရေတွင်းဆေးခတ်၊ မှိုသတ်၊ ကိုယ်ဝန်ဆောင်/နာတာရှည်လူနာ စောင့်ရှောက်မှု
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={() => setSelectedCategory('flood_disaster')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
+                selectedCategory === 'flood_disaster'
+                  ? 'bg-sky-700 text-white shadow-md'
+                  : 'bg-white hover:bg-sky-100 text-sky-800 border border-sky-300'
+              }`}
+            >
+              <span>🌊 ရေဘေးဆောင်းပါးများ ({floodCount})</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>

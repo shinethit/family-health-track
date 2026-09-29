@@ -19,6 +19,7 @@ import {
   Droplets
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import { CustomReminder } from '../../types/health';
 
 interface NotificationCenterModalProps {
@@ -27,6 +28,7 @@ interface NotificationCenterModalProps {
 }
 
 export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = ({ isOpen, onClose }) => {
+  const { profile, isAdmin } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -144,6 +146,16 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           </div>
         )}
 
+        {/* Admin Mode Clarification Banner */}
+        {isAdmin && (
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-800 px-5 py-2.5 flex items-center gap-2.5 text-xs text-emerald-900 dark:text-emerald-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+            <span>
+              <strong>အက်မင် (Admin) မုဒ်:</strong> ဆေးသောက်ရန် Reminder များကို သက်ဆိုင်ရာ လူနာများ၏ အကောင့်များသို့သာ တိုက်ရိုက် သတိပေးထားပြီး Admin စက်တွင် မလိုအပ်ဘဲ အချက်ပေးသံ/သတိပေးစာ မတက်စေရန် သီးသန့် ကာကွယ်ထားပါသည်
+            </span>
+          </div>
+        )}
+
         {/* Tabs & Action Bar */}
         <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex p-1 bg-slate-200/70 dark:bg-slate-800/80 rounded-xl text-xs font-semibold">
@@ -157,16 +169,18 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             >
               အားလုံး ({notifications.length})
             </button>
-            <button
-              onClick={() => setActiveTab('meds')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                activeTab === 'meds'
-                  ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400'
-              }`}
-            >
-              💊 ဆေးသောက်ရန်
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => setActiveTab('meds')}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeTab === 'meds'
+                    ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                💊 ဆေးသောက်ရန်
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('alerts')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${

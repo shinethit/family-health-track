@@ -315,26 +315,23 @@ export const ChildMilestonesModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Age Selector Tabs */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-          {MILESTONES_DATA.map((age) => {
-            const isSelected = selectedAgeId === age.ageId;
-            return (
-              <button
-                key={age.ageId}
-                onClick={() => setSelectedAgeId(age.ageId)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                  isSelected
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
-                }`}
-              >
-                <span>{age.badge}</span>
-              </button>
-            );
-          })}
-        </div>
+      {/* Age Selector Dropdown (No Horizontal Scroll) */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <label className="text-xs font-bold text-slate-800 flex items-center gap-2 shrink-0">
+          <Baby className="w-4 h-4 text-amber-600" />
+          <span>ကလေး အသက်အရွယ် ရွေးချယ်ပါ:</span>
+        </label>
+        <select
+          value={selectedAgeId}
+          onChange={(e) => setSelectedAgeId(e.target.value)}
+          className="w-full sm:max-w-md px-3.5 py-2.5 rounded-xl text-xs font-bold bg-amber-50/50 border border-amber-200 text-amber-950 focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-2xs"
+        >
+          {MILESTONES_DATA.map((age) => (
+            <option key={age.ageId} value={age.ageId}>
+              {age.badge} ({age.ageTitleMm})
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Active Milestone Card & Interactive Progress */}

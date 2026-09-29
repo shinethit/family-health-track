@@ -18,9 +18,11 @@ import {
   X
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import { CustomReminder } from '../../types/health';
 
 export const RemindersModule: React.FC = () => {
+  const { profile, isAdmin } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -103,6 +105,19 @@ export const RemindersModule: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Admin Mode Clarification Banner */}
+        {isAdmin && (
+          <div className="mt-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+            <div>
+              <p className="font-bold">အက်မင် (Admin) မုဒ် သတ်မှတ်ချက်:</p>
+              <p className="text-[11px] text-emerald-800">
+                လူနာများအတွက် ထည့်သွင်းထားသော ဆေးသောက်ရန် Reminder သတိပေးချက်များသည် သက်ဆိုင်ရာ လူနာအကောင့်များဆီသို့သာ တိုက်ရိုက် Noti တက်မည်ဖြစ်ပြီး Admin စက်တွင် အချက်ပေးသံ/သတိပေးစာ တက်ရန်မလိုသဖြင့် သီးသန့် ခွဲထုတ်ထိန်းချုပ်ထားပေးပါသည်
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Tab switcher */}
         <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs">

@@ -306,7 +306,29 @@ export const ElderlyCareModule: React.FC = () => {
       {/* Main Geriatric Topics Hub */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Mobile Category Dropdown (No Horizontal Scroll on Mobile) */}
+          <div className="sm:hidden w-full">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-500 focus:outline-hidden cursor-pointer shadow-2xs"
+            >
+              {[
+                { id: 'all', label: 'အားလုံး' },
+                { id: 'dementia', label: '🧠 မေ့လျော့ရောဂါ' },
+                { id: 'daily_care', label: '🚶‍♂️ ချော်လဲ/အနာကာကွယ်ရေး' },
+                { id: 'medication', label: '💊 ဆေးဝါးဘေးကင်းရေး' },
+                { id: 'nutrition', label: '🍲 အာဟာရနှင့် မျိုရခက်ခြင်း' },
+              ].map(cat => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Desktop/Tablet Category Pills */}
+          <div className="hidden sm:flex items-center gap-1.5 flex-wrap">
             {[
               { id: 'all', label: 'အားလုံး' },
               { id: 'dementia', label: '🧠 မေ့လျော့ရောဂါ' },

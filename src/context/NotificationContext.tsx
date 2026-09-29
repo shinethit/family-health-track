@@ -103,39 +103,67 @@ const DEFAULT_REMINDERS: CustomReminder[] = [
 ];
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { profile } = useAuth();
-  const { medications, bpRecords, glucoseRecords, doctorAdvices } = useHealthData();
+  const { profile, isAdmin } = useAuth();
+  const { medications, bpRecords, glucoseRecords, doctorAdvices, doctorQuestions } = useHealthData();
 
   const [permissionGranted, setPermissionGranted] = useState<boolean>(() => {
     return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
   });
 
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    try {
-      const saved = localStorage.getItem('family_health_notifications');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [customReminders, setCustomReminders] = useState<CustomReminder[]>([]);
 
-  const [customReminders, setCustomReminders] = useState<CustomReminder[]>(() => {
-    try {
-      const saved = localStorage.getItem('family_health_custom_reminders');
-      return saved ? JSON.parse(saved) : DEFAULT_REMINDERS;
-    } catch {
-      return DEFAULT_REMINDERS;
-    }
-  });
-
-  // Save to LocalStorage
+  // Load user-scoped notifications & reminders when user logs in or switches
   useEffect(() => {
-    localStorage.setItem('family_health_notifications', JSON.stringify(notifications));
-  }, [notifications]);
+    if (!profile?.id) {
+      setNotifications([]);
+      setCustomReminders(DEFAULT_REMINDERS);
+      return;
+    }
+
+    const notiKey = `family_health_notifications_${profile.id}`;
+    const remKey = `family_health_custom_reminders_${profile.id}`;
+
+    try {
+      const savedNotis = localStorage.getItem(notiKey);
+      if (savedNotis) {
+        const parsed: AppNotification[] = JSON.parse(savedNotis);
+        // Admin must never see or receive medication reminders
+        setNotifications(isAdmin ? parsed.filter(n => n.type !== 'medication') : parsed);
+      } else {
+        setNotifications([]);
+      }
+    } catch {
+      setNotifications([]);
+    }
+
+    try {
+      const savedRems = localStorage.getItem(remKey);
+      if (savedRems) {
+        setCustomReminders(JSON.parse(savedRems));
+      } else {
+        // Default reminders are for patients, not admin
+        setCustomReminders(isAdmin ? [] : DEFAULT_REMINDERS);
+      }
+    } catch {
+      setCustomReminders(isAdmin ? [] : DEFAULT_REMINDERS);
+    }
+  }, [profile?.id, isAdmin]);
+
+  // Save to LocalStorage scoped by user ID
+  useEffect(() => {
+    if (!profile?.id) return;
+    const notiKey = `family_health_notifications_${profile.id}`;
+    // Admin does not store medication notifications
+    const toSave = isAdmin ? notifications.filter(n => n.type !== 'medication') : notifications;
+    localStorage.setItem(notiKey, JSON.stringify(toSave));
+  }, [notifications, profile?.id, isAdmin]);
 
   useEffect(() => {
-    localStorage.setItem('family_health_custom_reminders', JSON.stringify(customReminders));
-  }, [customReminders]);
+    if (!profile?.id) return;
+    const remKey = `family_health_custom_reminders_${profile.id}`;
+    localStorage.setItem(remKey, JSON.stringify(customReminders));
+  }, [customReminders, profile?.id]);
 
   const requestPermission = async (): Promise<boolean> => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -172,6 +200,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     priority: 'low' | 'normal' | 'high' | 'urgent' = 'normal',
     data?: any
   ) => {
+    // Admin does NOT receive medication notifications
+    if (isAdmin && type === 'medication') {
+      return;
+    }
+
     const newNoti: AppNotification = {
       id: 'noti-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       type,
@@ -186,11 +219,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setNotifications(prev => [newNoti, ...prev.slice(0, 49)]); // keep last 50
     playChime();
     sendBrowserNotification(title, message);
-  }, [sendBrowserNotification]);
+  }, [sendBrowserNotification, isAdmin]);
 
   // Sync / Generate Active Medication Reminders & Vitals Reminders on mount/update
+  // ONLY for respective patients. Admin NEVER receives medication reminders.
   useEffect(() => {
-    const activeMeds = medications.filter(m => m.status === 'active');
+    // If not logged in or if user is Admin, DO NOT generate medication or personal vital reminders!
+    if (!profile || isAdmin) {
+      return;
+    }
+
+    // Only active medications belonging to THIS logged-in patient
+    const activeMeds = medications.filter(
+      m => m.status === 'active' && (!m.userId || m.userId === profile.id)
+    );
     const todayStr = new Date().toISOString().split('T')[0];
     
     // Check if we need to generate initial reminders for active medications
@@ -214,6 +256,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             medicationId: med.id,
             medicationName: med.name,
             dosage: med.dosage,
+            userId: profile.id
           }
         };
         setNotifications(prev => {
@@ -223,10 +266,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     });
 
-    // Check abnormal Blood Pressure Alert
+    // Check abnormal Blood Pressure Alert for THIS patient
     if (bpRecords.length > 0) {
       const latestBP = bpRecords[0];
-      if (latestBP.category === 'stage2' || latestBP.category === 'crisis') {
+      if (latestBP.userId === profile.id && (latestBP.category === 'stage2' || latestBP.category === 'crisis')) {
         const alertId = `alert-bp-${latestBP.id}`;
         const hasAlert = notifications.some(n => n.id === alertId);
         if (!hasAlert) {
@@ -241,6 +284,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             data: {
               vitalType: 'bp',
               value: `${latestBP.systolic}/${latestBP.diastolic}`,
+              userId: profile.id
             }
           };
           setNotifications(prev => [bpAlert, ...prev]);
@@ -248,54 +292,85 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     }
 
-    // Check abnormal Glucose Alert
+    // Check abnormal Glucose Alert for THIS patient
     if (glucoseRecords.length > 0) {
       const latestGlu = glucoseRecords[0];
-      const gluVal = latestGlu.glucoseValue || latestGlu.value || 0;
-      if (latestGlu.status === 'diabetic' || latestGlu.status === 'high_danger' || latestGlu.status === 'low') {
-        const alertId = `alert-glu-${latestGlu.id}`;
-        const hasAlert = notifications.some(n => n.id === alertId);
-        if (!hasAlert) {
-          const gluAlert: AppNotification = {
-            id: alertId,
-            type: 'abnormal_alert',
-            title: latestGlu.status === 'low' 
-              ? `⚠️ သွေးတွင်းသကြားဓာတ် လျော့နည်းနေပါသည် (${gluVal} mg/dL)`
-              : `⚠️ သွေးတွင်းသကြားဓာတ် မြင့်မားနေပါသည် (${gluVal} mg/dL)`,
-            message: latestGlu.status === 'low'
-              ? 'သကြားဓာတ် အလွန်ကျဆင်းခြင်း (Hypoglycemia) ဖြစ်နိုင်သဖြင့် အချိုရည် သို့မဟုတ် သကြားလုံး စားသုံးပါ'
-              : 'သွေးတွင်းသကြားဓာတ် မြင့်မားနေပါသဖြင့် အချိုဓာတ်လျှော့စားပြီး ဆရာဝန်ညွှန်ကြားချက်အတိုင်း ဆေးသောက်ပါ',
-            timestamp: latestGlu.createdAt || new Date().toISOString(),
-            read: false,
-            priority: 'high',
-            data: {
-              vitalType: 'glucose',
-              value: `${gluVal} mg/dL`,
-            }
-          };
-          setNotifications(prev => [gluAlert, ...prev]);
+      if (latestGlu.userId === profile.id) {
+        const gluVal = latestGlu.glucoseValue || latestGlu.value || 0;
+        if (latestGlu.status === 'diabetic' || latestGlu.status === 'high_danger' || latestGlu.status === 'low') {
+          const alertId = `alert-glu-${latestGlu.id}`;
+          const hasAlert = notifications.some(n => n.id === alertId);
+          if (!hasAlert) {
+            const gluAlert: AppNotification = {
+              id: alertId,
+              type: 'abnormal_alert',
+              title: latestGlu.status === 'low' 
+                ? `⚠️ သွေးတွင်းသကြားဓာတ် လျော့နည်းနေပါသည် (${gluVal} mg/dL)`
+                : `⚠️ သွေးတွင်းသကြားဓာတ် မြင့်မားနေပါသည် (${gluVal} mg/dL)`,
+              message: latestGlu.status === 'low'
+                ? 'သကြားဓာတ် အလွန်ကျဆင်းခြင်း (Hypoglycemia) ဖြစ်နိုင်သဖြင့် အချိုရည် သို့မဟုတ် သကြားလုံး စားသုံးပါ'
+                : 'သွေးတွင်းသကြားဓာတ် မြင့်မားနေပါသဖြင့် အချိုဓာတ်လျှော့စားပြီး ဆရာဝန်ညွှန်ကြားချက်အတိုင်း ဆေးသောက်ပါ',
+              timestamp: latestGlu.createdAt || new Date().toISOString(),
+              read: false,
+              priority: 'high',
+              data: {
+                vitalType: 'glucose',
+                value: `${gluVal} mg/dL`,
+                userId: profile.id
+              }
+            };
+            setNotifications(prev => [gluAlert, ...prev]);
+          }
         }
       }
     }
 
-    // Check Doctor Advices
+    // Check Doctor Advices for THIS patient
     if (doctorAdvices.length > 0) {
       const latestAdvice = doctorAdvices[0];
-      const adviceId = `advice-noti-${latestAdvice.id}`;
-      if (!notifications.some(n => n.id === adviceId)) {
-        const adviceNoti: AppNotification = {
-          id: adviceId,
-          type: 'doctor_advice',
-          title: `👨‍⚕️ ဆရာဝန်၏ လမ်းညွှန်ချက် အသစ်`,
-          message: `${latestAdvice.advice.substring(0, 100)}${latestAdvice.advice.length > 100 ? '...' : ''}`,
-          timestamp: latestAdvice.createdAt || new Date().toISOString(),
-          read: false,
-          priority: 'normal',
-        };
-        setNotifications(prev => [adviceNoti, ...prev]);
+      if (latestAdvice.userId === profile.id) {
+        const adviceId = `advice-noti-${latestAdvice.id}`;
+        if (!notifications.some(n => n.id === adviceId)) {
+          const adviceNoti: AppNotification = {
+            id: adviceId,
+            type: 'doctor_advice',
+            title: `👨‍⚕️ ဆရာဝန်၏ လမ်းညွှန်ချက် အသစ်`,
+            message: `${latestAdvice.advice.substring(0, 100)}${latestAdvice.advice.length > 100 ? '...' : ''}`,
+            timestamp: latestAdvice.createdAt || new Date().toISOString(),
+            read: false,
+            priority: 'normal',
+            data: { userId: profile.id }
+          };
+          setNotifications(prev => [adviceNoti, ...prev]);
+        }
       }
     }
-  }, [medications, bpRecords, glucoseRecords, doctorAdvices]);
+  }, [profile, isAdmin, medications, bpRecords, glucoseRecords, doctorAdvices]);
+
+  // Admin-specific notifications (e.g. pending doctor questions from patients needing answer)
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    if (doctorQuestions && doctorQuestions.length > 0) {
+      const pendingQuestions = doctorQuestions.filter(q => q.status === 'pending');
+      if (pendingQuestions.length > 0) {
+        const latestQ = pendingQuestions[0];
+        const qNotiId = `admin-qa-${latestQ.id}`;
+        if (!notifications.some(n => n.id === qNotiId)) {
+          const qNoti: AppNotification = {
+            id: qNotiId,
+            type: 'doctor_advice',
+            title: `❓ လူနာမေးမြန်းချက် အသစ် (${pendingQuestions.length} ခု စောင့်ဆိုင်းနေပါသည်)`,
+            message: `${latestQ.patientName || 'လူနာ'}: "${(latestQ.questionDetails || latestQ.title).substring(0, 75)}..."`,
+            timestamp: latestQ.createdAt || new Date().toISOString(),
+            read: false,
+            priority: 'high',
+          };
+          setNotifications(prev => [qNoti, ...prev]);
+        }
+      }
+    }
+  }, [isAdmin, doctorQuestions]);
 
   const markAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
@@ -321,7 +396,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
     setCustomReminders(prev => [newRem, ...prev]);
     
-    // Also post an immediate confirmation noti
+    // Post confirmation notification
     sendManualNotification(
       `🔔 သတိပေးချက် အသစ် သတ်မှတ်ပြီးပါပြီ`,
       `"${newRem.title}" ကို အချိန် ${newRem.time} တွင် နေ့စဉ် ပုံမှန် သတိပေးပါမည်`,
@@ -371,11 +446,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, minutes * 60 * 1000);
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // For Admin: never include medication reminders in notifications or unreadCount
+  const visibleNotifications = notifications.filter(n => {
+    if (isAdmin && n.type === 'medication') return false;
+    return true;
+  });
+
+  const unreadCount = visibleNotifications.filter(n => !n.read).length;
 
   return (
     <NotificationContext.Provider value={{
-      notifications,
+      notifications: visibleNotifications,
       unreadCount,
       customReminders,
       permissionGranted,

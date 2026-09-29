@@ -457,7 +457,28 @@ export const ChildCareModule: React.FC = () => {
       {/* Main Topic Articles Hub */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Mobile Category Dropdown (No Horizontal Scroll on Mobile) */}
+          <div className="sm:hidden w-full">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2 focus:ring-2 focus:ring-sky-500 focus:outline-hidden cursor-pointer shadow-2xs"
+            >
+              {[
+                { id: 'all', label: 'အားလုံး' },
+                { id: 'newborn', label: '👶 မွေးကင်းစ ပြုစုမှု' },
+                { id: 'feeding', label: '🍼 အာဟာရနှင့် နို့တိုက်ခြင်း' },
+                { id: 'illness', label: '🌡️ ဖျားနာမှုနှင့် ရောဂါများ' },
+              ].map(cat => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Desktop/Tablet Category Pills */}
+          <div className="hidden sm:flex items-center gap-1.5 flex-wrap">
             {[
               { id: 'all', label: 'အားလုံး' },
               { id: 'newborn', label: '👶 မွေးကင်းစ ပြုစုမှု' },

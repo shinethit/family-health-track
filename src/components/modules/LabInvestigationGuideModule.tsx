@@ -469,33 +469,23 @@ export const LabInvestigationGuideModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Category Tabs & Search Bar */}
+      {/* Category Dropdown & Search Bar (No Horizontal Scroll) */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {[
-            { id: 'all', label: 'စစ်ဆေးချက် အားလုံး', icon: Filter },
-            { id: 'blood', label: 'သွေးစစ်ဆေးမှုများ', icon: TestTube },
-            { id: 'urine', label: 'ဆီးစစ်ဆေးမှုများ', icon: Droplets },
-            { id: 'stool', label: 'ဝမ်းစစ်ဆေးမှုများ', icon: FileText },
-            { id: 'imaging', label: 'ဓာတ်မှန်/အာထရာဆောင်း/ECG', icon: Activity }
-          ].map((cat) => {
-            const Icon = cat.icon;
-            const isActive = selectedCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                  isActive
-                    ? 'bg-teal-700 text-white shadow-xs'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{cat.label}</span>
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2 flex-1">
+          <label className="text-xs font-bold text-slate-700 shrink-0">
+            စစ်ဆေးမှု အမျိုးအစား:
+          </label>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="w-full sm:max-w-xs px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-slate-800 border border-slate-200 shadow-2xs focus:ring-2 focus:ring-teal-500 cursor-pointer"
+          >
+            <option value="all">စစ်ဆေးချက် အားလုံး</option>
+            <option value="blood">🩸 သွေးစစ်ဆေးမှုများ</option>
+            <option value="urine">🧪 ဆီးစစ်ဆေးမှုများ</option>
+            <option value="stool">🔬 ဝမ်းစစ်ဆေးမှုများ</option>
+            <option value="imaging">🩻 ဓာတ်မှန်/အာထရာဆောင်း/ECG</option>
+          </select>
         </div>
 
         <div className="relative min-w-[220px]">
@@ -505,7 +495,7 @@ export const LabInvestigationGuideModule: React.FC = () => {
             placeholder="စစ်ဆေးချက် အမည် ရှာဖွေရန်..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+            className="w-full pl-9 pr-3 py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-teal-500 shadow-2xs"
           />
         </div>
       </div>

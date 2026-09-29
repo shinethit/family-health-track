@@ -1391,38 +1391,36 @@ export const LabTestModule: React.FC = () => {
                 </div>
               </div>
 
-              {/* Category Filter Pills & Search Bar */}
+              {/* Category Filter Dropdown & Search Bar (No Horizontal Scroll) */}
               <div className="space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-xs">
-                    {categoriesList.map(cat => {
-                      const isActive = activeCategory === cat.id;
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => setActiveCategory(cat.id)}
-                          className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition-all cursor-pointer ${
-                            isActive
-                              ? 'bg-purple-600 text-white font-bold shadow-xs'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                          }`}
-                        >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  {/* Category Dropdown */}
+                  <div className="flex items-center gap-2 flex-1 w-full">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                      ကဏ္ဍ:
+                    </label>
+                    <select
+                      value={activeCategory}
+                      onChange={(e) => setActiveCategory(e.target.value as LabCategory)}
+                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                    >
+                      {categoriesList.map(cat => (
+                        <option key={cat.id} value={cat.id}>
                           {cat.label}
-                        </button>
-                      );
-                    })}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Search box */}
-                  <div className="relative w-full sm:w-48 shrink-0">
+                  <div className="relative w-full sm:w-56 shrink-0">
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       placeholder="စစ်ဆေးချက် ရှာရန်..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs"
                     />
                   </div>
                 </div>

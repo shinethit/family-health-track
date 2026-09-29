@@ -277,6 +277,7 @@ export interface AppNotification {
     actionUrl?: string;
     takenAt?: string;
     questionId?: string;
+    userId?: string;
   };
 }
 
