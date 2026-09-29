@@ -29,7 +29,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.3.6';
+export const CURRENT_SYSTEM_VERSION = 'v2.3.7';
 
 export interface VersionItem {
   version: string;
@@ -48,13 +48,33 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
+    version: 'v2.3.7',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
+    isLatest: true,
+    title: '🛠️ [BUGFIX] Health Passport Zero-Data & Accurate Empty States Fix (သွေးချိုမှတ်တမ်း မရှိပါက 110 mg/dL အလိုအလျောက် ပြသနေသော Placeholder Bug အား အပြီးတိုင် ရှင်းလင်းပြင်ဆင်ခြင်း)',
+    badge: 'Latest Release (v2.3.7)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🩸 သွေးတွင်းသကြားဓာတ်နှင့် Vital Signs များတွင် Data မရှိပါက တိကျသော Empty State (-- / မှတ်တမ်းမရှိသေးပါ) ပြသခြင်း',
+        icon: ShieldCheck,
+        items: [
+          'Health Passport Modal တွင် လူနာ သို့မဟုတ် အသုံးပြုသူမှ သွေးတွင်းသကြားဓာတ် (Blood Sugar) ထည့်သွင်းထားခြင်း မရှိပါက ယခင်က Hardcoded Default (110 mg/dL) ပြသနေခဲ့သည့် အမှားအယွင်းကို လုံးဝ ဖယ်ရှားရှင်းလင်းခြင်း',
+          'သွေးပေါင်ချိန် (BP)၊ သွေးတွင်းသကြားဓာတ် (Glucose) နှင့် ကိုယ်အလေးချိန်/BMI တို့တွင် အမှန်တကယ် မှတ်တမ်းမရှိပါက "--" နှင့် "မှတ်တမ်းမရှိသေးပါ" ဟု တိကျမှန်ကန်စွာ ဖော်ပြခြင်း',
+          'သွေးအမျိုးအစား၊ ဓာတ်မတည့်သည်များနှင့် ရောဂါအခံများတွင်လည်း Default နမူနာစာသားများအစား အသုံးပြုသူ ထည့်သွင်းထားသည့် တကယ့်ဒေတာအစစ်ကိုသာ အခြေပြုဖော်ပြခြင်း'
+        ]
+      }
+    ]
+  },
+  {
     version: 'v2.3.6',
     type: 'major',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
-    isLatest: true,
+    isLatest: false,
     title: '📈 [MAJOR] Interactive Health Historical Graph View & Multi-Timeframe Analysis (ကျန်းမာရေး သမိုင်းမှတ်တမ်းများအား Graph မျဉ်းကွေးဖြင့် ပိုမိုမြင်သာစွာ ကြည့်ရှုနိုင်ခြင်း၊ Graph & Table နှစ်မျိုးလုံး တပြိုင်တည်းကြည့်ရှုနိုင်ခြင်းနှင့် ၁ လ၊ ၃ လ၊ ၆ လ စာ Filter စနစ်)',
-    badge: 'Latest Release (v2.3.6)',
-    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    badge: 'Previous Release (v2.3.6)',
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
     highlights: [
       {
         title: '📊 Graph View & Data Table ပေါင်းစပ်ခလုတ်များ (Dual View Modes)',

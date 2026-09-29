@@ -285,26 +285,30 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">အရေးပေါ် ဆက်သွယ်ရန်</p>
               <p className="text-sm font-bold text-rose-700 flex items-center gap-1">
                 <PhoneCall className="w-3.5 h-3.5" />
-                {currentPatient?.emergencyContact || '၀၉-XXXXXXXXX'}
+                {currentPatient?.emergencyContact || 'မထည့်ရသေးပါ'}
               </p>
             </div>
 
             <div>
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">သွေးအမျိုးအစား</p>
-              <p className="text-sm font-bold text-slate-800">{currentPatient?.bloodType || 'မသတ်မှတ်ရသေးပါ (O+)'}</p>
+              <p className="text-sm font-bold text-slate-800">{currentPatient?.bloodType || 'မသတ်မှတ်ရသေးပါ'}</p>
             </div>
 
             <div>
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">နာတာရှည် ရောဂါများ</p>
               <p className="text-sm font-semibold text-slate-800">
-                {currentPatient?.chronicConditions?.join(', ') || 'သွေးတိုး၊ ဆီးချို'}
+                {currentPatient?.chronicConditions && currentPatient.chronicConditions.length > 0
+                  ? currentPatient.chronicConditions.join(', ')
+                  : 'မရှိပါ / မထည့်ရသေးပါ'}
               </p>
             </div>
 
             <div>
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">ဓာတ်မတည့်သည်များ (Allergies)</p>
               <p className="text-sm font-bold text-amber-700">
-                {currentPatient?.allergies?.join(', ') || 'မရှိပါ / စစ်ဆေးဆဲ'}
+                {currentPatient?.allergies && currentPatient.allergies.length > 0
+                  ? currentPatient.allergies.join(', ')
+                  : 'မရှိပါ / မထည့်ရသေးပါ'}
               </p>
             </div>
           </div>
@@ -325,12 +329,14 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-black text-rose-600">
-                    {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : '120/80'}
+                    {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : '--/--'}
                   </span>
                   <span className="text-xs text-slate-500 font-semibold">mmHg</span>
                 </div>
                 <p className="text-[11px] text-slate-600 mt-2 font-medium">
-                  {latestBP?.pulseRate || latestBP?.pulse ? `နှလုံးခုန်နှုန်း: ${latestBP.pulseRate || latestBP.pulse} bpm` : 'သွေးပေါင်အခြေအနေ ပုံမှန်'}
+                  {latestBP 
+                    ? (latestBP.pulseRate || latestBP.pulse ? `နှလုံးခုန်နှုန်း: ${latestBP.pulseRate || latestBP.pulse} bpm` : 'သွေးပေါင်အခြေအနေ ပုံမှန်')
+                    : 'မှတ်တမ်းမရှိသေးပါ'}
                 </p>
               </div>
 
@@ -342,12 +348,14 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-black text-emerald-600">
-                    {latestSugar ? `${latestSugar.glucoseValue || latestSugar.value}` : '110'}
+                    {latestSugar ? `${latestSugar.glucoseValue || latestSugar.value}` : '--'}
                   </span>
                   <span className="text-xs text-slate-500 font-semibold">mg/dL</span>
                 </div>
                 <p className="text-[11px] text-slate-600 mt-2 font-medium">
-                  {latestSugar?.hba1c ? `HbA1c: ${latestSugar.hba1c}%` : latestSugar?.timing === 'fasting' ? 'မနက်စာမစားမီ စစ်ဆေးချက်' : 'သွေးသကြားဓာတ် အဆင့်'}
+                  {latestSugar 
+                    ? (latestSugar.hba1c ? `HbA1c: ${latestSugar.hba1c}%` : latestSugar.timing === 'fasting' ? 'မနက်စာမစားမီ စစ်ဆေးချက်' : 'သွေးသကြားဓာတ် အဆင့်')
+                    : 'မှတ်တမ်းမရှိသေးပါ'}
                 </p>
               </div>
 
@@ -359,12 +367,12 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-black text-teal-600">
-                    {latestBMI ? latestBMI.bmi.toFixed(1) : '22.5'}
+                    {latestBMI ? latestBMI.bmi.toFixed(1) : '--'}
                   </span>
                   <span className="text-xs text-slate-500 font-semibold">kg/m²</span>
                 </div>
                 <p className="text-[11px] text-slate-600 mt-2 font-medium">
-                  {latestBMI ? `အလေးချိန်: ${latestBMI.weightKg} kg | အရပ်: ${latestBMI.heightCm} cm` : 'ပုံမှန် ကိုယ်အလေးချိန်'}
+                  {latestBMI ? `အလေးချိန်: ${latestBMI.weightKg} kg | အရပ်: ${latestBMI.heightCm} cm` : 'မှတ်တမ်းမရှိသေးပါ'}
                 </p>
               </div>
             </div>
