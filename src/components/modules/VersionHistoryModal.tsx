@@ -35,7 +35,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.4.2';
+export const CURRENT_SYSTEM_VERSION = 'v2.4.3';
 
 export interface VersionItem {
   version: string;
@@ -54,12 +54,32 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.2',
+    version: 'v2.4.3',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: true,
+    title: '📱 [MOBILE UI FIX] Version History Modal - Mobile View Switcher & Quick Dropdown Selector စနစ်',
+    badge: 'Latest Release (v2.4.3)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '📱 Mobile View Switcher & Quick Dropdown Selector',
+        icon: Sparkles,
+        items: [
+          'ဖုန်းမျက်နှာပြင်များတွင် Version History ဖွင့်လိုက်ပါက အသေးစိတ် ဖော်ပြချက်များ အောက်ဆုံးသို့ ရောက်မသွားစေဘဲ အပေါ်ဆုံး၌ တိုက်ရိုက် သပ်ရပ်စွာ ပြသပေးခြင်း',
+          'မိုဘိုင်းဖုန်းများအတွက် "✨ အသေးစိတ် ဖော်ပြချက်" နှင့် "📋 ဗားရှင်း စာရင်း" ဟူ၍ မိုဘိုင်း တက်ဘ်ပြောင်းစနစ် ထည့်သွင်းခြင်း',
+          'ဖုန်းပေါ်တွင် မည်သည့် ဗားရှင်းမဆို စက္ကန့်ပိုင်းအတွင်း တိုက်ရိုက်ရွေးချယ် ဖတ်ရှုနိုင်သော Quick Version Dropdown စနစ်'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.4.2',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ',
+    isLatest: false,
     title: '🔄 [FEATURE] Live Background Version Auto-Polling, Real-Time Update Popups & Manual "Check for Updates" System',
-    badge: 'Latest Release (v2.4.2)',
+    badge: 'Release (v2.4.2)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
@@ -1375,6 +1395,7 @@ interface VersionHistoryModalProps {
 export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen, onClose, onManualCheckVersion }) => {
   const [selectedVersion, setSelectedVersion] = useState<string>(VERSION_HISTORY_DATA[0].version);
   const [filterType, setFilterType] = useState<'all' | 'major' | 'minor'>('all');
+  const [mobileTab, setMobileTab] = useState<'details' | 'list'>('details');
 
   if (!isOpen) return null;
 
@@ -1385,6 +1406,11 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
 
   const currentDetail = VERSION_HISTORY_DATA.find(v => v.version === selectedVersion) || VERSION_HISTORY_DATA[0];
 
+  const handleSelectVersionOnMobile = (ver: string) => {
+    setSelectedVersion(ver);
+    setMobileTab('details');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
@@ -1392,14 +1418,14 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-purple-50 via-teal-50 to-transparent">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-600/30 shrink-0">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-purple-50 via-teal-50 to-transparent">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-600/30 shrink-0">
               <History className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-extrabold text-base sm:text-lg text-slate-900">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h3 className="font-extrabold text-sm sm:text-lg text-slate-900">
                   Version History & Change Log
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
@@ -1409,15 +1435,15 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
                 {onManualCheckVersion && (
                   <button
                     onClick={onManualCheckVersion}
-                    className="px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                    className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[10px] sm:text-[11px] font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95"
                     title="စနစ်ဗားရှင်း အသစ် စစ်ဆေးမည်"
                   >
                     <RefreshCw className="w-3 h-3 text-purple-200 animate-spin-hover" />
-                    <span>ဗားရှင်း စစ်ဆေးမည်</span>
+                    <span>စစ်ဆေးမည်</span>
                   </button>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
                 စနစ်အတွင်း ပြုပြင်ခဲ့သမျှ Major / Minor ပြောင်းလဲမှု မှတ်တမ်းများ အပြည့်အစုံ
               </p>
             </div>
@@ -1430,11 +1456,54 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
           </button>
         </div>
 
+        {/* Mobile-Only Header Controls (View Switcher & Quick Dropdown Selector) */}
+        <div className="block md:hidden px-4 pt-3 pb-2 border-b border-slate-200 bg-slate-50/90 space-y-2">
+          {/* Mobile View Switcher */}
+          <div className="flex items-center gap-1 bg-slate-200 p-1 rounded-xl text-xs font-bold">
+            <button
+              onClick={() => setMobileTab('details')}
+              className={`flex-1 py-1.5 rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 ${
+                mobileTab === 'details' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-600'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>✨ အသေးစိတ် ဖော်ပြချက် ({selectedVersion})</span>
+            </button>
+            <button
+              onClick={() => setMobileTab('list')}
+              className={`flex-1 py-1.5 rounded-lg transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 ${
+                mobileTab === 'list' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-600'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>📋 ဗားရှင်း စာရင်း ({VERSION_HISTORY_DATA.length})</span>
+            </button>
+          </div>
+
+          {/* Quick Version Dropdown (Visible on details view) */}
+          {mobileTab === 'details' && (
+            <div className="flex items-center gap-2 bg-purple-50 p-2 rounded-xl border border-purple-200">
+              <span className="text-[11px] font-bold text-purple-900 shrink-0">ဗားရှင်း ရွေးရန်:</span>
+              <select
+                value={selectedVersion}
+                onChange={(e) => setSelectedVersion(e.target.value)}
+                className="w-full text-xs font-bold font-mono px-2.5 py-1.5 rounded-lg bg-white border border-purple-200 text-purple-900 focus:outline-hidden cursor-pointer"
+              >
+                {VERSION_HISTORY_DATA.map((v) => (
+                  <option key={v.version} value={v.version}>
+                    {v.version} {v.isLatest ? '(Latest Release)' : ''} - {v.releaseDate}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
         {/* Content Body: Left Version Nav & Right Details */}
         <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200">
           
-          {/* Left Column: Version Selector & Filter Tabs */}
-          <div className="md:col-span-4 p-4 space-y-3 bg-slate-50/70">
+          {/* Left Column: Version Selector & Filter Tabs (On Mobile: visible only if mobileTab === 'list') */}
+          <div className={`${mobileTab === 'list' ? 'block' : 'hidden'} md:block md:col-span-4 p-4 space-y-3 bg-slate-50/70`}>
             {/* Filter Tabs */}
             <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl text-xs font-bold">
               <button
@@ -1469,7 +1538,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
                 return (
                   <button
                     key={item.version}
-                    onClick={() => setSelectedVersion(item.version)}
+                    onClick={() => handleSelectVersionOnMobile(item.version)}
                     className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-center justify-between ${
                       isSelected
                         ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
@@ -1505,12 +1574,12 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
             </div>
           </div>
 
-          {/* Right Column: Selected Version Details */}
-          <div className="md:col-span-8 p-5 sm:p-6 space-y-6">
+          {/* Right Column: Selected Version Details (On Mobile: visible only if mobileTab === 'details') */}
+          <div className={`${mobileTab === 'details' ? 'block' : 'hidden'} md:block md:col-span-8 p-4 sm:p-6 space-y-5 sm:space-y-6`}>
             {/* Version Title Card */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-100">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-lg sm:text-xl font-bold text-slate-900">
                     {currentDetail.version}
                   </h4>
@@ -1530,7 +1599,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
             </div>
 
             {/* Version Summary Banner */}
-            <div className="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-200 text-purple-950 text-xs font-medium">
+            <div className="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-200 text-purple-950 text-xs sm:text-sm font-semibold leading-relaxed">
               {currentDetail.title}
             </div>
 
@@ -1539,14 +1608,14 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
               {currentDetail.highlights.map((sec, idx) => {
                 const IconComponent = sec.icon;
                 return (
-                  <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
-                    <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                      <div className="p-1.5 rounded-lg bg-purple-100 text-purple-700">
+                  <div key={idx} className="bg-slate-50 p-3.5 sm:p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-900">
+                      <div className="p-1.5 rounded-lg bg-purple-100 text-purple-700 shrink-0">
                         <IconComponent className="w-4 h-4" />
                       </div>
                       <span>{sec.title}</span>
                     </div>
-                    <ul className="space-y-1.5 text-xs text-slate-700 pl-2">
+                    <ul className="space-y-1.5 text-xs text-slate-700 pl-1 sm:pl-2">
                       {sec.items.map((item, itemIdx) => (
                         <li key={itemIdx} className="flex items-start gap-2 leading-relaxed">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
