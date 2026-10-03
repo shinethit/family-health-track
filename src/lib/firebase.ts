@@ -1,6 +1,10 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore } from 'firebase/firestore';
+import { 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager 
+} from 'firebase/firestore';
 import configJson from '../../firebase-applet-config.json';
 
 export const firebaseConfig = {
@@ -21,8 +25,11 @@ const databaseId = configJson.firestoreDatabaseId && configJson.firestoreDatabas
   ? configJson.firestoreDatabaseId
   : undefined;
 
-// Initialize Firestore with auto-detect long polling for reliable web connection
+// Initialize Firestore with offline persistence and auto-detect long polling
 export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  }),
   experimentalAutoDetectLongPolling: true,
 }, databaseId);
 

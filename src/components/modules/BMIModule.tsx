@@ -31,6 +31,7 @@ import {
   kgToLb,
   parseDateToMs 
 } from '../../lib/medicalCalculations';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 export const BMIModule: React.FC = () => {
   const { profile, updateProfile } = useAuth();
@@ -96,7 +97,7 @@ export const BMIModule: React.FC = () => {
   const activeWeight = selectedPatient?.weightKg || profile?.weightKg || null;
   const activeWaist = selectedPatient?.waistCm || profile?.waistCm || null;
 
-  const currentBMIResult = (activeWeight && activeHeight) ? calculateBMI(activeWeight, activeHeight) : null;
+  const currentBMIResult = (activeWeight && activeHeight) ? calculateBMI(activeWeight, activeHeight, activeAgeYears ?? undefined) : null;
   const waistRisk = activeWaist ? calculateWaistRisk(activeWaist, (selectedPatient?.gender || profile?.gender || 'male')) : null;
 
   // Live calculator inside Modal
@@ -108,7 +109,7 @@ export const BMIModule: React.FC = () => {
     ? Number(weightKgInput) || 0 
     : lbToKg(Number(weightLbInput) || 0);
 
-  const liveModalBMI = calculateBMI(resolvedWeightKg, resolvedHeightCm);
+  const liveModalBMI = calculateBMI(resolvedWeightKg, resolvedHeightCm, activeAgeYears ?? undefined);
 
   // Handle Save BMI Record
   const handleSubmitRecord = async (e: React.FormEvent) => {
@@ -117,7 +118,7 @@ export const BMIModule: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const calculated = calculateBMI(resolvedWeightKg, resolvedHeightCm);
+      const calculated = calculateBMI(resolvedWeightKg, resolvedHeightCm, activeAgeYears ?? undefined);
       await addBMIRecord({
         userId: selectedPatient ? selectedPatient.id : (profile?.id || 'guest-user'),
         userName: selectedPatient ? selectedPatient.displayName : (profile?.displayName || 'အသုံးပြုသူ'),
@@ -654,6 +655,9 @@ export const BMIModule: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
 
       {/* Modal 1: Add BMI Record */}
       {isOpenAdd && (

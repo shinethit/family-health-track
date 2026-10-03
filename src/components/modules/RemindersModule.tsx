@@ -15,6 +15,7 @@ import {
   Calendar,
   Sparkles,
   ShieldAlert,
+  Info,
   X
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
@@ -152,24 +153,39 @@ export const RemindersModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Browser Notification Permission Banner */}
-      {!permissionGranted && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
-            <div>
-              <p className="font-bold">ဖုန်း/ကွန်ပျူတာ Screen ပေါ်တွင် သတိပေးစာ တက်စေလိုပါသလား?</p>
-              <p className="text-[11px] text-amber-800">Browser Notification Permission ကို ခွင့်ပြုပေးခြင်းဖြင့် ဆေးသောက်ချိန်ရောက်တိုင်း အလိုအလျောက် သတိပေးစာတက်လာမည် ဖြစ်ပါသည်</p>
+      {/* Browser Notification Permission & Environment Scope Notice */}
+      <div className="space-y-3">
+        {!permissionGranted && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <p className="font-bold">ဖုန်း/ကွန်ပျူတာ Screen ပေါ်တွင် သတိပေးစာ တက်စေလိုပါသလား?</p>
+                <p className="text-[11px] text-amber-800">Browser Notification Permission ကို ခွင့်ပြုပေးခြင်းဖြင့် ဆေးသောက်ချိန်ရောက်တိုင်း အလိုအလျောက် သတိပေးစာတက်လာမည် ဖြစ်ပါသည်</p>
+              </div>
             </div>
+            <button
+              onClick={requestPermission}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 cursor-pointer shadow-xs"
+            >
+              Notification Permission ဖွင့်မည်
+            </button>
           </div>
-          <button
-            onClick={requestPermission}
-            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 cursor-pointer shadow-xs"
-          >
-            Notification Permission ဖွင့်မည်
-          </button>
+        )}
+
+        {/* Informative Notice on Reminder Environment Constraints */}
+        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 text-xs flex items-start gap-3">
+          <Info className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold text-slate-800 text-[11px]">
+              🔔 အသိပေးချက် - သတိပေးစနစ် အလုပ်လုပ်ပုံနှင့် ကန့်သတ်ချက်များ
+            </p>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              လက်ရှိ Web Browser Notification စနစ်သည် အက်ပ်ဖွင့်ထားချိန် (သို့မဟုတ် Background Tab တွင် ရှိနေချိန်) တွင်သာ တိကျစွာ အချက်ပေးနိုင်ပါသည်။ အက်ပ်ကို အပြီးတိုင်ပိတ်ထားချိန် သို့မဟုတ် ဖုန်း Screen ပိတ်ထားချိန်များတွင်ပါ Push Notification ရောက်ရှိစေရန်အတွက် <strong>Firebase Cloud Messaging (FCM)</strong> သို့မဟုတ် PWA Service Worker နှင့် Server-side Cron Job လိုအပ်ပါသည်။
+            </p>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Tab 1: Reminders List */}
       {activeTab === 'reminders' && (

@@ -25,6 +25,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { BloodPressureChart, BloodSugarChart, BMIWeightChart } from '../charts/HealthCharts';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+import { Modal } from '../common/Modal';
 
 interface HealthPassportModalProps {
   isOpen: boolean;
@@ -182,7 +184,13 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
   });
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="4xl"
+      showHeader={false}
+      className="max-h-[90vh]"
+    >
       <style>{`
         @media print {
           body * {
@@ -215,7 +223,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
         }
       `}</style>
 
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Modal Header */}
         <div className="px-6 py-4 bg-emerald-700 text-white flex items-center justify-between shrink-0 no-print">
           <div className="flex items-center gap-3">
@@ -230,6 +238,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={handlePrint}
               className="px-4 py-2 bg-white text-emerald-800 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
             >
@@ -238,7 +247,9 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             </button>
 
             <button
+              type="button"
               onClick={onClose}
+              aria-label="ပိတ်မည်"
               className="p-2 rounded-xl text-emerald-100 hover:bg-emerald-600 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -923,13 +934,8 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
           )}
 
           {/* Footer Medical Disclaimer */}
-          <div className="border-t border-slate-200 pt-4 text-[10px] text-slate-500 text-center space-y-1">
-            <p className="font-bold text-slate-700">
-              * ဤအစီရင်ခံစာသည် Family Health Track စနစ်မှ ထုတ်ယူထားသော လူနာ၏ ကျန်းမာရေး မှတ်တမ်းအချက်အလက် ဖြစ်ပါသည်။
-            </p>
-            <p>
-              တရားဝင် ဆေးခန်းပြသရာတွင် ကုသသူဆရာဝန်၏ ညွှန်ကြားချက်ကို အဓိက လိုက်နာရမည်ဖြစ်ပြီး၊ အရေးပေါ် အခြေအနေများတွင် နီးစပ်ရာ ဆေးရုံ သို့မဟုတ် ကျန်းမာရေးဌာနသို့ ချက်ချင်း သွားရောက်ပါရန်။
-            </p>
+          <div className="border-t border-slate-200 pt-4">
+            <MedicalDisclaimer variant="print" />
           </div>
 
         </div>
@@ -958,7 +964,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
         </div>
 
       </div>
-    </div>
+    </Modal>
   );
 };
 

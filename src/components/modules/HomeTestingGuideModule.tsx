@@ -23,6 +23,7 @@ import {
   HelpCircle,
   CheckSquare
 } from 'lucide-react';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 interface HomeTestingGuideModuleProps {
   onNavigateTab?: (tab: string) => void;
@@ -823,6 +824,9 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
           အိမ်တွင် တိုင်းတာစစ်ဆေးစဉ် <strong>သွေးပေါင်ချိန် 180/120 mmHg အထက်</strong> ရောက်ရှိနေပြီး ခေါင်းအလွန်ကိုက်ခြင်း၊ မျက်စိပြာခြင်း၊ ရင်ဘတ်အောင့်ခြင်း၊ <strong>သွေးချို 400 mg/dL အထက်</strong> ရောက်ရှိခြင်း သို့မဟုတ် သွေးချိုကျသော်လည်း ပြန်မတက်ဘဲ သတိလစ်မူးဝေခြင်း၊ <strong>အောက်ဆီဂျင် 92% အောက်</strong> ကျဆင်းပြီး အသက်ရှူကျပ်ခြင်းများ ဖြစ်ပေါ်ပါက အိမ်တွင်စောင့်မနေဘဲ အရေးပေါ် ဆေးကုသမှု ချက်ချင်း ခံယူရပါမည်။
         </p>
       </div>
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
     </div>
   );
 };

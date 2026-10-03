@@ -1,15 +1,27 @@
 import React, { useState } from 'react';
-import { Pill, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Calendar, Sparkles, X } from 'lucide-react';
+import { Pill, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Calendar, Sparkles, X, Check } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { Medication } from '../../types/health';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 export const MedicationsModule: React.FC = () => {
-  const { medications, addMedication, updateMedicationStatus, deleteMedication, selectedPatient, selectedFamilyMember } = useHealthData();
+  const { 
+    medications, 
+    medicationLogs,
+    toggleMedicationDoseTaken,
+    addMedication, 
+    updateMedicationStatus, 
+    deleteMedication, 
+    selectedPatient, 
+    selectedFamilyMember 
+  } = useHealthData();
   const { profile } = useAuth();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused' | 'completed'>('active');
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   // Frequency Options
   const FREQUENCY_OPTIONS = [
@@ -42,16 +54,9 @@ export const MedicationsModule: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Daily pill checklist tracker in local state
-  const [todayChecked, setTodayChecked] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('health_meds_checked_today');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const toggleCheckToday = (medId: string) => {
-    const updated = { ...todayChecked, [medId]: !todayChecked[medId] };
-    setTodayChecked(updated);
-    localStorage.setItem('health_meds_checked_today', JSON.stringify(updated));
+  const toggleCheckToday = (medId: string, medName?: string) => {
+    const isCurrentlyTaken = medicationLogs.some(l => l.medicationId === medId && l.date === todayStr && l.taken);
+    toggleMedicationDoseTaken(medId, todayStr, !isCurrentlyTaken, 0, medName);
   };
 
   const handleAddChemicalName = (e: React.KeyboardEvent | React.MouseEvent) => {
@@ -74,7 +79,10 @@ export const MedicationsModule: React.FC = () => {
     ? medications
     : medications.filter(m => m.status === filterStatus);
 
-  const activeCount = medications.filter(m => m.status === 'active').length;
+  const activeMeds = medications.filter(m => m.status === 'active');
+  const activeCount = activeMeds.length;
+  const takenCount = activeMeds.filter(m => medicationLogs.some(l => l.medicationId === m.id && l.date === todayStr && l.taken)).length;
+  const adherencePercent = activeCount > 0 ? Math.round((takenCount / activeCount) * 100) : 0;
 
   // Preset drug templates
   const presets = [
@@ -171,15 +179,15 @@ export const MedicationsModule: React.FC = () => {
         </button>
       </div>
 
-      {/* Today's Pill Schedule & Compliance Box */}
-      <div className="bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 dark:from-sky-950/40 dark:via-blue-950/40 dark:to-indigo-950/40 p-5 rounded-3xl border border-sky-200 dark:border-sky-800 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-sky-500 text-white flex items-center justify-center">
-              <Clock className="w-4 h-4" />
+      {/* Today's Pill Schedule & Compliance Box with Adherence progress */}
+      <div className="bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 dark:from-sky-950/40 dark:via-blue-950/40 dark:to-indigo-950/40 p-5 rounded-3xl border border-sky-200 dark:border-sky-800 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-sky-600 text-white flex items-center justify-center shadow-xs">
+              <Clock className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
                 ယနေ့ ဆေးသောက်ရန် စစ်ဆေးမှု (Today's Medication Tracker)
               </h3>
               <p className="text-xs text-slate-500">
@@ -187,19 +195,30 @@ export const MedicationsModule: React.FC = () => {
               </p>
             </div>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300">
-            လက်ရှိသောက်ဆဲ: {activeCount} မျိုး
-          </span>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300">
+              ယနေ့ ဆေးသောက်ပြီးမှု: {takenCount}/{activeCount} မျိုး ({adherencePercent}%)
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-4">
-          {medications.filter(m => m.status === 'active').map((med) => {
-            const isTaken = !!todayChecked[med.id];
+        {/* Adherence Progress Bar */}
+        <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+          <div 
+            className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+            style={{ width: `${adherencePercent}%` }}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {activeMeds.map((med) => {
+            const isTaken = medicationLogs.some(l => l.medicationId === med.id && l.date === todayStr && l.taken);
             return (
               <div
                 key={med.id}
-                onClick={() => toggleCheckToday(med.id)}
-                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                onClick={() => toggleCheckToday(med.id, med.name)}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between select-none ${
                   isTaken
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 shadow-xs'
                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-sky-300'
@@ -217,7 +236,7 @@ export const MedicationsModule: React.FC = () => {
                 </div>
 
                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
-                  isTaken ? 'bg-emerald-600 text-white' : 'border border-slate-300 dark:border-slate-600 text-transparent hover:border-sky-500'
+                  isTaken ? 'bg-emerald-600 text-white shadow-xs' : 'border border-slate-300 dark:border-slate-600 text-transparent hover:border-sky-500'
                 }`}>
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
@@ -361,6 +380,9 @@ export const MedicationsModule: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
 
       {/* Add Medication Modal */}
       {isOpenAdd && (

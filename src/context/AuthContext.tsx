@@ -10,28 +10,13 @@ import {
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { UserProfile } from '../types/health';
 import { calculateAge, calculateBMI } from '../lib/medicalCalculations';
+import { useToast } from './ToastContext';
 
-export const ADMIN_EMAIL = 'shinethitsmt@gmail.com';
-
-export const isTargetAdminEmail = (email?: string | null): boolean => {
-  if (!email) return false;
-  const normalized = email.toLowerCase().trim();
-  const [localPart, domain] = normalized.split('@');
-  if (domain === 'gmail.com') {
-    return localPart.replace(/\./g, '') === 'shinethitsmt';
-  }
-  return (
-    normalized === 'shinethitsmt@gmail.com' || 
-    normalized === 'shinethit.smt@gmail.com' ||
-    normalized === 'admin@familyhealthtrack.com'
-  );
-};
-
-// Helper to remove any undefined fields before Firestore operations
+// Helper to remove any undefined or null fields before Firestore operations
 export const sanitizeForFirestore = <T extends Record<string, any>>(obj: T): Record<string, any> => {
   const clean: Record<string, any> = {};
   Object.keys(obj).forEach((k) => {
@@ -40,6 +25,32 @@ export const sanitizeForFirestore = <T extends Record<string, any>>(obj: T): Rec
     }
   });
   return clean;
+};
+
+// Map Firebase Auth error codes to user-friendly Burmese messages
+export const getAuthErrorMessage = (error: any): string => {
+  const code = error?.code || '';
+  switch (code) {
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'အီးမေးလ် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။';
+    case 'auth/user-not-found':
+      return 'ဤအီးမေးလ်ဖြင့် အကောင့်ဖွင့်ထားခြင်း မရှိသေးပါ။';
+    case 'auth/email-already-in-use':
+      return 'ဤအီးမေးလ်ဖြင့် အကောင့်ဖွင့်ပြီးသား ဖြစ်နေပါသည်။ ကျေးဇူးပြု၍ Login ဝင်ပါ။';
+    case 'auth/network-request-failed':
+      return 'အင်တာနက်ချိတ်ဆက်မှု မရှိပါ သို့မဟုတ် ကွန်ရက်ချို့ယွင်းနေပါသည်။';
+    case 'auth/too-many-requests':
+      return 'အကြိမ်များစွာ ကြိုးစားမှုကြောင့် ခေတ္တပိတ်ထားပါသည်။ ခေတ္တစောင့်ဆိုင်းပြီးမှ ပြန်လည်ကြိုးစားပါ။';
+    case 'auth/invalid-email':
+      return 'အီးမေးလ် ပုံစံ မမှန်ကန်ပါ။ (ဥပမာ- user@example.com)';
+    case 'auth/weak-password':
+      return 'လျှို့ဝှက်နံပါတ်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်။';
+    case 'auth/popup-closed-by-user':
+      return 'Google ဖြင့် အကောင့်ဝင်ရောက်မှုကို ပယ်ဖျက်လိုက်ပါသည်။';
+    default:
+      return error?.message || 'အကောင့်စစ်ဆေးမှု မအောင်မြင်ပါ။ ကျေးဇူးပြု၍ ပြန်လည်ကြိုးစားပါ။';
+  }
 };
 
 interface AuthContextType {
@@ -65,79 +76,92 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
 }
 
-const buildDefaultProfile = (uid: string, email: string, overrideData?: Partial<UserProfile>): UserProfile => {
-  const isTargetAdmin = isTargetAdminEmail(email);
-  return {
-    id: uid,
-    email: email,
-    displayName: isTargetAdmin ? 'ရှိုင်းသစ်' : (overrideData?.displayName || email.split('@')[0] || 'အသုံးပြုသူ'),
-    role: isTargetAdmin ? 'admin' : (overrideData?.role || 'patient'),
-    createdAt: new Date().toISOString(),
-    ...overrideData,
-  };
-};
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { showToast } = useToast();
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(() => {
     try {
       const cached = localStorage.getItem('family_health_profile');
       if (cached) {
-        const parsed = JSON.parse(cached);
-        if (isTargetAdminEmail(parsed?.email)) {
-          parsed.role = 'admin';
-          parsed.displayName = 'ရှိုင်းသစ်';
-        }
-        return parsed;
+        return JSON.parse(cached);
       }
-    } catch {}
+    } catch (err) {
+      console.warn('Failed to parse cached profile from localStorage:', err);
+    }
     return null;
   });
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // Check admin status strictly by querying the /admins/{uid} collection in Firestore
+  const verifyIsAdmin = async (uid: string): Promise<boolean> => {
+    try {
+      const adminSnap = await getDoc(doc(db, 'admins', uid));
+      return adminSnap.exists();
+    } catch (err) {
+      console.warn('Admin status check failed:', err);
+      return false;
+    }
+  };
 
   useEffect(() => {
-    localStorage.removeItem('health_demo_profile');
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      setLoading(true);
+      if (fbUser) {
+        setCurrentUser(fbUser);
+        
+        // 1. Verify admin privilege strictly via Firestore /admins/{uid}
+        const isUserAdmin = await verifyIsAdmin(fbUser.uid);
+        setIsAdmin(isUserAdmin);
 
-    let unsubscribe = () => {};
-    try {
-      unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-        if (fbUser) {
-          setCurrentUser(fbUser);
-          const userEmail = fbUser.email || '';
-          const isTargetAdmin = isTargetAdminEmail(userEmail);
-          const fallbackProf = buildDefaultProfile(fbUser.uid, userEmail);
-
-          // Background Firestore sync & get latest profile
-          try {
-            const userDocRef = doc(db, 'users', fbUser.uid);
-            const userSnap = await getDoc(userDocRef);
-            if (userSnap.exists()) {
-              const data = userSnap.data() as UserProfile;
-              const finalProfile: UserProfile = {
-                ...data,
-                id: fbUser.uid,
-                email: userEmail || data.email,
-                role: isTargetAdmin ? 'admin' : (data.role || 'patient'),
-                displayName: isTargetAdmin ? 'ရှိုင်းသစ်' : (data.displayName || fallbackProf.displayName),
-              };
-              setProfile(finalProfile);
-              localStorage.setItem('family_health_profile', JSON.stringify(finalProfile));
-            } else {
-              setProfile(fallbackProf);
-              localStorage.setItem('family_health_profile', JSON.stringify(fallbackProf));
-              await setDoc(userDocRef, sanitizeForFirestore(fallbackProf), { merge: true });
-            }
-          } catch {
-            setProfile(fallbackProf);
-            localStorage.setItem('family_health_profile', JSON.stringify(fallbackProf));
+        // 2. Fetch or initialize user profile
+        try {
+          const userDocRef = doc(db, 'users', fbUser.uid);
+          const userSnap = await getDoc(userDocRef);
+          
+          if (userSnap.exists()) {
+            const data = userSnap.data() as UserProfile;
+            const finalProfile: UserProfile = {
+              ...data,
+              id: fbUser.uid,
+              email: fbUser.email || data.email || '',
+              role: isUserAdmin ? 'admin' : (data.role === 'admin' ? 'patient' : (data.role || 'patient')),
+              displayName: data.displayName || fbUser.displayName || fbUser.email?.split('@')[0] || 'အသုံးပြုသူ',
+            };
+            setProfile(finalProfile);
+            localStorage.setItem('family_health_profile', JSON.stringify(finalProfile));
+          } else {
+            const newProfile: UserProfile = {
+              id: fbUser.uid,
+              email: fbUser.email || '',
+              displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'အသုံးပြုသူ',
+              role: isUserAdmin ? 'admin' : 'patient',
+              createdAt: new Date().toISOString(),
+            };
+            setProfile(newProfile);
+            localStorage.setItem('family_health_profile', JSON.stringify(newProfile));
+            await setDoc(userDocRef, sanitizeForFirestore(newProfile), { merge: true });
           }
+        } catch (e) {
+          console.warn('Profile load error:', e);
+          const fallbackProfile: UserProfile = {
+            id: fbUser.uid,
+            email: fbUser.email || '',
+            displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'အသုံးပြုသူ',
+            role: isUserAdmin ? 'admin' : 'patient',
+            createdAt: new Date().toISOString(),
+          };
+          setProfile(fallbackProfile);
         }
-      });
-    } catch (e) {
-      console.warn('Firebase Auth listener note:', e);
-    }
+      } else {
+        setCurrentUser(null);
+        setProfile(null);
+        setIsAdmin(false);
+      }
+      setLoading(false);
+    });
 
     return () => unsubscribe();
   }, []);
@@ -149,10 +173,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await signInWithPopup(auth, provider);
       if (res && res.user) {
         setCurrentUser(res.user);
-        const userEmail = res.user.email || '';
-        const isTargetAdmin = isTargetAdminEmail(userEmail);
+        const isUserAdmin = await verifyIsAdmin(res.user.uid);
+        setIsAdmin(isUserAdmin);
+
         const userDocRef = doc(db, 'users', res.user.uid);
-        
         let prof: UserProfile;
         try {
           const userSnap = await getDoc(userDocRef);
@@ -161,26 +185,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             prof = {
               ...data,
               id: res.user.uid,
-              email: userEmail,
-              role: isTargetAdmin ? 'admin' : (data.role || 'patient'),
-              displayName: isTargetAdmin ? 'ရှိုင်းသစ်' : (res.user.displayName || data.displayName || 'အသုံးပြုသူ'),
+              email: res.user.email || data.email || '',
+              role: isUserAdmin ? 'admin' : (data.role === 'admin' ? 'patient' : (data.role || 'patient')),
+              displayName: data.displayName || res.user.displayName || 'အသုံးပြုသူ',
             };
           } else {
             prof = {
               id: res.user.uid,
-              email: userEmail,
-              displayName: isTargetAdmin ? 'ရှိုင်းသစ်' : (res.user.displayName || userEmail.split('@')[0] || 'အသုံးပြုသူ'),
-              role: isTargetAdmin ? 'admin' : 'patient',
+              email: res.user.email || '',
+              displayName: res.user.displayName || res.user.email?.split('@')[0] || 'အသုံးပြုသူ',
+              role: isUserAdmin ? 'admin' : 'patient',
               createdAt: new Date().toISOString(),
             };
             await setDoc(userDocRef, sanitizeForFirestore(prof), { merge: true });
           }
-        } catch {
+        } catch (err) {
+          console.warn('Google sign-in user profile fetch error:', err);
           prof = {
             id: res.user.uid,
-            email: userEmail,
-            displayName: isTargetAdmin ? 'ရှိုင်းသစ်' : (res.user.displayName || userEmail.split('@')[0] || 'အသုံးပြုသူ'),
-            role: isTargetAdmin ? 'admin' : 'patient',
+            email: res.user.email || '',
+            displayName: res.user.displayName || res.user.email?.split('@')[0] || 'အသုံးပြုသူ',
+            role: isUserAdmin ? 'admin' : 'patient',
             createdAt: new Date().toISOString(),
           };
         }
@@ -188,6 +213,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(prof);
         localStorage.setItem('family_health_profile', JSON.stringify(prof));
       }
+    } catch (err: any) {
+      console.error('Google Sign-in failed:', err);
+      throw new Error(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -196,81 +224,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, pass: string) => {
     setLoading(true);
     const cleanEmail = email.trim();
-    const isTargetAdmin = isTargetAdminEmail(cleanEmail);
 
     try {
-      let loggedInUid = 'user-' + Date.now();
-      let loggedInEmail = cleanEmail;
-      let existingFirestoreProfile: UserProfile | null = null;
+      // Authenticate strictly with Firebase Auth
+      const res = await signInWithEmailAndPassword(auth, cleanEmail, pass);
+      if (res && res.user) {
+        setCurrentUser(res.user);
+        const isUserAdmin = await verifyIsAdmin(res.user.uid);
+        setIsAdmin(isUserAdmin);
 
-      // 1. Try Firebase Authentication first
-      try {
-        const res = await signInWithEmailAndPassword(auth, cleanEmail, pass);
-        if (res && res.user) {
-          loggedInUid = res.user.uid;
-          loggedInEmail = res.user.email || cleanEmail;
-          setCurrentUser(res.user);
-        }
-      } catch (authErr: any) {
-        // If Firebase Auth throws because Email/Password provider is disabled or user not found in Auth:
-        // Check if user exists in Firestore `users` collection!
+        // Fetch user document from Firestore
+        let activeProf: UserProfile;
         try {
-          const q = query(collection(db, 'users'), where('email', '==', cleanEmail));
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            existingFirestoreProfile = { ...(snap.docs[0].data() as UserProfile), id: snap.docs[0].id };
-            loggedInUid = snap.docs[0].id;
-            loggedInEmail = existingFirestoreProfile.email || cleanEmail;
-          } else if (isTargetAdmin) {
-            loggedInUid = 'admin-shinethit';
-            loggedInEmail = cleanEmail;
+          const snap = await getDoc(doc(db, 'users', res.user.uid));
+          if (snap.exists()) {
+            const loaded = snap.data() as UserProfile;
+            activeProf = {
+              ...loaded,
+              id: res.user.uid,
+              email: res.user.email || cleanEmail,
+              role: isUserAdmin ? 'admin' : (loaded.role === 'admin' ? 'patient' : (loaded.role || 'patient')),
+              displayName: loaded.displayName || res.user.displayName || cleanEmail.split('@')[0] || 'အသုံးပြုသူ',
+            };
           } else {
-            // Auto-create patient session so user is never locked out
-            loggedInUid = 'user-' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
-            loggedInEmail = cleanEmail;
+            activeProf = {
+              id: res.user.uid,
+              email: cleanEmail,
+              displayName: res.user.displayName || cleanEmail.split('@')[0] || 'အသုံးပြုသူ',
+              role: isUserAdmin ? 'admin' : 'patient',
+              createdAt: new Date().toISOString(),
+            };
+            await setDoc(doc(db, 'users', res.user.uid), sanitizeForFirestore(activeProf), { merge: true });
           }
-        } catch {
-          if (isTargetAdmin) {
-            loggedInUid = 'admin-shinethit';
-            loggedInEmail = cleanEmail;
-          } else {
-            loggedInUid = 'user-' + Date.now();
-            loggedInEmail = cleanEmail;
-          }
+        } catch (err) {
+          console.warn('Email sign-in user profile fetch error:', err);
+          activeProf = {
+            id: res.user.uid,
+            email: cleanEmail,
+            displayName: res.user.displayName || cleanEmail.split('@')[0] || 'အသုံးပြုသူ',
+            role: isUserAdmin ? 'admin' : 'patient',
+            createdAt: new Date().toISOString(),
+          };
         }
+
+        setProfile(activeProf);
+        localStorage.setItem('family_health_profile', JSON.stringify(activeProf));
       }
-
-      // 2. Build Profile
-      const activeProf: UserProfile = existingFirestoreProfile || buildDefaultProfile(loggedInUid, loggedInEmail, {
-        role: isTargetAdmin ? 'admin' : 'patient',
-        displayName: isTargetAdmin ? 'ရှိုင်းသစ်' : undefined,
-      });
-
-      // Try fetching by ID from Firestore to ensure latest data
-      try {
-        const snap = await getDoc(doc(db, 'users', loggedInUid));
-        if (snap.exists()) {
-          const loaded = snap.data() as UserProfile;
-          activeProf.displayName = isTargetAdmin ? 'ရှိုင်းသစ်' : (loaded.displayName || activeProf.displayName);
-          activeProf.dateOfBirth = loaded.dateOfBirth || activeProf.dateOfBirth;
-          activeProf.age = loaded.age || activeProf.age;
-          activeProf.gender = loaded.gender || activeProf.gender;
-          activeProf.heightCm = loaded.heightCm || activeProf.heightCm;
-          activeProf.weightKg = loaded.weightKg || activeProf.weightKg;
-          activeProf.bmi = loaded.bmi || activeProf.bmi;
-          activeProf.chronicConditions = loaded.chronicConditions || activeProf.chronicConditions;
-        }
-      } catch {}
-
-      setProfile(activeProf);
-      localStorage.setItem('family_health_profile', JSON.stringify(activeProf));
-
-      // 3. Persist to Firestore users collection unconditionally
-      try {
-        await setDoc(doc(db, 'users', loggedInUid), sanitizeForFirestore(activeProf), { merge: true });
-      } catch (e) {
-        console.warn('Error saving profile on login:', e);
-      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      throw new Error(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -288,31 +290,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ) => {
     setLoading(true);
     const cleanEmail = email.trim();
-    const isTargetAdmin = isTargetAdminEmail(cleanEmail);
 
     try {
-      // Create a stable and persistent UID
-      let createdUid = 'user-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
-      let createdEmail = cleanEmail;
-
-      try {
-        const res = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
-        if (res && res.user) {
-          createdUid = res.user.uid;
-          createdEmail = res.user.email || cleanEmail;
-          setCurrentUser(res.user);
-        }
-      } catch (authErr: any) {
-        if (authErr.code === 'auth/email-already-in-use') {
-          try {
-            const signRes = await signInWithEmailAndPassword(auth, cleanEmail, pass);
-            createdUid = signRes.user.uid;
-            createdEmail = signRes.user.email || cleanEmail;
-            setCurrentUser(signRes.user);
-          } catch {}
-        }
-        // If password login is disabled or auth fails, gracefully use createdUid
+      // Create user strictly via Firebase Auth
+      const res = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+      if (!res || !res.user) {
+        throw new Error('အကောင့်ဖွင့်ခြင်း မအောင်မြင်ပါ။');
       }
+
+      setCurrentUser(res.user);
+      const isUserAdmin = await verifyIsAdmin(res.user.uid);
+      setIsAdmin(isUserAdmin);
 
       const calculatedAge = dob ? calculateAge(dob)?.years : undefined;
       const numH = heightCm ? Number(heightCm) : undefined;
@@ -320,10 +308,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const calculatedBMI = (numH && numW) ? calculateBMI(numW, numH)?.bmi : undefined;
 
       const newProf: UserProfile = {
-        id: createdUid,
-        email: createdEmail,
-        displayName: isTargetAdmin ? 'ရှိုင်းသစ်' : (name.trim() || 'အသုံးပြုသူ'),
-        role: isTargetAdmin ? 'admin' : 'patient',
+        id: res.user.uid,
+        email: cleanEmail,
+        displayName: name.trim() || 'အသုံးပြုသူ',
+        role: isUserAdmin ? 'admin' : 'patient',
         dateOfBirth: dob || undefined,
         age: calculatedAge,
         gender: gender || 'male',
@@ -337,12 +325,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(newProf);
       localStorage.setItem('family_health_profile', JSON.stringify(newProf));
 
-      // Always save directly to Firestore users collection
-      try {
-        await setDoc(doc(db, 'users', createdUid), sanitizeForFirestore(newProf), { merge: true });
-      } catch (e) {
-        console.warn('Firestore set user profile error:', e);
-      }
+      // Save to Firestore users collection
+      await setDoc(doc(db, 'users', res.user.uid), sanitizeForFirestore(newProf), { merge: true });
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      throw new Error(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -351,25 +338,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await fbSignOut(auth);
-    } catch {}
+    } catch (err) {
+      console.warn('SignOut error:', err);
+    }
     setCurrentUser(null);
     setProfile(null);
-    localStorage.removeItem('family_health_profile');
-    localStorage.removeItem('health_demo_profile');
+    setIsAdmin(false);
+
+    // Thoroughly remove all health_* and family_health_profile localStorage keys
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('health_') || key.startsWith('family_health_') || key.startsWith('fht_') || key.startsWith('physio_') || key.startsWith('special_care_'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
+    const explicitKeys = [
+      'family_health_profile',
+      'health_demo_profile',
+      'health_records_bp',
+      'health_records_glucose',
+      'health_records_labs',
+      'health_records_meds',
+      'health_records_advices',
+      'health_records_bmi',
+      'health_records_questions',
+      'health_all_patients',
+      'health_family_members',
+      'health_broadcast_tickers',
+      'health_meds_checked_today'
+    ];
+    explicitKeys.forEach(key => localStorage.removeItem(key));
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
-    if (!profile) return;
+    if (!currentUser || !profile) return;
 
-    let computedAge = data.age ?? profile.age;
-    if (data.dateOfBirth) {
-      const ageRes = calculateAge(data.dateOfBirth);
+    // Prevent client-side role elevation to admin
+    const sanitizedData = { ...data };
+    if (!isAdmin && 'role' in sanitizedData) {
+      delete sanitizedData.role;
+    }
+
+    let computedAge = sanitizedData.age ?? profile.age;
+    if (sanitizedData.dateOfBirth) {
+      const ageRes = calculateAge(sanitizedData.dateOfBirth);
       if (ageRes) computedAge = ageRes.years;
     }
 
-    const h = data.heightCm ?? profile.heightCm;
-    const w = data.weightKg ?? profile.weightKg;
-    let computedBMI = data.bmi ?? profile.bmi;
+    const h = sanitizedData.heightCm ?? profile.heightCm;
+    const w = sanitizedData.weightKg ?? profile.weightKg;
+    let computedBMI = sanitizedData.bmi ?? profile.bmi;
     if (h && w) {
       const bmiRes = calculateBMI(w, h);
       if (bmiRes) computedBMI = bmiRes.bmi;
@@ -377,7 +398,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const updated: UserProfile = { 
       ...profile, 
-      ...data, 
+      ...sanitizedData, 
       age: computedAge,
       bmi: computedBMI,
       updatedAt: new Date().toISOString() 
@@ -385,33 +406,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setProfile(updated);
     localStorage.setItem('family_health_profile', JSON.stringify(updated));
-    if (profile?.id) {
-      try {
-        await setDoc(doc(db, 'users', profile.id), sanitizeForFirestore(updated), { merge: true });
-      } catch (e) {
-        console.warn('Update profile error:', e);
-      }
+
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid), sanitizeForFirestore(updated), { merge: true });
+      showToast('ပရိုဖိုင် အချက်အလက်များကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ', 'success');
+    } catch (e) {
+      console.warn('Update profile error:', e);
+      showToast('ပရိုဖိုင် ပြင်ဆင်ရာတွင် ချို့ယွင်းချက် ဖြစ်ပေါ်ခဲ့ပါသည်', 'error');
+      throw e;
     }
   };
 
   const changePassword = async (newPassword: string) => {
     if (!auth.currentUser) {
-      return;
+      throw new Error('အကောင့်ဝင်ထားခြင်း မရှိပါ။');
     }
     if (newPassword.length < 6) {
-      throw new Error('လျှို့ဝှက်နံပါတ် အသစ်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်');
+      throw new Error('လျှို့ဝှက်နံပါတ် အသစ်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်။');
     }
-    await fbUpdatePassword(auth.currentUser, newPassword);
+    try {
+      await fbUpdatePassword(auth.currentUser, newPassword);
+    } catch (err: any) {
+      throw new Error(getAuthErrorMessage(err));
+    }
   };
 
   const resetPassword = async (email: string) => {
     if (!email || !email.trim()) {
-      throw new Error('ကျေးဇူးပြု၍ သင့်အီးမေးလ်လိပ်စာကို ထည့်သွင်းပါ');
+      throw new Error('ကျေးဇူးပြု၍ သင့်အီးမေးလ်လိပ်စာကို ထည့်သွင်းပါ။');
     }
-    await sendPasswordResetEmail(auth, email.trim());
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+    } catch (err: any) {
+      throw new Error(getAuthErrorMessage(err));
+    }
   };
-
-  const isAdmin = profile?.role === 'admin' || isTargetAdminEmail(profile?.email);
 
   return (
     <AuthContext.Provider value={{

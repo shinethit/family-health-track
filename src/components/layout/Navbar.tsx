@@ -9,7 +9,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { ChangePasswordModal } from '../auth/ChangePasswordModal';
-import { CURRENT_SYSTEM_VERSION } from '../modules/VersionHistoryModal';
+import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
 
 interface NavbarProps {
   onOpenSidebar: () => void;

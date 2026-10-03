@@ -24,8 +24,8 @@ import {
   Filter
 } from 'lucide-react';
 import { PHYSIO_EXERCISES, PhysioExercise } from '../../data/physioExercises';
-import { HEALTH_ARTICLES } from '../../data/healthArticles';
 import { HealthArticle } from '../../types/health';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 export const PhysiotherapyModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'exercises' | 'body_map' | 'runner' | 'articles'>('exercises');
@@ -79,8 +79,11 @@ export const PhysiotherapyModule: React.FC = () => {
   }, [selectedCategory, selectedBodyPart, searchQuery]);
 
   // Physiotherapy Articles
-  const physioArticles = useMemo(() => {
-    return HEALTH_ARTICLES.filter(art => art.category === 'physio');
+  const [physioArticles, setPhysioArticles] = useState<HealthArticle[]>([]);
+  useEffect(() => {
+    import('../../data/healthArticles').then((m) => {
+      setPhysioArticles(m.HEALTH_ARTICLES.filter(art => art.category === 'physio'));
+    });
   }, []);
 
   // Audio Beep Cue when timer finishes
@@ -651,6 +654,9 @@ export const PhysiotherapyModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
 
       {/* Article Detail Modal */}
       {selectedArticle && (

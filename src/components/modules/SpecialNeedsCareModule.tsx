@@ -31,6 +31,7 @@ import {
   Stethoscope,
   ListFilter
 } from 'lucide-react';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 interface SpecialCareTopic {
   id: string;
@@ -619,6 +620,9 @@ export const SpecialNeedsCareModule: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
 
       {/* Accessibility Checklist Modal */}
       {showChecklistModal && (

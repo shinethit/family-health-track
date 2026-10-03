@@ -1,22 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  X, 
   Save, 
   UserCheck, 
   Phone, 
   Mail, 
-  Calendar, 
   Heart, 
   AlertCircle, 
-  Sparkles, 
   Activity, 
-  Check, 
   Plus, 
-  Trash2,
   ShieldAlert
 } from 'lucide-react';
 import { UserProfile } from '../../types/health';
-import { calculateBMI, calculateAge } from '../../lib/medicalCalculations';
+import { calculateBMI } from '../../lib/medicalCalculations';
+import { Modal } from '../common/Modal';
 
 interface EditPatientModalProps {
   isOpen: boolean;
@@ -67,7 +63,6 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Sync state whenever the selected patient changes
   useEffect(() => {
     if (patient) {
       setDisplayName(patient.displayName || '');
@@ -88,7 +83,6 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
     }
   }, [patient]);
 
-  // Live BMI calculation
   const parsedWeight = Number(weightKg);
   const parsedHeight = Number(heightCm);
   const liveBMI = (parsedWeight > 0 && parsedHeight > 0)
@@ -111,10 +105,6 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
       setChronicConditions([...chronicConditions, trimmed]);
     }
     setCustomCondition('');
-  };
-
-  const removeCondition = (cond: string) => {
-    setChronicConditions(chronicConditions.filter(c => c !== cond));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,32 +149,30 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs">
-              <UserCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
-                အသုံးပြုသူမှတ်တမ်း ပြင်ဆင်ခြင်း (Edit User Record)
-              </h3>
-              <p className="text-xs text-slate-500">
-                အသုံးပြုသူ ID: <span className="font-mono text-indigo-600 dark:text-indigo-400">{patient.id}</span> • Cloud Firestore နှင့် အချိန်နှင့်တပြေးညီ ချိတ်ဆက်ပြင်ဆင်မည်
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const titleHeader = (
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs shrink-0">
+        <UserCheck className="w-5 h-5" />
+      </div>
+      <div>
+        <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+          အသုံးပြုသူမှတ်တမ်း ပြင်ဆင်ခြင်း (Edit User Record)
+        </h3>
+        <p className="text-xs text-slate-500">
+          အသုံးပြုသူ ID: <span className="font-mono text-indigo-600 dark:text-indigo-400">{patient.id}</span>
+        </p>
+      </div>
+    </div>
+  );
 
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="2xl"
+      title={titleHeader}
+    >
+      <div className="p-5 sm:p-6 space-y-4 text-xs">
         {errorMsg && (
           <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -377,7 +365,7 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Chronic Conditions (ရောဂါအခံများ) */}
+          {/* Section 3: Chronic Conditions */}
           <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
@@ -389,7 +377,6 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
               </span>
             </div>
 
-            {/* Quick toggle chips */}
             <div className="flex flex-wrap gap-1.5">
               {COMMON_CONDITIONS.map((cond) => {
                 const isSelected = chronicConditions.includes(cond);
@@ -411,7 +398,6 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
               })}
             </div>
 
-            {/* Custom condition adder */}
             <div className="flex items-center gap-2 pt-1">
               <input
                 type="text"
@@ -488,6 +474,6 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 };

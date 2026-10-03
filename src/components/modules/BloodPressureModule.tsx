@@ -4,6 +4,7 @@ import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { BloodPressureChart } from '../charts/HealthCharts';
 import { calculateBPCategory, parseDateToMs } from '../../lib/medicalCalculations';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 export const BloodPressureModule: React.FC = () => {
   const { bpRecords, addBPRecord, deleteBPRecord, selectedPatient, selectedFamilyMember } = useHealthData();
@@ -65,12 +66,16 @@ export const BloodPressureModule: React.FC = () => {
     });
   }, [sortedBP, timeframe]);
 
+  const targetPerson = selectedPatient || selectedFamilyMember || profile;
+  const personAge = targetPerson?.age;
+  const isPersonPregnant = (targetPerson as any)?.isPregnant || false;
+
   // Latest record (most recent date/time timestamp)
   const latestBP = sortedBP.length > 0 ? sortedBP[sortedBP.length - 1] : null;
-  const latestEvaluation = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic) : null;
+  const latestEvaluation = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic, personAge, isPersonPregnant) : null;
 
   // Real-time evaluation for the modal input
-  const currentPreview = calculateBPCategory(systolic, diastolic);
+  const currentPreview = calculateBPCategory(systolic, diastolic, personAge, isPersonPregnant);
 
   // Averages (computed on filtered subset)
   const targetForAvg = filteredBP.length > 0 ? filteredBP : sortedBP;
@@ -147,8 +152,13 @@ export const BloodPressureModule: React.FC = () => {
             <span className="text-xs text-slate-400">mmHg</span>
           </div>
           {latestEvaluation && (
-            <div className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${latestEvaluation.bgColor} ${latestEvaluation.color} ${latestEvaluation.borderColor}`}>
-              {latestEvaluation.labelMm}
+            <div className="mt-2 space-y-1">
+              <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${latestEvaluation.bgColor} ${latestEvaluation.color} ${latestEvaluation.borderColor}`}>
+                {latestEvaluation.labelMm}
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium">
+                စံသတ်မှတ်ချက်: {latestEvaluation.sourceMm}
+              </p>
             </div>
           )}
         </div>
@@ -392,6 +402,9 @@ export const BloodPressureModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
 
       {/* Add New BP Modal */}
       {isOpenAdd && (

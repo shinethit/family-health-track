@@ -35,7 +35,10 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-export const CURRENT_SYSTEM_VERSION = 'v2.4.3';
+import { Modal } from '../common/Modal';
+
+import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
+export { CURRENT_SYSTEM_VERSION };
 
 export interface VersionItem {
   version: string;
@@ -1412,13 +1415,16 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
-      <div 
-        className="bg-white border border-slate-200 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="4xl"
+      showHeader={false}
+      className="max-h-[90vh]"
+    >
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-purple-50 via-teal-50 to-transparent">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-purple-50 via-teal-50 to-transparent shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-600/30 shrink-0">
               <History className="w-5 h-5" />
@@ -1434,6 +1440,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
 
                 {onManualCheckVersion && (
                   <button
+                    type="button"
                     onClick={onManualCheckVersion}
                     className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[10px] sm:text-[11px] font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95"
                     title="စနစ်ဗားရှင်း အသစ် စစ်ဆေးမည်"
@@ -1449,7 +1456,9 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="ပိတ်မည်"
             className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
@@ -1646,6 +1655,6 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
         </div>
 
       </div>
-    </div>
+    </Modal>
   );
 };

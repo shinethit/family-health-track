@@ -46,8 +46,9 @@ export function calculateAge(dob: string | undefined): {
 /**
  * Asian-Pacific & WHO Body Mass Index (BMI) Evaluation
  * For Asian populations, health risks begin at lower BMIs (>= 23 is overweight, >= 25 is obese).
+ * For patients under 18, adult cutoffs are NOT applied; clinical pediatric guidance is required.
  */
-export function calculateBMI(weightKg: number, heightCm: number): {
+export function calculateBMI(weightKg: number, heightCm: number, age?: number): {
   bmi: number;
   category: BMICategory;
   labelMm: string;
@@ -59,6 +60,8 @@ export function calculateBMI(weightKg: number, heightCm: number): {
   adviceMm: string;
   idealWeightRangeKg: { min: number; max: number };
   dailyWaterRequirementLiters: number;
+  isPediatric?: boolean;
+  sourceMm: string;
 } | null {
   if (!weightKg || !heightCm || weightKg <= 0 || heightCm <= 0) return null;
 
@@ -73,6 +76,25 @@ export function calculateBMI(weightKg: number, heightCm: number): {
   // Daily water recommendation: weight in kg * 35 ml
   const dailyWaterLiters = Math.round((weightKg * 35 / 1000) * 10) / 10;
 
+  // Pediatric safety guard (Age < 18)
+  if (age !== undefined && age < 18) {
+    return {
+      bmi,
+      category: 'normal',
+      labelMm: 'ကလေး/ဆယ်ကျော်သက် (BMI-for-age ဇယားဖြင့် ဆရာဝန်သာ သတ်မှတ်ရန်)',
+      labelEn: 'Pediatric (Requires WHO Growth Percentile Chart)',
+      color: 'text-indigo-700 dark:text-indigo-400',
+      bgColor: 'bg-indigo-50 dark:bg-indigo-950/40',
+      borderColor: 'border-indigo-300 dark:border-indigo-800',
+      riskMm: 'အသက် ၁၈ နှစ်အောက် ကလေးနှင့် ဆယ်ကျော်သက်များအတွက် လူကြီးစံနှုန်း BMI သတ်မှတ်ချက်များကို အသုံးမပြုရပါ။',
+      adviceMm: 'ကလေးငယ်များ၏ ကြီးထွားဖွံ့ဖြိုးမှုကို အသက်၊ လနှင့် ကျား/မ အလိုက် WHO BMI-for-age Percentile ဇယားဖြင့် ကလေးအထူးကုဆရာဝန်နှင့်သာ စစ်ဆေးအကဲဖြတ်သင့်ပါသည်။',
+      idealWeightRangeKg: { min: idealMin, max: idealMax },
+      dailyWaterRequirementLiters: dailyWaterLiters,
+      isPediatric: true,
+      sourceMm: 'ရင်းမြစ်: WHO Child Growth Standards (5-19 years)',
+    };
+  }
+
   if (bmi < 18.5) {
     return {
       bmi,
@@ -86,6 +108,7 @@ export function calculateBMI(weightKg: number, heightCm: number): {
       adviceMm: 'အာဟာရပြည့်ဝသော အစားအစာ (ပရိုတင်း၊ ကြက်ဥ၊ နို့၊ အစေ့အဆန်) ပိုမိုစားသုံးပြီး ကြွက်သားတက်စေရန် လေ့ကျင့်ခန်းလုပ်ပါ။',
       idealWeightRangeKg: { min: idealMin, max: idealMax },
       dailyWaterRequirementLiters: dailyWaterLiters,
+      sourceMm: 'ရင်းမြစ်: Asian BMI criteria (WHO WPRO) & WHO',
     };
   }
 
@@ -102,6 +125,7 @@ export function calculateBMI(weightKg: number, heightCm: number): {
       adviceMm: 'လက်ရှိ မျှတသော အစားအသောက်နှင့် လမ်းလျှောက်ခြင်း၊ လေ့ကျင့်ခန်း ပုံမှန် အလေ့အကျင့်ကို ဆက်လက်ထိန်းသိမ်းပါ။',
       idealWeightRangeKg: { min: idealMin, max: idealMax },
       dailyWaterRequirementLiters: dailyWaterLiters,
+      sourceMm: 'ရင်းမြစ်: Asian BMI criteria (WHO WPRO)',
     };
   }
 
@@ -118,6 +142,7 @@ export function calculateBMI(weightKg: number, heightCm: number): {
       adviceMm: 'အချို၊ အဆီ၊ အကြော်အလှော်နှင့် ကစီဓာတ်လျှော့စားပါ၊ တစ်နေ့ မိနစ် ၃၀ ခန့် လမ်းသွက်သွက်လျှောက်ပါ။',
       idealWeightRangeKg: { min: idealMin, max: idealMax },
       dailyWaterRequirementLiters: dailyWaterLiters,
+      sourceMm: 'ရင်းမြစ်: Asian BMI criteria (WHO WPRO)',
     };
   }
 
@@ -134,6 +159,7 @@ export function calculateBMI(weightKg: number, heightCm: number): {
       adviceMm: 'ဆရာဝန် သို့မဟုတ် အာဟာရပညာရှင်နှင့် တိုင်ပင်၍ ကိုယ်အလေးချိန် ၅-၁၀% လျှော့ချရန် စနစ်တကျ အစီအစဉ်ဆွဲပါ။',
       idealWeightRangeKg: { min: idealMin, max: idealMax },
       dailyWaterRequirementLiters: dailyWaterLiters,
+      sourceMm: 'ရင်းမြစ်: Asian BMI criteria (WHO WPRO)',
     };
   }
 
@@ -149,6 +175,7 @@ export function calculateBMI(weightKg: number, heightCm: number): {
     adviceMm: 'အထူးကုဆရာဝန်နှင့် အမြန်ဆုံးပြသ၍ ဆေးကုသမှုနှင့် ကိုယ်အလေးချိန်ထိန်းသိမ်းမှု အစီအစဉ် ပြုလုပ်ပါ။',
     idealWeightRangeKg: { min: idealMin, max: idealMax },
     dailyWaterRequirementLiters: dailyWaterLiters,
+    sourceMm: 'ရင်းမြစ်: Asian BMI criteria (WHO WPRO)',
   };
 }
 
@@ -198,7 +225,12 @@ export function kgToLb(kg: number): number {
   return Math.round(kg * 2.20462 * 10) / 10;
 }
 
-export function calculateBPCategory(systolic: number, diastolic: number): {
+export function calculateBPCategory(
+  systolic: number, 
+  diastolic: number,
+  age?: number,
+  isPregnant?: boolean
+): {
   category: BloodPressureCategory;
   labelMm: string;
   labelEn: string;
@@ -206,59 +238,100 @@ export function calculateBPCategory(systolic: number, diastolic: number): {
   bgColor: string;
   borderColor: string;
   advice: string;
+  isPediatric?: boolean;
+  isPregnancyAlert?: boolean;
+  sourceMm: string;
 } {
+  // 1. Pregnancy Safety Guard
+  if (isPregnant) {
+    if (systolic >= 140 || diastolic >= 90) {
+      return {
+        category: 'stage2',
+        labelMm: '⚠️ ကိုယ်ဝန်ဆောင် သွေးတိုး သတိပေးချက် (≥ 140/90 mmHg)',
+        labelEn: 'Gestational Hypertension / Preeclampsia Alert',
+        color: 'text-rose-700 dark:text-rose-400 font-extrabold',
+        bgColor: 'bg-rose-50 dark:bg-rose-950/50',
+        borderColor: 'border-rose-400 dark:border-rose-700',
+        advice: 'ကိုယ်ဝန်ဆောင်ချိန်အတွင်း သွေးပေါင်ချိန် ၁၄၀/၉၀ mmHg နှင့် အထက်သည် ကိုယ်ဝန်ဆိပ်တက်ခြင်း (Preeclampsia) သို့မဟုတ် ကိုယ်ဝန်ဆောင် သွေးတိုးရောဂါ လက္ခဏာဖြစ်နိုင်သဖြင့် သားဖွားမီးယပ် အထူးကုဆရာဝန်နှင့် အမြန်ဆုံး ချက်ချင်း ပြသတိုင်ပင်ပါ။',
+        isPregnancyAlert: true,
+        sourceMm: 'ရင်းမြစ်: ACOG (American College of Obstetricians and Gynecologists) & WHO Guidelines',
+      };
+    }
+  }
+
+  // 2. Pediatric Safety Guard (Age < 18)
+  if (age !== undefined && age < 18) {
+    return {
+      category: 'normal',
+      labelMm: 'ကလေး/ဆယ်ကျော်သက် (ကလေးဆရာဝန်နှင့် သီးသန့်စစ်ဆေးရန်)',
+      labelEn: 'Pediatric Blood Pressure (Clinical Assessment Required)',
+      color: 'text-indigo-700 dark:text-indigo-400',
+      bgColor: 'bg-indigo-50 dark:bg-indigo-950/40',
+      borderColor: 'border-indigo-300 dark:border-indigo-800',
+      advice: 'အသက် ၁၈ နှစ်အောက် ကလေးနှင့် ဆယ်ကျော်သက်များ၏ သွေးပေါင်ချိန် ပုံမှန်သတ်မှတ်ချက်သည် အသက်၊ အရပ်နှင့် ကျား/မ အလိုက် ရာခိုင်နှုန်းဇယား (Percentiles) ဖြင့်သာ တိကျစွာ ခွဲခြားနိုင်သဖြင့် လူကြီးစံနှုန်းဖြင့် မသတ်မှတ်ဘဲ ကလေးအထူးကုဆရာဝန်နှင့် တိုင်ပင်ဆွေးနွေးရန် လိုအပ်ပါသည်။',
+      isPediatric: true,
+      sourceMm: 'ရင်းမြစ်: AAP (American Academy of Pediatrics) Clinical Practice Guideline',
+    };
+  }
+
+  // 3. Adult Classification (ACC/AHA 2017)
   if (systolic >= 180 || diastolic >= 120) {
     return {
       category: 'crisis',
-      labelMm: 'အရေးပေါ် သွေးတိုးလွန်ခြင်း',
+      labelMm: 'အရေးပေါ် သွေးတိုးလွန်ခြင်း (Hypertensive Crisis)',
       labelEn: 'Hypertensive Crisis',
       color: 'text-rose-700 dark:text-rose-400',
       bgColor: 'bg-rose-50 dark:bg-rose-950/40',
       borderColor: 'border-rose-300 dark:border-rose-800',
       advice: 'ချက်ချင်း အရေးပေါ် ဆေးကုသမှု ခံယူပါ သို့မဟုတ် ဆရာဝန်ထံ ပြသပါ။',
+      sourceMm: 'ရင်းမြစ်: ACC/AHA 2017 Blood Pressure Guidelines',
     };
   }
   if (systolic >= 140 || diastolic >= 90) {
     return {
       category: 'stage2',
-      labelMm: 'အဆင့် ၂ သွေးတိုး',
+      labelMm: 'အဆင့် ၂ သွေးတိုး (Hypertension Stage 2)',
       labelEn: 'Hypertension Stage 2',
       color: 'text-red-700 dark:text-red-400',
       bgColor: 'bg-red-50 dark:bg-red-950/40',
       borderColor: 'border-red-300 dark:border-red-800',
       advice: 'ဆရာဝန်နှင့် ပြသ၍ ဆေးသောက်ရန်နှင့် အငန်လျှော့စားရန် လိုအပ်ပါသည်။',
+      sourceMm: 'ရင်းမြစ်: ACC/AHA 2017 Blood Pressure Guidelines',
     };
   }
   if ((systolic >= 130 && systolic <= 139) || (diastolic >= 80 && diastolic <= 89)) {
     return {
       category: 'stage1',
-      labelMm: 'အဆင့် ၁ သွေးတိုး',
+      labelMm: 'အဆင့် ၁ သွေးတိုး (Hypertension Stage 1)',
       labelEn: 'Hypertension Stage 1',
       color: 'text-amber-700 dark:text-amber-400',
       bgColor: 'bg-amber-50 dark:bg-amber-950/40',
       borderColor: 'border-amber-300 dark:border-amber-800',
       advice: 'နေထိုင်စားသောက်မှုပုံစံ ပြုပြင်ပြောင်းလဲရန်နှင့် သွေးပေါင်ပုံမှန်တိုင်းပါ။',
+      sourceMm: 'ရင်းမြစ်: ACC/AHA 2017 Blood Pressure Guidelines',
     };
   }
   if (systolic >= 120 && systolic <= 129 && diastolic < 80) {
     return {
       category: 'elevated',
-      labelMm: 'အနည်းငယ်မြင့်နေသော သွေးပေါင်',
+      labelMm: 'အနည်းငယ်မြင့်နေသော သွေးပေါင် (Elevated)',
       labelEn: 'Elevated BP',
       color: 'text-yellow-700 dark:text-yellow-400',
       bgColor: 'bg-yellow-50 dark:bg-yellow-950/40',
       borderColor: 'border-yellow-300 dark:border-yellow-800',
       advice: 'ကိုယ်လက်လှုပ်ရှားမှုပြုလုပ်ပါ၊ အငန်လျှော့စားပါ။',
+      sourceMm: 'ရင်းမြစ်: ACC/AHA 2017 Blood Pressure Guidelines',
     };
   }
   return {
     category: 'normal',
-    labelMm: 'ပုံမှန်သွေးပေါင်',
+    labelMm: 'ပုံမှန်သွေးပေါင် (Normal BP)',
     labelEn: 'Normal BP',
     color: 'text-emerald-700 dark:text-emerald-400',
     bgColor: 'bg-emerald-50 dark:bg-emerald-950/40',
     borderColor: 'border-emerald-300 dark:border-emerald-800',
     advice: 'သွေးပေါင်ချိန် ပုံမှန်အခြေအနေကောင်းတွင် ရှိနေပါသည်။',
+    sourceMm: 'ရင်းမြစ်: ACC/AHA 2017 Blood Pressure Guidelines',
   };
 }
 
@@ -270,7 +343,10 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
   bgColor: string;
   borderColor: string;
   advice: string;
+  sourceMm: string;
 } {
+  const source = 'ရင်းမြစ်: ADA (American Diabetes Association) Standards of Care';
+
   if (type === 'hba1c') {
     if (value < 5.7) {
       return {
@@ -281,6 +357,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
         bgColor: 'bg-emerald-50 dark:bg-emerald-950/40',
         borderColor: 'border-emerald-300 dark:border-emerald-800',
         advice: '၃ လပတ် သွေးတွင်းသကြားဓာတ် ပုံမှန်ရှိပါသည်။',
+        sourceMm: source,
       };
     }
     if (value <= 6.4) {
@@ -292,6 +369,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
         bgColor: 'bg-amber-50 dark:bg-amber-950/40',
         borderColor: 'border-amber-300 dark:border-amber-800',
         advice: 'ဆီးချိုမဖြစ်အောင် အချိုလျှော့စားပြီး လေ့ကျင့်ခန်းလုပ်ပါ။',
+        sourceMm: source,
       };
     }
     return {
@@ -302,6 +380,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
       bgColor: 'bg-rose-50 dark:bg-rose-950/40',
       borderColor: 'border-rose-300 dark:border-rose-800',
       advice: 'ဆရာဝန်နှင့်တိုင်ပင်၍ ဆေးသောက်ရန်နှင့် စနစ်တကျ ထိန်းသိမ်းရန် လိုအပ်ပါသည်။',
+      sourceMm: source,
     };
   }
 
@@ -316,6 +395,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
         bgColor: 'bg-blue-50 dark:bg-blue-950/40',
         borderColor: 'border-blue-300 dark:border-blue-800',
         advice: 'သကြားဓာတ်ထိုးကျနေသဖြင့် အချိုရည် (သို့) သကြားလုံး ချက်ချင်းစားသုံးပါ။',
+        sourceMm: source,
       };
     }
     if (value <= 99) {
@@ -327,6 +407,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
         bgColor: 'bg-emerald-50 dark:bg-emerald-950/40',
         borderColor: 'border-emerald-300 dark:border-emerald-800',
         advice: 'အစာမစားမီ သကြားဓာတ် ပုံမှန်ကောင်းမွန်ပါသည်။',
+        sourceMm: source,
       };
     }
     if (value <= 125) {
@@ -338,6 +419,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
         bgColor: 'bg-amber-50 dark:bg-amber-950/40',
         borderColor: 'border-amber-300 dark:border-amber-800',
         advice: 'အချိုနှင့် ကာဗိုဟိုက်ဒရိတ် လျှော့စားပါ၊ ကိုယ်လက်လှုပ်ရှားမှု တိုးမြှင့်ပါ။',
+        sourceMm: source,
       };
     }
     return {
@@ -348,6 +430,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
       bgColor: 'bg-rose-50 dark:bg-rose-950/40',
       borderColor: 'border-rose-300 dark:border-rose-800',
       advice: 'ဆရာဝန်နှင့် တွေ့ဆုံ၍ ဆီးချိုဆေးဝါးချိန်ညှိမှု ပြုလုပ်ပါ။',
+      sourceMm: source,
     };
   }
 
@@ -361,6 +444,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
       bgColor: 'bg-blue-50 dark:bg-blue-950/40',
       borderColor: 'border-blue-300 dark:border-blue-800',
       advice: 'သကြားဓာတ်ထိုးကျခြင်း သတိပြုပါ။',
+      sourceMm: source,
     };
   }
   if (value <= 139) {
@@ -372,6 +456,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
       bgColor: 'bg-emerald-50 dark:bg-emerald-950/40',
       borderColor: 'border-emerald-300 dark:border-emerald-800',
       advice: 'သကြားဓာတ် ပုံမှန်အကွာအဝေးအတွင်း ရှိပါသည်။',
+      sourceMm: source,
     };
   }
   if (value <= 199) {
@@ -383,6 +468,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
       bgColor: 'bg-amber-50 dark:bg-amber-950/40',
       borderColor: 'border-amber-300 dark:border-amber-800',
       advice: 'အစားအသောက် စနစ်တကျ ထိန်းသိမ်းရန် လိုအပ်ပါသည်။',
+      sourceMm: source,
     };
   }
   return {
@@ -393,6 +479,7 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
     bgColor: 'bg-rose-50 dark:bg-rose-950/40',
     borderColor: 'border-rose-300 dark:border-rose-800',
     advice: 'ဆရာဝန်ထံ ပြသ၍ သွေးတွင်းသကြားဓာတ် လျှော့ချရန် ဆေးဝါးသုံးစွဲပါ။',
+    sourceMm: source,
   };
 }
 

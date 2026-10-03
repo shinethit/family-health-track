@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { BloodSugarChart } from '../charts/HealthCharts';
 import { calculateGlucoseStatus, parseDateToMs } from '../../lib/medicalCalculations';
 import { BloodSugarType } from '../../types/health';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 export const BloodSugarModule: React.FC = () => {
   const { glucoseRecords, addGlucoseRecord, deleteGlucoseRecord, selectedPatient, selectedFamilyMember } = useHealthData();
@@ -413,6 +414,9 @@ export const BloodSugarModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
 
       {/* Add Modal */}
       {isOpenAdd && (

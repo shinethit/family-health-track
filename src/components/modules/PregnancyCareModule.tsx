@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   ChevronRight
 } from 'lucide-react';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 interface TrimesterInfo {
   trimester: number;
@@ -614,6 +615,9 @@ export const PregnancyCareModule: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
     </div>
   );
 };

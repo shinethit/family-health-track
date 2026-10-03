@@ -21,6 +21,7 @@ import {
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import { CustomReminder } from '../../types/health';
+import { Modal } from '../common/Modal';
 
 interface NotificationCenterModalProps {
   isOpen: boolean;
@@ -85,11 +86,16 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-        
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="2xl"
+      showHeader={false}
+      className="max-h-[90vh]"
+    >
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent">
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-inner">
               <BellRing className="w-5 h-5 animate-bounce" />
@@ -116,14 +122,16 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               type="button"
               onClick={playNotificationSound}
               title="အသံစမ်းသပ်မည်"
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              aria-label="အသံစမ်းသပ်မည်"
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <Volume2 className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              aria-label="ပိတ်မည်"
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -214,15 +222,19 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             {notifications.length > 0 && (
               <>
                 <button
+                  type="button"
                   onClick={markAllAsRead}
                   title="အားလုံး ဖတ်ပြီးအဖြစ် သတ်မှတ်မည်"
+                  aria-label="အားလုံး ဖတ်ပြီးအဖြစ် သတ်မှတ်မည်"
                   className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 text-xs transition-colors cursor-pointer"
                 >
                   <CheckCheck className="w-4 h-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={clearAllNotifications}
                   title="အားလုံး ရှင်းလင်းမည်"
+                  aria-label="အားလုံး ရှင်းလင်းမည်"
                   className="p-1.5 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-950/50 text-rose-500 text-xs transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -495,6 +507,6 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         )}
 
       </div>
-    </div>
+    </Modal>
   );
 };

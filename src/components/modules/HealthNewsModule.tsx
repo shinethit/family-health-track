@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, 
   Bookmark, 
@@ -15,9 +15,18 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { HealthArticle } from '../../types/health';
-import { HEALTH_ARTICLES } from '../../data/healthArticles';
 
 export const HealthNewsModule: React.FC = () => {
+  const [articles, setArticles] = useState<HealthArticle[]>([]);
+  const [isLoadingArticles, setIsLoadingArticles] = useState(true);
+
+  useEffect(() => {
+    import('../../data/healthArticles').then((m) => {
+      setArticles(m.HEALTH_ARTICLES);
+      setIsLoadingArticles(false);
+    });
+  }, []);
+
   // Main section toggle: 'flood' for 8 flood articles, 'general' for other medical categories
   const [activeSection, setActiveSection] = useState<'flood' | 'general'>('flood');
   const [floodFilter, setFloodFilter] = useState<string>('all');
@@ -50,26 +59,26 @@ export const HealthNewsModule: React.FC = () => {
   };
 
   // Counts
-  const floodArticles = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'flood_disaster'), []);
-  const generalArticles = useMemo(() => HEALTH_ARTICLES.filter(a => a.category !== 'flood_disaster'), []);
+  const floodArticles = useMemo(() => articles.filter(a => a.category === 'flood_disaster'), [articles]);
+  const generalArticles = useMemo(() => articles.filter(a => a.category !== 'flood_disaster'), [articles]);
 
-  const pediatricsCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'pediatrics').length, []);
-  const vaccineCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'vaccine').length, []);
-  const physioCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'physio').length, []);
-  const thyroidCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'thyroid').length, []);
-  const bpCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'bp').length, []);
-  const diabetesCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'diabetes').length, []);
-  const liverCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'liver').length, []);
-  const kidneyCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'kidney').length, []);
-  const nutritionCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'nutrition').length, []);
-  const elderlyCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'elderly').length, []);
-  const dentalCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_dental').length, []);
-  const eyeCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_eye').length, []);
-  const entCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_ent').length, []);
-  const dermaCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_derma').length, []);
-  const orthoCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_ortho').length, []);
-  const neuroCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'specialty_neuro').length, []);
-  const mosquitoCount = useMemo(() => HEALTH_ARTICLES.filter(a => a.category === 'mosquito_borne').length, []);
+  const pediatricsCount = useMemo(() => articles.filter(a => a.category === 'pediatrics').length, [articles]);
+  const vaccineCount = useMemo(() => articles.filter(a => a.category === 'vaccine').length, [articles]);
+  const physioCount = useMemo(() => articles.filter(a => a.category === 'physio').length, [articles]);
+  const thyroidCount = useMemo(() => articles.filter(a => a.category === 'thyroid').length, [articles]);
+  const bpCount = useMemo(() => articles.filter(a => a.category === 'bp').length, [articles]);
+  const diabetesCount = useMemo(() => articles.filter(a => a.category === 'diabetes').length, [articles]);
+  const liverCount = useMemo(() => articles.filter(a => a.category === 'liver').length, [articles]);
+  const kidneyCount = useMemo(() => articles.filter(a => a.category === 'kidney').length, [articles]);
+  const nutritionCount = useMemo(() => articles.filter(a => a.category === 'nutrition').length, [articles]);
+  const elderlyCount = useMemo(() => articles.filter(a => a.category === 'elderly').length, [articles]);
+  const dentalCount = useMemo(() => articles.filter(a => a.category === 'specialty_dental').length, [articles]);
+  const eyeCount = useMemo(() => articles.filter(a => a.category === 'specialty_eye').length, [articles]);
+  const entCount = useMemo(() => articles.filter(a => a.category === 'specialty_ent').length, [articles]);
+  const dermaCount = useMemo(() => articles.filter(a => a.category === 'specialty_derma').length, [articles]);
+  const orthoCount = useMemo(() => articles.filter(a => a.category === 'specialty_ortho').length, [articles]);
+  const neuroCount = useMemo(() => articles.filter(a => a.category === 'specialty_neuro').length, [articles]);
+  const mosquitoCount = useMemo(() => articles.filter(a => a.category === 'mosquito_borne').length, [articles]);
 
   // General Categories (strictly non-flood)
   const GENERAL_CATEGORIES = [

@@ -95,6 +95,58 @@
         { "name": "status", "type": "string", "description": "pending or answered" },
         { "name": "answers", "type": "array", "description": "Doctor response answers" }
       ]
+    },
+    {
+      "id": "familyMembers",
+      "description": "Family member health profiles managed by patient",
+      "fields": [
+        { "name": "userId", "type": "string", "description": "Owner UID" },
+        { "name": "name", "type": "string", "description": "Family member name" },
+        { "name": "relation", "type": "string", "description": "Relationship" },
+        { "name": "age", "type": "number", "description": "Age" },
+        { "name": "gender", "type": "string", "description": "Gender" },
+        { "name": "bloodType", "type": "string", "description": "Blood type" }
+      ]
+    },
+    {
+      "id": "medicationLogs",
+      "description": "Daily medication adherence tracking logs",
+      "fields": [
+        { "name": "userId", "type": "string", "description": "Owner UID" },
+        { "name": "medicationId", "type": "string", "description": "Medication doc ID" },
+        { "name": "medicationName", "type": "string", "description": "Name of medication" },
+        { "name": "date", "type": "string", "description": "YYYY-MM-DD date of dose" },
+        { "name": "doseIndex", "type": "number", "description": "Dose index of the day" },
+        { "name": "taken", "type": "boolean", "description": "Whether dose was taken" },
+        { "name": "takenAt", "type": "string", "description": "Timestamp taken" }
+      ]
+    },
+    {
+      "id": "vaccines",
+      "description": "Vaccination passport records",
+      "fields": [
+        { "name": "userId", "type": "string", "description": "Owner UID" },
+        { "name": "vaccineName", "type": "string", "description": "Vaccine name" },
+        { "name": "doseNumber", "type": "number", "description": "Dose sequence" },
+        { "name": "administeredDate", "type": "string", "description": "Administered date" }
+      ]
+    },
+    {
+      "id": "admins",
+      "description": "Verified system administrators list",
+      "fields": [
+        { "name": "role", "type": "string", "description": "Role: admin" },
+        { "name": "createdAt", "type": "string", "description": "Created timestamp" }
+      ]
+    },
+    {
+      "id": "broadcastTickers",
+      "description": "Health broadcast banner messages",
+      "fields": [
+        { "name": "message", "type": "string", "description": "Banner message text" },
+        { "name": "isActive", "type": "boolean", "description": "Display status" },
+        { "name": "type", "type": "string", "description": "info, warning, or urgent" }
+      ]
     }
   ]
 }

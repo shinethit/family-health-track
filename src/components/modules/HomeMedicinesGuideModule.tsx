@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { OTCMedicine } from '../../types/health';
 import { OTC_MEDICINES_DATA } from '../../data/otcMedicines';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 export const HomeMedicinesGuideModule: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -194,6 +195,9 @@ export const HomeMedicinesGuideModule: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
 
       {/* Medicine Detail Modal */}
       {activeMedicine && (

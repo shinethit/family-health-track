@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ShieldCheck
 } from 'lucide-react';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 interface GeriatricTopic {
   id: string;
@@ -512,6 +513,9 @@ export const ElderlyCareModule: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
     </div>
   );
 };

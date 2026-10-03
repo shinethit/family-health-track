@@ -12,32 +12,25 @@ import {
   getDocs 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { useAuth, isTargetAdminEmail, sanitizeForFirestore } from './AuthContext';
+import { useAuth, sanitizeForFirestore } from './AuthContext';
+import { useToast } from './ToastContext';
+import { USER_DATA_COLLECTIONS } from '../constants/collections';
 import { 
   BloodPressureRecord, 
   BloodSugarRecord, 
   LabTestRecord, 
   Medication, 
+  MedicationLog,
   DoctorAdvice, 
   UserProfile,
   FamilyMember,
   BMIRecord,
   DoctorQuestion,
   DoctorAnswer,
-  BroadcastTicker
+  BroadcastTicker,
+  VaccinationRecord
 } from '../types/health';
 import { calculateBPCategory, calculateGlucoseStatus, calculateBMI } from '../lib/medicalCalculations';
-
-export const isPatientOnly = (p?: UserProfile | null): boolean => {
-  if (!p) return false;
-  if (p.role === 'admin') return false;
-  if (isTargetAdminEmail(p.email)) return false;
-  const name = (p.displayName || '').trim();
-  const mail = (p.email || '').toLowerCase().trim();
-  if (name === 'ရှိုင်းသစ်' || mail === 'admin@familyhealthtrack.com' || isTargetAdminEmail(mail)) return false;
-  if (p.id?.startsWith('admin-') || p.id === 'admin-shinethit') return false;
-  return true;
-};
 
 // Helper to resolve clean display name for users
 export const resolveCleanName = (name?: string, email?: string, phone?: string): string => {
@@ -72,7 +65,10 @@ export const resolveCleanName = (name?: string, email?: string, phone?: string):
   return 'အသုံးပြုသူ';
 };
 
-// Multi-Source Patient Discovery: Aggregates patient profiles from the users collection and all health record collections
+// Filter to ensure profile is a patient, not an admin
+export const isPatientOnly = (p: UserProfile): boolean => p?.role !== 'admin';
+
+// Aggregates patient profiles from the users collection and record collections for admin dashboard
 export const aggregatePatientsFromRecords = (
   existingUsers: UserProfile[],
   vitals: BloodPressureRecord[] = [],
@@ -85,12 +81,12 @@ export const aggregatePatientsFromRecords = (
 ): UserProfile[] => {
   const patientMap = new Map<string, UserProfile>();
 
-  // 1. Add all from existing users collection
+  // 1. Add from existing users collection (excluding admin users)
   existingUsers.forEach(u => {
-    if (u && u.id && isPatientOnly(u)) {
+    if (u && u.id && u.role !== 'admin') {
       const cleanUser = {
         ...u,
-        displayName: resolveCleanName(u.displayName || (u as any).name, u.email),
+        displayName: resolveCleanName(u.displayName, u.email),
       };
       patientMap.set(u.id, cleanUser);
     }
@@ -98,7 +94,7 @@ export const aggregatePatientsFromRecords = (
 
   // 2. Discover from Vitals
   vitals.forEach(v => {
-    if (v.userId && !patientMap.has(v.userId) && !isTargetAdminEmail(v.patientEmail)) {
+    if (v.userId && !patientMap.has(v.userId)) {
       const discovered: UserProfile = {
         id: v.userId,
         displayName: resolveCleanName(v.userName || v.patientName, v.patientEmail),
@@ -107,9 +103,7 @@ export const aggregatePatientsFromRecords = (
         chronicConditions: ['သွေးတိုး'],
         createdAt: v.recordedAt || v.createdAt || new Date().toISOString()
       };
-      if (isPatientOnly(discovered)) {
-        patientMap.set(v.userId, discovered);
-      }
+      patientMap.set(v.userId, discovered);
     } else if (v.userId && patientMap.has(v.userId)) {
       const p = patientMap.get(v.userId)!;
       if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && (v.userName || v.patientName)) {
@@ -120,7 +114,7 @@ export const aggregatePatientsFromRecords = (
 
   // 3. Discover from Glucose
   glucoses.forEach(g => {
-    if (g.userId && !patientMap.has(g.userId) && !isTargetAdminEmail((g as any).patientEmail)) {
+    if (g.userId && !patientMap.has(g.userId)) {
       const discovered: UserProfile = {
         id: g.userId,
         displayName: resolveCleanName(g.userName || g.patientName, (g as any).patientEmail),
@@ -129,9 +123,7 @@ export const aggregatePatientsFromRecords = (
         chronicConditions: ['ဆီးချို'],
         createdAt: g.recordedAt || g.createdAt || new Date().toISOString()
       };
-      if (isPatientOnly(discovered)) {
-        patientMap.set(g.userId, discovered);
-      }
+      patientMap.set(g.userId, discovered);
     } else if (g.userId && patientMap.has(g.userId)) {
       const p = patientMap.get(g.userId)!;
       if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && (g.userName || g.patientName)) {
@@ -140,7 +132,7 @@ export const aggregatePatientsFromRecords = (
     }
   });
 
-  // 3.1. Discover from BMI Records
+  // 4. Discover from BMI Records
   bmis.forEach(b => {
     if (b.userId && !patientMap.has(b.userId)) {
       const discovered: UserProfile = {
@@ -153,9 +145,7 @@ export const aggregatePatientsFromRecords = (
         waistCm: b.waistCm,
         createdAt: b.date || b.createdAt || new Date().toISOString()
       };
-      if (isPatientOnly(discovered)) {
-        patientMap.set(b.userId, discovered);
-      }
+      patientMap.set(b.userId, discovered);
     } else if (b.userId && patientMap.has(b.userId)) {
       const p = patientMap.get(b.userId)!;
       if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && b.userName) {
@@ -167,7 +157,7 @@ export const aggregatePatientsFromRecords = (
     }
   });
 
-  // 3.2. Discover from Medications Records
+  // 5. Discover from Medications Records
   meds.forEach(m => {
     if (m.userId && !patientMap.has(m.userId)) {
       const discovered: UserProfile = {
@@ -177,9 +167,7 @@ export const aggregatePatientsFromRecords = (
         role: 'patient',
         createdAt: m.startDate || (m as any).createdAt || new Date().toISOString()
       };
-      if (isPatientOnly(discovered)) {
-        patientMap.set(m.userId, discovered);
-      }
+      patientMap.set(m.userId, discovered);
     } else if (m.userId && patientMap.has(m.userId)) {
       const p = patientMap.get(m.userId)!;
       if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && ((m as any).userName || (m as any).patientName)) {
@@ -188,9 +176,9 @@ export const aggregatePatientsFromRecords = (
     }
   });
 
-  // 4. Discover from Doctor Questions
+  // 6. Discover from Doctor Questions
   questions.forEach(q => {
-    if (q.userId && !patientMap.has(q.userId) && !isTargetAdminEmail(q.patientEmail)) {
+    if (q.userId && !patientMap.has(q.userId)) {
       const discovered: UserProfile = {
         id: q.userId,
         displayName: q.patientName || 'မေးမြန်းသူ လူနာ',
@@ -198,15 +186,13 @@ export const aggregatePatientsFromRecords = (
         role: 'patient',
         createdAt: q.createdAt || new Date().toISOString()
       };
-      if (isPatientOnly(discovered)) {
-        patientMap.set(q.userId, discovered);
-      }
+      patientMap.set(q.userId, discovered);
     }
   });
 
-  // 5. Discover from Advices
+  // 7. Discover from Advices
   advices.forEach(a => {
-    if (a.userId && !patientMap.has(a.userId) && !isTargetAdminEmail((a as any).patientEmail)) {
+    if (a.userId && !patientMap.has(a.userId)) {
       const discovered: UserProfile = {
         id: a.userId,
         displayName: a.patientName || 'လူနာ',
@@ -214,44 +200,11 @@ export const aggregatePatientsFromRecords = (
         role: 'patient',
         createdAt: a.createdAt || new Date().toISOString()
       };
-      if (isPatientOnly(discovered)) {
-        patientMap.set(a.userId, discovered);
-      }
+      patientMap.set(a.userId, discovered);
     }
   });
 
-  return Array.from(patientMap.values()).filter(isPatientOnly);
-};
-
-// Clean Slate: No demo data pre-populated
-export const INITIAL_FAMILY_MEMBERS: FamilyMember[] = [];
-export const INITIAL_PATIENTS: UserProfile[] = [];
-
-// Helper to sanitize any legacy cached demo records from previous sessions
-const sanitizeDemoRecords = <T extends { id?: string; userId?: string }>(records: T[]): T[] => {
-  if (!Array.isArray(records)) return [];
-  return records.filter(item => {
-    const id = String(item.id || '');
-    const uid = String(item.userId || '');
-    const anyItem = item as any;
-    if (
-      id.startsWith('bp-00') || 
-      id.startsWith('glu-00') || 
-      id.startsWith('lab-00') || 
-      id.startsWith('med-00') || 
-      id.startsWith('adv-00') || 
-      id.startsWith('fam-00') || 
-      id.startsWith('bmi-00') ||
-      id.includes('demo') || 
-      uid.includes('demo') ||
-      anyItem.email?.includes('demo') ||
-      anyItem.displayName?.includes('မောင်မောင်') ||
-      anyItem.patientName?.includes('မောင်မောင်')
-    ) {
-      return false;
-    }
-    return true;
-  });
+  return Array.from(patientMap.values()).filter(p => p.role !== 'admin');
 };
 
 export interface DatabaseStats {
@@ -263,6 +216,7 @@ export interface DatabaseStats {
   totalMeds: number;
   totalQuestions: number;
   totalAdvices: number;
+  totalVaccines: number;
   totalDocuments: number;
   estimatedStorageKB: number;
   dailyReadQuota: number;
@@ -277,6 +231,7 @@ interface HealthDataContextType {
   glucoseRecords: BloodSugarRecord[];
   labRecords: LabTestRecord[];
   medications: Medication[];
+  vaccineRecords: VaccinationRecord[];
   doctorAdvices: DoctorAdvice[];
   patientsList: UserProfile[];
   bmiRecords: BMIRecord[];
@@ -297,8 +252,12 @@ interface HealthDataContextType {
   selectedFamilyMemberId: string | null;
   setSelectedFamilyMemberId: (id: string | null) => void;
   selectedFamilyMember: FamilyMember | null;
-  addFamilyMember: (member: Omit<FamilyMember, 'id'>) => void;
-  deleteFamilyMember: (id: string) => void;
+  addFamilyMember: (member: Omit<FamilyMember, 'id'>) => Promise<void>;
+  deleteFamilyMember: (id: string) => Promise<void>;
+
+  // Medication Intake Logs & Adherence
+  medicationLogs: MedicationLog[];
+  toggleMedicationDoseTaken: (medicationId: string, dateStr: string, taken: boolean, doseIndex?: number, medName?: string) => Promise<void>;
 
   // Selected Patient for Admin view
   selectedPatientId: string | null;
@@ -323,6 +282,10 @@ interface HealthDataContextType {
   updateMedicationStatus: (id: string, status: Medication['status']) => Promise<void>;
   deleteMedication: (id: string) => Promise<void>;
 
+  addVaccineRecord: (data: Omit<VaccinationRecord, 'id' | 'createdAt'>) => Promise<void>;
+  updateVaccineRecord: (id: string, updates: Partial<VaccinationRecord>) => Promise<void>;
+  deleteVaccineRecord: (id: string) => Promise<void>;
+
   addBMIRecord: (data: Omit<BMIRecord, 'id' | 'category' | 'bmi' | 'createdAt'> & { bmi?: number; category?: any }) => Promise<void>;
   deleteBMIRecord: (id: string) => Promise<void>;
 
@@ -341,157 +304,85 @@ const HealthDataContext = createContext<HealthDataContextType | undefined>(undef
 
 export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, profile, isAdmin } = useAuth();
+  const { showToast } = useToast();
 
-  const [allBP, setAllBP] = useState<BloodPressureRecord[]>(() => {
-    const saved = localStorage.getItem('health_records_bp');
-    return saved ? sanitizeDemoRecords(JSON.parse(saved)) : [];
-  });
-
-  const [allGlucose, setAllGlucose] = useState<BloodSugarRecord[]>(() => {
-    const saved = localStorage.getItem('health_records_glucose');
-    return saved ? sanitizeDemoRecords(JSON.parse(saved)) : [];
-  });
-
-  const [allLabs, setAllLabs] = useState<LabTestRecord[]>(() => {
-    const saved = localStorage.getItem('health_records_labs');
-    return saved ? sanitizeDemoRecords(JSON.parse(saved)) : [];
-  });
-
-  const [allMeds, setAllMeds] = useState<Medication[]>(() => {
-    const saved = localStorage.getItem('health_records_meds');
-    return saved ? sanitizeDemoRecords(JSON.parse(saved)) : [];
-  });
-
-  const [allAdvices, setAllAdvices] = useState<DoctorAdvice[]>(() => {
-    const saved = localStorage.getItem('health_records_advices');
-    return saved ? sanitizeDemoRecords(JSON.parse(saved)) : [];
-  });
-
-  const [allBMI, setAllBMI] = useState<BMIRecord[]>(() => {
-    const saved = localStorage.getItem('health_records_bmi');
-    return saved ? sanitizeDemoRecords(JSON.parse(saved)) : [];
-  });
-
-  const [allQuestions, setAllQuestions] = useState<DoctorQuestion[]>(() => {
-    const saved = localStorage.getItem('health_records_questions');
-    return saved ? sanitizeDemoRecords(JSON.parse(saved)) : [];
-  });
-
-  const [broadcastTickers, setBroadcastTickers] = useState<BroadcastTicker[]>(() => {
-    const saved = localStorage.getItem('health_broadcast_tickers');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {}
+  // Pure in-memory state - persistent storage is handled directly by Firestore's persistentLocalCache
+  const [allBP, setAllBP] = useState<BloodPressureRecord[]>([]);
+  const [allGlucose, setAllGlucose] = useState<BloodSugarRecord[]>([]);
+  const [allLabs, setAllLabs] = useState<LabTestRecord[]>([]);
+  const [allMeds, setAllMeds] = useState<Medication[]>([]);
+  const [allMedLogs, setAllMedLogs] = useState<MedicationLog[]>([]);
+  const [allAdvices, setAllAdvices] = useState<DoctorAdvice[]>([]);
+  const [allBMI, setAllBMI] = useState<BMIRecord[]>([]);
+  const [allQuestions, setAllQuestions] = useState<DoctorQuestion[]>([]);
+  const [allVaccines, setAllVaccines] = useState<VaccinationRecord[]>([]);
+  const [broadcastTickers, setBroadcastTickers] = useState<BroadcastTicker[]>([
+    {
+      id: 'ticker-01',
+      message: '📢 အသိပေးချက်: ဤ အက်ပလီကေးရှင်းပါ အချက်အလက်များသည် ကျန်းမာရေး ဗဟုသုတနှင့် ကိုယ်ရေးကိုယ်တာ မှတ်တမ်းတင်ရန် သီးသန့် ဖြစ်ပါသည်။ ဆရာဝန်၏ တိုက်ရိုက် ကုသမှုကို အစားမထိုးပါ။',
+      isActive: true,
+      type: 'info',
+      createdAt: new Date().toISOString()
     }
-    return [
-      {
-        id: 'ticker-01',
-        message: '📢 အသိပေးချက်: ဤ အက်ပလီကေးရှင်းပါ အချက်အလက်များသည် ကျန်းမာရေး ဗဟုသုတနှင့် ကိုယ်ရေးကိုယ်တာ မှတ်တမ်းတင်ရန် သီးသန့် ဖြစ်ပါသည်။ ဆရာဝန်၏ တိုက်ရိုက် ကုသမှုကို အစားမထိုးပါ။',
-        isActive: true,
-        type: 'info',
-        createdAt: new Date().toISOString()
-      }
-    ];
-  });
+  ]);
 
-  useEffect(() => {
-    localStorage.setItem('health_broadcast_tickers', JSON.stringify(broadcastTickers));
-  }, [broadcastTickers]);
-
-  const [patientsList, setPatientsList] = useState<UserProfile[]>(() => {
-    const saved = localStorage.getItem('health_all_patients');
-    return saved ? sanitizeDemoRecords<UserProfile>(JSON.parse(saved)).filter(isPatientOnly) : [];
-  });
-
-  // Family Members Management
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(() => {
-    const saved = localStorage.getItem('health_family_members');
-    return saved ? sanitizeDemoRecords(JSON.parse(saved)) : [];
-  });
-
-  const [selectedFamilyMemberId, setSelectedFamilyMemberId] = useState<string | null>(() => {
-    const saved = localStorage.getItem('health_family_members');
-    const parsed = saved ? sanitizeDemoRecords(JSON.parse(saved)) : [];
-    return parsed.length > 0 && parsed[0]?.id ? String(parsed[0].id) : null;
-  });
-
-  // For Admin drill-down
+  const [patientsList, setPatientsList] = useState<UserProfile[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [selectedFamilyMemberId, setSelectedFamilyMemberId] = useState<string | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string>(() => new Date().toLocaleTimeString('my-MM'));
 
-  // Sync to local storage
+  // Firestore Live Listeners attached strictly when authenticated
   useEffect(() => {
-    localStorage.setItem('health_family_members', JSON.stringify(familyMembers));
-  }, [familyMembers]);
-  useEffect(() => {
-    localStorage.setItem('health_records_bp', JSON.stringify(allBP));
-  }, [allBP]);
-  useEffect(() => {
-    localStorage.setItem('health_records_glucose', JSON.stringify(allGlucose));
-  }, [allGlucose]);
-  useEffect(() => {
-    localStorage.setItem('health_records_labs', JSON.stringify(allLabs));
-  }, [allLabs]);
-  useEffect(() => {
-    localStorage.setItem('health_records_meds', JSON.stringify(allMeds));
-  }, [allMeds]);
-  useEffect(() => {
-    localStorage.setItem('health_records_advices', JSON.stringify(allAdvices));
-  }, [allAdvices]);
-  useEffect(() => {
-    localStorage.setItem('health_records_bmi', JSON.stringify(allBMI));
-  }, [allBMI]);
-  useEffect(() => {
-    localStorage.setItem('health_records_questions', JSON.stringify(allQuestions));
-  }, [allQuestions]);
-  useEffect(() => {
-    localStorage.setItem('health_all_patients', JSON.stringify(patientsList.filter(isPatientOnly)));
-  }, [patientsList]);
-
-  // Keep patients list updated if current profile is a patient
-  useEffect(() => {
-    if (profile && profile.role === 'patient' && isPatientOnly(profile)) {
-      setPatientsList(prev => {
-        const filtered = prev.filter(isPatientOnly);
-        const idx = filtered.findIndex(p => p.id === profile.id);
-        if (idx >= 0) {
-          const updated = [...filtered];
-          updated[idx] = { ...updated[idx], ...profile };
-          return updated;
-        } else {
-          return [profile, ...filtered];
-        }
-      });
+    if (!currentUser) {
+      setAllBP([]);
+      setAllGlucose([]);
+      setAllLabs([]);
+      setAllMeds([]);
+      setAllAdvices([]);
+      setAllBMI([]);
+      setAllQuestions([]);
+      setAllVaccines([]);
+      setPatientsList([]);
+      setFamilyMembers([]);
+      setSelectedFamilyMemberId(null);
+      setSelectedPatientId(null);
+      return;
     }
-  }, [profile]);
 
-  // Firestore Live Listeners when real Firebase user is authenticated
-  useEffect(() => {
     let unsubscribeUsers = () => {};
     let unsubscribeVitals = () => {};
     let unsubscribeGlu = () => {};
     let unsubscribeBMI = () => {};
     let unsubscribeLabs = () => {};
     let unsubscribeMeds = () => {};
+    let unsubscribeVaccines = () => {};
     let unsubscribeQuestions = () => {};
+    let unsubscribeAdvices = () => {};
+    let unsubscribeFam = () => {};
+    let unsubscribeTickers = () => {};
 
     try {
-      // 1. Users list - Real-time synchronization
-      const usersQuery = query(collection(db, 'users'));
-      unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
-        const list: UserProfile[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data() as UserProfile;
-          const prof: UserProfile = { ...data, id: docSnap.id };
-          if (isPatientOnly(prof)) {
-            list.push(prof);
-          }
+      // 1. Users list (Only admins can query all users)
+      if (isAdmin) {
+        const usersQuery = query(collection(db, 'users'));
+        unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
+          const list: UserProfile[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as UserProfile;
+            if (data.role !== 'admin') {
+              list.push({ ...data, id: docSnap.id });
+            }
+          });
+          setPatientsList(list);
+        }, (err) => {
+          console.warn('Users listener:', err);
+          showToast('လူနာစာရင်း ရယူရာတွင် ချို့ယွင်းချက် ဖြစ်ပေါ်ခဲ့ပါသည်', 'warning');
         });
-        setPatientsList(list);
-      }, (err) => console.warn('Users listener:', err));
+      }
 
       // 2. Vitals
-      const vitalsQuery = (isAdmin || !currentUser)
+      const vitalsQuery = isAdmin
         ? query(collection(db, 'vitals'))
         : query(collection(db, 'vitals'), where('userId', '==', currentUser.uid));
       unsubscribeVitals = onSnapshot(vitalsQuery, (snapshot) => {
@@ -499,13 +390,14 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as BloodPressureRecord), id: docSnap.id });
         });
-        if (items.length > 0 || !isAdmin) {
-          setAllBP(items);
-        }
-      }, (e) => console.warn('Vitals snapshot:', e));
+        setAllBP(items);
+      }, (e) => {
+        console.warn('Vitals snapshot:', e);
+        showToast('သွေးပေါင်ချိန် မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
+      });
 
       // 3. Glucose
-      const gluQuery = (isAdmin || !currentUser)
+      const gluQuery = isAdmin
         ? query(collection(db, 'glucose'))
         : query(collection(db, 'glucose'), where('userId', '==', currentUser.uid));
       unsubscribeGlu = onSnapshot(gluQuery, (snapshot) => {
@@ -513,13 +405,14 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as BloodSugarRecord), id: docSnap.id });
         });
-        if (items.length > 0 || !isAdmin) {
-          setAllGlucose(items);
-        }
-      }, (e) => console.warn('Glucose snapshot:', e));
+        setAllGlucose(items);
+      }, (e) => {
+        console.warn('Glucose snapshot:', e);
+        showToast('ဆီးချို မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
+      });
 
       // 4. BMI
-      const bmiQuery = (isAdmin || !currentUser)
+      const bmiQuery = isAdmin
         ? query(collection(db, 'bmi'))
         : query(collection(db, 'bmi'), where('userId', '==', currentUser.uid));
       unsubscribeBMI = onSnapshot(bmiQuery, (snapshot) => {
@@ -527,13 +420,14 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as BMIRecord), id: docSnap.id });
         });
-        if (items.length > 0 || !isAdmin) {
-          setAllBMI(items);
-        }
-      }, (e) => console.warn('BMI snapshot:', e));
+        setAllBMI(items);
+      }, (e) => {
+        console.warn('BMI snapshot:', e);
+        showToast('BMI မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
+      });
 
       // 5. Labs
-      const labsQuery = (isAdmin || !currentUser)
+      const labsQuery = isAdmin
         ? query(collection(db, 'labTests'))
         : query(collection(db, 'labTests'), where('userId', '==', currentUser.uid));
       unsubscribeLabs = onSnapshot(labsQuery, (snapshot) => {
@@ -541,13 +435,14 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as LabTestRecord), id: docSnap.id });
         });
-        if (items.length > 0 || !isAdmin) {
-          setAllLabs(items);
-        }
-      }, (e) => console.warn('Labs snapshot:', e));
+        setAllLabs(items);
+      }, (e) => {
+        console.warn('Labs snapshot:', e);
+        showToast('ဓာတ်ခွဲခန်း မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
+      });
 
       // 6. Meds
-      const medsQuery = (isAdmin || !currentUser)
+      const medsQuery = isAdmin
         ? query(collection(db, 'medications'))
         : query(collection(db, 'medications'), where('userId', '==', currentUser.uid));
       unsubscribeMeds = onSnapshot(medsQuery, (snapshot) => {
@@ -555,13 +450,14 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as Medication), id: docSnap.id });
         });
-        if (items.length > 0 || !isAdmin) {
-          setAllMeds(items);
-        }
-      }, (e) => console.warn('Meds snapshot:', e));
+        setAllMeds(items);
+      }, (e) => {
+        console.warn('Meds snapshot:', e);
+        showToast('ဆေးမှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
+      });
 
       // 7. Doctor Questions
-      const questionsQuery = (isAdmin || !currentUser)
+      const questionsQuery = isAdmin
         ? query(collection(db, 'doctorQuestions'))
         : query(collection(db, 'doctorQuestions'), where('userId', '==', currentUser.uid));
       unsubscribeQuestions = onSnapshot(questionsQuery, (snapshot) => {
@@ -570,10 +466,121 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           items.push({ ...(docSnap.data() as DoctorQuestion), id: docSnap.id });
         });
         setAllQuestions(items);
-      }, (e) => console.warn('DoctorQuestions snapshot:', e));
+      }, (e) => {
+        console.warn('DoctorQuestions snapshot:', e);
+        showToast('ဆရာဝန် မေးခွန်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
+      });
 
-      // Auto run refresh on mount
-      refreshAdminData();
+      // 8. Doctor Advices
+      const advicesQuery = isAdmin
+        ? query(collection(db, 'doctorAdvices'))
+        : query(collection(db, 'doctorAdvices'), where('userId', '==', currentUser.uid));
+      unsubscribeAdvices = onSnapshot(advicesQuery, (snapshot) => {
+        const items: DoctorAdvice[] = [];
+        snapshot.forEach(docSnap => {
+          items.push({ ...(docSnap.data() as DoctorAdvice), id: docSnap.id });
+        });
+        setAllAdvices(items);
+      }, (e) => {
+        console.warn('DoctorAdvices snapshot:', e);
+        showToast('ဆရာဝန် အကြံပြုချက်များ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
+      });
+
+      // 9. Family Members
+      const famQuery = isAdmin
+        ? query(collection(db, 'familyMembers'))
+        : query(collection(db, 'familyMembers'), where('userId', '==', currentUser.uid));
+      unsubscribeFam = onSnapshot(famQuery, (snapshot) => {
+        const items: FamilyMember[] = [];
+        snapshot.forEach(docSnap => {
+          items.push({ ...(docSnap.data() as FamilyMember), id: docSnap.id });
+        });
+        setFamilyMembers(items);
+        if (items.length > 0 && !selectedFamilyMemberId) {
+          setSelectedFamilyMemberId(items[0].id);
+        }
+      }, (e) => {
+        console.warn('FamilyMembers snapshot:', e);
+        showToast('မိသားစုဝင် မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
+      });
+
+      // 10. Medication Intake Logs
+      const medLogsQuery = isAdmin
+        ? query(collection(db, 'medicationLogs'))
+        : query(collection(db, 'medicationLogs'), where('userId', '==', currentUser.uid));
+      const unsubscribeMedLogs = onSnapshot(medLogsQuery, (snapshot) => {
+        const items: MedicationLog[] = [];
+        snapshot.forEach(docSnap => {
+          items.push({ ...(docSnap.data() as MedicationLog), id: docSnap.id });
+        });
+        setAllMedLogs(items);
+      }, (e) => {
+        console.warn('MedicationLogs snapshot:', e);
+        showToast('ဆေးသောက်ပြီး မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
+      });
+
+      // 11. Vaccines
+      const vacQuery = isAdmin
+        ? query(collection(db, 'vaccines'))
+        : query(collection(db, 'vaccines'), where('userId', '==', currentUser.uid));
+      unsubscribeVaccines = onSnapshot(vacQuery, (snapshot) => {
+        const items: VaccinationRecord[] = [];
+        snapshot.forEach(docSnap => {
+          items.push({ ...(docSnap.data() as VaccinationRecord), id: docSnap.id });
+        });
+        setAllVaccines(items);
+      }, (e) => {
+        console.warn('Vaccines snapshot:', e);
+        showToast('ကာကွယ်ဆေး မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
+      });
+
+      // 12. Broadcast Tickers
+      unsubscribeTickers = onSnapshot(collection(db, 'broadcastTickers'), (snapshot) => {
+        const items: BroadcastTicker[] = [];
+        snapshot.forEach(docSnap => {
+          items.push({ ...(docSnap.data() as BroadcastTicker), id: docSnap.id });
+        });
+        if (items.length > 0) {
+          setBroadcastTickers(items);
+        }
+      }, (e) => console.warn('BroadcastTickers snapshot:', e));
+
+      // One-time migration of legacy localStorage family members into Firestore
+      const legacyFamStr = localStorage.getItem('health_family_members');
+      if (legacyFamStr) {
+        try {
+          const parsedFam = JSON.parse(legacyFamStr);
+          if (Array.isArray(parsedFam) && parsedFam.length > 0) {
+            parsedFam.forEach(async (member: any) => {
+              try {
+                const migratedMember = {
+                  name: member.name || 'မိသားစုဝင်',
+                  relation: member.relation || 'အခြား',
+                  age: Number(member.age || 0),
+                  gender: member.gender || 'male',
+                  bloodType: member.bloodType || 'O+',
+                  chronicConditions: member.chronicConditions || [],
+                  emergencyContact: member.emergencyContact || '',
+                  userId: currentUser.uid,
+                  avatarColor: member.gender === 'female' ? 'bg-rose-600' : 'bg-emerald-600',
+                  createdAt: new Date().toISOString(),
+                };
+                await addDoc(collection(db, 'familyMembers'), sanitizeForFirestore(migratedMember));
+              } catch (err) {
+                console.warn('Error migrating member:', err);
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to parse health_family_members migration data:', e);
+        } finally {
+          localStorage.removeItem('health_family_members');
+        }
+      }
+
+      if (isAdmin) {
+        refreshAdminData();
+      }
 
       return () => {
         unsubscribeUsers();
@@ -582,18 +589,22 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         unsubscribeBMI();
         unsubscribeLabs();
         unsubscribeMeds();
+        unsubscribeMedLogs();
+        unsubscribeVaccines();
         unsubscribeQuestions();
+        unsubscribeAdvices();
+        unsubscribeFam();
+        unsubscribeTickers();
       };
     } catch (e) {
       console.warn('Firestore initialization warning:', e);
     }
   }, [currentUser, isAdmin]);
 
-  const [lastSyncTime, setLastSyncTime] = useState<string>(() => new Date().toLocaleTimeString('my-MM'));
-
   const refreshAdminData = async () => {
+    if (!isAdmin) return;
     try {
-      const [uSnap, vSnap, gSnap, bSnap, lSnap, mSnap, qSnap, aSnap] = await Promise.all([
+      const [uSnap, vSnap, gSnap, bSnap, lSnap, mSnap, qSnap, aSnap, vacSnap] = await Promise.all([
         getDocs(collection(db, 'users')),
         getDocs(collection(db, 'vitals')),
         getDocs(collection(db, 'glucose')),
@@ -602,12 +613,13 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         getDocs(collection(db, 'medications')),
         getDocs(collection(db, 'doctorQuestions')),
         getDocs(collection(db, 'doctorAdvices')),
+        getDocs(collection(db, 'vaccines')),
       ]);
 
       const rawUsers: UserProfile[] = [];
       uSnap.forEach(d => {
         const prof = { ...(d.data() as UserProfile), id: d.id };
-        if (isPatientOnly(prof)) rawUsers.push(prof);
+        if (prof.role !== 'admin') rawUsers.push(prof);
       });
 
       const vList: BloodPressureRecord[] = [];
@@ -638,22 +650,17 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       aSnap.forEach(d => aList.push({ ...(d.data() as DoctorAdvice), id: d.id }));
       setAllAdvices(aList);
 
-      // Perform complete multi-source patient aggregation
+      const vacList: VaccinationRecord[] = [];
+      vacSnap.forEach(d => vacList.push({ ...(d.data() as VaccinationRecord), id: d.id }));
+      setAllVaccines(vacList);
+
+      // Aggregate all discovered patient profiles
       const combinedPatients = aggregatePatientsFromRecords(rawUsers, vList, gList, bList, lList, mList, qList, aList);
       setPatientsList(combinedPatients);
 
-      // Backfill any newly discovered patients into users collection for persistence
-      combinedPatients.forEach(async (pat) => {
-        if (pat && pat.id && !rawUsers.some(u => u.id === pat.id)) {
-          try {
-            await setDoc(doc(db, 'users', pat.id), sanitizeForFirestore(pat), { merge: true });
-          } catch {}
-        }
-      });
-
       setLastSyncTime(new Date().toLocaleTimeString('my-MM'));
     } catch (err) {
-      console.warn('Manual refresh err:', err);
+      console.warn('Admin refresh err:', err);
     }
   };
 
@@ -665,7 +672,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const totalMeds = allMeds.length;
   const totalQuestions = allQuestions.length;
   const totalAdvices = allAdvices.length;
-  const totalDocuments = totalUsers + totalBP + totalGlucose + totalBMI + totalLabs + totalMeds + totalQuestions + totalAdvices;
+  const totalVaccines = allVaccines.length;
+  const totalDocuments = totalUsers + totalBP + totalGlucose + totalBMI + totalLabs + totalMeds + totalQuestions + totalAdvices + totalVaccines;
   const estimatedStorageKB = Math.max(1, Math.round(totalDocuments * 0.85));
 
   const dbStats: DatabaseStats = {
@@ -677,6 +685,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     totalMeds,
     totalQuestions,
     totalAdvices,
+    totalVaccines,
     totalDocuments,
     estimatedStorageKB,
     dailyReadQuota: 50000,
@@ -688,7 +697,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Target Active User ID for filtering
   const currentTargetUserId = isAdmin 
     ? (selectedPatientId || null) 
-    : (profile?.id || 'current-user');
+    : (currentUser?.uid || null);
 
   // Filtered views
   const bpRecords = currentTargetUserId 
@@ -707,6 +716,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     ? allMeds.filter(m => m.userId === currentTargetUserId) 
     : (isAdmin ? allMeds : []);
 
+  const vaccineRecords = currentTargetUserId
+    ? allVaccines.filter(v => v.userId === currentTargetUserId)
+    : (isAdmin ? allVaccines : []);
+
   const doctorAdvices = currentTargetUserId 
     ? allAdvices.filter(a => a.userId === currentTargetUserId) 
     : (isAdmin ? allAdvices : []);
@@ -717,7 +730,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const doctorQuestions = currentTargetUserId
     ? allQuestions.filter(q => q.userId === currentTargetUserId)
-    : (isAdmin ? allQuestions : allQuestions.filter(q => q.userId === profile?.id));
+    : (isAdmin ? allQuestions : allQuestions.filter(q => q.userId === currentUser?.uid));
 
   const latestBMI = bmiRecords.length > 0 
     ? [...bmiRecords].sort((a, b) => new Date(b.timestamp || b.date || b.createdAt || '').getTime() - new Date(a.timestamp || a.date || a.createdAt || '').getTime())[0] 
@@ -729,6 +742,9 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Actions
   const addPatient = async (patientData: Partial<UserProfile> & { displayName: string }): Promise<UserProfile> => {
+    if (!isAdmin) {
+      throw new Error('စီမံခန့်ခွဲသူသာလျှင် လူနာအသစ် ထည့်သွင်းနိုင်ပါသည်');
+    }
     const newId = 'pat-' + Date.now();
     const newPatient: UserProfile = {
       id: newId,
@@ -750,72 +766,62 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       await setDoc(doc(db, 'users', newId), sanitizeForFirestore(newPatient));
+      showToast('လူနာမှတ်တမ်း အသစ်ကို အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ', 'success');
     } catch (e) {
       console.warn('Error saving patient to firestore:', e);
+      showToast('လူနာမှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
 
     return newPatient;
   };
 
   const updatePatient = async (id: string, updates: Partial<UserProfile>): Promise<void> => {
-    const updatedAt = new Date().toISOString();
-    const cleanUpdates: Partial<UserProfile> = {
-      ...updates,
-      updatedAt,
-    };
-
-    // 1. Update in local patientsList state
-    setPatientsList(prev => prev.map(p => (p.id === id ? { ...p, ...cleanUpdates } : p)));
-
-    // 2. If displayName or email updated, sync across active record states
-    if (updates.displayName) {
-      const newName = updates.displayName;
-      setAllBP(prev => prev.map(b => b.userId === id ? { ...b, patientName: newName } : b));
-      setAllGlucose(prev => prev.map(g => g.userId === id ? { ...g, patientName: newName } : g));
-      setAllLabs(prev => prev.map(l => l.userId === id ? { ...l, patientName: newName } : l));
-      setAllMeds(prev => prev.map(m => m.userId === id ? { ...m, patientName: newName } : m));
-      setAllAdvices(prev => prev.map(a => a.userId === id ? { ...a, patientName: newName } : a));
-      setAllQuestions(prev => prev.map(q => q.userId === id ? { ...q, patientName: newName } : q));
+    if (!isAdmin && currentUser?.uid !== id) {
+      throw new Error('လုပ်ဆောင်ခွင့် မရှိပါ');
     }
 
-    // 3. Persist to Firestore users collection
+    const cleanUpdates = {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    if (!isAdmin && 'role' in cleanUpdates) {
+      delete cleanUpdates.role;
+    }
+
+    setPatientsList(prev => prev.map(p => (p.id === id ? { ...p, ...cleanUpdates } : p)));
+
     try {
       await setDoc(doc(db, 'users', id), sanitizeForFirestore(cleanUpdates), { merge: true });
+      showToast('လူနာမှတ်တမ်းကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ', 'success');
     } catch (e) {
       console.warn('Error updating patient in firestore:', e);
+      showToast('လူနာမှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
 
   const deletePatient = async (id: string, deleteAssociatedData: boolean = true) => {
-    // 1. Immediate UI state updates
-    setPatientsList(prev => prev.filter(p => p.id !== id));
-    if (deleteAssociatedData) {
-      setAllBP(prev => prev.filter(b => b.userId !== id));
-      setAllGlucose(prev => prev.filter(g => g.userId !== id));
-      setAllLabs(prev => prev.filter(l => l.userId !== id));
-      setAllMeds(prev => prev.filter(m => m.userId !== id));
-      setAllAdvices(prev => prev.filter(a => a.userId !== id));
-      setAllBMI(prev => prev.filter(b => b.userId !== id));
-      setAllQuestions(prev => prev.filter(q => q.userId !== id));
+    if (!isAdmin) {
+      throw new Error('စီမံခန့်ခွဲသူသာလျှင် ဖျက်ပစ်နိုင်ပါသည်');
     }
+
+    setPatientsList(prev => prev.filter(p => p.id !== id));
     if (selectedPatientId === id) {
       setSelectedPatientId(null);
     }
 
-    // 2. Delete patient document from Firestore users collection
     try {
       await deleteDoc(doc(db, 'users', id));
     } catch (e) {
       console.warn('Error deleting patient from firestore users collection:', e);
+      showToast('လူနာပရိုဖိုင် ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
     }
 
-    // 3. Cascading delete from all associated collections to prevent re-aggregation
     if (deleteAssociatedData) {
       try {
-        const collectionsToClean = ['vitals', 'glucose', 'bmi', 'labTests', 'medications', 'doctorAdvices', 'doctorQuestions'];
         await Promise.all(
-          collectionsToClean.map(async (colName) => {
+          USER_DATA_COLLECTIONS.map(async (colName) => {
             try {
               const q = query(collection(db, colName), where('userId', '==', id));
               const snap = await getDocs(q);
@@ -826,22 +832,19 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
           })
         );
+        showToast('လူနာမှတ်တမ်းနှင့် ဆက်စပ်အချက်အလက်များကို အောင်မြင်စွာ ဖျက်သိမ်းပြီးပါပြီ', 'success');
       } catch (err) {
         console.warn('Error cascading patient records deletion:', err);
+        showToast('ဆက်စပ်မှတ်တမ်းများ ဖျက်ရာတွင် အချို့ချို့ယွင်းချက် ဖြစ်ပေါ်ခဲ့ပါသည်', 'warning');
       }
     }
   };
 
   const clearAllPatients = async () => {
+    if (!isAdmin) {
+      throw new Error('စီမံခန့်ခွဲသူသာလျှင် လုပ်ဆောင်နိုင်ပါသည်');
+    }
     setPatientsList([]);
-    localStorage.removeItem('health_all_patients');
-    localStorage.removeItem('health_records_bp');
-    localStorage.removeItem('health_records_glucose');
-    localStorage.removeItem('health_records_labs');
-    localStorage.removeItem('health_records_meds');
-    localStorage.removeItem('health_records_advices');
-    localStorage.removeItem('health_records_bmi');
-    localStorage.removeItem('health_records_questions');
     setAllBP([]);
     setAllGlucose([]);
     setAllLabs([]);
@@ -849,13 +852,14 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setAllAdvices([]);
     setAllBMI([]);
     setAllQuestions([]);
+    setAllVaccines([]);
     setSelectedPatientId(null);
 
     try {
       const usersSnap = await getDocs(collection(db, 'users'));
       usersSnap.forEach(async (docSnap) => {
         const data = docSnap.data() as UserProfile;
-        if (isPatientOnly({ ...data, id: docSnap.id })) {
+        if (data.role !== 'admin') {
           await deleteDoc(doc(db, 'users', docSnap.id));
         }
       });
@@ -865,30 +869,24 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const addBPRecord = async (data: Omit<BloodPressureRecord, 'id' | 'category' | 'createdAt'>) => {
+    if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
+
     const evalRes = calculateBPCategory(data.systolic, data.diastolic);
     const category = evalRes.category;
-    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
-    const resolvedPatientName = data.patientName || profile?.displayName || 'လူနာ';
-    const resolvedPatientEmail = (data as any).patientEmail || profile?.email || '';
+    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
 
-    const newRecord: BloodPressureRecord = {
+    const newRecord = {
       ...data,
-      id: 'bp-' + Date.now(),
-      userId: resolvedUserId,
-      patientName: resolvedPatientName,
-      patientEmail: resolvedPatientEmail,
+      userId: targetUid,
+      patientName: data.patientName || profile?.displayName || 'လူနာ',
+      patientEmail: (data as any).patientEmail || profile?.email || '',
       category,
       condition: category,
       createdAt: new Date().toISOString(),
     };
 
-    setAllBP(prev => [newRecord, ...prev]);
-
-    try {
-      await addDoc(collection(db, 'vitals'), sanitizeForFirestore(newRecord));
-    } catch (e) {
-      console.warn('Error saving vital to firestore:', e);
-    }
+    const docRef = await addDoc(collection(db, 'vitals'), sanitizeForFirestore(newRecord));
+    setAllBP(prev => [{ ...newRecord, id: docRef.id }, ...prev]);
   };
 
   const deleteBPRecord = async (id: string) => {
@@ -897,24 +895,25 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await deleteDoc(doc(db, 'vitals', id));
     } catch (e) {
       console.warn('Error deleting vital from firestore:', e);
+      showToast('သွေးပေါင်ချိန် မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
   const addGlucoseRecord = async (data: Omit<BloodSugarRecord, 'id' | 'status' | 'createdAt'>) => {
+    if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
+
     const glucoseVal = data.glucoseValue || data.value || 100;
     const timingVal = data.timing || data.type || 'fasting';
     const evalRes = calculateGlucoseStatus(glucoseVal, timingVal);
     const status = evalRes.status;
-    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
-    const resolvedPatientName = data.patientName || profile?.displayName || 'လူနာ';
-    const resolvedPatientEmail = (data as any).patientEmail || profile?.email || '';
+    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
 
-    const newRecord: BloodSugarRecord = {
+    const newRecord = {
       ...data,
-      id: 'glu-' + Date.now(),
-      userId: resolvedUserId,
-      patientName: resolvedPatientName,
-      patientEmail: resolvedPatientEmail,
+      userId: targetUid,
+      patientName: data.patientName || profile?.displayName || 'လူနာ',
+      patientEmail: (data as any).patientEmail || profile?.email || '',
       glucoseValue: glucoseVal,
       value: glucoseVal,
       timing: timingVal,
@@ -923,13 +922,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    setAllGlucose(prev => [newRecord, ...prev]);
-
-    try {
-      await addDoc(collection(db, 'glucose'), sanitizeForFirestore(newRecord));
-    } catch (e) {
-      console.warn('Error saving glucose to firestore:', e);
-    }
+    const docRef = await addDoc(collection(db, 'glucose'), sanitizeForFirestore(newRecord));
+    setAllGlucose(prev => [{ ...newRecord, id: docRef.id }, ...prev]);
   };
 
   const deleteGlucoseRecord = async (id: string) => {
@@ -938,30 +932,25 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await deleteDoc(doc(db, 'glucose', id));
     } catch (e) {
       console.warn('Error deleting glucose from firestore:', e);
+      showToast('ဆီးချို မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
   const addLabRecord = async (data: Omit<LabTestRecord, 'id' | 'createdAt'>) => {
-    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
-    const resolvedPatientName = (data as any).patientName || profile?.displayName || 'လူနာ';
-    const resolvedPatientEmail = (data as any).patientEmail || profile?.email || '';
+    if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
-    const newRecord: LabTestRecord = {
+    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const newRecord = {
       ...data,
-      id: 'lab-' + Date.now(),
-      userId: resolvedUserId,
-      patientName: resolvedPatientName,
-      patientEmail: resolvedPatientEmail,
+      userId: targetUid,
+      patientName: (data as any).patientName || profile?.displayName || 'လူနာ',
+      patientEmail: (data as any).patientEmail || profile?.email || '',
       createdAt: new Date().toISOString(),
     };
 
-    setAllLabs(prev => [newRecord, ...prev]);
-
-    try {
-      await addDoc(collection(db, 'labTests'), sanitizeForFirestore(newRecord));
-    } catch (e) {
-      console.warn('Error saving lab test to firestore:', e);
-    }
+    const docRef = await addDoc(collection(db, 'labTests'), sanitizeForFirestore(newRecord));
+    setAllLabs(prev => [{ ...newRecord, id: docRef.id }, ...prev]);
   };
 
   const deleteLabRecord = async (id: string) => {
@@ -970,30 +959,25 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await deleteDoc(doc(db, 'labTests', id));
     } catch (e) {
       console.warn('Error deleting lab test from firestore:', e);
+      showToast('ဓာတ်ခွဲခန်း မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
   const addMedication = async (data: Omit<Medication, 'id' | 'createdAt'>) => {
-    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
-    const resolvedPatientName = (data as any).patientName || profile?.displayName || 'လူနာ';
-    const resolvedPatientEmail = (data as any).patientEmail || profile?.email || '';
+    if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
-    const newMed: Medication = {
+    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const newMed = {
       ...data,
-      id: 'med-' + Date.now(),
-      userId: resolvedUserId,
-      patientName: resolvedPatientName,
-      patientEmail: resolvedPatientEmail,
+      userId: targetUid,
+      patientName: (data as any).patientName || profile?.displayName || 'လူနာ',
+      patientEmail: (data as any).patientEmail || profile?.email || '',
       createdAt: new Date().toISOString(),
     };
 
-    setAllMeds(prev => [newMed, ...prev]);
-
-    try {
-      await addDoc(collection(db, 'medications'), sanitizeForFirestore(newMed));
-    } catch (e) {
-      console.warn('Error saving medication to firestore:', e);
-    }
+    const docRef = await addDoc(collection(db, 'medications'), sanitizeForFirestore(newMed));
+    setAllMeds(prev => [{ ...newMed, id: docRef.id }, ...prev]);
   };
 
   const updateMedicationStatus = async (id: string, status: Medication['status']) => {
@@ -1002,6 +986,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await updateDoc(doc(db, 'medications', id), { status });
     } catch (e) {
       console.warn('Error updating medication in firestore:', e);
+      showToast('ဆေးအခြေအနေ ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
@@ -1011,63 +997,103 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await deleteDoc(doc(db, 'medications', id));
     } catch (e) {
       console.warn('Error deleting medication from firestore:', e);
+      showToast('ဆေးမှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
+    }
+  };
+
+  const addVaccineRecord = async (data: Omit<VaccinationRecord, 'id' | 'createdAt'>) => {
+    if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
+
+    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const newRecord = {
+      ...data,
+      userId: targetUid,
+      patientName: data.patientName || selectedPatient?.displayName || profile?.displayName || 'လူနာ',
+      createdAt: new Date().toISOString(),
+    };
+
+    const docRef = await addDoc(collection(db, 'vaccines'), sanitizeForFirestore(newRecord));
+    setAllVaccines(prev => [{ ...newRecord, id: docRef.id }, ...prev]);
+  };
+
+  const updateVaccineRecord = async (id: string, updates: Partial<VaccinationRecord>) => {
+    setAllVaccines(prev => prev.map(v => (v.id === id ? { ...v, ...updates } : v)));
+    try {
+      await setDoc(doc(db, 'vaccines', id), sanitizeForFirestore(updates), { merge: true });
+    } catch (e) {
+      console.warn('Error updating vaccine record in firestore:', e);
+      showToast('ကာကွယ်ဆေး မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
+    }
+  };
+
+  const deleteVaccineRecord = async (id: string) => {
+    setAllVaccines(prev => prev.filter(v => v.id !== id));
+    try {
+      await deleteDoc(doc(db, 'vaccines', id));
+    } catch (e) {
+      console.warn('Error deleting vaccine record from firestore:', e);
+      showToast('ကာကွယ်ဆေး မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
   const addDoctorAdvice = async (patientId: string, adviceText: string, diet?: string) => {
+    if (!isAdmin) {
+      throw new Error('စီမံခန့်ခွဲသူ/ဆရာဝန်သာလျှင် အကြံပြုချက် ပေးပို့နိုင်ပါသည်');
+    }
+
     const targetPatient = patientsList.find(p => p.id === patientId);
     const newAdvice: DoctorAdvice = {
       id: 'adv-' + Date.now(),
       userId: patientId,
       patientName: targetPatient?.displayName || 'လူနာ',
-      doctorEmail: profile?.email || 'admin@healthtrack.com',
-      doctorName: profile?.displayName || 'Admin (ရှိုင်းသစ်)',
+      doctorEmail: profile?.email || currentUser?.email || 'admin@healthtrack.com',
+      doctorName: profile?.displayName || 'ဆရာဝန် (Admin)',
       advice: adviceText,
       dietRecommendation: diet,
       date: new Date().toISOString().split('T')[0],
       createdAt: new Date().toISOString(),
     };
 
-    setAllAdvices(prev => [newAdvice, ...prev]);
-
-    try {
-      await addDoc(collection(db, 'doctorAdvices'), sanitizeForFirestore(newAdvice));
-    } catch (e) {
-      console.warn('Error saving doctor advice to firestore:', e);
-    }
+    const docRef = await addDoc(collection(db, 'doctorAdvices'), sanitizeForFirestore(newAdvice));
+    setAllAdvices(prev => [{ ...newAdvice, id: docRef.id }, ...prev]);
   };
 
   const deleteDoctorAdvice = async (id: string) => {
+    if (!isAdmin) {
+      throw new Error('လုပ်ဆောင်ခွင့် မရှိပါ');
+    }
     setAllAdvices(prev => prev.filter(a => a.id !== id));
     try {
       await deleteDoc(doc(db, 'doctorAdvices', id));
     } catch (e) {
       console.warn('Error deleting doctor advice from firestore:', e);
+      showToast('ဆရာဝန် အကြံပြုချက် ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
   const addBMIRecord = async (data: Omit<BMIRecord, 'id' | 'category' | 'bmi' | 'createdAt'> & { bmi?: number; category?: any }) => {
+    if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
+
     const bmiEval = calculateBMI(data.weightKg, data.heightCm);
     const bmiValue = data.bmi || (bmiEval ? bmiEval.bmi : 22);
     const category = data.category || (bmiEval ? bmiEval.category : 'normal');
-    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
+    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
 
-    const newRecord: BMIRecord = {
+    const newRecord = {
       ...data,
-      id: 'bmi-' + Date.now(),
-      userId: resolvedUserId,
+      userId: targetUid,
+      userName: data.userName || profile?.displayName || 'လူနာ',
       bmi: bmiValue,
       category,
       createdAt: new Date().toISOString(),
     };
 
-    setAllBMI(prev => [newRecord, ...prev]);
-
-    try {
-      await addDoc(collection(db, 'bmi'), sanitizeForFirestore(newRecord));
-    } catch (e) {
-      console.warn('Error saving BMI record to firestore:', e);
-    }
+    const docRef = await addDoc(collection(db, 'bmi'), sanitizeForFirestore(newRecord));
+    setAllBMI(prev => [{ ...newRecord, id: docRef.id }, ...prev]);
   };
 
   const deleteBMIRecord = async (id: string) => {
@@ -1076,35 +1102,33 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await deleteDoc(doc(db, 'bmi', id));
     } catch (e) {
       console.warn('Error deleting BMI record from firestore:', e);
+      showToast('BMI မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
   // Doctor Q&A Actions
   const addDoctorQuestion = async (data: Omit<DoctorQuestion, 'id' | 'createdAt' | 'status'>) => {
-    const resolvedUserId = data.userId || profile?.id || currentUser?.uid || 'user-' + Date.now();
-    const resolvedPatientName = data.patientName || profile?.displayName || 'လူနာ';
-    const resolvedPatientEmail = data.patientEmail || profile?.email || '';
+    if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
-    const newQuestion: DoctorQuestion = {
+    const newQuestion = {
       ...data,
-      id: 'q-' + Date.now(),
-      userId: resolvedUserId,
-      patientName: resolvedPatientName,
-      patientEmail: resolvedPatientEmail,
-      status: 'pending',
+      userId: currentUser.uid,
+      patientName: data.patientName || profile?.displayName || 'လူနာ',
+      patientEmail: data.patientEmail || profile?.email || currentUser.email || '',
+      status: 'pending' as const,
       createdAt: new Date().toISOString(),
     };
 
-    setAllQuestions(prev => [newQuestion, ...prev]);
-
-    try {
-      await addDoc(collection(db, 'doctorQuestions'), sanitizeForFirestore(newQuestion));
-    } catch (e) {
-      console.warn('Error saving doctor question to firestore:', e);
-    }
+    const docRef = await addDoc(collection(db, 'doctorQuestions'), sanitizeForFirestore(newQuestion));
+    setAllQuestions(prev => [{ ...newQuestion, id: docRef.id }, ...prev]);
   };
 
   const answerDoctorQuestion = async (questionId: string, answer: DoctorAnswer) => {
+    if (!isAdmin) {
+      throw new Error('ဆရာဝန်/Admin သာလျှင် ဖြေကြားခွင့်ရှိပါသည်');
+    }
+
     setAllQuestions(prev => prev.map(q => {
       if (q.id === questionId) {
         return {
@@ -1125,6 +1149,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }));
     } catch (e) {
       console.warn('Error updating doctor question in firestore:', e);
+      showToast('မေးခွန်း အဖြေပေးပို့ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
@@ -1134,6 +1160,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await updateDoc(doc(db, 'doctorQuestions', questionId), { status: 'closed' });
     } catch (e) {
       console.warn('Error closing doctor question in firestore:', e);
+      showToast('မေးခွန်း ပိတ်သိမ်းခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
@@ -1143,12 +1171,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await deleteDoc(doc(db, 'doctorQuestions', id));
     } catch (e) {
       console.warn('Error deleting doctor question from firestore:', e);
+      showToast('မေးခွန်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
   const addBroadcastTicker = async (message: string, type: 'info' | 'warning' | 'urgent' = 'info') => {
-    const newTicker: BroadcastTicker = {
-      id: 'ticker-' + Date.now(),
+    if (!isAdmin) throw new Error('စီမံခန့်ခွဲသူသာလျှင် ထည့်သွင်းနိုင်ပါသည်');
+
+    const newTicker = {
       message,
       isActive: true,
       type,
@@ -1156,30 +1187,33 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdBy: profile?.displayName || 'Admin',
     };
 
-    setBroadcastTickers(prev => [newTicker, ...prev]);
-
-    try {
-      await addDoc(collection(db, 'broadcastTickers'), sanitizeForFirestore(newTicker));
-    } catch (e) {
-      console.warn('Error saving broadcast ticker to firestore:', e);
-    }
+    const docRef = await addDoc(collection(db, 'broadcastTickers'), sanitizeForFirestore(newTicker));
+    setBroadcastTickers(prev => [{ ...newTicker, id: docRef.id }, ...prev]);
   };
 
   const toggleBroadcastTicker = async (id: string, isActive: boolean) => {
+    if (!isAdmin) throw new Error('စီမံခန့်ခွဲသူသာလျှင် ပြင်ဆင်နိုင်ပါသည်');
+
     setBroadcastTickers(prev => prev.map(t => t.id === id ? { ...t, isActive } : t));
     try {
       await updateDoc(doc(db, 'broadcastTickers', id), { isActive });
     } catch (e) {
       console.warn('Error updating broadcast ticker in firestore:', e);
+      showToast('သတိပေးစာတန်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
   const deleteBroadcastTicker = async (id: string) => {
+    if (!isAdmin) throw new Error('စီမံခန့်ခွဲသူသာလျှင် ဖျက်ပစ်နိုင်ပါသည်');
+
     setBroadcastTickers(prev => prev.filter(t => t.id !== id));
     try {
       await deleteDoc(doc(db, 'broadcastTickers', id));
     } catch (e) {
       console.warn('Error deleting broadcast ticker from firestore:', e);
+      showToast('သတိပေးစာတန်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
   };
 
@@ -1193,34 +1227,82 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setAllQuestions([]);
     setFamilyMembers([]);
     setSelectedFamilyMemberId(null);
-    localStorage.removeItem('health_records_bp');
-    localStorage.removeItem('health_records_glucose');
-    localStorage.removeItem('health_records_labs');
-    localStorage.removeItem('health_records_meds');
-    localStorage.removeItem('health_records_advices');
-    localStorage.removeItem('health_records_bmi');
-    localStorage.removeItem('health_records_questions');
-    localStorage.removeItem('health_family_members');
   };
 
   const selectedFamilyMember = familyMembers.find(f => f.id === selectedFamilyMemberId) || (familyMembers.length > 0 ? familyMembers[0] : null);
 
-  const addFamilyMember = (member: Omit<FamilyMember, 'id'>) => {
-    const newMember: FamilyMember = {
+  const addFamilyMember = async (member: Omit<FamilyMember, 'id'>) => {
+    if (!currentUser) return;
+    const newMember = {
       ...member,
-      id: 'fam-' + Date.now(),
+      userId: currentUser.uid,
       avatarColor: member.gender === 'female' ? 'bg-rose-600' : 'bg-emerald-600',
     };
-    setFamilyMembers(prev => [...prev, newMember]);
-    setSelectedFamilyMemberId(newMember.id);
+
+    const docRef = await addDoc(collection(db, 'familyMembers'), sanitizeForFirestore(newMember));
+    const created = { ...newMember, id: docRef.id };
+    setFamilyMembers(prev => [...prev, created]);
+    setSelectedFamilyMemberId(created.id);
   };
 
-  const deleteFamilyMember = (id: string) => {
+  const deleteFamilyMember = async (id: string) => {
     setFamilyMembers(prev => prev.filter(f => f.id !== id));
     if (selectedFamilyMemberId === id) {
       setSelectedFamilyMemberId(familyMembers[0]?.id || null);
     }
+    try {
+      await deleteDoc(doc(db, 'familyMembers', id));
+    } catch (e) {
+      console.warn('Error deleting family member from firestore:', e);
+      showToast('မိသားစုဝင် မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
+    }
   };
+
+  const toggleMedicationDoseTaken = async (
+    medicationId: string, 
+    dateStr: string, 
+    taken: boolean, 
+    doseIndex: number = 0,
+    medName?: string
+  ) => {
+    if (!currentUser) return;
+    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const existingLog = allMedLogs.find(l => l.medicationId === medicationId && l.date === dateStr && (l.doseIndex ?? 0) === doseIndex && l.userId === targetUid);
+
+    if (existingLog) {
+      setAllMedLogs(prev => prev.map(l => l.id === existingLog.id ? { ...l, taken, takenAt: taken ? new Date().toISOString() : undefined } : l));
+      try {
+        await updateDoc(doc(db, 'medicationLogs', existingLog.id), {
+          taken,
+          takenAt: taken ? new Date().toISOString() : null,
+        });
+      } catch (err) {
+        console.warn('Error updating med log:', err);
+      }
+    } else {
+      const newLog: Omit<MedicationLog, 'id'> = {
+        userId: targetUid,
+        medicationId,
+        medicationName: medName || 'Medication',
+        date: dateStr,
+        doseIndex,
+        taken,
+        takenAt: taken ? new Date().toISOString() : undefined,
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        const docRef = await addDoc(collection(db, 'medicationLogs'), sanitizeForFirestore(newLog));
+        setAllMedLogs(prev => [{ ...newLog, id: docRef.id }, ...prev]);
+      } catch (err) {
+        console.warn('Error adding med log:', err);
+      }
+    }
+  };
+
+  const medicationLogs = currentTargetUserId
+    ? allMedLogs.filter(m => m.userId === currentTargetUserId)
+    : (isAdmin ? allMedLogs : []);
 
   return (
     <HealthDataContext.Provider value={{
@@ -1228,6 +1310,9 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       glucoseRecords,
       labRecords,
       medications,
+      vaccineRecords,
+      medicationLogs,
+      toggleMedicationDoseTaken,
       doctorAdvices,
       patientsList,
       bmiRecords,
@@ -1262,6 +1347,9 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       addMedication,
       updateMedicationStatus,
       deleteMedication,
+      addVaccineRecord,
+      updateVaccineRecord,
+      deleteVaccineRecord,
       addBMIRecord,
       deleteBMIRecord,
       addDoctorAdvice,

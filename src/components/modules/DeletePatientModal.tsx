@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import { 
-  X, 
   Trash2, 
   AlertTriangle, 
   UserX, 
-  Layers, 
-  Activity, 
   CheckSquare, 
   Square,
   ShieldAlert
 } from 'lucide-react';
 import { UserProfile } from '../../types/health';
+import { Modal } from '../common/Modal';
 
 interface DeletePatientModalProps {
   isOpen: boolean;
@@ -44,33 +42,32 @@ export const DeletePatientModal: React.FC<DeletePatientModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-5 my-8">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-xs">
-              <UserX className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
-                အသုံးပြုသူမှတ်တမ်း အပြီးဖျက်ပစ်မည်
-              </h3>
-              <p className="text-xs text-rose-500 font-semibold">
-                Permanent User Profile Deletion
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            disabled={isDeleting}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const titleHeader = (
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-xs shrink-0">
+        <UserX className="w-5 h-5" />
+      </div>
+      <div>
+        <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+          အသုံးပြုသူမှတ်တမ်း အပြီးဖျက်ပစ်မည်
+        </h3>
+        <p className="text-xs text-rose-500 font-semibold">
+          Permanent User Profile Deletion
+        </p>
+      </div>
+    </div>
+  );
 
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      closeOnEscape={!isDeleting}
+      closeOnBackdrop={!isDeleting}
+      title={titleHeader}
+    >
+      <div className="p-5 sm:p-6 space-y-5">
         {errorMsg && (
           <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0" />
@@ -153,6 +150,6 @@ export const DeletePatientModal: React.FC<DeletePatientModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };

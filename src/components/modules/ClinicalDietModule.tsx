@@ -13,6 +13,7 @@ import {
   Check
 } from 'lucide-react';
 import { DietRecommendation } from '../../types/health';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 const DIET_GUIDES: DietRecommendation[] = [
   {
@@ -266,6 +267,9 @@ export const ClinicalDietModule: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
     </div>
   );
 };

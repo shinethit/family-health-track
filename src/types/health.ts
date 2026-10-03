@@ -238,6 +238,18 @@ export interface Medication {
   createdAt?: string;
 }
 
+export interface MedicationLog {
+  id: string;
+  userId: string;
+  medicationId: string;
+  medicationName?: string;
+  date: string; // YYYY-MM-DD
+  doseIndex?: number;
+  taken: boolean;
+  takenAt?: string;
+  createdAt?: string;
+}
+
 export interface DoctorAdvice {
   id: string;
   userId: string;

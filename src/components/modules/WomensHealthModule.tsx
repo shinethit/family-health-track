@@ -14,6 +14,7 @@ import {
   Search,
   BookOpen
 } from 'lucide-react';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 interface HealthTopic {
   id: string;
@@ -736,6 +737,9 @@ export const WomensHealthModule: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
     </div>
   );
 };

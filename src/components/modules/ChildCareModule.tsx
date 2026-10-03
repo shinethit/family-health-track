@@ -16,6 +16,7 @@ import {
   Search,
   ChevronRight
 } from 'lucide-react';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 interface ChildCareTopic {
   id: string;
@@ -623,6 +624,9 @@ export const ChildCareModule: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
     </div>
   );
 };

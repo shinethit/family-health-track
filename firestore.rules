@@ -1,53 +1,140 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Default deny for all unmatched collections & documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // Admin verified strictly via presence in the /admins/{uid} collection
     function isAdmin() {
-      return (
-        isSignedIn() && (
-          request.auth.token.email == 'shinethitsmt@gmail.com' ||
-          request.auth.token.email == 'shinethit.smt@gmail.com' ||
-          request.auth.token.email == 'admin@familyhealthtrack.com' ||
-          request.auth.token.admin == true ||
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
-        )
-      );
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Admins Collection: readable by authenticated users to verify admin status; write blocked for clients
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Users Collection
+    // A user can read and write only their own document. Admins can read and manage.
+    // A user must NOT be able to set or change their own role to 'admin' (blocked on both create and update).
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // On create: must be the owner, and cannot set role to 'admin'
+      allow create: if isOwner(userId) && (
+        !('role' in request.resource.data) || request.resource.data.role != 'admin'
+      );
+      
+      // On update: user can update own document, but cannot set or change role to 'admin'
+      allow update: if (
+        isOwner(userId) && (
+          !('role' in request.resource.data) || 
+          request.resource.data.role != 'admin' ||
+          (resource != null && 'role' in resource.data && request.resource.data.role == resource.data.role)
+        )
+      ) || isAdmin();
+      
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
+    // Patient Health Records (vitals, glucose, bmi, labTests, medications, familyMembers)
+    // A patient can read/update/delete only documents where resource.data.userId == request.auth.uid.
+    // On create: require request.resource.data.userId == request.auth.uid.
+    // On update: userId must not change (request.resource.data.userId == resource.data.userId).
+    // Admins can read all patient data.
     match /vitals/{vitalId} {
-      allow read, write: if true;
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if (isSignedIn() && request.resource.data.userId == request.auth.uid) || (isAdmin() && request.resource.data.userId is string);
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
     match /glucose/{gluId} {
-      allow read, write: if true;
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if (isSignedIn() && request.resource.data.userId == request.auth.uid) || (isAdmin() && request.resource.data.userId is string);
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
     match /bmi/{bmiId} {
-      allow read, write: if true;
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if (isSignedIn() && request.resource.data.userId == request.auth.uid) || (isAdmin() && request.resource.data.userId is string);
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
     match /labTests/{testId} {
-      allow read, write: if true;
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if (isSignedIn() && request.resource.data.userId == request.auth.uid) || (isAdmin() && request.resource.data.userId is string);
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
     match /medications/{medId} {
-      allow read, write: if true;
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if (isSignedIn() && request.resource.data.userId == request.auth.uid) || (isAdmin() && request.resource.data.userId is string);
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
+    match /familyMembers/{memberId} {
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if (isSignedIn() && request.resource.data.userId == request.auth.uid) || (isAdmin() && request.resource.data.userId is string);
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    match /medicationLogs/{logId} {
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if (isSignedIn() && request.resource.data.userId == request.auth.uid) || (isAdmin() && request.resource.data.userId is string);
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    match /vaccines/{vacId} {
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if (isSignedIn() && request.resource.data.userId == request.auth.uid) || (isAdmin() && request.resource.data.userId is string);
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    // Doctor Advices: Patient reads and deletes only their own; only admins can create and update
     match /doctorAdvices/{adviceId} {
-      allow read, write: if true;
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
+    // Doctor Questions: Patient can create and read their own; only admins can modify doctor answer fields
     match /doctorQuestions/{questionId} {
-      allow read, write: if true;
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || (
+        isSignedIn() && 
+        resource.data.userId == request.auth.uid && 
+        request.resource.data.userId == resource.data.userId &&
+        (!('doctorAnswer' in request.resource.data) || request.resource.data.doctorAnswer == resource.data.doctorAnswer)
+      );
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    // Broadcast Tickers: Publicly read by signed in users, managed by admins
+    match /broadcastTickers/{tickerId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }

@@ -20,6 +20,7 @@ import {
   Stethoscope,
   Filter
 } from 'lucide-react';
+import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 interface LabTestItem {
   id: string;
@@ -615,6 +616,9 @@ export const LabInvestigationGuideModule: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Medical Disclaimer */}
+      <MedicalDisclaimer />
     </div>
   );
 };

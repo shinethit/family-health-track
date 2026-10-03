@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Lock, Check, X, KeyRound, AlertCircle } from 'lucide-react';
+import { Lock, Check, KeyRound, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { Modal } from '../common/Modal';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -54,39 +55,39 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
     }
   };
 
+  const titleHeader = (
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+        <KeyRound className="w-5 h-5" />
+      </div>
+      <div>
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+          စကားဝှက် ပြောင်းလဲရန်
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+          {profile?.displayName} ({profile?.email})
+        </p>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <KeyRound className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              စကားဝှက် ပြောင်းလဲရန်
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {profile?.displayName} ({profile?.email})
-            </p>
-          </div>
-        </div>
-
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      title={titleHeader}
+    >
+      <div className="p-5 sm:p-6 space-y-4 text-xs">
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-xs text-rose-700 dark:text-rose-400 flex items-center gap-2">
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-xs text-rose-700 dark:text-rose-400 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+          <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
             <Check className="w-4 h-4 shrink-0" />
             <span>စကားဝှက် အသစ်ကို အောင်မြင်စွာ ပြောင်းလဲပြီးပါပြီ!</span>
           </div>
@@ -152,6 +153,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 };

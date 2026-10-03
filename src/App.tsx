@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { 
   Activity, 
   Droplets, 
@@ -35,42 +35,50 @@ import { NotificationProvider, useNotifications } from './context/NotificationCo
 import { Sidebar } from './components/layout/Sidebar';
 import { Navbar } from './components/layout/Navbar';
 import { LoginScreen } from './components/auth/LoginScreen';
-import { NotificationCenterModal } from './components/modules/NotificationCenterModal';
-import { VersionHistoryModal, CURRENT_SYSTEM_VERSION, VERSION_HISTORY_DATA } from './components/modules/VersionHistoryModal';
-import { UserGuideModal } from './components/modules/UserGuideModal';
-import { HealthPassportModal } from './components/modules/HealthPassportModal';
-import { BloodPressureModule } from './components/modules/BloodPressureModule';
-import { BloodSugarModule } from './components/modules/BloodSugarModule';
-import { LabTestModule } from './components/modules/LabTestModule';
-import { MedicationsModule } from './components/modules/MedicationsModule';
-import { BMIModule } from './components/modules/BMIModule';
-import { TrendsOverview } from './components/modules/TrendsOverview';
-import { AdminPatientPortal } from './components/modules/AdminPatientPortal';
-import { HealthNewsModule } from './components/modules/HealthNewsModule';
-import { DoctorQnAModule } from './components/modules/DoctorQnAModule';
-import { RemindersModule } from './components/modules/RemindersModule';
-import { VaccinePassportModule } from './components/modules/VaccinePassportModule';
-import { EmergencyIDModule } from './components/modules/EmergencyIDModule';
-import { ClinicalDietModule } from './components/modules/ClinicalDietModule';
-import { PhysiotherapyModule } from './components/modules/PhysiotherapyModule';
-import { SpecialtyCareModule } from './components/modules/SpecialtyCareModule';
-import { DermatologyModule } from './components/modules/DermatologyModule';
-import { EmergencyFirstAidModule } from './components/modules/EmergencyFirstAidModule';
-import { HomeMedicinesGuideModule } from './components/modules/HomeMedicinesGuideModule';
-import { HomeTestingGuideModule } from './components/modules/HomeTestingGuideModule';
-import { LabInvestigationGuideModule } from './components/modules/LabInvestigationGuideModule';
-import { WomensHealthModule } from './components/modules/WomensHealthModule';
-import { PregnancyCareModule } from './components/modules/PregnancyCareModule';
-import { ChildCareModule } from './components/modules/ChildCareModule';
-import { ChildMilestonesModule } from './components/modules/ChildMilestonesModule';
-import { ElderlyCareModule } from './components/modules/ElderlyCareModule';
-import { SpecialNeedsCareModule } from './components/modules/SpecialNeedsCareModule';
-import { PrivacyPolicyModal } from './components/modules/PrivacyPolicyModal';
+import { CURRENT_SYSTEM_VERSION } from './constants/version';
+
+// Lazy-loaded Modals
+const NotificationCenterModal = lazy(() => import('./components/modules/NotificationCenterModal').then(m => ({ default: m.NotificationCenterModal })));
+const VersionHistoryModal = lazy(() => import('./components/modules/VersionHistoryModal').then(m => ({ default: m.VersionHistoryModal })));
+const VersionUpdateModal = lazy(() => import('./components/modules/VersionUpdateModal'));
+const UserGuideModal = lazy(() => import('./components/modules/UserGuideModal').then(m => ({ default: m.UserGuideModal })));
+const HealthPassportModal = lazy(() => import('./components/modules/HealthPassportModal').then(m => ({ default: m.HealthPassportModal })));
+const PrivacyPolicyModal = lazy(() => import('./components/modules/PrivacyPolicyModal').then(m => ({ default: m.PrivacyPolicyModal })));
+const DataBackupModal = lazy(() => import('./components/modules/DataBackupModal').then(m => ({ default: m.DataBackupModal })));
+const DeleteAccountModal = lazy(() => import('./components/modules/DeleteAccountModal').then(m => ({ default: m.DeleteAccountModal })));
+
+// Lazy-loaded Health Modules
+const BloodPressureModule = lazy(() => import('./components/modules/BloodPressureModule').then(m => ({ default: m.BloodPressureModule })));
+const BloodSugarModule = lazy(() => import('./components/modules/BloodSugarModule').then(m => ({ default: m.BloodSugarModule })));
+const LabTestModule = lazy(() => import('./components/modules/LabTestModule').then(m => ({ default: m.LabTestModule })));
+const MedicationsModule = lazy(() => import('./components/modules/MedicationsModule').then(m => ({ default: m.MedicationsModule })));
+const BMIModule = lazy(() => import('./components/modules/BMIModule').then(m => ({ default: m.BMIModule })));
+const TrendsOverview = lazy(() => import('./components/modules/TrendsOverview').then(m => ({ default: m.TrendsOverview })));
+const AdminPatientPortal = lazy(() => import('./components/modules/AdminPatientPortal').then(m => ({ default: m.AdminPatientPortal })));
+const HealthNewsModule = lazy(() => import('./components/modules/HealthNewsModule').then(m => ({ default: m.HealthNewsModule })));
+const DoctorQnAModule = lazy(() => import('./components/modules/DoctorQnAModule').then(m => ({ default: m.DoctorQnAModule })));
+const RemindersModule = lazy(() => import('./components/modules/RemindersModule').then(m => ({ default: m.RemindersModule })));
+const VaccinePassportModule = lazy(() => import('./components/modules/VaccinePassportModule').then(m => ({ default: m.VaccinePassportModule })));
+const EmergencyIDModule = lazy(() => import('./components/modules/EmergencyIDModule').then(m => ({ default: m.EmergencyIDModule })));
+const ClinicalDietModule = lazy(() => import('./components/modules/ClinicalDietModule').then(m => ({ default: m.ClinicalDietModule })));
+const PhysiotherapyModule = lazy(() => import('./components/modules/PhysiotherapyModule').then(m => ({ default: m.PhysiotherapyModule })));
+const SpecialtyCareModule = lazy(() => import('./components/modules/SpecialtyCareModule').then(m => ({ default: m.SpecialtyCareModule })));
+const DermatologyModule = lazy(() => import('./components/modules/DermatologyModule').then(m => ({ default: m.DermatologyModule })));
+const EmergencyFirstAidModule = lazy(() => import('./components/modules/EmergencyFirstAidModule').then(m => ({ default: m.EmergencyFirstAidModule })));
+const HomeMedicinesGuideModule = lazy(() => import('./components/modules/HomeMedicinesGuideModule').then(m => ({ default: m.HomeMedicinesGuideModule })));
+const HomeTestingGuideModule = lazy(() => import('./components/modules/HomeTestingGuideModule').then(m => ({ default: m.HomeTestingGuideModule })));
+const LabInvestigationGuideModule = lazy(() => import('./components/modules/LabInvestigationGuideModule').then(m => ({ default: m.LabInvestigationGuideModule })));
+const WomensHealthModule = lazy(() => import('./components/modules/WomensHealthModule').then(m => ({ default: m.WomensHealthModule })));
+const PregnancyCareModule = lazy(() => import('./components/modules/PregnancyCareModule').then(m => ({ default: m.PregnancyCareModule })));
+const ChildCareModule = lazy(() => import('./components/modules/ChildCareModule').then(m => ({ default: m.ChildCareModule })));
+const ChildMilestonesModule = lazy(() => import('./components/modules/ChildMilestonesModule').then(m => ({ default: m.ChildMilestonesModule })));
+const ElderlyCareModule = lazy(() => import('./components/modules/ElderlyCareModule').then(m => ({ default: m.ElderlyCareModule })));
+const SpecialNeedsCareModule = lazy(() => import('./components/modules/SpecialNeedsCareModule').then(m => ({ default: m.SpecialNeedsCareModule })));
 import { BroadcastMarqueeBanner } from './components/layout/BroadcastMarqueeBanner';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 
 const MainContent: React.FC = () => {
-  const { profile, isAdmin, logout, loading } = useAuth();
+  const { currentUser, profile, isAdmin, logout, loading } = useAuth();
   const { selectedPatient, setSelectedPatientId, doctorQuestions } = useHealthData();
   const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState<
@@ -83,6 +91,8 @@ const MainContent: React.FC = () => {
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
   const [isPassportOpen, setIsPassportOpen] = useState(false);
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
+  const [isDataBackupOpen, setIsDataBackupOpen] = useState(false);
+  const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
   const [showVersionUpdateModal, setShowVersionUpdateModal] = useState(false);
   const [latestAppVersion, setLatestAppVersion] = useState(CURRENT_SYSTEM_VERSION);
   const [versionToast, setVersionToast] = useState<{ message: string; type: 'checking' | 'success' | 'updated' } | null>(null);
@@ -261,8 +271,8 @@ const MainContent: React.FC = () => {
     );
   }
 
-  // Login Screen
-  if (!profile) {
+  // Show Login Screen strictly when no Firebase currentUser is authenticated
+  if (!currentUser) {
     return <LoginScreen />;
   }
 
@@ -304,6 +314,8 @@ const MainContent: React.FC = () => {
         onOpenPrivacyPolicy={() => setIsPrivacyPolicyOpen(true)}
         onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
         onOpenPassportModal={() => setIsPassportOpen(true)}
+        onOpenDataBackup={() => setIsDataBackupOpen(true)}
+        onOpenDeleteAccount={() => setIsDeleteAccountOpen(true)}
         onManualCheckVersion={() => handleCheckVersion(true)}
         setActiveTab={(tab) => setActiveTab(tab as any)}
         setCategoryGroup={setSelectedCategoryGroup}
@@ -402,32 +414,34 @@ const MainContent: React.FC = () => {
 
       {/* Main Content Area - Pure White Clean Layout */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {activeTab === 'admin' && isAdmin && <AdminPatientPortal />}
-        {activeTab === 'doctor_qa' && <DoctorQnAModule />}
-        {activeTab === 'trends' && <TrendsOverview onNavigateTab={(t: any) => setActiveTab(t)} />}
-        {activeTab === 'bp' && <BloodPressureModule />}
-        {activeTab === 'sugar' && <BloodSugarModule />}
-        {activeTab === 'bmi' && <BMIModule />}
-        {activeTab === 'labs' && <LabTestModule />}
-        {activeTab === 'medications' && <MedicationsModule />}
-        {activeTab === 'vaccine' && <VaccinePassportModule />}
-        {activeTab === 'emergency' && <EmergencyIDModule />}
-        {activeTab === 'diet' && <ClinicalDietModule />}
-        {activeTab === 'physio' && <PhysiotherapyModule />}
-        {activeTab === 'specialty' && <SpecialtyCareModule />}
-        {activeTab === 'derma' && <DermatologyModule />}
-        {activeTab === 'firstaid' && <EmergencyFirstAidModule />}
-        {activeTab === 'home_testing_guide' && <HomeTestingGuideModule onNavigateTab={(t: any) => setActiveTab(t)} />}
-        {activeTab === 'otc_meds' && <HomeMedicinesGuideModule />}
-        {activeTab === 'news' && <HealthNewsModule />}
-        {activeTab === 'investigations_guide' && <LabInvestigationGuideModule />}
-        {activeTab === 'reminders' && <RemindersModule />}
-        {activeTab === 'special_needs' && <SpecialNeedsCareModule />}
-        {activeTab === 'womens_health' && <WomensHealthModule />}
-        {activeTab === 'pregnancy' && <PregnancyCareModule />}
-        {activeTab === 'child_care' && <ChildCareModule />}
-        {activeTab === 'milestones' && <ChildMilestonesModule />}
-        {activeTab === 'elderly_care' && <ElderlyCareModule />}
+        <Suspense fallback={<div className="flex items-center justify-center py-16 text-slate-500 font-medium text-sm">ဖွင့်နေသည်...</div>}>
+          {activeTab === 'admin' && isAdmin && <AdminPatientPortal />}
+          {activeTab === 'doctor_qa' && <DoctorQnAModule />}
+          {activeTab === 'trends' && <TrendsOverview onNavigateTab={(t: any) => setActiveTab(t)} />}
+          {activeTab === 'bp' && <BloodPressureModule />}
+          {activeTab === 'sugar' && <BloodSugarModule />}
+          {activeTab === 'bmi' && <BMIModule />}
+          {activeTab === 'labs' && <LabTestModule />}
+          {activeTab === 'medications' && <MedicationsModule />}
+          {activeTab === 'vaccine' && <VaccinePassportModule />}
+          {activeTab === 'emergency' && <EmergencyIDModule />}
+          {activeTab === 'diet' && <ClinicalDietModule />}
+          {activeTab === 'physio' && <PhysiotherapyModule />}
+          {activeTab === 'specialty' && <SpecialtyCareModule />}
+          {activeTab === 'derma' && <DermatologyModule />}
+          {activeTab === 'firstaid' && <EmergencyFirstAidModule />}
+          {activeTab === 'home_testing_guide' && <HomeTestingGuideModule onNavigateTab={(t: any) => setActiveTab(t)} />}
+          {activeTab === 'otc_meds' && <HomeMedicinesGuideModule />}
+          {activeTab === 'news' && <HealthNewsModule />}
+          {activeTab === 'investigations_guide' && <LabInvestigationGuideModule />}
+          {activeTab === 'reminders' && <RemindersModule />}
+          {activeTab === 'special_needs' && <SpecialNeedsCareModule />}
+          {activeTab === 'womens_health' && <WomensHealthModule />}
+          {activeTab === 'pregnancy' && <PregnancyCareModule />}
+          {activeTab === 'child_care' && <ChildCareModule />}
+          {activeTab === 'milestones' && <ChildMilestonesModule />}
+          {activeTab === 'elderly_care' && <ElderlyCareModule />}
+        </Suspense>
       </main>
 
       {/* Simple Clean Footer */}
@@ -450,93 +464,62 @@ const MainContent: React.FC = () => {
         </div>
       </footer>
 
-      {/* Modals */}
-      <HealthPassportModal
-        isOpen={isPassportOpen}
-        onClose={() => setIsPassportOpen(false)}
-      />
-      <NotificationCenterModal 
-        isOpen={isNotificationsOpen} 
-        onClose={() => setIsNotificationsOpen(false)} 
-      />
-      <VersionHistoryModal
-        isOpen={isVersionHistoryOpen}
-        onClose={() => setIsVersionHistoryOpen(false)}
-        onManualCheckVersion={() => handleCheckVersion(true)}
-      />
-      <UserGuideModal
-        isOpen={isUserGuideOpen}
-        onClose={() => setIsUserGuideOpen(false)}
-      />
-      <PrivacyPolicyModal
-        isOpen={isPrivacyPolicyOpen}
-        onClose={() => setIsPrivacyPolicyOpen(false)}
-      />
-
-      {/* Automatic Version Upgrade / Update Popup Modal */}
-      {showVersionUpdateModal && (() => {
-        const currentVersionInfo = VERSION_HISTORY_DATA.find(v => v.version === latestAppVersion) || VERSION_HISTORY_DATA[0];
-        return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-200">
-              <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 mx-auto">
-                <Sparkles className="w-6 h-6 animate-pulse" />
-              </div>
-
-              <h3 className="text-lg font-bold text-center text-slate-900 dark:text-white">
-                🎉 အက်ပ်ဗားရှင်းအသစ်သို့ တင်မြှင့်ပြီးပါပြီ!
-              </h3>
-              <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-1">
-                ဗားရှင်း <strong className="text-teal-600 font-bold">{latestAppVersion}</strong> သို့ အလိုအလျောက် အပ်ဒိတ်လုပ်ပြီးစီးပါပြီ။
-              </p>
-
-              {/* Dynamic highlights directly from the active version */}
-              <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs text-slate-700 dark:text-slate-300 max-h-64 overflow-y-auto">
-                <div className="font-bold flex items-center gap-1.5 text-teal-700 dark:text-teal-300 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping shrink-0" />
-                  <span>{currentVersionInfo.title}</span>
-                </div>
-
-                <div className="space-y-3 pt-2 border-t border-slate-200/80 dark:border-slate-700">
-                  {currentVersionInfo.highlights.map((h, i) => (
-                    <div key={i} className="space-y-1">
-                      <p className="font-bold text-[11px] text-slate-800 dark:text-slate-200">
-                        {h.title}
-                      </p>
-                      <ul className="space-y-1 text-[11px] text-slate-600 dark:text-slate-400 pl-2">
-                        {h.items.slice(0, 3).map((item, idx) => (
-                          <li key={idx} className="leading-relaxed flex items-start gap-1.5">
-                            <span className="text-teal-500 shrink-0 font-bold">›</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-5 flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setShowVersionUpdateModal(false);
-                    setIsVersionHistoryOpen(true);
-                  }}
-                  className="flex-1 py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer text-center"
-                >
-                  Change Log အပြည့်အစုံ
-                </button>
-                <button
-                  onClick={() => setShowVersionUpdateModal(false)}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer text-center"
-                >
-                  စတင်အသုံးပြုမည်
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* Modals with Suspense */}
+      <Suspense fallback={null}>
+        {isPassportOpen && (
+          <HealthPassportModal
+            isOpen={isPassportOpen}
+            onClose={() => setIsPassportOpen(false)}
+          />
+        )}
+        {isNotificationsOpen && (
+          <NotificationCenterModal 
+            isOpen={isNotificationsOpen} 
+            onClose={() => setIsNotificationsOpen(false)} 
+          />
+        )}
+        {isVersionHistoryOpen && (
+          <VersionHistoryModal
+            isOpen={isVersionHistoryOpen}
+            onClose={() => setIsVersionHistoryOpen(false)}
+            onManualCheckVersion={() => handleCheckVersion(true)}
+          />
+        )}
+        {isUserGuideOpen && (
+          <UserGuideModal
+            isOpen={isUserGuideOpen}
+            onClose={() => setIsUserGuideOpen(false)}
+          />
+        )}
+        {isPrivacyPolicyOpen && (
+          <PrivacyPolicyModal
+            isOpen={isPrivacyPolicyOpen}
+            onClose={() => setIsPrivacyPolicyOpen(false)}
+          />
+        )}
+        {isDataBackupOpen && (
+          <DataBackupModal
+            isOpen={isDataBackupOpen}
+            onClose={() => setIsDataBackupOpen(false)}
+          />
+        )}
+        {isDeleteAccountOpen && (
+          <DeleteAccountModal
+            isOpen={isDeleteAccountOpen}
+            onClose={() => setIsDeleteAccountOpen(false)}
+          />
+        )}
+        {showVersionUpdateModal && (
+          <VersionUpdateModal
+            latestAppVersion={latestAppVersion}
+            onClose={() => setShowVersionUpdateModal(false)}
+            onOpenFullHistory={() => {
+              setShowVersionUpdateModal(false);
+              setIsVersionHistoryOpen(true);
+            }}
+          />
+        )}
+      </Suspense>
 
       <OfflineIndicator />
     </div>
