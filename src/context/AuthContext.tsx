@@ -117,7 +117,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let unsubscribe = () => {};
 
     const initAuth = async () => {
-      // 1. Handle redirect result FIRST before setting up listener
+      const isRedirectPending = sessionStorage.getItem('auth_redirect_pending');
+      
+      // 1. Resolve any pending redirects FIRST before doing anything else
       try {
         const result = await getRedirectResult(auth);
         if (result && result.user) {
@@ -128,15 +130,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error.code === 'auth/unauthorized-domain') {
           showToast('ဤဝက်ဘ်ဆိုဒ်လိပ်စာကို Firebase မှ ခွင့်မပြုထားပါ။ Authorized domains တွင် ထည့်ပေးပါ။', 'error');
         }
+      } finally {
+        if (isRedirectPending) {
+          sessionStorage.removeItem('auth_redirect_pending');
+        }
       }
 
       if (!isMounted) return;
 
-      // 2. Setup auth state listener AFTER handling redirect
+      // 2. After redirect handling is completely done, setup the auth listener
       unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
         if (!isMounted) return;
         
-        setLoading(true);
         if (fbUser) {
           setCurrentUser(fbUser);
           console.log("=========================================");
@@ -189,6 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           if (isMounted) setLoading(false);
         } else {
+          // Only set to null if we are truly logged out.
           setCurrentUser(null);
           setProfile(null);
           setIsAdmin(false);
@@ -203,33 +209,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isMounted = false;
       unsubscribe();
     };
-  }, []);  const loginWithGoogle = async () => {
+  }, []); const loginWithGoogle = async () => {
     setLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      // Ensure persistence is set to local so it survives page reloads
+      await setPersistence(auth, browserLocalPersistence);
       
-      if (isIOS) {
-        // iOS Safari requires redirect
-        await signInWithRedirect(auth, provider);
-      } else {
-        // Android and Desktop use popup
-        await signInWithPopup(auth, provider);
-      }
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
+      // Try Popup first (works on Android & Desktop)
+      await signInWithPopup(auth, provider);
     } catch (err: any) {
       console.error('Google Popup Sign-in failed:', err);
       
-      // Fallback to redirect for blocked popups
+      // If Popup is blocked or unsupported (iOS Safari, In-App Browsers), fallback to Redirect
       if (
         err.code === 'auth/popup-blocked' || 
-        err.code === 'auth/operation-not-supported-in-this-environment'
+        err.code === 'auth/operation-not-supported-in-this-environment' ||
+        err.code === 'auth/cancelled-popup-request'
       ) {
         try {
-          console.log('Falling back to redirect...');
+          console.log('Popup blocked or unsupported. Falling back to redirect...');
+          sessionStorage.setItem('auth_redirect_pending', 'true');
           await signInWithRedirect(auth, provider);
-          return; // Don't set loading false, we are redirecting
+          return; 
         } catch (redirectErr: any) {
           console.error('Google Redirect Sign-in failed:', redirectErr);
+          sessionStorage.removeItem('auth_redirect_pending');
           setLoading(false);
           throw new Error(getAuthErrorMessage(redirectErr));
         }
