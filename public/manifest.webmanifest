@@ -1,0 +1,37 @@
+{
+  "id": "/",
+  "name": "ကျန်းမာရေး စောင့်ရှောက်မှု (Health Care App)",
+  "short_name": "Health Care",
+  "description": "သွေးတိုး၊ ဆီးချို၊ BMI & အသက်တွက်ချက်မှု၊ ဓာတ်ခွဲခန်းစစ်ဆေးချက်များ (LFT, Renal, Lipid, Thyroid TFT)၊ ကာကွယ်ဆေးနှင့် ဆေးမှတ်တမ်း စောင့်ရှောက်မှု အက်ပ်",
+  "theme_color": "#3B0764",
+  "background_color": "#1E1B4B",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
