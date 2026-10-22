@@ -384,7 +384,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 2. Vitals
       const vitalsQuery = isAdmin
         ? query(collection(db, 'vitals'))
-        : query(collection(db, 'vitals'), where('userId', '==', currentUser.uid));
+        : query(collection(db, 'vitals'), where('patientEmail', '==', currentUser.email || '___'));
       unsubscribeVitals = onSnapshot(vitalsQuery, (snapshot) => {
         const items: BloodPressureRecord[] = [];
         snapshot.forEach(docSnap => {
@@ -399,7 +399,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 3. Glucose
       const gluQuery = isAdmin
         ? query(collection(db, 'glucose'))
-        : query(collection(db, 'glucose'), where('userId', '==', currentUser.uid));
+        : query(collection(db, 'glucose'), where('patientEmail', '==', currentUser.email || '___'));
       unsubscribeGlu = onSnapshot(gluQuery, (snapshot) => {
         const items: BloodSugarRecord[] = [];
         snapshot.forEach(docSnap => {
@@ -414,7 +414,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 4. BMI
       const bmiQuery = isAdmin
         ? query(collection(db, 'bmi'))
-        : query(collection(db, 'bmi'), where('userId', '==', currentUser.uid));
+        : query(collection(db, 'bmi'), where('patientEmail', '==', currentUser.email || '___'));
       unsubscribeBMI = onSnapshot(bmiQuery, (snapshot) => {
         const items: BMIRecord[] = [];
         snapshot.forEach(docSnap => {
@@ -429,7 +429,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 5. Labs
       const labsQuery = isAdmin
         ? query(collection(db, 'labTests'))
-        : query(collection(db, 'labTests'), where('userId', '==', currentUser.uid));
+        : query(collection(db, 'labTests'), where('patientEmail', '==', currentUser.email || '___'));
       unsubscribeLabs = onSnapshot(labsQuery, (snapshot) => {
         const items: LabTestRecord[] = [];
         snapshot.forEach(docSnap => {
@@ -444,7 +444,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 6. Meds
       const medsQuery = isAdmin
         ? query(collection(db, 'medications'))
-        : query(collection(db, 'medications'), where('userId', '==', currentUser.uid));
+        : query(collection(db, 'medications'), where('patientEmail', '==', currentUser.email || '___'));
       unsubscribeMeds = onSnapshot(medsQuery, (snapshot) => {
         const items: Medication[] = [];
         snapshot.forEach(docSnap => {
@@ -459,7 +459,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 7. Doctor Questions
       const questionsQuery = isAdmin
         ? query(collection(db, 'doctorQuestions'))
-        : query(collection(db, 'doctorQuestions'), where('userId', '==', currentUser.uid));
+        : query(collection(db, 'doctorQuestions'), where('patientEmail', '==', currentUser.email || '___'));
       unsubscribeQuestions = onSnapshot(questionsQuery, (snapshot) => {
         const items: DoctorQuestion[] = [];
         snapshot.forEach(docSnap => {
@@ -474,7 +474,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 8. Doctor Advices
       const advicesQuery = isAdmin
         ? query(collection(db, 'doctorAdvices'))
-        : query(collection(db, 'doctorAdvices'), where('userId', '==', currentUser.uid));
+        : query(collection(db, 'doctorAdvices'), where('patientEmail', '==', currentUser.email || '___'));
       unsubscribeAdvices = onSnapshot(advicesQuery, (snapshot) => {
         const items: DoctorAdvice[] = [];
         snapshot.forEach(docSnap => {
@@ -489,7 +489,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 9. Family Members
       const famQuery = isAdmin
         ? query(collection(db, 'familyMembers'))
-        : query(collection(db, 'familyMembers'), where('userId', '==', currentUser.uid));
+        : query(collection(db, 'familyMembers'), where('patientEmail', '==', currentUser.email || '___'));
       unsubscribeFam = onSnapshot(famQuery, (snapshot) => {
         const items: FamilyMember[] = [];
         snapshot.forEach(docSnap => {
@@ -507,7 +507,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 10. Medication Intake Logs
       const medLogsQuery = isAdmin
         ? query(collection(db, 'medicationLogs'))
-        : query(collection(db, 'medicationLogs'), where('userId', '==', currentUser.uid));
+        : query(collection(db, 'medicationLogs'), where('patientEmail', '==', currentUser.email || '___'));
       const unsubscribeMedLogs = onSnapshot(medLogsQuery, (snapshot) => {
         const items: MedicationLog[] = [];
         snapshot.forEach(docSnap => {
@@ -522,7 +522,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // 11. Vaccines
       const vacQuery = isAdmin
         ? query(collection(db, 'vaccines'))
-        : query(collection(db, 'vaccines'), where('userId', '==', currentUser.uid));
+        : query(collection(db, 'vaccines'), where('patientEmail', '==', currentUser.email || '___'));
       unsubscribeVaccines = onSnapshot(vacQuery, (snapshot) => {
         const items: VaccinationRecord[] = [];
         snapshot.forEach(docSnap => {
@@ -701,35 +701,35 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Filtered views
   const bpRecords = currentTargetUserId 
-    ? allBP.filter(b => b.userId === currentTargetUserId) 
+    ? allBP.filter(b => b.userId === currentTargetUserId || b.patientEmail === currentUser?.email) 
     : (isAdmin ? allBP : []);
 
   const glucoseRecords = currentTargetUserId 
-    ? allGlucose.filter(g => g.userId === currentTargetUserId) 
+    ? allGlucose.filter(g => g.userId === currentTargetUserId || (g as any).patientEmail === currentUser?.email) 
     : (isAdmin ? allGlucose : []);
 
   const labRecords = currentTargetUserId 
-    ? allLabs.filter(l => l.userId === currentTargetUserId) 
+    ? allLabs.filter(l => l.userId === currentTargetUserId || (l as any).patientEmail === currentUser?.email) 
     : (isAdmin ? allLabs : []);
 
   const medications = currentTargetUserId 
-    ? allMeds.filter(m => m.userId === currentTargetUserId) 
+    ? allMeds.filter(m => m.userId === currentTargetUserId || (m as any).patientEmail === currentUser?.email) 
     : (isAdmin ? allMeds : []);
 
   const vaccineRecords = currentTargetUserId
-    ? allVaccines.filter(v => v.userId === currentTargetUserId)
+    ? allVaccines.filter(v => v.userId === currentTargetUserId || (v as any).patientEmail === currentUser?.email)
     : (isAdmin ? allVaccines : []);
 
   const doctorAdvices = currentTargetUserId 
-    ? allAdvices.filter(a => a.userId === currentTargetUserId) 
+    ? allAdvices.filter(a => a.userId === currentTargetUserId || (a as any).patientEmail === currentUser?.email) 
     : (isAdmin ? allAdvices : []);
 
   const bmiRecords = currentTargetUserId 
-    ? allBMI.filter(b => b.userId === currentTargetUserId) 
+    ? allBMI.filter(b => b.userId === currentTargetUserId || (b as any).patientEmail === currentUser?.email) 
     : (isAdmin ? allBMI : []);
 
   const doctorQuestions = currentTargetUserId
-    ? allQuestions.filter(q => q.userId === currentTargetUserId)
+    ? allQuestions.filter(q => q.userId === currentTargetUserId || (q as any).patientEmail === currentUser?.email)
     : (isAdmin ? allQuestions : allQuestions.filter(q => q.userId === currentUser?.uid));
 
   const latestBMI = bmiRecords.length > 0 
@@ -1301,7 +1301,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const medicationLogs = currentTargetUserId
-    ? allMedLogs.filter(m => m.userId === currentTargetUserId)
+    ? allMedLogs.filter(m => m.userId === currentTargetUserId || (m as any).patientEmail === currentUser?.email)
     : (isAdmin ? allMedLogs : []);
 
   return (

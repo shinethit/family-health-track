@@ -1,0 +1,83 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Data Migration Tool</title>
+  <style>
+    body { font-family: 'Padauk', sans-serif; padding: 30px; background: #f0fdf4; color: #064e3b; text-align: center; }
+    button { padding: 12px 24px; font-size: 18px; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    button:disabled { background: #9ca3af; cursor: not-allowed; box-shadow: none; }
+    #log { margin: 20px auto; max-width: 800px; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #d1d5db; height: 400px; overflow-y: auto; text-align: left; font-family: monospace; font-size: 14px; line-height: 1.5; }
+    .success { color: #059669; font-weight: bold; }
+    .error { color: #dc2626; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>🚀 User Data Migration Tool</h1>
+  <p>ဤစာမျက်နှာသည် User အားလုံး၏ ဒေတာများကို သက်ဆိုင်ရာ Email နှင့် ကိုက်ညီသော UID သို့ ပြောင်းလဲပေးပါမည်။</p>
+  <button id="startBtn" onclick="startMigration()">စတင်ရွှေ့ဆိုင်းမည် (Start Migration)</button>
+  <div id="log">စတင်ရန် အထက်ပါခလုတ်ကို နှိပ်ပါ...<br></div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getFirestore, collection, getDocs, updateDoc, doc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    const firebaseConfig = {"projectId":"ai-studio-applet-webapp-57e6b","appId":"1:52931629099:web:7e75187c8154d270da9a6e","apiKey":"AIzaSyCxDVrMHukdAcoPADdMeLoJBwc21j499oQ","authDomain":"ai-studio-applet-webapp-57e6b.firebaseapp.com","firestoreDatabaseId":"ai-studio-6bce6599-202c-4f4f-8097-4ee1cda1fdcc","storageBucket":"ai-studio-applet-webapp-57e6b.firebasestorage.app","messagingSenderId":"52931629099","measurementId":"","oAuthClientId":"52931629099-u8jsb6j6kr6b0349c8466m9ngmv9phk0.apps.googleusercontent.com","recaptchaSiteKey":""};
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+    const logEl = document.getElementById('log');
+    function log(msg, type = '') {
+      logEl.innerHTML += '<span class="' + type + '">' + msg + '</span><br>';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    window.startMigration = async function() {
+      const btn = document.getElementById('startBtn');
+      btn.disabled = true;
+      logEl.innerHTML = '';
+      log('🚀 စတင်ရွှေ့ဆိုင်းနေပါသည်...');
+
+      try {
+        log('📋 User စာရင်းများကို ဆွဲထုတ်နေသည်...');
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const emailToUid = {};
+        usersSnap.forEach(d => {
+          const data = d.data();
+          if (data.email) emailToUid[data.email.toLowerCase()] = d.id;
+        });
+        log('✅ User ' + Object.keys(emailToUid).length + ' ယောက်ကို ရှာတွေ့ပါသည်။', 'success');
+
+        const collections = ['vitals', 'glucose', 'bmi', 'labTests', 'medications', 'familyMembers', 'doctorAdvices', 'doctorQuestions', 'vaccines'];
+        let total = 0;
+
+        for (const col of collections) {
+          log('🔍 ' + col + ' ကို စစ်ဆေးနေသည်...');
+          const snap = await getDocs(collection(db, col));
+          let count = 0;
+          for (const d of snap.docs) {
+            const data = d.data();
+            const email = (data.patientEmail || data.userEmail || data.email || '').toLowerCase();
+            if (email && emailToUid[email]) {
+              const correctUid = emailToUid[email];
+              if (data.userId !== correctUid) {
+                await updateDoc(doc(db, col, d.id), { userId: correctUid });
+                count++;
+                total++;
+              }
+            }
+          }
+          log('   ✅ ' + count + ' ခုကို ပြင်ဆင်ပြီးပါပြီ။');
+        }
+        log('🎉 အားလုံးပြီးစီးပါပြီ! စုစုပေါင်း ပြင်ဆင်မှု: ' + total, 'success');
+        log('ဤ Tab ကို ပိတ်ပြီး သင့် App ကို Refresh လုပ်ကြည့်ပါ။');
+      } catch (e) {
+        log('❌ Error: ' + e.message, 'error');
+        log('အကယ်၍ Permission Error ဖြစ်နေပါက Firebase Console > Firestore Rules တွင် ခေတ္တဖွင့်ထားဖို့ လိုအပ်ပါသည်။', 'error');
+        console.error(e);
+      }
+      btn.disabled = false;
+    };
+  </script>
+</body>
+</html>

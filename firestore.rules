@@ -1,18 +1,14 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Default deny for all unmatched collections & documents
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Admin verified strictly via presence in the /admins/{uid} collection
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
@@ -21,152 +17,41 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Admins Collection
+    function isEmailOwner() {
+      return isSignedIn() && (
+        (resource.data.patientEmail != null && resource.data.patientEmail == request.auth.token.email) ||
+        (resource.data.userEmail != null && resource.data.userEmail == request.auth.token.email)
+      );
+    }
+
     match /admins/{adminId} {
       allow read: if isSignedIn();
       allow write: if false;
     }
 
-    // Users Collection
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && (
-        !('role' in request.resource.data) || request.resource.data.role != 'admin'
-      );
-      allow update: if (
-        isOwner(userId) && (
-          !('role' in request.resource.data) || 
-          request.resource.data.role != 'admin' ||
-          (resource != null && 'role' in resource.data && request.resource.data.role == resource.data.role)
-        )
-      ) || isAdmin();
+      allow create: if isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role != 'admin');
+      allow update: if (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role != 'admin' || (resource != null && 'role' in resource.data && request.resource.data.role == resource.data.role))) || isAdmin();
       allow delete: if isOwner(userId) || isAdmin();
     }
 
-    // Helper for standard user-owned records
-    function isValidUserRecord() {
-      return (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-    }
+    match /vitals/{id} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin(); allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) && (request.resource.data.userId == resource.data.userId || request.resource.data.patientEmail == resource.data.patientEmail) || isAdmin(); allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); }
     
-    function canCreateUserRecord() {
-      return (isSignedIn() && request.resource.data.userId == request.auth.uid) || (isAdmin() && request.resource.data.userId is string);
-    }
+    match /glucose/{id} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin(); allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) && (request.resource.data.userId == resource.data.userId || request.resource.data.patientEmail == resource.data.patientEmail) || isAdmin(); allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); }
 
-    function canUpdateUserRecord() {
-      return (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId) || isAdmin();
-    }
+    match /bmi/{id} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin(); allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) && (request.resource.data.userId == resource.data.userId || request.resource.data.patientEmail == resource.data.patientEmail) || isAdmin(); allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); }
 
-    // Patient Health Records
-    match /vitals/{vitalId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
+    match /labTests/{id} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin(); allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) && (request.resource.data.userId == resource.data.userId || request.resource.data.patientEmail == resource.data.patientEmail) || isAdmin(); allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); }
 
-    match /glucose/{gluId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
+    match /medications/{id} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin(); allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) && (request.resource.data.userId == resource.data.userId || request.resource.data.patientEmail == resource.data.patientEmail) || isAdmin(); allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); }
 
-    match /bmi/{bmiId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
+    match /familyMembers/{id} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin(); allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) && (request.resource.data.userId == resource.data.userId || request.resource.data.patientEmail == resource.data.patientEmail) || isAdmin(); allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); }
 
-    match /labTests/{testId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
+    match /doctorAdvices/{id} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); allow create, update: if isAdmin(); allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); }
 
-    match /medications/{medId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
+    match /doctorQuestions/{id} { allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email); allow update: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) && request.resource.data.userId == resource.data.userId && (!('doctorAnswer' in request.resource.data) || request.resource.data.doctorAnswer == resource.data.doctorAnswer)); allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailOwner()) || isAdmin(); }
 
-    match /familyMembers/{memberId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
-
-    match /medicationLogs/{logId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
-
-    match /vaccines/{vacId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
-
-    // ---------------------------------------------------------
-    // 🔴 အသစ်ထပ်တိုးထားသော Rules များ (Signup အတွက် အရေးကြီးသည်)
-    // ---------------------------------------------------------
-
-    // Notifications (အကောင့်ဖွင့်တာနဲ့ ကြိုဆိုတဲ့ Notification ဝင်လာတာမျိုးအတွက်)
-    match /notifications/{notificationId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
-
-    // Custom Reminders (သတိပေးချက်များ သိမ်းဆည်းရန်)
-    match /customReminders/{reminderId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
-
-    // Emergency Profiles (အရေးပေါ် ID အတွက်)
-    match /emergencyProfiles/{profileId} {
-      allow read: if isValidUserRecord();
-      allow create: if canCreateUserRecord();
-      allow update: if canUpdateUserRecord();
-      allow delete: if isValidUserRecord();
-    }
-
-    // ---------------------------------------------------------
-
-    // Doctor Advices
-    match /doctorAdvices/{adviceId} {
-      allow read: if isValidUserRecord();
-      allow create, update: if isAdmin();
-      allow delete: if isValidUserRecord();
-    }
-
-    // Doctor Questions
-    match /doctorQuestions/{questionId} {
-      allow read: if isValidUserRecord();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAdmin() || (
-        isSignedIn() && 
-        resource.data.userId == request.auth.uid && 
-        request.resource.data.userId == resource.data.userId &&
-        (!('doctorAnswer' in request.resource.data) || request.resource.data.doctorAnswer == resource.data.doctorAnswer)
-      );
-      allow delete: if isValidUserRecord();
-    }
-
-    // Broadcast Tickers
-    match /broadcastTickers/{tickerId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
+    match /broadcastTickers/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
   }
 }
