@@ -113,6 +113,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       if (fbUser) {
         setCurrentUser(fbUser);
+        console.log("=========================================");
+        console.log("🔑 သင့်ရဲ့ လက်ရှိ UID မှာ:", fbUser.uid);
+        console.log("💡 Data အဟောင်းများ မပေါ်ပါက ဤ UID ကို Copy ကူးပြီး Firebase Console > Firestore > admins Collection ထဲတွင် Document ID အဖြစ် ထည့်သွင်းပါ။");
+        console.log("=========================================");
         
         // 1. Verify admin privilege strictly via Firestore /admins/{uid}
         const isUserAdmin = await verifyIsAdmin(fbUser.uid);
