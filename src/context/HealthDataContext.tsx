@@ -701,7 +701,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Filtered views
   const bpRecords = currentTargetUserId 
-    ? allBP.filter(b => b.userId === currentTargetUserId || b.patientEmail === currentUser?.email) 
+    ? allBP.filter(b => b.userId === currentTargetUserId || b.patientEmail === currentUser?.email || b.patientEmail === currentUser?.email?.trim() || b.patientEmail?.toLowerCase() === currentUser?.email?.toLowerCase()) 
     : (isAdmin ? allBP : []);
 
   const glucoseRecords = currentTargetUserId 
