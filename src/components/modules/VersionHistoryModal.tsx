@@ -57,10 +57,37 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
+    version: 'v2.4.4',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ အောက်တိုဘာလ (ယနေ့)',
+    isLatest: true,
+    title: '🎨 [UI/UX & AUTH] Clean Navigation, Tactile Button Feedback & Google Auth Fix',
+    badge: 'Latest Release (v2.4.4)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🎨 သပ်ရပ်သော Navigation နှင့် ခလုတ်များ နှိပ်ရလွယ်ကူစေခြင်း',
+        icon: Sparkles,
+        items: [
+          'အပေါ်ပိုင်းရှိ ရှုပ်ထွေးနေသော Dropdown နှစ်ခုကို ဖယ်ရှားပြီး သန့်ရှင်းသော Module Indicator ဖြင့် အစားထိုးခြင်း',
+          'ခလုတ်များ နှိပ်လိုက်ပါက ခံစားမှုရှိစေရန် (Click Feedback / Active State) စနစ်တကျ ထည့်သွင်းပေးခြင်း'
+        ]
+      },
+      {
+        title: '🔐 Google အကောင့်ဖြင့် ဝင်ရောက်မှု (Authentication) ပြင်ဆင်ခြင်း',
+        icon: ShieldCheck,
+        items: [
+          'Firebase Authorized Domains ပြဿနာများအတွက် မြန်မာလို ရှင်းလင်းသော Error စာသားများ ထည့်သွင်းပေးခြင်း',
+          'Manifest File Syntax Error များကို ပြင်ဆင်ပြီး PWA အလုပ်လုပ်မှု ပိုမိုတည်ငြိမ်စေခြင်း'
+        ]
+      }
+    ]
+  },
+  {
     version: 'v2.4.3',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
-    isLatest: true,
+    isLatest: false,
     title: '📱 [MOBILE UI FIX] Version History Modal - Mobile View Switcher & Quick Dropdown Selector စနစ်',
     badge: 'Latest Release (v2.4.3)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
