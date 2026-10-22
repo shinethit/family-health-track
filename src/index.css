@@ -50,3 +50,14 @@
     animation-play-state: paused;
   }
 }
+
+/* Global Button Click Effects */
+button {
+  transition: transform 0.15s ease, filter 0.15s ease, background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+button:active:not(:disabled) {
+  transform: scale(0.96) translateY(1px);
+  filter: brightness(0.9);
+}

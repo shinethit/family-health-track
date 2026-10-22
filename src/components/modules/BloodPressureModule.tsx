@@ -130,7 +130,7 @@ export const BloodPressureModule: React.FC = () => {
 
         <button
           onClick={() => setIsOpenAdd(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-medium shadow-sm transition-all cursor-pointer active:scale-98"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-medium shadow-sm transition-all cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
           သွေးပေါင်ချိန် အသစ်ထည့်မည်
