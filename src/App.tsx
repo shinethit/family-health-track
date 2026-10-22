@@ -34,6 +34,8 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Navbar } from './components/layout/Navbar';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { CURRENT_SYSTEM_VERSION } from './constants/version';
+import { db } from './lib/firebase';
+import { collection, query, getDocs, updateDoc, doc } from 'firebase/firestore';
 
 // Lazy-loaded Modals
 const NotificationCenterModal = lazy(() => import('./components/modules/NotificationCenterModal').then(m => ({ default: m.NotificationCenterModal })));
@@ -244,6 +246,42 @@ const MainContent: React.FC = () => {
       setActiveTab('admin');
     }
   }, [isAdmin]);
+  
+  // Automatically migrate old data to new UID in browser
+  useEffect(() => {
+    const runMigration = async () => {
+      if (!isAdmin || localStorage.getItem('migration_v245_done')) return;
+      
+      console.log("🚀 Starting Browser-based Data Migration...");
+      const NEW_UID = 'eBoOk6mfaehgnZJjiIWFvPMHU6n2';
+      const collections = ['vitals', 'glucose', 'bmi', 'labTests', 'medications', 'familyMembers', 'doctorAdvices', 'doctorQuestions', 'vaccines'];
+      
+      let totalMigrated = 0;
+      
+      for (const colName of collections) {
+        try {
+          const q = query(collection(db, colName));
+          const snap = await getDocs(q);
+          
+          for (const docSnap of snap.docs) {
+            const data = docSnap.data();
+            if (data.userId && data.userId !== NEW_UID) {
+              await updateDoc(doc(db, colName, docSnap.id), { userId: NEW_UID });
+              totalMigrated++;
+            }
+          }
+        } catch (err) {
+          console.warn('Error migrating', colName, err);
+        }
+      }
+      
+      console.log(`🎉 Migration complete! Total records migrated: ${totalMigrated}`);
+      localStorage.setItem('migration_v245_done', 'true');
+    };
+    
+    runMigration();
+  }, [isAdmin]);
+
 
   
 
