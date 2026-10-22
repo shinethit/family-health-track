@@ -9,7 +9,9 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithRedirect,
-  getRedirectResult
+  getRedirectResult,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -110,93 +112,115 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    
-    // Handle redirect result for mobile (iOS)
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (result && result.user) {
-          console.log('Redirect login successful:', result.user.email);
-          // onAuthStateChanged will handle the rest of the state updates
-        }
-      })
-      .catch((error) => {
-        console.error('Redirect login error:', error);
-        if (error.code === 'auth/unauthorized-domain') {
-          showToast('ဤဝက်ဘ်ဆိုဒ်လိပ်စာကို Firebase မှ ခွင့်မပြုထားပါ။ Authorized domains တွင် ထည့်ပေးပါ။', 'error');
-        }
-      });
+      let isMounted = true;
+      let unsubscribe = () => {};
 
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setLoading(true);
-      if (fbUser) {
-        setCurrentUser(fbUser);
-        console.log("=========================================");
-        console.log("🔑 သင့်ရဲ့ လက်ရှိ UID မှာ:", fbUser.uid);
-        console.log("💡 Data အဟောင်းများ မပေါ်ပါက ဤ UID ကို Copy ကူးပြီး Firebase Console > Firestore > admins Collection ထဲတွင် Document ID အဖြစ် ထည့်သွင်းပါ။");
-        console.log("=========================================");
+      const initAuth = async () => {
+        const isPending = sessionStorage.getItem('auth_redirect_pending');
         
-        // 1. Verify admin privilege strictly via Firestore /admins/{uid}
-        const isUserAdmin = await verifyIsAdmin(fbUser.uid);
-        setIsAdmin(isUserAdmin);
-
-        // 2. Fetch or initialize user profile
+        // 1. Handle redirect result FIRST before setting up listener
         try {
-          const userDocRef = doc(db, 'users', fbUser.uid);
-          const userSnap = await getDoc(userDocRef);
-          
-          if (userSnap.exists()) {
-            const data = userSnap.data() as UserProfile;
-            const finalProfile: UserProfile = {
-              ...data,
-              id: fbUser.uid,
-              email: fbUser.email || data.email || '',
-              role: isUserAdmin ? 'admin' : (data.role === 'admin' ? 'patient' : (data.role || 'patient')),
-              displayName: data.displayName || fbUser.displayName || fbUser.email?.split('@')[0] || 'အသုံးပြုသူ',
-            };
-            setProfile(finalProfile);
-            localStorage.setItem('family_health_profile', JSON.stringify(finalProfile));
-          } else {
-            const newProfile: UserProfile = {
-              id: fbUser.uid,
-              email: fbUser.email || '',
-              displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'အသုံးပြုသူ',
-              role: isUserAdmin ? 'admin' : 'patient',
-              createdAt: new Date().toISOString(),
-            };
-            setProfile(newProfile);
-            localStorage.setItem('family_health_profile', JSON.stringify(newProfile));
-            await setDoc(userDocRef, sanitizeForFirestore(newProfile), { merge: true });
+          const result = await getRedirectResult(auth);
+          if (result && result.user) {
+            console.log('Redirect login successful:', result.user.email);
           }
-        } catch (e) {
-          console.warn('Profile load error:', e);
-          const fallbackProfile: UserProfile = {
-            id: fbUser.uid,
-            email: fbUser.email || '',
-            displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'အသုံးပြုသူ',
-            role: isUserAdmin ? 'admin' : 'patient',
-            createdAt: new Date().toISOString(),
-          };
-          setProfile(fallbackProfile);
+          if (isPending) {
+            sessionStorage.removeItem('auth_redirect_pending');
+          }
+        } catch (error: any) {
+          console.error('Redirect login error:', error);
+          if (isPending) sessionStorage.removeItem('auth_redirect_pending');
+          if (error.code === 'auth/unauthorized-domain') {
+            showToast('ဤဝက်ဘ်ဆိုဒ်လိပ်စာကို Firebase မှ ခွင့်မပြုထားပါ။ Authorized domains တွင် ထည့်ပေးပါ။', 'error');
+          }
         }
-      } else {
-        setCurrentUser(null);
-        setProfile(null);
-        setIsAdmin(false);
-      }
-      setLoading(false);
-    });
 
-    return () => unsubscribe();
-  }, []);
+        // 2. Setup auth state listener AFTER handling redirect
+        unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+          if (!isMounted) return;
+          
+          setLoading(true);
+          if (fbUser) {
+            setCurrentUser(fbUser);
+            console.log("=========================================");
+            console.log("🔑 သင့်ရဲ့ လက်ရှိ UID မှာ:", fbUser.uid);
+            console.log("=========================================");
+            
+            const isUserAdmin = await verifyIsAdmin(fbUser.uid);
+            if (!isMounted) return;
+            setIsAdmin(isUserAdmin);
 
+            try {
+              const userDocRef = doc(db, 'users', fbUser.uid);
+              const userSnap = await getDoc(userDocRef);
+              if (!isMounted) return;
+              
+              if (userSnap.exists()) {
+                const data = userSnap.data() as UserProfile;
+                const finalProfile: UserProfile = {
+                  ...data,
+                  id: fbUser.uid,
+                  email: fbUser.email || data.email || '',
+                  role: isUserAdmin ? 'admin' : (data.role === 'admin' ? 'patient' : (data.role || 'patient')),
+                  displayName: data.displayName || fbUser.displayName || fbUser.email?.split('@')[0] || 'အသုံးပြုသူ',
+                };
+                setProfile(finalProfile);
+                localStorage.setItem('family_health_profile', JSON.stringify(finalProfile));
+              } else {
+                const newProfile: UserProfile = {
+                  id: fbUser.uid,
+                  email: fbUser.email || '',
+                  displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'အသုံးပြုသူ',
+                  role: isUserAdmin ? 'admin' : 'patient',
+                  createdAt: new Date().toISOString(),
+                };
+                setProfile(newProfile);
+                localStorage.setItem('family_health_profile', JSON.stringify(newProfile));
+                await setDoc(userDocRef, sanitizeForFirestore(newProfile), { merge: true });
+              }
+            } catch (e) {
+              console.warn('Profile load error:', e);
+              if (!isMounted) return;
+              const fallbackProfile: UserProfile = {
+                id: fbUser.uid,
+                email: fbUser.email || '',
+                displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'အသုံးပြုသူ',
+                role: isUserAdmin ? 'admin' : 'patient',
+                createdAt: new Date().toISOString(),
+              };
+              setProfile(fallbackProfile);
+            }
+            if (isMounted) setLoading(false);
+          } else {
+            setCurrentUser(null);
+            setProfile(null);
+            setIsAdmin(false);
+            if (isMounted) setLoading(false);
+          }
+        });
+      };
+
+      initAuth();
+
+      return () => {
+        isMounted = false;
+        unsubscribe();
+      };
+    }, []);
   const loginWithGoogle = async () => {
     setLoading(true);
     try {
+      // Explicitly set persistence to survive iOS Safari redirect
+      await setPersistence(auth, browserLocalPersistence);
+      
       const provider = new GoogleAuthProvider();
-      // Use redirect instead of popup for iOS Safari compatibility
+      // Set a flag in session storage to know we are redirecting
+      sessionStorage.setItem('auth_redirect_pending', 'true');
+      
       await signInWithRedirect(auth, provider);
     } catch (err: any) {
       console.error('Google Sign-in failed:', err);
+      sessionStorage.removeItem('auth_redirect_pending');
       setLoading(false);
       throw new Error(getAuthErrorMessage(err));
     }
