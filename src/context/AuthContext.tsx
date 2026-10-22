@@ -8,7 +8,8 @@ import {
   updatePassword as fbUpdatePassword,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithRedirect,
+  getRedirectResult
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -109,6 +110,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    
+    // Handle redirect result for mobile (iOS)
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result && result.user) {
+          console.log('Redirect login successful:', result.user.email);
+          // onAuthStateChanged will handle the rest of the state updates
+        }
+      })
+      .catch((error) => {
+        console.error('Redirect login error:', error);
+        if (error.code === 'auth/unauthorized-domain') {
+          showToast('ဤဝက်ဘ်ဆိုဒ်လိပ်စာကို Firebase မှ ခွင့်မပြုထားပါ။ Authorized domains တွင် ထည့်ပေးပါ။', 'error');
+        }
+      });
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setLoading(true);
       if (fbUser) {
@@ -176,54 +193,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      const res = await signInWithPopup(auth, provider);
-      if (res && res.user) {
-        setCurrentUser(res.user);
-        const isUserAdmin = await verifyIsAdmin(res.user.uid);
-        setIsAdmin(isUserAdmin);
-
-        const userDocRef = doc(db, 'users', res.user.uid);
-        let prof: UserProfile;
-        try {
-          const userSnap = await getDoc(userDocRef);
-          if (userSnap.exists()) {
-            const data = userSnap.data() as UserProfile;
-            prof = {
-              ...data,
-              id: res.user.uid,
-              email: res.user.email || data.email || '',
-              role: isUserAdmin ? 'admin' : (data.role === 'admin' ? 'patient' : (data.role || 'patient')),
-              displayName: data.displayName || res.user.displayName || 'အသုံးပြုသူ',
-            };
-          } else {
-            prof = {
-              id: res.user.uid,
-              email: res.user.email || '',
-              displayName: res.user.displayName || res.user.email?.split('@')[0] || 'အသုံးပြုသူ',
-              role: isUserAdmin ? 'admin' : 'patient',
-              createdAt: new Date().toISOString(),
-            };
-            await setDoc(userDocRef, sanitizeForFirestore(prof), { merge: true });
-          }
-        } catch (err) {
-          console.warn('Google sign-in user profile fetch error:', err);
-          prof = {
-            id: res.user.uid,
-            email: res.user.email || '',
-            displayName: res.user.displayName || res.user.email?.split('@')[0] || 'အသုံးပြုသူ',
-            role: isUserAdmin ? 'admin' : 'patient',
-            createdAt: new Date().toISOString(),
-          };
-        }
-
-        setProfile(prof);
-        localStorage.setItem('family_health_profile', JSON.stringify(prof));
-      }
+      // Use redirect instead of popup for iOS Safari compatibility
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
       console.error('Google Sign-in failed:', err);
-      throw new Error(getAuthErrorMessage(err));
-    } finally {
       setLoading(false);
+      throw new Error(getAuthErrorMessage(err));
     }
   };
 
