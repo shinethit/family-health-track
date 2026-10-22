@@ -57,10 +57,37 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
+    version: 'v2.4.5',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ အောက်တိုဘာလ',
+    isLatest: true,
+    title: '🔐 [AUTH & DATA SYNC] Bulletproof Google Login for All Platforms & Data Migration Helper',
+    badge: 'Latest Release (v2.4.5)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🔐 စနစ်တကျ ပြင်ဆင်ထားသော Google Login စနစ်',
+        icon: ShieldCheck,
+        items: [
+          'iOS နှင့် Android နှစ်မျိုးလုံးတွင် အဆင်ပြေစေရန် Popup နှင့် Redirect ကို အလိုအလျောက် ရွေးချယ်အသုံးပြုသည့် စနစ်',
+          'Login ပြန်လာချိန်တွင် မျက်နှာပြင် ရှုပ်ထွေးမှုမရှိစေရန် State များကို စနစ်တကျ ထိန်းချုပ်ထားခြင်း'
+        ]
+      },
+      {
+        title: '🗂️ Admin မှတဆင့် အဟောင်း Data များ ပြန်လည်ကြည့်ရှုနိုင်ခြင်း',
+        icon: Database,
+        items: [
+          'UID အဟောင်းနှင့် အသစ် မတူညီမှုကြောင့် မပေါ်တော့သော Data များကို Admin စနစ်ဖြင့် ပြန်လည်စစ်ဆေးနိုင်ခြင်း',
+          'စနစ်အသစ်တွင် User အားလုံး၏ မှတ်တမ်းများကို စနစ်တကျ စီမံခန့်ခွဲနိုင်ခြင်း'
+        ]
+      }
+    ]
+  },
+  {
     version: 'v2.4.4',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ အောက်တိုဘာလ (ယနေ့)',
-    isLatest: true,
+    isLatest: false,
     title: '🎨 [UI/UX & AUTH] Clean Navigation, Tactile Button Feedback & Google Auth Fix',
     badge: 'Latest Release (v2.4.4)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
