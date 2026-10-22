@@ -22,8 +22,6 @@ import {
   Baby,
   Users,
   Award,
-  Folder,
-  Layers,
   ChevronDown,
   HeartPulse,
   CheckCircle2,
@@ -247,17 +245,7 @@ const MainContent: React.FC = () => {
     }
   }, [isAdmin]);
 
-  // Handler when user selects a Category from the Category (Cat) Dropdown
-  const handleCategoryChange = (newCatId: string) => {
-    setSelectedCategoryGroup(newCatId);
-    const targetCat = moduleCategories.find(cat => cat.id === newCatId);
-    if (targetCat && targetCat.tabs.length > 0) {
-      const isAlreadyInCat = targetCat.tabs.some(t => t.id === activeTab);
-      if (!isAlreadyInCat) {
-        setActiveTab(targetCat.tabs[0].id as any);
-      }
-    }
-  };
+  
 
   // Loading state
   if (loading) {
@@ -351,67 +339,27 @@ const MainContent: React.FC = () => {
         </div>
       )}
 
-      {/* Sticky Dual Cascading Dropdowns: Category (Cat) & Sub-Category (Sub Cat) */}
+      
+      {/* Clean Minimal Module Indicator */}
       <div className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-[105px] sm:top-[110px] z-30 w-full shadow-xs">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4">
-            
-            {/* 1. Category (Cat) Dropdown - အဓိက ကဏ္ဍ Dropdown */}
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <label 
-                htmlFor="main-category-select" 
-                className="text-[11px] sm:text-xs font-bold text-slate-700 shrink-0 flex items-center gap-1.5"
-              >
-                <Folder className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="whitespace-nowrap">အဓိကကဏ္ဍ (Cat):</span>
-              </label>
-              <div className="relative flex-1 min-w-0">
-                <select
-                  id="main-category-select"
-                  value={selectedCategoryGroup}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                  className="w-full bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-300 text-emerald-950 text-xs font-bold rounded-xl pl-3 pr-8 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer truncate transition-all shadow-2xs"
-                >
-                  {moduleCategories.map(cat => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.nameMm}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-emerald-700 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+              <Activity className="w-4 h-4" />
             </div>
-
-            {/* 2. Sub-Category (Sub Cat) Dropdown - သူ့ Sub Cat များကိုသာ ရွေးချယ်ပြသခြင်း */}
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <label 
-                htmlFor="sub-category-select" 
-                className="text-[11px] sm:text-xs font-bold text-slate-700 shrink-0 flex items-center gap-1.5"
-              >
-                <Layers className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                <span className="whitespace-nowrap">အခန်းခွဲ (Sub Cat):</span>
-              </label>
-              <div className="relative flex-1 min-w-0">
-                <select
-                  id="sub-category-select"
-                  value={activeTab}
-                  onChange={(e) => setActiveTab(e.target.value as any)}
-                  className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl pl-3 pr-8 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-hidden cursor-pointer truncate transition-all shadow-2xs"
-                >
-                  {currentCategoryTabs.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.label} {t.badge ? `(${t.badge})` : ''}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
+            <h2 className="text-sm font-bold text-slate-800">
+              {currentCategoryTabs.find(t => t.id === activeTab)?.label || 'Menu'}
+            </h2>
           </div>
+          <button 
+            onClick={() => setIsSidebarOpen(true)} 
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <span>မော်ဂျူး ပြောင်းမည်</span>
+            <ChevronDown className="w-4 h-4" />
+          </button>
         </div>
       </div>
-
       {/* Main Content Area - Pure White Clean Layout */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         <Suspense fallback={<div className="flex items-center justify-center py-16 text-slate-500 font-medium text-sm">ဖွင့်နေသည်...</div>}>
