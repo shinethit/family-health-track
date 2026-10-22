@@ -211,19 +211,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []); const loginWithGoogle = async () => {
     setLoading(true);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
     try {
-      // Ensure persistence is set to local so it survives page reloads
       await setPersistence(auth, browserLocalPersistence);
-      
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      
-      // Try Popup first (works on Android & Desktop)
       await signInWithPopup(auth, provider);
     } catch (err: any) {
       console.error('Google Popup Sign-in failed:', err);
       
-      // If Popup is blocked or unsupported (iOS Safari, In-App Browsers), fallback to Redirect
       if (
         err.code === 'auth/popup-blocked' || 
         err.code === 'auth/operation-not-supported-in-this-environment' ||
