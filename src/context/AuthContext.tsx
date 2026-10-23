@@ -191,6 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               createdAt: new Date().toISOString(),
             };
             setProfile(fallbackProfile);
+            localStorage.setItem('family_health_profile', JSON.stringify(fallbackProfile));
           }
           if (isMounted) setLoading(false);
         } else {
@@ -218,6 +219,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await setPersistence(auth, browserLocalPersistence);
       await signInWithPopup(auth, provider);
     } catch (err: any) {
+      if (err.code === 'auth/popup-closed-by-user') {
+        setLoading(false);
+      }
       console.error('Google Popup Sign-in failed:', err);
       
       if (
@@ -237,7 +241,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error(getAuthErrorMessage(redirectErr));
         }
       }
-      setLoading(false);
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setLoading(false);
+      }
       throw new Error(getAuthErrorMessage(err));
     }
   };
