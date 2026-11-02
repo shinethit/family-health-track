@@ -352,6 +352,8 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
   // Filter and sort chronologically ascending
   const filtered = records
     .filter(r => {
+      // Skip records with no glucose value — never plot a fabricated 100.
+      if ((r.value ?? r.glucoseValue) == null) return false;
       const t = r.type || r.timing;
       if (filterType === 'all') return true;
       if (filterType === 'fasting') return t === 'fasting';
@@ -388,7 +390,7 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
 
   const points = filtered.map((r, i) => ({
     x: getX(i, filtered.length),
-    y: getY(r.value || r.glucoseValue || 100),
+    y: getY((r.value ?? r.glucoseValue)!),
     record: r,
   }));
 
@@ -516,7 +518,7 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
           {/* Points and Value Labels */}
           {filtered.map((r, i) => {
             const x = getX(i, filtered.length);
-            const val = r.value || r.glucoseValue || 100;
+            const val = (r.value ?? r.glucoseValue)!;
             const y = getY(val);
             const isHovered = hoveredPoint?.id === r.id;
             const dateObj = formatDateLabel(r.date || r.timestamp || r.createdAt);

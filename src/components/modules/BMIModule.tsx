@@ -119,14 +119,17 @@ export const BMIModule: React.FC = () => {
     setIsSubmitting(true);
     try {
       const calculated = calculateBMI(resolvedWeightKg, resolvedHeightCm, activeAgeYears ?? undefined);
+      // No fabricated fallback: if BMI cannot be computed from the entered
+      // height/weight, do not save a made-up 22 / 'normal' record.
+      if (!calculated) return;
       await addBMIRecord({
         userId: selectedPatient ? selectedPatient.id : (profile?.id || 'guest-user'),
         userName: selectedPatient ? selectedPatient.displayName : (profile?.displayName || 'အသုံးပြုသူ'),
         heightCm: resolvedHeightCm,
         weightKg: resolvedWeightKg,
         waistCm: waistInput ? Number(waistInput) : undefined,
-        bmi: calculated ? calculated.bmi : 22,
-        category: calculated ? calculated.category : 'normal',
+        bmi: calculated.bmi,
+        category: calculated.category,
         date: recordDate,
         notes: notes.trim() || undefined,
       });

@@ -22,6 +22,9 @@ export interface UserProfile {
   chronicConditions?: string[];
   allergies?: string[];
   emergencyContact?: string;
+  // Saved Emergency Medical ID card (v2.4.6) — only ever filled from data the
+  // user/admin actually entered; never pre-filled with invented values.
+  emergencyProfile?: EmergencyProfile;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;

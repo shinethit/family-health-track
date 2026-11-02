@@ -89,6 +89,14 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
     );
   }, [bmiRecords]);
 
+  // Labs sorted the same way (oldest -> newest) — Firestore returns no
+  // ordering, so taking labRecords[0] as "latest" could pick a stale test.
+  const sortedLabs = useMemo(() => {
+    return [...labRecords].sort((a, b) =>
+      parseDateToMs(a.testDate || a.recordedAt || a.createdAt) - parseDateToMs(b.testDate || b.recordedAt || b.createdAt)
+    );
+  }, [labRecords]);
+
   // Filtered arrays based on active timeframe
   const filteredBP = useMemo(() => filterByTime(sortedBP), [sortedBP, timeframe]);
   const filteredGlucose = useMemo(() => filterByTime(sortedGlucose), [sortedGlucose, timeframe]);
@@ -98,10 +106,12 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
   // Latest records
   const latestBP = sortedBP.length > 0 ? sortedBP[sortedBP.length - 1] : null;
   const latestGlucose = sortedGlucose.length > 0 ? sortedGlucose[sortedGlucose.length - 1] : null;
-  const latestLab = labRecords.length > 0 ? labRecords[0] : null;
+  const latestLab = sortedLabs.length > 0 ? sortedLabs[sortedLabs.length - 1] : null;
 
   const bpEval = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic) : null;
-  const gluEval = latestGlucose ? calculateGlucoseStatus(latestGlucose.value || latestGlucose.glucoseValue || 100, latestGlucose.type || latestGlucose.timing || 'fasting') : null;
+  // No fabricated fallback: a record with no glucose value has no status.
+  const latestGluValue = latestGlucose?.value ?? latestGlucose?.glucoseValue ?? null;
+  const gluEval = latestGlucose && latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestGlucose.type || latestGlucose.timing || 'fasting') : null;
 
   // Active user age & BMI
   const activeDOB = selectedPatient?.dateOfBirth || profile?.dateOfBirth;
@@ -579,9 +589,9 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredGlucose.slice().reverse().map((r, i) => {
-                      const val = r.value || r.glucoseValue || 100;
+                      const val = r.value ?? r.glucoseValue ?? null;
                       const type = r.type || r.timing || 'fasting';
-                      const evalG = calculateGlucoseStatus(val, type);
+                      const evalG = val != null ? calculateGlucoseStatus(val, type) : null;
                       const dInfo = formatDateLabel(r.date || r.timestamp || r.createdAt);
                       const diet = r.dietRecord || r.dietNotes || r.foodIntake;
                       return (
@@ -590,7 +600,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                             {dInfo.date} <span className="text-[10px] text-slate-400">{dInfo.time}</span>
                           </td>
                           <td className="py-2.5 px-4 font-extrabold text-emerald-600 font-mono text-sm">
-                            {val} <span className="text-[10px] text-slate-400 font-normal">{type === 'hba1c' ? '%' : 'mg/dL'}</span>
+                            {val ?? '—'} <span className="text-[10px] text-slate-400 font-normal">{type === 'hba1c' ? '%' : 'mg/dL'}</span>
                           </td>
                           <td className="py-2.5 px-4 text-slate-700 dark:text-slate-300">
                             {type === 'fasting' && 'အစာမစားမီ (Fasting)'}
@@ -600,9 +610,13 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                             {!['fasting', 'post_prandial', 'random', 'hba1c'].includes(type) && type}
                           </td>
                           <td className="py-2.5 px-4">
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${evalG.bgColor} ${evalG.color} ${evalG.borderColor}`}>
-                              {evalG.labelMm}
-                            </span>
+                            {evalG ? (
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${evalG.bgColor} ${evalG.color} ${evalG.borderColor}`}>
+                                {evalG.labelMm}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </td>
                           <td className="py-2.5 px-4 text-slate-800 dark:text-slate-200">
                             {diet ? (

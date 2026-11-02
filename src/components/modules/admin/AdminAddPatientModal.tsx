@@ -9,12 +9,12 @@ interface AdminAddPatientModalProps {
     displayName: string;
     email?: string;
     phone?: string;
-    age: number;
+    age?: number;
     gender: 'male' | 'female' | 'other';
     chronicConditions: string[];
-    heightCm: number;
-    weightKg: number;
-    bloodType: string;
+    heightCm?: number;
+    weightKg?: number;
+    bloodType?: string;
   }) => Promise<void>;
 }
 
@@ -26,12 +26,12 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [age, setAge] = useState<number | string>('45');
+  const [age, setAge] = useState<number | string>('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
-  const [conditions, setConditions] = useState<string[]>(['သွေးတိုး']);
-  const [height, setHeight] = useState<number | string>('165');
-  const [weight, setWeight] = useState<number | string>('65');
-  const [bloodType, setBloodType] = useState('O+');
+  const [conditions, setConditions] = useState<string[]>([]);
+  const [height, setHeight] = useState<number | string>('');
+  const [weight, setWeight] = useState<number | string>('');
+  const [bloodType, setBloodType] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -51,12 +51,12 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
         displayName: name.trim(),
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
-        age: age ? Number(age) : 45,
+        age: age === '' ? undefined : Number(age),
         gender,
         chronicConditions: conditions,
-        heightCm: height ? Number(height) : 165,
-        weightKg: weight ? Number(weight) : 65,
-        bloodType,
+        heightCm: height === '' ? undefined : Number(height),
+        weightKg: weight === '' ? undefined : Number(weight),
+        bloodType: bloodType || undefined,
       });
       onClose();
     } finally {
@@ -168,6 +168,7 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
               onChange={(e) => setBloodType(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
             >
+              <option value="">မသိပါ / မထည့်ပါ</option>
               <option value="A+">A+</option>
               <option value="A-">A-</option>
               <option value="B+">B+</option>

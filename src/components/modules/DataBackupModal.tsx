@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
+import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
@@ -61,7 +62,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
     try {
       const backupPayload = {
         app: 'FamilyHealthTrack',
-        version: '2.4.2',
+        version: CURRENT_SYSTEM_VERSION,
         exportedAt: new Date().toISOString(),
         patient: {
           id: targetUid,

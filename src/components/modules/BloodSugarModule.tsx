@@ -68,7 +68,9 @@ export const BloodSugarModule: React.FC = () => {
 
   // Latest records
   const latestRecord = sortedGlucose.length > 0 ? sortedGlucose[sortedGlucose.length - 1] : null;
-  const latestEvaluation = latestRecord ? calculateGlucoseStatus(latestRecord.value || latestRecord.glucoseValue || 100, latestRecord.type || latestRecord.timing || 'fasting') : null;
+  // No fabricated fallback: a record with no glucose value has no status.
+  const latestGluValue = latestRecord?.value ?? latestRecord?.glucoseValue ?? null;
+  const latestEvaluation = latestRecord && latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestRecord.type || latestRecord.timing || 'fasting') : null;
 
   // Latest HbA1c
   const hba1cRecords = sortedGlucose.filter(r => (r.type || r.timing) === 'hba1c');
@@ -352,9 +354,9 @@ export const BloodSugarModule: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredGlucose.slice().reverse().map((record) => {
-                  const rVal = record.value || record.glucoseValue || 100;
+                  const rVal = record.value ?? record.glucoseValue ?? null;
                   const rType = record.type || record.timing || 'fasting';
-                  const evalInfo = calculateGlucoseStatus(rVal, rType);
+                  const evalInfo = rVal != null ? calculateGlucoseStatus(rVal, rType) : null;
                   const rDate = record.date || record.timestamp || '';
                   const diet = record.dietRecord || record.dietNotes || record.foodIntake;
                   return (
@@ -371,15 +373,19 @@ export const BloodSugarModule: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4 font-bold text-slate-900 dark:text-white font-mono text-sm">
-                        {rVal}{' '}
+                        {rVal ?? '—'}{' '}
                         <span className="text-[10px] text-slate-400 font-normal">
                           {rType === 'hba1c' ? '%' : 'mg/dL'}
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
-                          {evalInfo.labelMm}
-                        </span>
+                        {evalInfo ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
+                            {evalInfo.labelMm}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-slate-800 dark:text-slate-200">
                         {diet ? (

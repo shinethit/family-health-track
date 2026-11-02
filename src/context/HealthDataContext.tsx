@@ -241,6 +241,8 @@ interface HealthDataContextType {
   broadcastTickers: BroadcastTicker[];
   dbStats: DatabaseStats;
   refreshAdminData: () => Promise<void>;
+  // One-time repair: backfill patientEmail on existing records (admin only)
+  repairPatientEmails: () => Promise<{ checked: number; fixed: number; alreadyOk: number; errors: string[] }>;
 
   // Broadcast Marquee Ticker Actions
   addBroadcastTicker: (message: string, type?: 'info' | 'warning' | 'urgent') => Promise<void>;
@@ -363,6 +365,48 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     let unsubscribeTickers = () => {};
 
     try {
+      // Dual-key merged subscription: a non-admin sees a document when EITHER
+      // its userId is their uid OR its patientEmail is their email (older
+      // records may carry only one of the two keys). The two single-field
+      // equality queries are merged by document id, so a doc present in both
+      // appears once, and a doc disappearing from one query stays visible
+      // while the other query still returns it. Admins keep one unfiltered
+      // query over the whole collection. No new indexes needed — both are
+      // single-field equality queries, already allowed by firestore.rules.
+      const subscribeMerged = <T,>(
+        collectionName: string,
+        setItems: (items: T[]) => void,
+        warnLabel: string,
+        toastMessage: string,
+      ): (() => void) => {
+        const queries = isAdmin
+          ? [query(collection(db, collectionName))]
+          : [
+              query(collection(db, collectionName), where('userId', '==', currentUser.uid)),
+              query(collection(db, collectionName), where('patientEmail', '==', currentUser.email || '___')),
+            ];
+        const perQuery = queries.map(() => new Map<string, T>());
+        const emit = () => {
+          const merged = new Map<string, T>();
+          perQuery.forEach(m => m.forEach((v, k) => merged.set(k, v)));
+          setItems(Array.from(merged.values()));
+        };
+        const unsubs = queries.map((q, idx) =>
+          onSnapshot(q, (snapshot) => {
+            const m = new Map<string, T>();
+            snapshot.forEach(docSnap => {
+              m.set(docSnap.id, { ...(docSnap.data() as T), id: docSnap.id } as T);
+            });
+            perQuery[idx] = m;
+            emit();
+          }, (e) => {
+            console.warn(warnLabel, e);
+            showToast(toastMessage, 'warning');
+          })
+        );
+        return () => unsubs.forEach(u => u());
+      };
+
       // 1. Users list (Only admins can query all users)
       if (isAdmin) {
         const usersQuery = query(collection(db, 'users'));
@@ -382,157 +426,89 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       // 2. Vitals
-      const vitalsQuery = isAdmin
-        ? query(collection(db, 'vitals'))
-        : query(collection(db, 'vitals'), where('patientEmail', '==', currentUser.email || '___'));
-      unsubscribeVitals = onSnapshot(vitalsQuery, (snapshot) => {
-        const items: BloodPressureRecord[] = [];
-        snapshot.forEach(docSnap => {
-          items.push({ ...(docSnap.data() as BloodPressureRecord), id: docSnap.id });
-        });
-        setAllBP(items);
-      }, (e) => {
-        console.warn('Vitals snapshot:', e);
-        showToast('သွေးပေါင်ချိန် မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
-      });
+      unsubscribeVitals = subscribeMerged<BloodPressureRecord>(
+        'vitals',
+        setAllBP,
+        'Vitals snapshot:',
+        'သွေးပေါင်ချိန် မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+      );
 
       // 3. Glucose
-      const gluQuery = isAdmin
-        ? query(collection(db, 'glucose'))
-        : query(collection(db, 'glucose'), where('patientEmail', '==', currentUser.email || '___'));
-      unsubscribeGlu = onSnapshot(gluQuery, (snapshot) => {
-        const items: BloodSugarRecord[] = [];
-        snapshot.forEach(docSnap => {
-          items.push({ ...(docSnap.data() as BloodSugarRecord), id: docSnap.id });
-        });
-        setAllGlucose(items);
-      }, (e) => {
-        console.warn('Glucose snapshot:', e);
-        showToast('ဆီးချို မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
-      });
+      unsubscribeGlu = subscribeMerged<BloodSugarRecord>(
+        'glucose',
+        setAllGlucose,
+        'Glucose snapshot:',
+        'ဆီးချို မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+      );
 
       // 4. BMI
-      const bmiQuery = isAdmin
-        ? query(collection(db, 'bmi'))
-        : query(collection(db, 'bmi'), where('patientEmail', '==', currentUser.email || '___'));
-      unsubscribeBMI = onSnapshot(bmiQuery, (snapshot) => {
-        const items: BMIRecord[] = [];
-        snapshot.forEach(docSnap => {
-          items.push({ ...(docSnap.data() as BMIRecord), id: docSnap.id });
-        });
-        setAllBMI(items);
-      }, (e) => {
-        console.warn('BMI snapshot:', e);
-        showToast('BMI မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
-      });
+      unsubscribeBMI = subscribeMerged<BMIRecord>(
+        'bmi',
+        setAllBMI,
+        'BMI snapshot:',
+        'BMI မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+      );
 
       // 5. Labs
-      const labsQuery = isAdmin
-        ? query(collection(db, 'labTests'))
-        : query(collection(db, 'labTests'), where('patientEmail', '==', currentUser.email || '___'));
-      unsubscribeLabs = onSnapshot(labsQuery, (snapshot) => {
-        const items: LabTestRecord[] = [];
-        snapshot.forEach(docSnap => {
-          items.push({ ...(docSnap.data() as LabTestRecord), id: docSnap.id });
-        });
-        setAllLabs(items);
-      }, (e) => {
-        console.warn('Labs snapshot:', e);
-        showToast('ဓာတ်ခွဲခန်း မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
-      });
+      unsubscribeLabs = subscribeMerged<LabTestRecord>(
+        'labTests',
+        setAllLabs,
+        'Labs snapshot:',
+        'ဓာတ်ခွဲခန်း မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+      );
 
       // 6. Meds
-      const medsQuery = isAdmin
-        ? query(collection(db, 'medications'))
-        : query(collection(db, 'medications'), where('patientEmail', '==', currentUser.email || '___'));
-      unsubscribeMeds = onSnapshot(medsQuery, (snapshot) => {
-        const items: Medication[] = [];
-        snapshot.forEach(docSnap => {
-          items.push({ ...(docSnap.data() as Medication), id: docSnap.id });
-        });
-        setAllMeds(items);
-      }, (e) => {
-        console.warn('Meds snapshot:', e);
-        showToast('ဆေးမှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
-      });
+      unsubscribeMeds = subscribeMerged<Medication>(
+        'medications',
+        setAllMeds,
+        'Meds snapshot:',
+        'ဆေးမှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+      );
 
       // 7. Doctor Questions
-      const questionsQuery = isAdmin
-        ? query(collection(db, 'doctorQuestions'))
-        : query(collection(db, 'doctorQuestions'), where('patientEmail', '==', currentUser.email || '___'));
-      unsubscribeQuestions = onSnapshot(questionsQuery, (snapshot) => {
-        const items: DoctorQuestion[] = [];
-        snapshot.forEach(docSnap => {
-          items.push({ ...(docSnap.data() as DoctorQuestion), id: docSnap.id });
-        });
-        setAllQuestions(items);
-      }, (e) => {
-        console.warn('DoctorQuestions snapshot:', e);
-        showToast('ဆရာဝန် မေးခွန်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
-      });
+      unsubscribeQuestions = subscribeMerged<DoctorQuestion>(
+        'doctorQuestions',
+        setAllQuestions,
+        'DoctorQuestions snapshot:',
+        'ဆရာဝန် မေးခွန်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+      );
 
       // 8. Doctor Advices
-      const advicesQuery = isAdmin
-        ? query(collection(db, 'doctorAdvices'))
-        : query(collection(db, 'doctorAdvices'), where('patientEmail', '==', currentUser.email || '___'));
-      unsubscribeAdvices = onSnapshot(advicesQuery, (snapshot) => {
-        const items: DoctorAdvice[] = [];
-        snapshot.forEach(docSnap => {
-          items.push({ ...(docSnap.data() as DoctorAdvice), id: docSnap.id });
-        });
-        setAllAdvices(items);
-      }, (e) => {
-        console.warn('DoctorAdvices snapshot:', e);
-        showToast('ဆရာဝန် အကြံပြုချက်များ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
-      });
+      unsubscribeAdvices = subscribeMerged<DoctorAdvice>(
+        'doctorAdvices',
+        setAllAdvices,
+        'DoctorAdvices snapshot:',
+        'ဆရာဝန် အကြံပြုချက်များ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+      );
 
       // 9. Family Members
-      const famQuery = isAdmin
-        ? query(collection(db, 'familyMembers'))
-        : query(collection(db, 'familyMembers'), where('patientEmail', '==', currentUser.email || '___'));
-      unsubscribeFam = onSnapshot(famQuery, (snapshot) => {
-        const items: FamilyMember[] = [];
-        snapshot.forEach(docSnap => {
-          items.push({ ...(docSnap.data() as FamilyMember), id: docSnap.id });
-        });
-        setFamilyMembers(items);
-        if (items.length > 0 && !selectedFamilyMemberId) {
-          setSelectedFamilyMemberId(items[0].id);
-        }
-      }, (e) => {
-        console.warn('FamilyMembers snapshot:', e);
-        showToast('မိသားစုဝင် မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
-      });
+      unsubscribeFam = subscribeMerged<FamilyMember>(
+        'familyMembers',
+        (items) => {
+          setFamilyMembers(items);
+          if (items.length > 0 && !selectedFamilyMemberId) {
+            setSelectedFamilyMemberId(items[0].id);
+          }
+        },
+        'FamilyMembers snapshot:',
+        'မိသားစုဝင် မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+      );
 
       // 10. Medication Intake Logs
-      const medLogsQuery = isAdmin
-        ? query(collection(db, 'medicationLogs'))
-        : query(collection(db, 'medicationLogs'), where('patientEmail', '==', currentUser.email || '___'));
-      const unsubscribeMedLogs = onSnapshot(medLogsQuery, (snapshot) => {
-        const items: MedicationLog[] = [];
-        snapshot.forEach(docSnap => {
-          items.push({ ...(docSnap.data() as MedicationLog), id: docSnap.id });
-        });
-        setAllMedLogs(items);
-      }, (e) => {
-        console.warn('MedicationLogs snapshot:', e);
-        showToast('ဆေးသောက်ပြီး မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
-      });
+      const unsubscribeMedLogs = subscribeMerged<MedicationLog>(
+        'medicationLogs',
+        setAllMedLogs,
+        'MedicationLogs snapshot:',
+        'ဆေးသောက်ပြီး မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+      );
 
       // 11. Vaccines
-      const vacQuery = isAdmin
-        ? query(collection(db, 'vaccines'))
-        : query(collection(db, 'vaccines'), where('patientEmail', '==', currentUser.email || '___'));
-      unsubscribeVaccines = onSnapshot(vacQuery, (snapshot) => {
-        const items: VaccinationRecord[] = [];
-        snapshot.forEach(docSnap => {
-          items.push({ ...(docSnap.data() as VaccinationRecord), id: docSnap.id });
-        });
-        setAllVaccines(items);
-      }, (e) => {
-        console.warn('Vaccines snapshot:', e);
-        showToast('ကာကွယ်ဆေး မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်', 'warning');
-      });
+      unsubscribeVaccines = subscribeMerged<VaccinationRecord>(
+        'vaccines',
+        setAllVaccines,
+        'Vaccines snapshot:',
+        'ကာကွယ်ဆေး မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+      );
 
       // 12. Broadcast Tickers
       unsubscribeTickers = onSnapshot(collection(db, 'broadcastTickers'), (snapshot) => {
@@ -562,6 +538,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                   chronicConditions: member.chronicConditions || [],
                   emergencyContact: member.emergencyContact || '',
                   userId: currentUser.uid,
+                  patientEmail: profile?.email || currentUser.email || '',
                   avatarColor: member.gender === 'female' ? 'bg-rose-600' : 'bg-emerald-600',
                   createdAt: new Date().toISOString(),
                 };
@@ -664,6 +641,73 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  // One-time repair (admin only): backfill patientEmail on existing records.
+  // Older records may carry a wrong or missing patientEmail (e.g. stamped
+  // with the admin's email on on-behalf writes, or omitted entirely), which
+  // makes them invisible to the patient's listeners. This walks every
+  // user-data collection and sets patientEmail from the owning user's profile
+  // (or the family member holder's email) wherever it differs. Docs whose
+  // owner cannot be resolved are left untouched and counted as alreadyOk.
+  const repairPatientEmails = async (): Promise<{ checked: number; fixed: number; alreadyOk: number; errors: string[] }> => {
+    if (!isAdmin) {
+      throw new Error('စီမံခန့်ခွဲသူသာလျှင် ဤပြင်ဆင်မှုကို လုပ်ဆောင်နိုင်ပါသည်');
+    }
+    let checked = 0;
+    let fixed = 0;
+    let alreadyOk = 0;
+    const errors: string[] = [];
+
+    const usersById = new Map<string, string>();
+    const famById = new Map<string, string>();
+    try {
+      const [usersSnap, famSnap] = await Promise.all([
+        getDocs(collection(db, 'users')),
+        getDocs(collection(db, 'familyMembers')),
+      ]);
+      usersSnap.forEach(d => {
+        const data = d.data() as UserProfile;
+        if (data.email) usersById.set(d.id, data.email);
+      });
+      famSnap.forEach(d => {
+        const data = d.data() as any;
+        const holderEmail: string | undefined = data.patientEmail || usersById.get(data.userId);
+        if (holderEmail) famById.set(d.id, holderEmail);
+      });
+    } catch (e) {
+      errors.push(`users/familyMembers စာရင်း ရယူရာတွင် ချို့ယွင်းချက်: ${e instanceof Error ? e.message : String(e)}`);
+      return { checked, fixed, alreadyOk, errors };
+    }
+
+    for (const colName of USER_DATA_COLLECTIONS) {
+      try {
+        const snap = await getDocs(collection(db, colName));
+        for (const docSnap of snap.docs) {
+          checked++;
+          const data = docSnap.data() as any;
+          const correctEmail: string | null =
+            (data.userId && usersById.get(data.userId)) ||
+            (data.userId && famById.get(data.userId)) ||
+            null;
+          if (!correctEmail || data.patientEmail === correctEmail) {
+            alreadyOk++;
+            continue;
+          }
+          try {
+            await updateDoc(doc(db, colName, docSnap.id), { patientEmail: correctEmail });
+            fixed++;
+          } catch (e) {
+            if (errors.length < 10) errors.push(`${colName}/${docSnap.id}: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+      } catch (e) {
+        if (errors.length < 10) errors.push(`${colName} ရယူရာတွင် ချို့ယွင်းချက်: ${e instanceof Error ? e.message : String(e)}`);
+        continue;
+      }
+    }
+
+    return { checked, fixed, alreadyOk, errors };
+  };
+
   const totalUsers = patientsList.length;
   const totalBP = allBP.length;
   const totalGlucose = allGlucose.length;
@@ -695,41 +739,51 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // Target Active User ID for filtering
-  const currentTargetUserId = isAdmin 
-    ? (selectedPatientId || null) 
+  const currentTargetUserId = isAdmin
+    ? (selectedPatientId || null)
     : (currentUser?.uid || null);
 
+  // Records in the current view belong to the target user or to a family
+  // member filed under that user (a family member doc belongs to a patient
+  // when its userId === that patient's id). Matched on userId only — the old
+  // filter also matched patientEmail === the SIGNED-IN user's email, which
+  // mixed the admin's own records into a selected patient's view.
+  const visibleUserIds: string[] = currentTargetUserId
+    ? [currentTargetUserId, ...familyMembers.filter(f => (f as any).userId === currentTargetUserId).map(f => f.id)]
+    : [];
+  const inVisibleScope = (userId?: string): boolean => !!userId && visibleUserIds.includes(userId);
+
   // Filtered views
-  const bpRecords = currentTargetUserId 
-    ? allBP.filter(b => b.userId === currentTargetUserId || b.patientEmail === currentUser?.email || b.patientEmail === currentUser?.email?.trim() || b.patientEmail?.toLowerCase() === currentUser?.email?.toLowerCase()) 
+  const bpRecords = currentTargetUserId
+    ? allBP.filter(b => inVisibleScope(b.userId))
     : (isAdmin ? allBP : []);
 
-  const glucoseRecords = currentTargetUserId 
-    ? allGlucose.filter(g => g.userId === currentTargetUserId || (g as any).patientEmail === currentUser?.email) 
+  const glucoseRecords = currentTargetUserId
+    ? allGlucose.filter(g => inVisibleScope(g.userId))
     : (isAdmin ? allGlucose : []);
 
-  const labRecords = currentTargetUserId 
-    ? allLabs.filter(l => l.userId === currentTargetUserId || (l as any).patientEmail === currentUser?.email) 
+  const labRecords = currentTargetUserId
+    ? allLabs.filter(l => inVisibleScope(l.userId))
     : (isAdmin ? allLabs : []);
 
-  const medications = currentTargetUserId 
-    ? allMeds.filter(m => m.userId === currentTargetUserId || (m as any).patientEmail === currentUser?.email) 
+  const medications = currentTargetUserId
+    ? allMeds.filter(m => inVisibleScope(m.userId))
     : (isAdmin ? allMeds : []);
 
   const vaccineRecords = currentTargetUserId
-    ? allVaccines.filter(v => v.userId === currentTargetUserId || (v as any).patientEmail === currentUser?.email)
+    ? allVaccines.filter(v => inVisibleScope(v.userId))
     : (isAdmin ? allVaccines : []);
 
-  const doctorAdvices = currentTargetUserId 
-    ? allAdvices.filter(a => a.userId === currentTargetUserId || (a as any).patientEmail === currentUser?.email) 
+  const doctorAdvices = currentTargetUserId
+    ? allAdvices.filter(a => inVisibleScope(a.userId))
     : (isAdmin ? allAdvices : []);
 
-  const bmiRecords = currentTargetUserId 
-    ? allBMI.filter(b => b.userId === currentTargetUserId || (b as any).patientEmail === currentUser?.email) 
+  const bmiRecords = currentTargetUserId
+    ? allBMI.filter(b => inVisibleScope(b.userId))
     : (isAdmin ? allBMI : []);
 
   const doctorQuestions = currentTargetUserId
-    ? allQuestions.filter(q => q.userId === currentTargetUserId || (q as any).patientEmail === currentUser?.email)
+    ? allQuestions.filter(q => inVisibleScope(q.userId))
     : (isAdmin ? allQuestions : allQuestions.filter(q => q.userId === currentUser?.uid));
 
   const latestBMI = bmiRecords.length > 0 
@@ -740,24 +794,42 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     ? patientsList.find(p => p.id === selectedPatientId) || null 
     : null;
 
+  // Resolve the patient a new record belongs to: when an admin has a patient
+  // selected, records are filed under THAT patient (userId + patientEmail +
+  // patientName all from the selected patient's profile); otherwise they
+  // belong to the signed-in user. patientEmail must come from the TARGET
+  // patient — using the writer's own profile email here is what made
+  // admin-entered records invisible to the patient.
+  const resolveTarget = (): { uid: string; email: string; name: string } => {
+    if (isAdmin && selectedPatientId) {
+      return {
+        uid: selectedPatientId,
+        email: selectedPatient?.email || '',
+        name: selectedPatient?.displayName || 'လူနာ',
+      };
+    }
+    return {
+      uid: currentUser?.uid || '',
+      email: profile?.email || currentUser?.email || '',
+      name: profile?.displayName || 'လူနာ',
+    };
+  };
+
   // Actions
   const addPatient = async (patientData: Partial<UserProfile> & { displayName: string }): Promise<UserProfile> => {
     if (!isAdmin) {
       throw new Error('စီမံခန့်ခွဲသူသာလျှင် လူနာအသစ် ထည့်သွင်းနိုင်ပါသည်');
     }
     const newId = 'pat-' + Date.now();
+    // No fabricated defaults: fields the caller did not provide stay
+    // undefined (sanitizeForFirestore strips them) instead of inventing
+    // an age, gender, condition, height, weight, blood type or phone number.
     const newPatient: UserProfile = {
+      ...patientData,
       id: newId,
       email: patientData.email || `${newId}@familyhealth.local`,
       displayName: patientData.displayName,
       role: 'patient',
-      age: patientData.age || 45,
-      gender: patientData.gender || 'male',
-      chronicConditions: patientData.chronicConditions || ['သွေးတိုး'],
-      heightCm: patientData.heightCm || 165,
-      weightKg: patientData.weightKg || 65,
-      bloodType: patientData.bloodType || 'O+',
-      emergencyContact: patientData.emergencyContact || '09-12345678',
       createdAt: new Date().toISOString(),
     };
 
@@ -873,13 +945,13 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const evalRes = calculateBPCategory(data.systolic, data.diastolic);
     const category = evalRes.category;
-    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const target = resolveTarget();
 
     const newRecord = {
       ...data,
-      userId: targetUid,
-      patientName: data.patientName || profile?.displayName || 'လူနာ',
-      patientEmail: (data as any).patientEmail || profile?.email || '',
+      userId: target.uid,
+      patientName: data.patientName || target.name,
+      patientEmail: target.email,
       category,
       condition: category,
       createdAt: new Date().toISOString(),
@@ -903,17 +975,28 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const addGlucoseRecord = async (data: Omit<BloodSugarRecord, 'id' | 'status' | 'createdAt'>) => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
-    const glucoseVal = data.glucoseValue || data.value || 100;
+    // No fabricated default: a missing/invalid glucose value is an error,
+    // not 100 mg/dL. (The only caller, BloodSugarModule, always passes a
+    // value from a required number input, so this never triggers in normal use.)
+    const glucoseVal =
+      (typeof data.glucoseValue === 'number' && Number.isFinite(data.glucoseValue) && data.glucoseValue > 0)
+        ? data.glucoseValue
+        : (typeof data.value === 'number' && Number.isFinite(data.value) && data.value > 0)
+          ? data.value
+          : NaN;
+    if (!Number.isFinite(glucoseVal)) {
+      throw new Error('သွေးချို တန်ဖိုး ထည့်ပေးပါ');
+    }
     const timingVal = data.timing || data.type || 'fasting';
     const evalRes = calculateGlucoseStatus(glucoseVal, timingVal);
     const status = evalRes.status;
-    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const target = resolveTarget();
 
     const newRecord = {
       ...data,
-      userId: targetUid,
-      patientName: data.patientName || profile?.displayName || 'လူနာ',
-      patientEmail: (data as any).patientEmail || profile?.email || '',
+      userId: target.uid,
+      patientName: data.patientName || target.name,
+      patientEmail: target.email,
       glucoseValue: glucoseVal,
       value: glucoseVal,
       timing: timingVal,
@@ -940,12 +1023,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const addLabRecord = async (data: Omit<LabTestRecord, 'id' | 'createdAt'>) => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
-    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const target = resolveTarget();
     const newRecord = {
       ...data,
-      userId: targetUid,
-      patientName: (data as any).patientName || profile?.displayName || 'လူနာ',
-      patientEmail: (data as any).patientEmail || profile?.email || '',
+      userId: target.uid,
+      patientName: (data as any).patientName || target.name,
+      patientEmail: target.email,
       createdAt: new Date().toISOString(),
     };
 
@@ -967,12 +1050,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const addMedication = async (data: Omit<Medication, 'id' | 'createdAt'>) => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
-    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const target = resolveTarget();
     const newMed = {
       ...data,
-      userId: targetUid,
-      patientName: (data as any).patientName || profile?.displayName || 'လူနာ',
-      patientEmail: (data as any).patientEmail || profile?.email || '',
+      userId: target.uid,
+      patientName: (data as any).patientName || target.name,
+      patientEmail: target.email,
       createdAt: new Date().toISOString(),
     };
 
@@ -1005,11 +1088,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const addVaccineRecord = async (data: Omit<VaccinationRecord, 'id' | 'createdAt'>) => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
-    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const target = resolveTarget();
     const newRecord = {
       ...data,
-      userId: targetUid,
-      patientName: data.patientName || selectedPatient?.displayName || profile?.displayName || 'လူနာ',
+      userId: target.uid,
+      patientName: data.patientName || target.name,
+      patientEmail: target.email,
       createdAt: new Date().toISOString(),
     };
 
@@ -1045,10 +1129,11 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     const targetPatient = patientsList.find(p => p.id === patientId);
-    const newAdvice: DoctorAdvice = {
+    const newAdvice: DoctorAdvice & { patientEmail: string } = {
       id: 'adv-' + Date.now(),
       userId: patientId,
       patientName: targetPatient?.displayName || 'လူနာ',
+      patientEmail: targetPatient?.email || '',
       doctorEmail: profile?.email || currentUser?.email || 'admin@healthtrack.com',
       doctorName: profile?.displayName || 'ဆရာဝန် (Admin)',
       advice: adviceText,
@@ -1079,14 +1164,25 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
     const bmiEval = calculateBMI(data.weightKg, data.heightCm);
-    const bmiValue = data.bmi || (bmiEval ? bmiEval.bmi : 22);
+    // No fabricated default: use a passed BMI value, else compute it from
+    // weight + height; if neither is available, refuse instead of saving 22.
+    // (The only caller, BMIModule, returns early without height/weight and
+    // always passes a computed BMI, so this never triggers in normal use.)
+    const bmiValue =
+      (typeof data.bmi === 'number' && Number.isFinite(data.bmi) && data.bmi > 0)
+        ? data.bmi
+        : (bmiEval ? bmiEval.bmi : NaN);
+    if (!Number.isFinite(bmiValue)) {
+      throw new Error('BMI တွက်ရန် ကိုယ်အလေးချိန်/အရပ် လိုအပ်ပါသည်');
+    }
     const category = data.category || (bmiEval ? bmiEval.category : 'normal');
-    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const target = resolveTarget();
 
     const newRecord = {
       ...data,
-      userId: targetUid,
-      userName: data.userName || profile?.displayName || 'လူနာ',
+      userId: target.uid,
+      userName: data.userName || target.name,
+      patientEmail: target.email,
       bmi: bmiValue,
       category,
       createdAt: new Date().toISOString(),
@@ -1111,11 +1207,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const addDoctorQuestion = async (data: Omit<DoctorQuestion, 'id' | 'createdAt' | 'status'>) => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
+    const target = resolveTarget();
     const newQuestion = {
       ...data,
-      userId: currentUser.uid,
-      patientName: data.patientName || profile?.displayName || 'လူနာ',
-      patientEmail: data.patientEmail || profile?.email || currentUser.email || '',
+      userId: target.uid,
+      patientName: data.patientName || target.name,
+      patientEmail: target.email,
       status: 'pending' as const,
       createdAt: new Date().toISOString(),
     };
@@ -1236,6 +1333,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const newMember = {
       ...member,
       userId: currentUser.uid,
+      patientEmail: profile?.email || currentUser.email || '',
       avatarColor: member.gender === 'female' ? 'bg-rose-600' : 'bg-emerald-600',
     };
 
@@ -1267,8 +1365,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     medName?: string
   ) => {
     if (!currentUser) return;
-    const targetUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
-    const existingLog = allMedLogs.find(l => l.medicationId === medicationId && l.date === dateStr && (l.doseIndex ?? 0) === doseIndex && l.userId === targetUid);
+    const target = resolveTarget();
+    const existingLog = allMedLogs.find(l => l.medicationId === medicationId && l.date === dateStr && (l.doseIndex ?? 0) === doseIndex && l.userId === target.uid);
 
     if (existingLog) {
       setAllMedLogs(prev => prev.map(l => l.id === existingLog.id ? { ...l, taken, takenAt: taken ? new Date().toISOString() : undefined } : l));
@@ -1281,8 +1379,9 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         console.warn('Error updating med log:', err);
       }
     } else {
-      const newLog: Omit<MedicationLog, 'id'> = {
-        userId: targetUid,
+      const newLog: Omit<MedicationLog, 'id'> & { patientEmail: string } = {
+        userId: target.uid,
+        patientEmail: target.email,
         medicationId,
         medicationName: medName || 'Medication',
         date: dateStr,
@@ -1301,7 +1400,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const medicationLogs = currentTargetUserId
-    ? allMedLogs.filter(m => m.userId === currentTargetUserId || (m as any).patientEmail === currentUser?.email)
+    ? allMedLogs.filter(m => inVisibleScope(m.userId))
     : (isAdmin ? allMedLogs : []);
 
   return (
@@ -1325,6 +1424,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       deleteBroadcastTicker,
       dbStats,
       refreshAdminData,
+      repairPatientEmails,
       familyMembers,
       selectedFamilyMemberId,
       setSelectedFamilyMemberId,

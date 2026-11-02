@@ -24,7 +24,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
-import { calculateBPCategory, calculateGlucoseStatus, calculateBMI } from '../../lib/medicalCalculations';
+import { calculateBPCategory, calculateGlucoseStatus, calculateBMI, parseDateToMs } from '../../lib/medicalCalculations';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -59,16 +59,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { bpRecords, glucoseRecords, bmiRecords, selectedPatient } = useHealthData();
   const { unreadCount } = useNotifications();
 
-  // Compute real health status summary from latest records
+  // Compute real health status summary from latest records.
+  // Firestore returns no ordering, so sort a copy by date (newest first)
+  // before taking [0] — otherwise the "latest" reading can be a stale one.
   const targetAge = selectedPatient?.age ?? profile?.age;
   const isPregnant = selectedPatient?.chronicConditions?.includes('ကိုယ်ဝန်ဆောင်') || profile?.chronicConditions?.includes('ကိုယ်ဝန်ဆောင်');
 
-  const latestBP = bpRecords.length > 0 ? bpRecords[0] : null;
-  const latestGlu = glucoseRecords.length > 0 ? glucoseRecords[0] : null;
-  const latestBMI = bmiRecords.length > 0 ? bmiRecords[0] : null;
+  const sortByDateDesc = <T extends { date?: string; timestamp?: string; createdAt?: string }>(arr: T[]): T[] =>
+    [...arr].sort((a, b) => parseDateToMs(b.date || b.timestamp || b.createdAt) - parseDateToMs(a.date || a.timestamp || a.createdAt));
+
+  const latestBP = sortByDateDesc(bpRecords)[0] ?? null;
+  const latestGlu = sortByDateDesc(glucoseRecords)[0] ?? null;
+  const latestBMI = sortByDateDesc(bmiRecords)[0] ?? null;
 
   const bpEval = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic, targetAge, isPregnant) : null;
-  const gluEval = latestGlu ? calculateGlucoseStatus(latestGlu.glucoseValue || latestGlu.value || 100, latestGlu.timing || latestGlu.type || 'fasting') : null;
+  // No fabricated fallback: a record with no glucose value has no status.
+  const latestGluValue = latestGlu?.glucoseValue ?? latestGlu?.value ?? null;
+  const gluEval = latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestGlu.timing || latestGlu.type || 'fasting') : null;
   const bmiEval = latestBMI ? calculateBMI(latestBMI.weightKg, latestBMI.heightCm, targetAge) : null;
 
   const hasAnyRecords = Boolean(latestBP || latestGlu || latestBMI);
@@ -125,19 +132,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                      </div>
                    )}
 
-                   {latestGlu && gluEval && (
+                   {latestGlu && (
                      <div className="flex items-center justify-between text-[11px]">
                        <span className="flex items-center gap-1.5 text-slate-600">
                          <span className={`w-2 h-2 rounded-full ${
-                           gluEval.status === 'normal' ? 'bg-emerald-500' :
-                           gluEval.status === 'pre_diabetic' ? 'bg-amber-500' :
-                           gluEval.status === 'low' ? 'bg-blue-500' : 'bg-rose-500'
+                           gluEval?.status === 'normal' ? 'bg-emerald-500' :
+                           gluEval?.status === 'pre_diabetic' ? 'bg-amber-500' :
+                           gluEval?.status === 'low' ? 'bg-blue-500' : 'bg-rose-500'
                          }`} />
-                         <span>သွေးချို: {latestGlu.glucoseValue || latestGlu.value} mg/dL</span>
+                         <span>သွေးချို: {latestGluValue ?? '—'} mg/dL</span>
                        </span>
-                       <span className={`font-bold text-[10px] ${gluEval.color}`}>
-                         {gluEval.labelEn || gluEval.status}
-                       </span>
+                       {gluEval ? (
+                         <span className={`font-bold text-[10px] ${gluEval.color}`}>
+                           {gluEval.labelEn || gluEval.status}
+                         </span>
+                       ) : (
+                         <span className="font-bold text-[10px] text-slate-400">—</span>
+                       )}
                      </div>
                    )}
 

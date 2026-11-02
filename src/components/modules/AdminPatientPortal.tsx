@@ -6,6 +6,7 @@ import { UserProfile } from '../../types/health';
 import { EditPatientModal } from './EditPatientModal';
 import { DeletePatientModal } from './DeletePatientModal';
 import { AdminQuotaBanner } from './admin/AdminQuotaBanner';
+import { AdminDataRepair } from './admin/AdminDataRepair';
 import { AdminBroadcastManager } from './admin/AdminBroadcastManager';
 import { AdminPatientList } from './admin/AdminPatientList';
 import { AdminPatientDetail } from './admin/AdminPatientDetail';
@@ -74,7 +75,7 @@ export const AdminPatientPortal: React.FC = () => {
     const phone = (p.phone || '').trim();
 
     const isGenericName = !resolved || resolved === 'လူနာ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-') || resolved.includes('6bce6599');
-    const isFakeEmail = !email || email.includes('@patient.local') || email.includes('demo');
+    const isFakeEmail = !email || email.includes('@patient.local') || email.includes('@familyhealth.local') || email.includes('demo');
     const missingPhone = !phone;
     const missingAge = (!p.age || p.age <= 0) && !p.dateOfBirth;
     const missingVitals = !p.heightCm || !p.weightKg;
@@ -92,7 +93,7 @@ export const AdminPatientPortal: React.FC = () => {
     if (!resolved || resolved === 'လူနာ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-') || resolved.includes('6bce6599')) {
       missing.push('အမည်မစုံ');
     }
-    if (!email || email.includes('@patient.local')) {
+    if (!email || email.includes('@patient.local') || email.includes('@familyhealth.local')) {
       missing.push('အီးမေးလ်မစုံ');
     }
     if (!phone) {
@@ -154,12 +155,12 @@ export const AdminPatientPortal: React.FC = () => {
     displayName: string;
     email?: string;
     phone?: string;
-    age: number;
+    age?: number;
     gender: 'male' | 'female' | 'other';
     chronicConditions: string[];
-    heightCm: number;
-    weightKg: number;
-    bloodType: string;
+    heightCm?: number;
+    weightKg?: number;
+    bloodType?: string;
   }) => {
     await addPatient(data);
     setActionAlert({
@@ -242,6 +243,9 @@ export const AdminPatientPortal: React.FC = () => {
         showQuotaDetails={showQuotaDetails}
         onToggleQuotaDetails={() => setShowQuotaDetails(!showQuotaDetails)}
       />
+
+      {/* 1b. Data Repair — ရှိပြီးသား မှတ်တမ်းဟောင်းတွေရဲ့ patientEmail ပြင်ဆင်ခြင်း */}
+      <AdminDataRepair />
 
       {/* 2. Broadcast News / Marquee Manager */}
       <AdminBroadcastManager

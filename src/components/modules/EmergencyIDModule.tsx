@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, 
   PhoneCall, 
@@ -15,38 +15,91 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
-import { EmergencyProfile } from '../../types/health';
+import { EmergencyProfile, UserProfile } from '../../types/health';
+
+// Build the card ONLY from real saved data: first the previously saved
+// emergencyProfile, else the profile's own blood type / allergies /
+// conditions. Anything not yet entered stays empty — never invent a name,
+// phone, hospital, doctor, blood type, allergy or condition. Fabricated
+// emergency data can kill in a real emergency.
+const buildEmergencyData = (patient: UserProfile | null | undefined): EmergencyProfile => {
+  const ep = patient?.emergencyProfile;
+  return {
+    id: ep?.id || `emg-${patient?.id || 'default'}`,
+    userId: patient?.id || '',
+    patientName: ep?.patientName || patient?.displayName || '',
+    dateOfBirth: ep?.dateOfBirth || patient?.dateOfBirth || '',
+    bloodType: ep?.bloodType || patient?.bloodType || '',
+    allergies: ep?.allergies || patient?.allergies || [],
+    chronicConditions: ep?.chronicConditions || patient?.chronicConditions || [],
+    primaryContactName: ep?.primaryContactName || '',
+    primaryContactPhone: ep?.primaryContactPhone || '',
+    primaryContactRelation: ep?.primaryContactRelation || '',
+    secondaryContactName: ep?.secondaryContactName || '',
+    secondaryContactPhone: ep?.secondaryContactPhone || '',
+    attendingDoctorName: ep?.attendingDoctorName || '',
+    attendingDoctorPhone: ep?.attendingDoctorPhone || '',
+    preferredHospital: ep?.preferredHospital || '',
+    organDonor: ep?.organDonor ?? false,
+    specialInstructions: ep?.specialInstructions || '',
+  };
+};
 
 export const EmergencyIDModule: React.FC = () => {
-  const { profile } = useAuth();
-  const { selectedPatient } = useHealthData();
+  const { currentUser, profile } = useAuth();
+  const { selectedPatient, updatePatient } = useHealthData();
   const currentPatient = selectedPatient || profile;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [emergencyData, setEmergencyData] = useState<EmergencyProfile>({
-    id: `emg-${currentPatient?.id || 'default'}`,
-    userId: currentPatient?.id || 'p-1',
-    patientName: currentPatient?.displayName || 'ရှိုင်းသစ်',
-    dateOfBirth: currentPatient?.dateOfBirth || '1990-01-01',
-    bloodType: currentPatient?.bloodType || 'O+ (Positive)',
-    allergies: currentPatient?.allergies || ['Penicillin (ပယ်နီစီလင်)', 'Seafood Allergy'],
-    chronicConditions: currentPatient?.chronicConditions || ['သွေးတိုး (Hypertension)', 'ဆီးချို (Diabetes)'],
-    primaryContactName: 'ဒေါ်အေးအေး (မိခင်)',
-    primaryContactPhone: '09798881234',
-    primaryContactRelation: 'မိခင်',
-    secondaryContactName: 'ဦးကိုကို (ညီ/မောင်)',
-    secondaryContactPhone: '09971234567',
-    attendingDoctorName: 'ဒေါက်တာ အောင်ကျော် (အထွေထွေရောဂါကု)',
-    attendingDoctorPhone: '09250112233',
-    preferredHospital: 'ရန်ကုန် ပြည်သူ့ဆေးရုံကြီး (YGH)',
-    organDonor: true,
-    specialInstructions: 'အရေးပေါ်သတိလစ်ပါက ဆီးချိုကျဆေးသောက်ထားခြင်းရှိမရှိ ချက်ချင်းစစ်ဆေးပေးပါရန်။'
-  });
+  const [emergencyData, setEmergencyData] = useState<EmergencyProfile>(() => buildEmergencyData(currentPatient));
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Reload the form when the viewed patient changes (sign-in finishing,
+  // switching patients). Only the patient id is watched on purpose: the
+  // profile snapshot can lag behind a just-completed save, and reloading
+  // from it would wipe the freshly saved card from the screen.
+  const viewedPatientId = currentPatient?.id;
+  useEffect(() => {
+    if (viewedPatientId) setEmergencyData(buildEmergencyData(currentPatient));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewedPatientId]);
+
+  const handleCancelEdit = () => {
+    setEmergencyData(buildEmergencyData(currentPatient));
+    setSaveError(null);
     setIsEditing(false);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetId = selectedPatient?.id || profile?.id || currentUser?.uid || '';
+    if (!targetId) {
+      setSaveError('လူနာမှတ်တမ်း မတွေ့ပါ — အကောင့်ပြန်ဝင်ပြီး ထပ်စမ်းကြည့်ပါ။');
+      return;
+    }
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const toSave: EmergencyProfile = {
+        ...emergencyData,
+        id: emergencyData.id || `emg-${targetId}`,
+        userId: targetId,
+        patientName: emergencyData.patientName.trim() || currentPatient?.displayName || '',
+        allergies: emergencyData.allergies.map(a => a.trim()).filter(Boolean),
+        chronicConditions: emergencyData.chronicConditions.map(c => c.trim()).filter(Boolean),
+        updatedAt: new Date().toISOString(),
+      };
+      // updatePatient() already shows a success/error toast itself.
+      await updatePatient(targetId, { emergencyProfile: toSave });
+      setEmergencyData(toSave);
+      setIsEditing(false);
+    } catch (err) {
+      setSaveError('သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ထပ်စမ်းကြည့်ပါ။');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handlePrintCard = () => {
@@ -92,7 +145,7 @@ export const EmergencyIDModule: React.FC = () => {
 
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => setIsEditing(!isEditing)}
+            onClick={() => (isEditing ? handleCancelEdit() : setIsEditing(true))}
             className="px-4 py-2.5 bg-white/10 text-white hover:bg-white/20 rounded-xl text-xs font-bold transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
           >
             <Edit className="w-4 h-4" />
@@ -192,8 +245,28 @@ export const EmergencyIDModule: React.FC = () => {
               <input
                 type="text"
                 value={emergencyData.allergies.join(', ')}
-                onChange={(e) => setEmergencyData({ ...emergencyData, allergies: e.target.value.split(',').map(s => s.trim()) })}
+                onChange={(e) => setEmergencyData({ ...emergencyData, allergies: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                 className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none text-rose-700 font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">ဒုတိယ အရေးပေါ် ဆက်သွယ်ရန် (အမည်)</label>
+              <input
+                type="text"
+                value={emergencyData.secondaryContactName || ''}
+                onChange={(e) => setEmergencyData({ ...emergencyData, secondaryContactName: e.target.value })}
+                className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">ဒုတိယ ဆက်သွယ်ရန် ဖုန်းနံပါတ်</label>
+              <input
+                type="text"
+                value={emergencyData.secondaryContactPhone || ''}
+                onChange={(e) => setEmergencyData({ ...emergencyData, secondaryContactPhone: e.target.value })}
+                className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none font-bold"
               />
             </div>
           </div>
@@ -202,26 +275,43 @@ export const EmergencyIDModule: React.FC = () => {
             <label className="font-semibold text-slate-700 block mb-1">အထူး အရေးပေါ် မှာကြားချက်</label>
             <textarea
               rows={2}
-              value={emergencyData.specialInstructions}
+              value={emergencyData.specialInstructions || ''}
               onChange={(e) => setEmergencyData({ ...emergencyData, specialInstructions: e.target.value })}
               className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none"
             />
           </div>
 
+          <label className="flex items-center gap-2 text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={emergencyData.organDonor ?? false}
+              onChange={(e) => setEmergencyData({ ...emergencyData, organDonor: e.target.checked })}
+              className="w-4 h-4 accent-rose-700"
+            />
+            <span className="font-semibold">ကိုယ်အင်္ဂါ လှူဒါန်းသူ (Organ Donor)</span>
+          </label>
+
+          {saveError && (
+            <p className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 font-semibold">
+              {saveError}
+            </p>
+          )}
+
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"
-              onClick={() => setIsEditing(false)}
+              onClick={handleCancelEdit}
               className="px-4 py-2 border border-slate-300 rounded-xl font-semibold hover:bg-slate-100"
             >
               မလုပ်တော့ပါ
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-rose-700 text-white font-bold rounded-xl hover:bg-rose-800 transition-colors flex items-center gap-1.5"
+              disabled={isSaving}
+              className="px-5 py-2 bg-rose-700 text-white font-bold rounded-xl hover:bg-rose-800 transition-colors flex items-center gap-1.5 disabled:opacity-50"
             >
               <Check className="w-4 h-4" />
-              <span>သိမ်းဆည်းမည်</span>
+              <span>{isSaving ? 'သိမ်းဆည်းနေသည်...' : 'သိမ်းဆည်းမည်'}</span>
             </button>
           </div>
         </form>
@@ -239,7 +329,7 @@ export const EmergencyIDModule: React.FC = () => {
                 </div>
                 <div className="px-2.5 py-1 bg-white text-rose-900 rounded-full font-black text-xs shadow-xs flex items-center gap-1">
                   <Droplet className="w-3.5 h-3.5 text-rose-600 fill-rose-600" />
-                  <span>{emergencyData.bloodType}</span>
+                  <span>{emergencyData.bloodType || 'မထည့်ရသေးပါ'}</span>
                 </div>
               </div>
 
@@ -247,7 +337,7 @@ export const EmergencyIDModule: React.FC = () => {
               <div className="space-y-3 text-xs">
                 <div>
                   <p className="text-[10px] text-rose-200 uppercase font-bold tracking-wider">လူနာအမည်</p>
-                  <p className="text-lg font-black text-white">{emergencyData.patientName}</p>
+                  <p className="text-lg font-black text-white">{emergencyData.patientName || 'မထည့်ရသေးပါ'}</p>
                 </div>
 
                 <div className="bg-white/15 backdrop-blur-xs rounded-xl p-2.5 border border-white/20">
@@ -256,23 +346,36 @@ export const EmergencyIDModule: React.FC = () => {
                     <span>ALLERGIES (ဓာတ်မတည့်ပါ)</span>
                   </p>
                   <p className="font-bold text-white mt-0.5">
-                    {emergencyData.allergies.join(', ')}
+                    {emergencyData.allergies.length > 0 ? emergencyData.allergies.join(', ') : 'မထည့်ရသေးပါ'}
                   </p>
                 </div>
 
+                {emergencyData.organDonor && (
+                  <div className="bg-white/15 backdrop-blur-xs rounded-xl p-2.5 border border-white/20">
+                    <p className="font-bold text-white flex items-center gap-1.5">
+                      <Heart className="w-3.5 h-3.5 text-rose-200 fill-rose-200" />
+                      <span>ကိုယ်အင်္ဂါ လှူဒါန်းသူ (Organ Donor)</span>
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <p className="text-[10px] text-rose-200 uppercase font-bold tracking-wider">အရေးပေါ် တိုက်ရိုက်ဆက်သွယ်ရန်</p>
-                  <a 
-                    href={`tel:${emergencyData.primaryContactPhone}`}
-                    className="inline-flex items-center gap-2 mt-0.5 px-3 py-1.5 bg-yellow-400 text-slate-950 rounded-xl font-black text-sm hover:bg-yellow-300 transition-colors shadow-xs"
-                  >
-                    <PhoneCall className="w-4 h-4" />
-                    <span>{emergencyData.primaryContactPhone} ({emergencyData.primaryContactName})</span>
-                  </a>
+                  {emergencyData.primaryContactPhone ? (
+                    <a 
+                      href={`tel:${emergencyData.primaryContactPhone}`}
+                      className="inline-flex items-center gap-2 mt-0.5 px-3 py-1.5 bg-yellow-400 text-slate-950 rounded-xl font-black text-sm hover:bg-yellow-300 transition-colors shadow-xs"
+                    >
+                      <PhoneCall className="w-4 h-4" />
+                      <span>{emergencyData.primaryContactPhone} ({emergencyData.primaryContactName || 'မထည့်ရသေးပါ'})</span>
+                    </a>
+                  ) : (
+                    <p className="font-bold text-white mt-0.5">မထည့်ရသေးပါ</p>
+                  )}
                 </div>
 
                 <div className="pt-2 border-t border-white/20 flex items-center justify-between text-[10px] text-rose-100">
-                  <span>ဆေးရုံ: {emergencyData.preferredHospital}</span>
+                  <span>ဆေးရုံ: {emergencyData.preferredHospital || 'မထည့်ရသေးပါ'}</span>
                   <span className="font-bold">Family Health Track</span>
                 </div>
               </div>
@@ -296,31 +399,35 @@ export const EmergencyIDModule: React.FC = () => {
                 <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between">
                   <div>
                     <p className="text-[11px] font-bold text-rose-800">အဓိက အရေးပေါ် ဆက်သွယ်ရန်</p>
-                    <p className="font-extrabold text-slate-900 mt-0.5">{emergencyData.primaryContactName}</p>
-                    <p className="text-rose-700 font-bold mt-1">{emergencyData.primaryContactPhone}</p>
+                    <p className="font-extrabold text-slate-900 mt-0.5">{emergencyData.primaryContactName || 'မထည့်ရသေးပါ'}</p>
+                    <p className="text-rose-700 font-bold mt-1">{emergencyData.primaryContactPhone || 'မထည့်ရသေးပါ'}</p>
                   </div>
-                  <a
-                    href={`tel:${emergencyData.primaryContactPhone}`}
-                    className="p-2.5 bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition-colors cursor-pointer"
-                    title="တိုက်ရိုက် ဖုန်းခေါ်မည်"
-                  >
-                    <PhoneCall className="w-4 h-4" />
-                  </a>
+                  {emergencyData.primaryContactPhone && (
+                    <a
+                      href={`tel:${emergencyData.primaryContactPhone}`}
+                      className="p-2.5 bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition-colors cursor-pointer"
+                      title="တိုက်ရိုက် ဖုန်းခေါ်မည်"
+                    >
+                      <PhoneCall className="w-4 h-4" />
+                    </a>
+                  )}
                 </div>
 
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
                   <div>
                     <p className="text-[11px] font-bold text-slate-600">ဒုတိယ အရေးပေါ် ဆက်သွယ်ရန်</p>
-                    <p className="font-extrabold text-slate-900 mt-0.5">{emergencyData.secondaryContactName}</p>
-                    <p className="text-slate-800 font-bold mt-1">{emergencyData.secondaryContactPhone}</p>
+                    <p className="font-extrabold text-slate-900 mt-0.5">{emergencyData.secondaryContactName || 'မထည့်ရသေးပါ'}</p>
+                    <p className="text-slate-800 font-bold mt-1">{emergencyData.secondaryContactPhone || 'မထည့်ရသေးပါ'}</p>
                   </div>
-                  <a
-                    href={`tel:${emergencyData.secondaryContactPhone}`}
-                    className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-colors cursor-pointer"
-                    title="တိုက်ရိုက် ဖုန်းခေါ်မည်"
-                  >
-                    <PhoneCall className="w-4 h-4" />
-                  </a>
+                  {emergencyData.secondaryContactPhone && (
+                    <a
+                      href={`tel:${emergencyData.secondaryContactPhone}`}
+                      className="p-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-colors cursor-pointer"
+                      title="တိုက်ရိုက် ဖုန်းခေါ်မည်"
+                    >
+                      <PhoneCall className="w-4 h-4" />
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -335,14 +442,16 @@ export const EmergencyIDModule: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl">
                   <p className="text-[11px] font-bold text-indigo-800">ပြသနေသော ဆရာဝန်</p>
-                  <p className="font-extrabold text-slate-900 mt-0.5">{emergencyData.attendingDoctorName}</p>
-                  <p className="text-indigo-700 font-bold mt-1">{emergencyData.attendingDoctorPhone}</p>
+                  <p className="font-extrabold text-slate-900 mt-0.5">{emergencyData.attendingDoctorName || 'မထည့်ရသေးပါ'}</p>
+                  <p className="text-indigo-700 font-bold mt-1">{emergencyData.attendingDoctorPhone || 'မထည့်ရသေးပါ'}</p>
                 </div>
 
                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl">
                   <p className="text-[11px] font-bold text-emerald-800">ဦးစားပေး ဆေးရုံကြီး</p>
-                  <p className="font-extrabold text-slate-900 mt-0.5">{emergencyData.preferredHospital}</p>
-                  <p className="text-emerald-700 font-medium mt-1">အရေးပေါ်ဌာန ဖွင့်လှစ်ထားပါသည်</p>
+                  <p className="font-extrabold text-slate-900 mt-0.5">{emergencyData.preferredHospital || 'မထည့်ရသေးပါ'}</p>
+                  {emergencyData.preferredHospital && (
+                    <p className="text-emerald-700 font-medium mt-1">အရေးပေါ်ဌာန ဖွင့်လှစ်ထားပါသည်</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -354,8 +463,14 @@ export const EmergencyIDModule: React.FC = () => {
                 <span>အရေးပေါ် လမ်းညွှန်ချက် (Special Medical Instructions)</span>
               </p>
               <p className="leading-relaxed bg-white/80 p-3 rounded-2xl border border-amber-200 font-medium">
-                "{emergencyData.specialInstructions}"
+                {emergencyData.specialInstructions ? `"${emergencyData.specialInstructions}"` : 'မထည့်ရသေးပါ'}
               </p>
+              {emergencyData.organDonor && (
+                <p className="font-bold flex items-center gap-1.5 text-rose-800">
+                  <Heart className="w-4 h-4 text-rose-600 fill-rose-600" />
+                  <span>ကိုယ်အင်္ဂါ လှူဒါန်းသူ (Organ Donor) ဖြစ်ပါသည်။</span>
+                </p>
+              )}
             </div>
           </div>
         </div>

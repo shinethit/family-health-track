@@ -57,12 +57,42 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
+    version: 'v2.4.6',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: true,
+    title: '🔧 [FIX] ဆရာဝန်ဖြည့်ပေးတဲ့ မှတ်တမ်း လူနာဘက်မှာ ပေါ်စေခြင်း + Emergency ID အမှားပြင်ခြင်း',
+    badge: 'Latest Release (v2.4.6)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🔧 လူနာဘက်မှာ မပေါ်တဲ့ မှတ်တမ်း ပြဿနာ ပြင်ဆင်ခြင်း',
+        icon: Database,
+        items: [
+          'လူနာဘက်က data ကို userId နဲ့ patientEmail နှစ်မျိုးလုံးနဲ့ ဆွဲတော့မယ် — ဆရာဝန်ကိုယ်စား ဖြည့်ပေးတဲ့ မှတ်တမ်း လူနာဘက်မှာ ပေါ်တော့မယ်',
+          'ဆရာဝန်ဖြည့်ပေးရင် patientEmail ကို လူနာ့ရဲ့ တကယ့် email ထည့်တော့မယ် (အရင်က Admin ကိုယ့် email မှားထည့်မိတယ်)',
+          'BMI/ကာကွယ်ဆေး/မိသားစုဝင်/ဆေးသောက်မှတ်တမ်း/ဆရာဝန်အကြံပြုချက် တွေမှာ patientEmail မပါတာ ပြင်ပြီးပြီ',
+          'Admin အတွက် Data Repair ခလုတ် အသစ် — ရှိပြီးသား မှတ်တမ်းဟောင်းတွေရဲ့ patientEmail ကို တစ်ခါတည်း ပြင်ပေးတယ်'
+        ]
+      },
+      {
+        title: '🆔 Emergency ID နှင့် အတု အချက်အလက်များ ပြင်ဆင်ခြင်း',
+        icon: ShieldCheck,
+        items: [
+          'Emergency ID မှာ အတု အချက်အလက် (ဓာတ်မတည့်တာ၊ သွေးအမျိုးအစား၊ ဖုန်းနံပါတ်) တွေ မပြတော့ဘူး၊ မရှိရင် အလွတ်ပဲ ပြမယ်၊ Save နှိပ်ရင် တကယ် သိမ်းမယ်',
+          'လူနာအသစ် ထည့်ရင် အသက် 45/သွေးတိုး/O+ ဆိုပြီး အတု မဖြည့်တော့ဘူး',
+          'သွေးချို 100 / BMI 22 ဆိုပြီး အတု တန်ဖိုးတွေ မပြတော့ဘူး'
+        ]
+      }
+    ]
+  },
+  {
     version: 'v2.4.5',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ အောက်တိုဘာလ',
-    isLatest: true,
+    isLatest: false,
     title: '🔐 [AUTH & DATA SYNC] Bulletproof Google Login for All Platforms & Data Migration Helper',
-    badge: 'Latest Release (v2.4.5)',
+    badge: 'Previous Release (v2.4.5)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
@@ -89,7 +119,7 @@ export const VERSION_HISTORY_DATA: VersionItem[] = [
     releaseDate: '၂၀၂၆ ခုနှစ်၊ အောက်တိုဘာလ (ယနေ့)',
     isLatest: false,
     title: '🎨 [UI/UX & AUTH] Clean Navigation, Tactile Button Feedback & Google Auth Fix',
-    badge: 'Latest Release (v2.4.4)',
+    badge: 'Previous Release (v2.4.4)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
@@ -116,7 +146,7 @@ export const VERSION_HISTORY_DATA: VersionItem[] = [
     releaseDate: '၂၀၂၆ ခုနှစ်၊ စက်တင်ဘာလ (ယနေ့)',
     isLatest: false,
     title: '📱 [MOBILE UI FIX] Version History Modal - Mobile View Switcher & Quick Dropdown Selector စနစ်',
-    badge: 'Latest Release (v2.4.3)',
+    badge: 'Previous Release (v2.4.3)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
