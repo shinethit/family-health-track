@@ -165,7 +165,7 @@ export const MedicationsModule: React.FC = () => {
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {selectedPatient 
-              ? `လူနာ ${selectedPatient.displayName} ၏ လက်ရှိသောက်နေသော ဆေးဝါးများနှင့် ဆေးချိန်ညွှန်းချက်များ`
+              ? `အသုံးပြုသူ ${selectedPatient.displayName} ၏ လက်ရှိသောက်နေသော ဆေးဝါးများနှင့် ဆေးချိန်ညွှန်းချက်များ`
               : 'သွေးတိုး၊ ဆီးချို၊ အဆီကျနှင့် အခြားသောက်သုံးနေသော ဆေးဝါးများကို တိကျစွာ မှတ်တမ်းတင်ပါ'}
           </p>
         </div>

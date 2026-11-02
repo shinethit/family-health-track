@@ -54,7 +54,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
               href="tel:192"
               className="px-3.5 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs shadow-md transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <Phone className="w-4 h-4 animate-bounce" /> 192 (လူနာတင်ယာဉ်)
+              <Phone className="w-4 h-4 animate-bounce" /> 192 (အသုံးပြုသူတင်ယာဉ်)
             </a>
             <a
               href="tel:199"
@@ -128,7 +128,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" /> ပြုလုပ်ရမည့် အချက်များ (DOs)
                 </p>
                 <ul className="space-y-1.5 text-emerald-950 list-disc list-inside">
-                  <li>လူနာအား စိတ်ငြိမ်အောင် ထားပါ (လှုပ်ရှားပါက မြွေဆိပ် ပိုမိုပြန့်နှံ့လွယ်သည်)။</li>
+                  <li>အသုံးပြုသူအား စိတ်ငြိမ်အောင် ထားပါ (လှုပ်ရှားပါက မြွေဆိပ် ပိုမိုပြန့်နှံ့လွယ်သည်)။</li>
                   <li>အကိုက်ခံရသော ခြေ/လက် အဆစ်ကို မလှုပ်ရှားနိုင်အောင် ကျပ်စည်းထောက် ထားပေးပါ (Slab)။</li>
                   <li>လက်စွပ်၊ နာရီ၊ ခြေကျင်းဝတ်ပစ္စည်းများကို အမြန်ဆုံး ချွတ်ထားပါ။</li>
                   <li>မြွေဆိပ်ဖြေဆေး (Anti-venom) ရရှိနိုင်သော နီးစပ်ရာ ဆေးရုံကြီးသို့ အမြန်ဆုံး ပို့ဆောင်ပါ။</li>
@@ -281,7 +281,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <p className="font-bold text-slate-900 text-sm">၁။ သီးခြင်း (Choking - Adult):</p>
                 <ol className="list-decimal list-inside space-y-1 text-slate-700">
-                  <li>လူနာ၏ အနောက်မှ ရပ်၍ ခါးကို ဖက်ပါ။</li>
+                  <li>အသုံးပြုသူ၏ အနောက်မှ ရပ်၍ ခါးကို ဖက်ပါ။</li>
                   <li>လက်သီးဆုပ်ကို ချက်အထက်တွင် ထား၍ အပေါ်နှင့် အတွင်းသို့ အားစိုက်၍ ၅ ကြိမ် ဆောင့်တွန်းပါ။</li>
                 </ol>
               </div>

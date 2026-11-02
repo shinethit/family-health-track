@@ -70,7 +70,7 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
         <UserPlus className="w-4 h-4" />
       </div>
       <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">
-        လူနာအသစ် ထည့်သွင်းခြင်း (Add Patient)
+        အသုံးပြုသူအသစ် ထည့်သွင်းခြင်း (Add Patient)
       </h3>
     </div>
   );
@@ -85,7 +85,7 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
       <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-3.5">
         <div>
           <label htmlFor="add-patient-name" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-            လူနာ အမည် *
+            အသုံးပြုသူ အမည် *
           </label>
           <input
             id="add-patient-name"
@@ -247,7 +247,7 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
             disabled={isSubmitting}
             className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
           >
-            {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : 'လူနာသိမ်းဆည်းမည်'}
+            {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : 'အသုံးပြုသူသိမ်းဆည်းမည်'}
           </button>
         </div>
       </form>

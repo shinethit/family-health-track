@@ -159,7 +159,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           <div className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-800 px-5 py-2.5 flex items-center gap-2.5 text-xs text-emerald-900 dark:text-emerald-300">
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
             <span>
-              <strong>အက်မင် (Admin) မုဒ်:</strong> ဆေးသောက်ရန် Reminder များကို သက်ဆိုင်ရာ လူနာများ၏ အကောင့်များသို့သာ တိုက်ရိုက် သတိပေးထားပြီး Admin စက်တွင် မလိုအပ်ဘဲ အချက်ပေးသံ/သတိပေးစာ မတက်စေရန် သီးသန့် ကာကွယ်ထားပါသည်
+              <strong>အက်မင် (Admin) မုဒ်:</strong> ဆေးသောက်ရန် Reminder များကို သက်ဆိုင်ရာ အသုံးပြုသူများ၏ အကောင့်များသို့သာ တိုက်ရိုက် သတိပေးထားပြီး Admin စက်တွင် မလိုအပ်ဘဲ အချက်ပေးသံ/သတိပေးစာ မတက်စေရန် သီးသန့် ကာကွယ်ထားပါသည်
             </span>
           </div>
         )}

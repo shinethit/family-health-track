@@ -76,7 +76,7 @@ export const EmergencyIDModule: React.FC = () => {
     e.preventDefault();
     const targetId = selectedPatient?.id || profile?.id || currentUser?.uid || '';
     if (!targetId) {
-      setSaveError('လူနာမှတ်တမ်း မတွေ့ပါ — အကောင့်ပြန်ဝင်ပြီး ထပ်စမ်းကြည့်ပါ။');
+      setSaveError('အသုံးပြုသူမှတ်တမ်း မတွေ့ပါ — အကောင့်ပြန်ဝင်ပြီး ထပ်စမ်းကြည့်ပါ။');
       return;
     }
     setIsSaving(true);
@@ -171,7 +171,7 @@ export const EmergencyIDModule: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="font-semibold text-slate-700 block mb-1">လူနာအမည်</label>
+              <label className="font-semibold text-slate-700 block mb-1">အသုံးပြုသူအမည်</label>
               <input
                 type="text"
                 value={emergencyData.patientName}
@@ -336,7 +336,7 @@ export const EmergencyIDModule: React.FC = () => {
               {/* Card Body */}
               <div className="space-y-3 text-xs">
                 <div>
-                  <p className="text-[10px] text-rose-200 uppercase font-bold tracking-wider">လူနာအမည်</p>
+                  <p className="text-[10px] text-rose-200 uppercase font-bold tracking-wider">အသုံးပြုသူအမည်</p>
                   <p className="text-lg font-black text-white">{emergencyData.patientName || 'မထည့်ရသေးပါ'}</p>
                 </div>
 

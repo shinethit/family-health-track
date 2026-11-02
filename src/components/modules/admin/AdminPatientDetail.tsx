@@ -13,15 +13,22 @@ import {
   Sparkles, 
   AlertCircle,
   Stethoscope,
-  Heart
+  Heart,
+  Syringe,
+  Scale,
+  HelpCircle
 } from 'lucide-react';
-import { 
-  UserProfile, 
-  BloodPressureRecord, 
-  BloodSugarRecord, 
-  LabTestRecord, 
-  Medication, 
-  DoctorAdvice 
+import {
+  UserProfile,
+  BloodPressureRecord,
+  BloodSugarRecord,
+  LabTestRecord,
+  Medication,
+  VaccinationRecord,
+  BMIRecord,
+  DoctorQuestion,
+  MedicationLog,
+  DoctorAdvice
 } from '../../../types/health';
 import { BloodPressureChart, BloodSugarChart } from '../../charts/HealthCharts';
 import { 
@@ -38,6 +45,10 @@ interface AdminPatientDetailProps {
   glucoseRecords: BloodSugarRecord[];
   labRecords: LabTestRecord[];
   medications: Medication[];
+  vaccineRecords?: VaccinationRecord[];
+  bmiRecords?: BMIRecord[];
+  doctorQuestions?: DoctorQuestion[];
+  medicationLogs?: MedicationLog[];
   doctorAdvices: DoctorAdvice[];
   onBack: () => void;
   onEditPatient: (patient: UserProfile) => void;
@@ -52,6 +63,10 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   glucoseRecords,
   labRecords,
   medications,
+  vaccineRecords = [],
+  bmiRecords = [],
+  doctorQuestions = [],
+  medicationLogs = [],
   doctorAdvices,
   onBack,
   onEditPatient,
@@ -73,6 +88,46 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
 
   const latestBP = sortedUserBP.length > 0 ? sortedUserBP[sortedUserBP.length - 1] : null;
   const latestGlucose = sortedUserGlu.length > 0 ? sortedUserGlu[sortedUserGlu.length - 1] : null;
+
+  // Latest 5 lab test items (flattened from the newest lab records)
+  const latestLabItems = [...labRecords]
+    .sort((a, b) =>
+      parseDateToMs(b.testDate || b.recordedAt || b.createdAt) -
+      parseDateToMs(a.testDate || a.recordedAt || a.createdAt)
+    )
+    .slice(0, 5)
+    .flatMap((rec) => {
+      const date = rec.testDate || rec.recordedAt || rec.createdAt;
+      if (rec.tests && rec.tests.length > 0) {
+        return rec.tests.map((t) => ({
+          key: `${rec.id}-${t.id}`,
+          name: t.nameMm || t.nameEn || 'ဓာတ်ခွဲစစ်ဆေးမှု',
+          value: t.value as number | null,
+          unit: t.unit || '',
+          date,
+        }));
+      }
+      return [{ key: rec.id, name: rec.labName || 'ဓာတ်ခွဲစစ်ဆေးမှု', value: null as number | null, unit: '', date }];
+    })
+    .slice(0, 5);
+
+  // Latest 5 BMI records (newest first)
+  const latestBMIHistory = [...bmiRecords]
+    .sort((a, b) =>
+      parseDateToMs(b.date || b.timestamp || b.createdAt) -
+      parseDateToMs(a.date || a.timestamp || a.createdAt)
+    )
+    .slice(0, 5);
+
+  // Medication adherence — last 30 days (YYYY-MM-DD strings compare lexicographically)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const adherenceCutoff = thirtyDaysAgo.toISOString().slice(0, 10);
+  const recentMedLogs = medicationLogs.filter((l) => l.date >= adherenceCutoff);
+  const adherenceTaken = recentMedLogs.filter((l) => l.taken).length;
+
+  const medicationStatusLabel = (status: Medication['status']): string =>
+    status === 'active' ? 'သောက်နေဆဲ' : status === 'completed' ? 'ပြီးဆုံး' : 'ခဏရပ်ထား';
 
   const ageObj = calculateAge(patient.dateOfBirth);
   const resolvedAge = ageObj ? ageObj.years : (patient.age || null);
@@ -156,8 +211,8 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             type="button"
             onClick={() => onDeletePatient(patient)}
             className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/80 hover:bg-rose-600 hover:text-white text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer flex items-center gap-1.5"
-            title="လူနာမှတ်တမ်း ဖျက်မည်"
-            aria-label={`${cleanName} ၏ လူနာမှတ်တမ်း ဖျက်မည်`}
+            title="အသုံးပြုသူမှတ်တမ်း ဖျက်မည်"
+            aria-label={`${cleanName} ၏ အသုံးပြုသူမှတ်တမ်း ဖျက်မည်`}
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>ဖျက်မည်</span>
@@ -272,6 +327,202 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         </div>
       </div>
 
+      {/* Lab Tests & Medications */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+            <FlaskConical className="w-4 h-4 text-sky-500" />
+            <span>ဓာတ်ခွဲခန်း စစ်ဆေးချက်များ (နောက်ဆုံး ၅ ခု)</span>
+          </h3>
+          {latestLabItems.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500">
+                    <th className="text-left font-semibold py-2 pr-2">စစ်ဆေးချက်</th>
+                    <th className="text-left font-semibold py-2 pr-2">တန်ဖိုး</th>
+                    <th className="text-left font-semibold py-2">ရက်စွဲ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {latestLabItems.map((item) => (
+                    <tr key={item.key} className="border-b border-slate-100 dark:border-slate-800">
+                      <td className="py-2 pr-2 font-semibold text-slate-800 dark:text-slate-200">{item.name}</td>
+                      <td className="py-2 pr-2 text-slate-800 dark:text-slate-200">
+                        {item.value !== null ? (
+                          <span className="font-bold">{item.value} <span className="text-slate-400 font-semibold">{item.unit}</span></span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-2 text-slate-500">{item.date ? new Date(item.date).toLocaleDateString('my-MM') : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 py-3">ဓာတ်ခွဲခန်း မှတ်တမ်း မရှိသေးပါ</p>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+            <Pill className="w-4 h-4 text-violet-500" />
+            <span>သောက်ဆေးများ ({medications.length} မျိုး)</span>
+          </h3>
+          {medications.length > 0 ? (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {medications.map((m) => (
+                <div key={m.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-slate-900 dark:text-white">{m.name}</p>
+                    <p className="text-slate-500 mt-0.5">
+                      {m.dosage || '—'} • {m.frequency || '—'}
+                      {m.prescribedFor ? ` • ${m.prescribedFor}` : ''}
+                    </p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                    m.status === 'active'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : m.status === 'completed'
+                        ? 'bg-slate-100 text-slate-600 border border-slate-300'
+                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                  }`}>
+                    {medicationStatusLabel(m.status)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 py-3">ဆေးမှတ်တမ်း မရှိသေးပါ</p>
+          )}
+        </div>
+      </div>
+
+      {/* Vaccines & BMI History */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+            <Syringe className="w-4 h-4 text-teal-500" />
+            <span>ကာကွယ်ဆေးများ ({vaccineRecords.length} ကြိမ်)</span>
+          </h3>
+          {vaccineRecords.length > 0 ? (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {[...vaccineRecords]
+                .sort((a, b) =>
+                  parseDateToMs(b.dateAdministered || b.createdAt) -
+                  parseDateToMs(a.dateAdministered || a.createdAt)
+                )
+                .map((v) => (
+                  <div key={v.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-slate-900 dark:text-white">{v.vaccineName}</p>
+                      <p className="text-slate-500 mt-0.5">
+                        {v.targetDisease || ''}{v.doseNumber && v.totalDoses ? ` • အကြိမ် ${v.doseNumber}/${v.totalDoses}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-slate-500 font-semibold shrink-0">
+                      {v.dateAdministered ? new Date(v.dateAdministered).toLocaleDateString('my-MM') : '—'}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 py-3">ကာကွယ်ဆေး မှတ်တမ်း မရှိသေးပါ</p>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+            <Scale className="w-4 h-4 text-indigo-500" />
+            <span>BMI မှတ်တမ်း (နောက်ဆုံး ၅ ခု)</span>
+          </h3>
+          {latestBMIHistory.length > 0 ? (
+            <div className="space-y-2">
+              {latestBMIHistory.map((b) => (
+                <div key={b.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs flex items-center justify-between gap-2">
+                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">BMI {b.bmi}</span>
+                  <span className="text-slate-500">
+                    {b.weightKg ? `${b.weightKg} kg` : ''}{b.weightKg && b.heightCm ? ' • ' : ''}{b.heightCm ? `${b.heightCm} cm` : ''}
+                  </span>
+                  <span className="text-slate-400 shrink-0">
+                    {new Date(b.date || b.timestamp || b.createdAt || Date.now()).toLocaleDateString('my-MM')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 py-3">BMI မှတ်တမ်း မရှိသေးပါ</p>
+          )}
+        </div>
+      </div>
+
+      {/* Doctor Q&A */}
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+          <HelpCircle className="w-4 h-4 text-indigo-500" />
+          <span>ဆရာဝန် မေးခွန်းများ ({doctorQuestions.length} ခု)</span>
+        </h3>
+        {doctorQuestions.length > 0 ? (
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {[...doctorQuestions]
+              .sort((a, b) => parseDateToMs(b.createdAt) - parseDateToMs(a.createdAt))
+              .map((q) => (
+                <div key={q.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-bold text-slate-900 dark:text-white">{q.title}</p>
+                    <span className="text-[10px] text-slate-400 shrink-0">
+                      {q.createdAt ? new Date(q.createdAt).toLocaleDateString('my-MM') : ''}
+                    </span>
+                  </div>
+                  {q.questionDetails && <p className="text-slate-600 dark:text-slate-300">{q.questionDetails}</p>}
+                  {q.status === 'answered' && q.doctorAnswer ? (
+                    <p className="text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg p-2">
+                      <span className="font-bold">အဖြေ: </span>{q.doctorAnswer.answerText}
+                    </p>
+                  ) : (
+                    <p className="text-amber-700 dark:text-amber-400 font-semibold">
+                      {q.status === 'closed' ? 'ပိတ်သိမ်းပြီး' : 'မဖြေရသေးပါ'}
+                    </p>
+                  )}
+                </div>
+              ))}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-400 py-3">မေးခွန်း မရှိသေးပါ</p>
+        )}
+      </div>
+
+      {/* Medication Adherence — last 30 days */}
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          <span>ဆေးသောက်မှန်ကန်မှု — နောက်ဆုံး ရက် ၃၀</span>
+        </h3>
+        {recentMedLogs.length > 0 ? (
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                {adherenceTaken}/{recentMedLogs.length}
+              </span>
+              <span className="text-xs text-slate-400">ကြိမ် သောက်ပြီး</span>
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 ml-auto">
+                {Math.round((adherenceTaken / recentMedLogs.length) * 100)}%
+              </span>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 rounded-full"
+                style={{ width: `${Math.round((adherenceTaken / recentMedLogs.length) * 100)}%` }}
+              />
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-slate-400 py-3">မှတ်တမ်း မရှိသေးပါ</p>
+        )}
+      </div>
+
       {/* Doctor Advice Composer */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
         <div className="flex items-center gap-2">
@@ -291,7 +542,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         {adviceSuccess && (
           <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>အကြံပြုချက်အား လူနာထံ အောင်မြင်စွာ ပေးပို့ပြီးပါပြီ။</span>
+            <span>အကြံပြုချက်အား အသုံးပြုသူထံ အောင်မြင်စွာ ပေးပို့ပြီးပါပြီ။</span>
           </div>
         )}
 
@@ -332,7 +583,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>{isSending ? 'ပေးပို့နေသည်...' : 'လူနာထံ အကြံပြုချက် ပို့မည်'}</span>
+              <span>{isSending ? 'ပေးပို့နေသည်...' : 'အသုံးပြုသူထံ အကြံပြုချက် ပို့မည်'}</span>
             </button>
           </div>
         </form>

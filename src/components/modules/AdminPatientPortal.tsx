@@ -7,9 +7,11 @@ import { EditPatientModal } from './EditPatientModal';
 import { DeletePatientModal } from './DeletePatientModal';
 import { AdminQuotaBanner } from './admin/AdminQuotaBanner';
 import { AdminDataRepair } from './admin/AdminDataRepair';
+import { AdminRoleManager } from './admin/AdminRoleManager';
 import { AdminBroadcastManager } from './admin/AdminBroadcastManager';
 import { AdminPatientList } from './admin/AdminPatientList';
 import { AdminPatientDetail } from './admin/AdminPatientDetail';
+import { AdminPatientComparison } from './admin/AdminPatientComparison';
 import { AdminAddPatientModal } from './admin/AdminAddPatientModal';
 
 export const AdminPatientPortal: React.FC = () => {
@@ -22,6 +24,10 @@ export const AdminPatientPortal: React.FC = () => {
     glucoseRecords,
     labRecords,
     medications,
+    vaccineRecords,
+    bmiRecords,
+    doctorQuestions,
+    medicationLogs,
     doctorAdvices,
     addDoctorAdvice,
     addPatient,
@@ -45,6 +51,22 @@ export const AdminPatientPortal: React.FC = () => {
   const [editingPatient, setEditingPatient] = useState<UserProfile | null>(null);
   const [deletingPatient, setDeletingPatient] = useState<UserProfile | null>(null);
   const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
+
+  // Patient comparison (2-4 users side by side)
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [isComparing, setIsComparing] = useState(false);
+  const toggleCompareSelect = (id: string) => {
+    setCompareIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+  const handleStartCompare = () => {
+    if (compareIds.length >= 2) setIsComparing(true);
+  };
+  const handleExitCompare = () => {
+    setIsComparing(false);
+    setCompareIds([]);
+  };
   const [actionAlert, setActionAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   if (!isAdmin) {
@@ -74,7 +96,7 @@ export const AdminPatientPortal: React.FC = () => {
     const email = (p.email || '').toLowerCase().trim();
     const phone = (p.phone || '').trim();
 
-    const isGenericName = !resolved || resolved === 'လူနာ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-') || resolved.includes('6bce6599');
+    const isGenericName = !resolved || resolved === 'အသုံးပြုသူ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-') || resolved.includes('6bce6599');
     const isFakeEmail = !email || email.includes('@patient.local') || email.includes('@familyhealth.local') || email.includes('demo');
     const missingPhone = !phone;
     const missingAge = (!p.age || p.age <= 0) && !p.dateOfBirth;
@@ -90,7 +112,7 @@ export const AdminPatientPortal: React.FC = () => {
     const email = (p.email || '').toLowerCase().trim();
     const phone = (p.phone || '').trim();
 
-    if (!resolved || resolved === 'လူနာ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-') || resolved.includes('6bce6599')) {
+    if (!resolved || resolved === 'အသုံးပြုသူ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-') || resolved.includes('6bce6599')) {
       missing.push('အမည်မစုံ');
     }
     if (!email || email.includes('@patient.local') || email.includes('@familyhealth.local')) {
@@ -165,7 +187,7 @@ export const AdminPatientPortal: React.FC = () => {
     await addPatient(data);
     setActionAlert({
       type: 'success',
-      message: 'လူနာအသစ်အား Database ထဲသို့ အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ။',
+      message: 'အသုံးပြုသူအသစ်အား Database ထဲသို့ အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ။',
     });
     setTimeout(() => setActionAlert(null), 4000);
   };
@@ -175,13 +197,13 @@ export const AdminPatientPortal: React.FC = () => {
       await updatePatient(id, updates);
       setActionAlert({
         type: 'success',
-        message: `လူနာ "${updates.displayName || 'အမည်'}" ၏ မှတ်တမ်းအား Cloud Database တွင် အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ။`,
+        message: `အသုံးပြုသူ "${updates.displayName || 'အမည်'}" ၏ မှတ်တမ်းအား Cloud Database တွင် အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ။`,
       });
       setTimeout(() => setActionAlert(null), 4000);
     } catch (err: any) {
       setActionAlert({
         type: 'error',
-        message: 'လူနာမှတ်တမ်း ပြင်ဆင်ရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်: ' + (err?.message || ''),
+        message: 'အသုံးပြုသူမှတ်တမ်း ပြင်ဆင်ရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်: ' + (err?.message || ''),
       });
       setTimeout(() => setActionAlert(null), 5000);
       throw err;
@@ -193,13 +215,13 @@ export const AdminPatientPortal: React.FC = () => {
       await deletePatient(id, cascade);
       setActionAlert({
         type: 'success',
-        message: 'လူနာမှတ်တမ်းနှင့်တကွ ဆက်စပ်ဒေတာများကို Database မှ အပြီးတိုင် ဖျက်ပစ်ပြီးပါပြီ။',
+        message: 'အသုံးပြုသူမှတ်တမ်းနှင့်တကွ ဆက်စပ်ဒေတာများကို Database မှ အပြီးတိုင် ဖျက်ပစ်ပြီးပါပြီ။',
       });
       setTimeout(() => setActionAlert(null), 4000);
     } catch (err: any) {
       setActionAlert({
         type: 'error',
-        message: 'လူနာမှတ်တမ်း ဖျက်ရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်: ' + (err?.message || ''),
+        message: 'အသုံးပြုသူမှတ်တမ်း ဖျက်ရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်: ' + (err?.message || ''),
       });
       setTimeout(() => setActionAlert(null), 5000);
       throw err;
@@ -247,6 +269,9 @@ export const AdminPatientPortal: React.FC = () => {
       {/* 1b. Data Repair — ရှိပြီးသား မှတ်တမ်းဟောင်းတွေရဲ့ patientEmail ပြင်ဆင်ခြင်း */}
       <AdminDataRepair />
 
+      {/* 1c. Admin Role Manager — အသုံးပြုသူတစ်ယောက်ကို Admin အဖြစ် ရာထူးတင်ခြင်း */}
+      <AdminRoleManager />
+
       {/* 2. Broadcast News / Marquee Manager */}
       <AdminBroadcastManager
         tickers={broadcastTickers}
@@ -255,14 +280,23 @@ export const AdminPatientPortal: React.FC = () => {
         onDeleteTicker={deleteBroadcastTicker}
       />
 
-      {/* 3. Patient Details or Patient List */}
-      {selectedPatientId && selectedPatient ? (
+      {/* 3. Patient Comparison / Details / List */}
+      {isComparing ? (
+        <AdminPatientComparison
+          patientIds={compareIds}
+          onBack={handleExitCompare}
+        />
+      ) : selectedPatientId && selectedPatient ? (
         <AdminPatientDetail
           patient={selectedPatient}
           bpRecords={bpRecords}
           glucoseRecords={glucoseRecords}
           labRecords={labRecords}
           medications={medications}
+          vaccineRecords={vaccineRecords}
+          bmiRecords={bmiRecords}
+          doctorQuestions={doctorQuestions}
+          medicationLogs={medicationLogs}
           doctorAdvices={doctorAdvices}
           onBack={() => setSelectedPatientId(null)}
           onEditPatient={setEditingPatient}
@@ -271,21 +305,53 @@ export const AdminPatientPortal: React.FC = () => {
           getResolvedName={getResolvedName}
         />
       ) : (
-        <AdminPatientList
-          patients={filteredPatients}
-          allPatientsCount={actualPatients.length}
-          incompleteCount={countIncomplete}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          filterCondition={filterCondition}
-          onFilterChange={setFilterCondition}
-          onSelectPatient={setSelectedPatientId}
-          onOpenAddModal={() => setIsAddPatientOpen(true)}
-          onEditPatient={setEditingPatient}
-          onDeletePatient={setDeletingPatient}
-          getResolvedName={getResolvedName}
-          getMissingFields={getMissingFields}
-        />
+        <>
+          {/* Compare bar — shows once at least one user is selected */}
+          {compareIds.length > 0 && (
+            <div className="mb-4 p-4 rounded-3xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-xs font-bold text-indigo-800 dark:text-indigo-200">
+                နှိုင်းယှဉ်ရန် ရွေးထားသူ: {compareIds.length} ဦး
+                {compareIds.length < 2 ? ' — အနည်းဆုံး ၂ ဦး ရွေးပါ' : ''}
+                {compareIds.length > 4 ? ' — ပထမ ၄ ဦးကိုသာ နှိုင်းယှဉ်ပြပါမည်' : ''}
+              </p>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCompareIds([])}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  ပယ်ဖျက်မည်
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartCompare}
+                  disabled={compareIds.length < 2}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+                >
+                  နှိုင်းယှဉ်မည်
+                </button>
+              </div>
+            </div>
+          )}
+          <AdminPatientList
+            patients={filteredPatients}
+            allPatientsCount={actualPatients.length}
+            incompleteCount={countIncomplete}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterCondition={filterCondition}
+            onFilterChange={setFilterCondition}
+            onSelectPatient={setSelectedPatientId}
+            onOpenAddModal={() => setIsAddPatientOpen(true)}
+            onEditPatient={setEditingPatient}
+            onDeletePatient={setDeletingPatient}
+            getResolvedName={getResolvedName}
+            getMissingFields={getMissingFields}
+            selectable
+            selectedIds={compareIds}
+            onToggleSelect={toggleCompareSelect}
+          />
+        </>
       )}
 
       {/* Modals */}

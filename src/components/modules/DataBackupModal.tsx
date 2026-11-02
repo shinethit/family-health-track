@@ -117,7 +117,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
 
     // (a) BP CSV
     if (bpRecords.length > 0) {
-      const headers = ['ရက်စွဲ (Date)', 'အပေါ်သွေး (Systolic)', 'အောက်သွေး (Diastolic)', 'နှလုံးခုန်နှုန်း (Pulse)', 'အဆင့်အတန်း (Category)', 'လူနာအမည် (Patient)', 'မှတ်ချက် (Notes)'];
+      const headers = ['ရက်စွဲ (Date)', 'အပေါ်သွေး (Systolic)', 'အောက်သွေး (Diastolic)', 'နှလုံးခုန်နှုန်း (Pulse)', 'အဆင့်အတန်း (Category)', 'အသုံးပြုသူအမည် (User)', 'မှတ်ချက် (Notes)'];
       const rows = bpRecords.map(b => [
         `"${b.recordedAt || b.createdAt || ''}"`,
         b.systolic,
@@ -133,7 +133,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
 
     // (b) Glucose CSV
     if (glucoseRecords.length > 0) {
-      const headers = ['ရက်စွဲ (Date)', 'သကြားဓာတ် (mg/dL)', 'တိုင်းတာချိန် (Type)', 'အဆင့်အတန်း (Status)', 'လူနာအမည် (Patient)', 'မှတ်ချက် (Notes)'];
+      const headers = ['ရက်စွဲ (Date)', 'သကြားဓာတ် (mg/dL)', 'တိုင်းတာချိန် (Type)', 'အဆင့်အတန်း (Status)', 'အသုံးပြုသူအမည် (User)', 'မှတ်ချက် (Notes)'];
       const rows = glucoseRecords.map(g => [
         `"${g.recordedAt || g.createdAt || ''}"`,
         g.glucoseValue || g.value,
@@ -319,7 +319,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
           pulse: Number(v.pulse || 75),
           category: v.category || 'normal',
           condition: v.condition || v.category || 'normal',
-          patientName: v.patientName || profile?.displayName || 'လူနာ',
+          patientName: v.patientName || profile?.displayName || 'အသုံးပြုသူ',
           recordedAt: v.recordedAt || v.createdAt || new Date().toISOString(),
           notes: v.notes || '',
         })
@@ -336,7 +336,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
           timing: g.timing || g.type || 'fasting',
           type: g.type || g.timing || 'fasting',
           status: g.status || 'normal',
-          patientName: g.patientName || profile?.displayName || 'လူနာ',
+          patientName: g.patientName || profile?.displayName || 'အသုံးပြုသူ',
           recordedAt: g.recordedAt || g.createdAt || new Date().toISOString(),
           notes: g.notes || '',
         })
@@ -352,7 +352,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
           weightKg: Number(b.weightKg),
           bmi: Number(b.bmi),
           category: b.category || 'normal',
-          userName: b.userName || profile?.displayName || 'လူနာ',
+          userName: b.userName || profile?.displayName || 'အသုံးပြုသူ',
           date: b.date || b.timestamp || b.createdAt || new Date().toISOString(),
         })
       );

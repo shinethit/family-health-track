@@ -30,6 +30,9 @@ interface AdminPatientListProps {
   onDeletePatient: (patient: UserProfile) => void;
   getResolvedName: (p: Partial<UserProfile> | null | undefined) => string;
   getMissingFields: (p: UserProfile) => string[];
+  selectable?: boolean;
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
 }
 
 export const AdminPatientList: React.FC<AdminPatientListProps> = ({
@@ -46,6 +49,9 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
   onDeletePatient,
   getResolvedName,
   getMissingFields,
+  selectable = false,
+  selectedIds = [],
+  onToggleSelect,
 }) => {
   return (
     <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
@@ -58,7 +64,7 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span>လူနာနှင့် အသုံးပြုသူများ စာရင်း ({allPatientsCount} ဦး)</span>
+                <span>အသုံးပြုသူနှင့် အသုံးပြုသူများ စာရင်း ({allPatientsCount} ဦး)</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 အသုံးပြုသူတစ်ဦးချင်းစီ၏ မှတ်တမ်းအသေးစိတ်၊ သွေးပေါင်၊ ဆီးချိုနှင့် ဆရာဝန်အကြံပြုချက်များကို ကြည့်ရှုစီမံပါ
@@ -73,7 +79,7 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
           className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-95 shrink-0"
         >
           <UserPlus className="w-4 h-4" />
-          <span>+ လူနာအသစ် ထည့်သွင်းမည်</span>
+          <span>+ အသုံးပြုသူအသစ် ထည့်သွင်းမည်</span>
         </button>
       </div>
 
@@ -81,11 +87,11 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <label htmlFor="admin-patient-search" className="sr-only">လူနာအမည်၊ အီးမေးလ် သို့မဟုတ် ဖုန်းနံပါတ်ဖြင့် ရှာဖွေပါ</label>
+          <label htmlFor="admin-patient-search" className="sr-only">အသုံးပြုသူအမည်၊ အီးမေးလ် သို့မဟုတ် ဖုန်းနံပါတ်ဖြင့် ရှာဖွေပါ</label>
           <input
             id="admin-patient-search"
             type="text"
-            placeholder="လူနာအမည်၊ အီးမေးလ် သို့မဟုတ် ဖုန်းနံပါတ်ဖြင့် ရှာဖွေပါ..."
+            placeholder="အသုံးပြုသူအမည်၊ အီးမေးလ် သို့မဟုတ် ဖုန်းနံပါတ်ဖြင့် ရှာဖွေပါ..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
@@ -140,6 +146,20 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
+                      {selectable && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(p.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            onToggleSelect?.(p.id);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
+                          title="နှိုင်းယှဉ်ရန် ရွေးချယ်မည်"
+                          aria-label={`${cleanName} ကို နှိုင်းယှဉ်ရန် ရွေးချယ်မည်`}
+                        />
+                      )}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -159,8 +179,8 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
                           onDeletePatient(p);
                         }}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                        title="လူနာမှတ်တမ်း ဖျက်မည်"
-                        aria-label={`${cleanName} ၏ လူနာမှတ်တမ်း ဖျက်မည်`}
+                        title="အသုံးပြုသူမှတ်တမ်း ဖျက်မည်"
+                        aria-label={`${cleanName} ၏ အသုံးပြုသူမှတ်တမ်း ဖျက်မည်`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -216,7 +236,7 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
         </div>
       ) : (
         <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-200 dark:border-slate-700 text-slate-500 text-xs">
-          ရှာဖွေမှုနှင့် ကိုက်ညီသော လူနာမှတ်တမ်း မတွေ့ရှိပါ။
+          ရှာဖွေမှုနှင့် ကိုက်ညီသော အသုံးပြုသူမှတ်တမ်း မတွေ့ရှိပါ။
         </div>
       )}
     </div>

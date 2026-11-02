@@ -360,8 +360,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           const qNoti: AppNotification = {
             id: qNotiId,
             type: 'doctor_advice',
-            title: `❓ လူနာမေးမြန်းချက် အသစ် (${pendingQuestions.length} ခု စောင့်ဆိုင်းနေပါသည်)`,
-            message: `${latestQ.patientName || 'လူနာ'}: "${(latestQ.questionDetails || latestQ.title).substring(0, 75)}..."`,
+            title: `❓ အသုံးပြုသူမေးမြန်းချက် အသစ် (${pendingQuestions.length} ခု စောင့်ဆိုင်းနေပါသည်)`,
+            message: `${latestQ.patientName || 'အသုံးပြုသူ'}: "${(latestQ.questionDetails || latestQ.title).substring(0, 75)}..."`,
             timestamp: latestQ.createdAt || new Date().toISOString(),
             read: false,
             priority: 'high',

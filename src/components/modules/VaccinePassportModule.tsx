@@ -173,7 +173,7 @@ export const VaccinePassportModule: React.FC = () => {
     try {
       await addVaccineRecord({
         userId: currentPatient?.id || '',
-        patientName: currentPatient?.displayName || 'လူနာ',
+        patientName: currentPatient?.displayName || 'အသုံးပြုသူ',
         vaccineName: newVaccineName.trim(),
         targetDisease: newTargetDisease.trim() || 'ကာကွယ်ဆေး',
         doseNumber: Number(newDoseNumber),
@@ -302,7 +302,7 @@ export const VaccinePassportModule: React.FC = () => {
 
         <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-sky-800">လက်ရှိ လူနာ / မိသားစုဝင်</p>
+            <p className="text-xs font-bold text-sky-800">လက်ရှိ အသုံးပြုသူ / မိသားစုဝင်</p>
             <p className="text-base font-extrabold text-sky-900 mt-0.5 truncate max-w-[160px]">
               {currentPatient?.displayName || 'မိသားစုဝင်'}
             </p>
@@ -540,7 +540,7 @@ export const VaccinePassportModule: React.FC = () => {
             <div className="space-y-1">
               <p className="font-bold">မြန်မာမိသားစုများအတွက် ထိုးနှံရန် အကြံပြုထားသော စံပြကာကွယ်ဆေးများ လမ်းညွှန်</p>
               <p className="text-slate-600 leading-relaxed">
-                ဤစာရင်းသည် ဆေးပညာဆိုင်ရာ လမ်းညွှန်ချက်ဖြစ်ပါသည်။ ထိုးနှံပြီးပါက သို့မဟုတ် ထိုးနှံရန် အစီအစဉ်ရှိပါက <strong>"မှတ်တမ်းတင်မည်"</strong> ကို နှိပ်၍ သင့်လူနာမှတ်တမ်းထဲသို့ ရက်စွဲနှင့် အကြိမ်ရေကို တိုက်ရိုက် ထည့်သွင်းသိမ်းဆည်းနိုင်ပါသည်။
+                ဤစာရင်းသည် ဆေးပညာဆိုင်ရာ လမ်းညွှန်ချက်ဖြစ်ပါသည်။ ထိုးနှံပြီးပါက သို့မဟုတ် ထိုးနှံရန် အစီအစဉ်ရှိပါက <strong>"မှတ်တမ်းတင်မည်"</strong> ကို နှိပ်၍ သင့်အသုံးပြုသူမှတ်တမ်းထဲသို့ ရက်စွဲနှင့် အကြိမ်ရေကို တိုက်ရိုက် ထည့်သွင်းသိမ်းဆည်းနိုင်ပါသည်။
               </p>
             </div>
           </div>

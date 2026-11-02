@@ -649,7 +649,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
                     <strong className="text-emerald-700">70 - 99 mg/dL</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">ဆီးချိုလူနာပန်းတိုင်:</span>
+                    <span className="text-slate-600">ဆီးချိုအသုံးပြုသူပန်းတိုင်:</span>
                     <strong className="text-teal-700">80 - 130 mg/dL</strong>
                   </div>
                 </div>
@@ -664,7 +664,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
                     <strong className="text-emerald-700">&lt; 140 mg/dL</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">ဆီးချိုလူနာပန်းတိုင်:</span>
+                    <span className="text-slate-600">ဆီးချိုအသုံးပြုသူပန်းတိုင်:</span>
                     <strong className="text-teal-700">&lt; 180 mg/dL</strong>
                   </div>
                 </div>
@@ -675,7 +675,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
                 <p className="text-[11px] text-slate-500 mb-2">ညဘက် သွေးချိုကျခြင်း မဖြစ်စေရန် စစ်ဆေးခြင်း</p>
                 <div className="space-y-1 font-mono">
                   <div className="flex justify-between">
-                    <span className="text-slate-600">ဆီးချိုလူနာပန်းတိုင်:</span>
+                    <span className="text-slate-600">ဆီးချိုအသုံးပြုသူပန်းတိုင်:</span>
                     <strong className="text-teal-700">100 - 140 mg/dL</strong>
                   </div>
                   <div className="flex justify-between">

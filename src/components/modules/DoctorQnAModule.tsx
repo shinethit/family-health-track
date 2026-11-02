@@ -83,7 +83,7 @@ export const DoctorQnAModule: React.FC = () => {
     try {
       await addDoctorQuestion({
         userId: profile?.id || 'current-user',
-        patientName: profile?.displayName || 'လူနာ',
+        patientName: profile?.displayName || 'အသုံးပြုသူ',
         patientEmail: profile?.email || '',
         category,
         title: title.trim(),
@@ -371,7 +371,7 @@ export const DoctorQnAModule: React.FC = () => {
                           <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">
                             <h4 className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                               <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                              <span>လူနာထံ ဆေးပညာ အကြံပြုချက် ပြန်လည်ဖြေကြားမည်</span>
+                              <span>အသုံးပြုသူထံ ဆေးပညာ အကြံပြုချက် ပြန်လည်ဖြေကြားမည်</span>
                             </h4>
                             <textarea
                               rows={3}
@@ -563,7 +563,7 @@ export const DoctorQnAModule: React.FC = () => {
         <div className="max-w-3xl mx-auto space-y-4">
           <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 flex items-center gap-2 font-medium">
             <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span>လူနာများ အမေးအများဆုံး ကျန်းမာရေး သိကောင်းစရာများနှင့် ဆရာဝန်များ၏ အဖြေများ</span>
+            <span>အသုံးပြုသူများ အမေးအများဆုံး ကျန်းမာရေး သိကောင်းစရာများနှင့် ဆရာဝန်များ၏ အဖြေများ</span>
           </div>
 
           <div className="space-y-3">

@@ -17,9 +17,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Admins are managed in-app (Admin Role Manager): an admin can promote
+    // another user and remove another admin, but never themself. The very
+    // first admin must still be created manually in the Firebase Console.
     match /admins/{adminId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow create: if isAdmin();
+      allow delete: if isAdmin() && request.auth.uid != adminId;
+      allow update: if false;
     }
 
     match /users/{userId} {

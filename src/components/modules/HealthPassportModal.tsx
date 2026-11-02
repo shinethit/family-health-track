@@ -53,7 +53,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
 
   // Determine active patient data
   const currentPatient = selectedPatient || profile;
-  const patientName = currentPatient?.displayName || 'လူနာအမည် မသတ်မှတ်ရသေးပါ';
+  const patientName = currentPatient?.displayName || 'အသုံးပြုသူအမည် မသတ်မှတ်ရသေးပါ';
   const patientEmail = currentPatient?.email || '-';
 
   // Helper to parse dates reliably
@@ -283,7 +283,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
           {/* Patient Personal Information Card */}
           <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">အသုံးပြုသူ / လူနာအမည်</p>
+              <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">အသုံးပြုသူ / အသုံးပြုသူအမည်</p>
               <p className="text-base font-extrabold text-slate-900">{patientName}</p>
             </div>
 

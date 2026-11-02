@@ -36,7 +36,7 @@ export const DeletePatientModal: React.FC<DeletePatientModalProps> = ({
       await onConfirmDelete(patient.id, cascade);
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.message || 'လူနာမှတ်တမ်း ဖျက်ရာတွင် အမှားအယွင်း ဖြစ်ပေါ်ခဲ့ပါသည်');
+      setErrorMsg(err?.message || 'အသုံးပြုသူမှတ်တမ်း ဖျက်ရာတွင် အမှားအယွင်း ဖြစ်ပေါ်ခဲ့ပါသည်');
     } finally {
       setIsDeleting(false);
     }

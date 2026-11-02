@@ -37,7 +37,7 @@ export const resolveCleanName = (name?: string, email?: string, phone?: string):
   const trimmed = (name || '').trim();
   if (
     trimmed && 
-    trimmed !== 'လူနာ' && 
+    trimmed !== 'အသုံးပြုသူ' && 
     trimmed !== 'အမည်မရှိ' && 
     trimmed !== 'Patient' && 
     trimmed !== 'အသုံးပြုသူ' &&
@@ -106,7 +106,7 @@ export const aggregatePatientsFromRecords = (
       patientMap.set(v.userId, discovered);
     } else if (v.userId && patientMap.has(v.userId)) {
       const p = patientMap.get(v.userId)!;
-      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && (v.userName || v.patientName)) {
+      if ((!p.displayName || p.displayName === 'အသုံးပြုသူ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && (v.userName || v.patientName)) {
         p.displayName = resolveCleanName(v.userName || v.patientName, v.patientEmail || p.email);
       }
     }
@@ -126,7 +126,7 @@ export const aggregatePatientsFromRecords = (
       patientMap.set(g.userId, discovered);
     } else if (g.userId && patientMap.has(g.userId)) {
       const p = patientMap.get(g.userId)!;
-      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && (g.userName || g.patientName)) {
+      if ((!p.displayName || p.displayName === 'အသုံးပြုသူ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && (g.userName || g.patientName)) {
         p.displayName = resolveCleanName(g.userName || g.patientName, (g as any).patientEmail || p.email);
       }
     }
@@ -148,7 +148,7 @@ export const aggregatePatientsFromRecords = (
       patientMap.set(b.userId, discovered);
     } else if (b.userId && patientMap.has(b.userId)) {
       const p = patientMap.get(b.userId)!;
-      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && b.userName) {
+      if ((!p.displayName || p.displayName === 'အသုံးပြုသူ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && b.userName) {
         p.displayName = resolveCleanName(b.userName, p.email);
       }
       if (!p.heightCm && b.heightCm) p.heightCm = b.heightCm;
@@ -170,7 +170,7 @@ export const aggregatePatientsFromRecords = (
       patientMap.set(m.userId, discovered);
     } else if (m.userId && patientMap.has(m.userId)) {
       const p = patientMap.get(m.userId)!;
-      if ((!p.displayName || p.displayName === 'လူနာ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && ((m as any).userName || (m as any).patientName)) {
+      if ((!p.displayName || p.displayName === 'အသုံးပြုသူ' || p.displayName === 'အမည်မရှိ' || p.displayName === 'အသုံးပြုသူ') && ((m as any).userName || (m as any).patientName)) {
         p.displayName = resolveCleanName((m as any).userName || (m as any).patientName, (m as any).patientEmail || p.email);
       }
     }
@@ -181,7 +181,7 @@ export const aggregatePatientsFromRecords = (
     if (q.userId && !patientMap.has(q.userId)) {
       const discovered: UserProfile = {
         id: q.userId,
-        displayName: q.patientName || 'မေးမြန်းသူ လူနာ',
+        displayName: q.patientName || 'မေးမြန်းသူ အသုံးပြုသူ',
         email: q.patientEmail || `${q.userId}@patient.local`,
         role: 'patient',
         createdAt: q.createdAt || new Date().toISOString()
@@ -195,7 +195,7 @@ export const aggregatePatientsFromRecords = (
     if (a.userId && !patientMap.has(a.userId)) {
       const discovered: UserProfile = {
         id: a.userId,
-        displayName: a.patientName || 'လူနာ',
+        displayName: a.patientName || 'အသုံးပြုသူ',
         email: (a as any).patientEmail || `${a.userId}@patient.local`,
         role: 'patient',
         createdAt: a.createdAt || new Date().toISOString()
@@ -238,11 +238,23 @@ interface HealthDataContextType {
   latestBMI: BMIRecord | null;
   doctorQuestions: DoctorQuestion[];
   allDoctorQuestions: DoctorQuestion[];
+  // Unfiltered arrays (complete for admins; own records only for patients)
+  allBPRecords: BloodPressureRecord[];
+  allGlucoseRecords: BloodSugarRecord[];
+  allBMIRecords: BMIRecord[];
+  allLabRecords: LabTestRecord[];
+  allMedicationRecords: Medication[];
+  allVaccineRecords: VaccinationRecord[];
+  allMedicationLogs: MedicationLog[];
+  allDoctorAdvices: DoctorAdvice[];
   broadcastTickers: BroadcastTicker[];
   dbStats: DatabaseStats;
   refreshAdminData: () => Promise<void>;
   // One-time repair: backfill patientEmail on existing records (admin only)
   repairPatientEmails: () => Promise<{ checked: number; fixed: number; alreadyOk: number; errors: string[] }>;
+  // Admin role management (admin only)
+  promoteToAdmin: (userId: string) => Promise<void>;
+  revokeAdmin: (adminId: string) => Promise<void>;
 
   // Broadcast Marquee Ticker Actions
   addBroadcastTicker: (message: string, type?: 'info' | 'warning' | 'urgent') => Promise<void>;
@@ -299,7 +311,6 @@ interface HealthDataContextType {
   deleteDoctorQuestion: (id: string) => Promise<void>;
   closeDoctorQuestion: (id: string) => Promise<void>;
 
-  clearAllData: () => void;
 }
 
 const HealthDataContext = createContext<HealthDataContextType | undefined>(undefined);
@@ -421,7 +432,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setPatientsList(list);
         }, (err) => {
           console.warn('Users listener:', err);
-          showToast('လူနာစာရင်း ရယူရာတွင် ချို့ယွင်းချက် ဖြစ်ပေါ်ခဲ့ပါသည်', 'warning');
+          showToast('အသုံးပြုသူစာရင်း ရယူရာတွင် ချို့ယွင်းချက် ဖြစ်ပေါ်ခဲ့ပါသည်', 'warning');
         });
       }
 
@@ -641,6 +652,33 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  // Admin role management (admin only): promote a user to Admin, or remove
+  // another admin. Removing yourself is never allowed (enforced here and in
+  // firestore.rules). The promoted user must sign in again before the Admin
+  // role takes effect (AuthContext loads isAdmin on sign-in).
+  const promoteToAdmin = async (userId: string): Promise<void> => {
+    if (!isAdmin) {
+      throw new Error('စီမံခန့်ခွဲသူသာလျှင် Admin ရာထူး တင်ပေးနိုင်ပါသည်');
+    }
+    const target = patientsList.find(p => p.id === userId);
+    await setDoc(doc(db, 'admins', userId), {
+      email: target?.email || '',
+      displayName: target?.displayName || '',
+      grantedAt: new Date().toISOString(),
+      grantedBy: currentUser?.uid || '',
+    }, { merge: true });
+  };
+
+  const revokeAdmin = async (adminId: string): Promise<void> => {
+    if (!isAdmin) {
+      throw new Error('စီမံခန့်ခွဲသူသာလျှင် Admin ရာထူး ဖြုတ်နိုင်ပါသည်');
+    }
+    if (adminId === currentUser?.uid) {
+      throw new Error('ကိုယ့်ကိုယ်ကို Admin ရာထူး ဖြုတ်လို့ မရပါ');
+    }
+    await deleteDoc(doc(db, 'admins', adminId));
+  };
+
   // One-time repair (admin only): backfill patientEmail on existing records.
   // Older records may carry a wrong or missing patientEmail (e.g. stamped
   // with the admin's email on on-behalf writes, or omitted entirely), which
@@ -805,20 +843,20 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return {
         uid: selectedPatientId,
         email: selectedPatient?.email || '',
-        name: selectedPatient?.displayName || 'လူနာ',
+        name: selectedPatient?.displayName || 'အသုံးပြုသူ',
       };
     }
     return {
       uid: currentUser?.uid || '',
       email: profile?.email || currentUser?.email || '',
-      name: profile?.displayName || 'လူနာ',
+      name: profile?.displayName || 'အသုံးပြုသူ',
     };
   };
 
   // Actions
   const addPatient = async (patientData: Partial<UserProfile> & { displayName: string }): Promise<UserProfile> => {
     if (!isAdmin) {
-      throw new Error('စီမံခန့်ခွဲသူသာလျှင် လူနာအသစ် ထည့်သွင်းနိုင်ပါသည်');
+      throw new Error('စီမံခန့်ခွဲသူသာလျှင် အသုံးပြုသူအသစ် ထည့်သွင်းနိုင်ပါသည်');
     }
     const newId = 'pat-' + Date.now();
     // No fabricated defaults: fields the caller did not provide stay
@@ -838,10 +876,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       await setDoc(doc(db, 'users', newId), sanitizeForFirestore(newPatient));
-      showToast('လူနာမှတ်တမ်း အသစ်ကို အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ', 'success');
+      showToast('အသုံးပြုသူမှတ်တမ်း အသစ်ကို အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ', 'success');
     } catch (e) {
       console.warn('Error saving patient to firestore:', e);
-      showToast('လူနာမှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ', 'error');
+      showToast('အသုံးပြုသူမှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
 
@@ -865,10 +903,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       await setDoc(doc(db, 'users', id), sanitizeForFirestore(cleanUpdates), { merge: true });
-      showToast('လူနာမှတ်တမ်းကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ', 'success');
+      showToast('အသုံးပြုသူမှတ်တမ်းကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ', 'success');
     } catch (e) {
       console.warn('Error updating patient in firestore:', e);
-      showToast('လူနာမှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast('အသုံးပြုသူမှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -878,6 +916,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       throw new Error('စီမံခန့်ခွဲသူသာလျှင် ဖျက်ပစ်နိုင်ပါသည်');
     }
 
+    const prevPatients = patientsList;
+    const prevSelected = selectedPatientId;
     setPatientsList(prev => prev.filter(p => p.id !== id));
     if (selectedPatientId === id) {
       setSelectedPatientId(null);
@@ -886,8 +926,11 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'users', id));
     } catch (e) {
+      setPatientsList(prevPatients);
+      setSelectedPatientId(prevSelected);
       console.warn('Error deleting patient from firestore users collection:', e);
-      showToast('လူနာပရိုဖိုင် ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast('အသုံးပြုသူပရိုဖိုင် ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
     }
 
     if (deleteAssociatedData) {
@@ -904,7 +947,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
           })
         );
-        showToast('လူနာမှတ်တမ်းနှင့် ဆက်စပ်အချက်အလက်များကို အောင်မြင်စွာ ဖျက်သိမ်းပြီးပါပြီ', 'success');
+        showToast('အသုံးပြုသူမှတ်တမ်းနှင့် ဆက်စပ်အချက်အလက်များကို အောင်မြင်စွာ ဖျက်သိမ်းပြီးပါပြီ', 'success');
       } catch (err) {
         console.warn('Error cascading patient records deletion:', err);
         showToast('ဆက်စပ်မှတ်တမ်းများ ဖျက်ရာတွင် အချို့ချို့ယွင်းချက် ဖြစ်ပေါ်ခဲ့ပါသည်', 'warning');
@@ -916,6 +959,33 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!isAdmin) {
       throw new Error('စီမံခန့်ခွဲသူသာလျှင် လုပ်ဆောင်နိုင်ပါသည်');
     }
+
+    // Delete from Firestore FIRST (awaited), and only clear local state
+    // once every patient is gone. The old version used forEach(async...)
+    // so deletions were unawaited, and it deleted only the users docs —
+    // the patients' health records survived.
+    const usersSnap = await getDocs(collection(db, 'users'));
+    const idsFromUsers = usersSnap.docs
+      .filter(d => (d.data() as UserProfile).role !== 'admin')
+      .map(d => d.id);
+    const allIds = Array.from(new Set([...idsFromUsers, ...patientsList.map(p => p.id)]));
+
+    const results = await Promise.allSettled(allIds.map(async (pid) => {
+      await deleteDoc(doc(db, 'users', pid));
+      await Promise.all(
+        USER_DATA_COLLECTIONS.map(async (colName) => {
+          const q = query(collection(db, colName), where('userId', '==', pid));
+          const snap = await getDocs(q);
+          await Promise.all(snap.docs.map(d => deleteDoc(doc(db, colName, d.id))));
+        })
+      );
+    }));
+    const failedCount = results.filter(r => r.status === 'rejected').length;
+    if (failedCount > 0) {
+      showToast(`အသုံးပြုသူအားလုံး ဖျက်ရာတွင် ${failedCount} ဦး ဖျက်ခြင်း မအောင်မြင်ပါ`, 'error');
+      throw new Error(`အသုံးပြုသူ ${failedCount} ဦး ဖျက်ခြင်း မအောင်မြင်ပါ`);
+    }
+
     setPatientsList([]);
     setAllBP([]);
     setAllGlucose([]);
@@ -925,19 +995,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setAllBMI([]);
     setAllQuestions([]);
     setAllVaccines([]);
+    setAllMedLogs([]);
+    setFamilyMembers([]);
     setSelectedPatientId(null);
-
-    try {
-      const usersSnap = await getDocs(collection(db, 'users'));
-      usersSnap.forEach(async (docSnap) => {
-        const data = docSnap.data() as UserProfile;
-        if (data.role !== 'admin') {
-          await deleteDoc(doc(db, 'users', docSnap.id));
-        }
-      });
-    } catch (e) {
-      console.warn('Firestore purge error:', e);
-    }
+    showToast('အသုံးပြုသူအားလုံးနှင့် ဆက်စပ်မှတ်တမ်းများကို ဖျက်သိမ်းပြီးပါပြီ', 'success');
   };
 
   const addBPRecord = async (data: Omit<BloodPressureRecord, 'id' | 'category' | 'createdAt'>) => {
@@ -962,10 +1023,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteBPRecord = async (id: string) => {
-    setAllBP(prev => prev.filter(b => b.id !== id));
+    const prev = allBP;
+    setAllBP(prev.filter(b => b.id !== id));
     try {
       await deleteDoc(doc(db, 'vitals', id));
     } catch (e) {
+      setAllBP(prev);
       console.warn('Error deleting vital from firestore:', e);
       showToast('သွေးပေါင်ချိန် မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1010,10 +1073,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteGlucoseRecord = async (id: string) => {
-    setAllGlucose(prev => prev.filter(g => g.id !== id));
+    const prev = allGlucose;
+    setAllGlucose(prev.filter(g => g.id !== id));
     try {
       await deleteDoc(doc(db, 'glucose', id));
     } catch (e) {
+      setAllGlucose(prev);
       console.warn('Error deleting glucose from firestore:', e);
       showToast('ဆီးချို မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1037,10 +1102,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteLabRecord = async (id: string) => {
-    setAllLabs(prev => prev.filter(l => l.id !== id));
+    const prev = allLabs;
+    setAllLabs(prev.filter(l => l.id !== id));
     try {
       await deleteDoc(doc(db, 'labTests', id));
     } catch (e) {
+      setAllLabs(prev);
       console.warn('Error deleting lab test from firestore:', e);
       showToast('ဓာတ်ခွဲခန်း မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1075,10 +1142,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteMedication = async (id: string) => {
-    setAllMeds(prev => prev.filter(m => m.id !== id));
+    const prev = allMeds;
+    setAllMeds(prev.filter(m => m.id !== id));
     try {
       await deleteDoc(doc(db, 'medications', id));
     } catch (e) {
+      setAllMeds(prev);
       console.warn('Error deleting medication from firestore:', e);
       showToast('ဆေးမှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1113,10 +1182,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteVaccineRecord = async (id: string) => {
-    setAllVaccines(prev => prev.filter(v => v.id !== id));
+    const prev = allVaccines;
+    setAllVaccines(prev.filter(v => v.id !== id));
     try {
       await deleteDoc(doc(db, 'vaccines', id));
     } catch (e) {
+      setAllVaccines(prev);
       console.warn('Error deleting vaccine record from firestore:', e);
       showToast('ကာကွယ်ဆေး မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1132,7 +1203,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const newAdvice: DoctorAdvice & { patientEmail: string } = {
       id: 'adv-' + Date.now(),
       userId: patientId,
-      patientName: targetPatient?.displayName || 'လူနာ',
+      patientName: targetPatient?.displayName || 'အသုံးပြုသူ',
       patientEmail: targetPatient?.email || '',
       doctorEmail: profile?.email || currentUser?.email || 'admin@healthtrack.com',
       doctorName: profile?.displayName || 'ဆရာဝန် (Admin)',
@@ -1150,10 +1221,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!isAdmin) {
       throw new Error('လုပ်ဆောင်ခွင့် မရှိပါ');
     }
-    setAllAdvices(prev => prev.filter(a => a.id !== id));
+    const prev = allAdvices;
+    setAllAdvices(prev.filter(a => a.id !== id));
     try {
       await deleteDoc(doc(db, 'doctorAdvices', id));
     } catch (e) {
+      setAllAdvices(prev);
       console.warn('Error deleting doctor advice from firestore:', e);
       showToast('ဆရာဝန် အကြံပြုချက် ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1193,10 +1266,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteBMIRecord = async (id: string) => {
-    setAllBMI(prev => prev.filter(b => b.id !== id));
+    const prev = allBMI;
+    setAllBMI(prev.filter(b => b.id !== id));
     try {
       await deleteDoc(doc(db, 'bmi', id));
     } catch (e) {
+      setAllBMI(prev);
       console.warn('Error deleting BMI record from firestore:', e);
       showToast('BMI မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1263,10 +1338,12 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteDoctorQuestion = async (id: string) => {
-    setAllQuestions(prev => prev.filter(q => q.id !== id));
+    const prev = allQuestions;
+    setAllQuestions(prev.filter(q => q.id !== id));
     try {
       await deleteDoc(doc(db, 'doctorQuestions', id));
     } catch (e) {
+      setAllQuestions(prev);
       console.warn('Error deleting doctor question from firestore:', e);
       showToast('မေးခွန်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1304,26 +1381,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const deleteBroadcastTicker = async (id: string) => {
     if (!isAdmin) throw new Error('စီမံခန့်ခွဲသူသာလျှင် ဖျက်ပစ်နိုင်ပါသည်');
 
-    setBroadcastTickers(prev => prev.filter(t => t.id !== id));
+    const prev = broadcastTickers;
+    setBroadcastTickers(prev.filter(t => t.id !== id));
     try {
       await deleteDoc(doc(db, 'broadcastTickers', id));
     } catch (e) {
+      setBroadcastTickers(prev);
       console.warn('Error deleting broadcast ticker from firestore:', e);
       showToast('သတိပေးစာတန်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
-  };
-
-  const clearAllData = () => {
-    setAllBP([]);
-    setAllGlucose([]);
-    setAllLabs([]);
-    setAllMeds([]);
-    setAllAdvices([]);
-    setAllBMI([]);
-    setAllQuestions([]);
-    setFamilyMembers([]);
-    setSelectedFamilyMemberId(null);
   };
 
   const selectedFamilyMember = familyMembers.find(f => f.id === selectedFamilyMemberId) || (familyMembers.length > 0 ? familyMembers[0] : null);
@@ -1344,13 +1411,17 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteFamilyMember = async (id: string) => {
-    setFamilyMembers(prev => prev.filter(f => f.id !== id));
+    const prev = familyMembers;
+    const prevSelected = selectedFamilyMemberId;
+    setFamilyMembers(prev.filter(f => f.id !== id));
     if (selectedFamilyMemberId === id) {
       setSelectedFamilyMemberId(familyMembers[0]?.id || null);
     }
     try {
       await deleteDoc(doc(db, 'familyMembers', id));
     } catch (e) {
+      setFamilyMembers(prev);
+      setSelectedFamilyMemberId(prevSelected);
       console.warn('Error deleting family member from firestore:', e);
       showToast('မိသားစုဝင် မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1418,6 +1489,14 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       latestBMI,
       doctorQuestions,
       allDoctorQuestions: allQuestions,
+      allBPRecords: allBP,
+      allGlucoseRecords: allGlucose,
+      allBMIRecords: allBMI,
+      allLabRecords: allLabs,
+      allMedicationRecords: allMeds,
+      allVaccineRecords: allVaccines,
+      allMedicationLogs: allMedLogs,
+      allDoctorAdvices: allAdvices,
       broadcastTickers,
       addBroadcastTicker,
       toggleBroadcastTicker,
@@ -1425,6 +1504,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       dbStats,
       refreshAdminData,
       repairPatientEmails,
+      promoteToAdmin,
+      revokeAdmin,
       familyMembers,
       selectedFamilyMemberId,
       setSelectedFamilyMemberId,
@@ -1458,7 +1539,6 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       answerDoctorQuestion,
       deleteDoctorQuestion,
       closeDoctorQuestion,
-      clearAllData,
     }}>
       {children}
     </HealthDataContext.Provider>

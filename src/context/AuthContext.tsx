@@ -372,17 +372,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile(null);
     setIsAdmin(false);
 
-    // Thoroughly remove all health_* and family_health_profile localStorage keys
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith('health_') || key.startsWith('family_health_') || key.startsWith('fht_') || key.startsWith('physio_') || key.startsWith('special_care_'))) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(k => localStorage.removeItem(k));
-
-    const explicitKeys = [
+    // Remove ONLY session/cache keys that are safe to lose — never wipe
+    // user-data keys on logout. Dental/eye/hearing records (fht_*), physio
+    // progress (physio_*), special-care checklists (special_care_*),
+    // bookmarked articles, notifications/reminders
+    // (family_health_notifications_* / family_health_custom_reminders_*) and
+    // the last-seen version marker (myanmar_health_app_version) live ONLY in
+    // localStorage — there is no cloud copy, so deleting them here would
+    // destroy the user's data permanently. 'health_family_members' is also
+    // kept: it is the one-time migration source that HealthDataContext
+    // moves into Firestore itself (and removes) after it runs.
+    // Only the keys below are removed: the cached profile (re-fetched from
+    // Firestore on the next login) and legacy demo/cloud-cache keys that no
+    // code in src/ reads any more.
+    const keysToRemove = [
       'family_health_profile',
       'health_demo_profile',
       'health_records_bp',
@@ -393,11 +396,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       'health_records_bmi',
       'health_records_questions',
       'health_all_patients',
-      'health_family_members',
       'health_broadcast_tickers',
-      'health_meds_checked_today'
+      'health_meds_checked_today',
     ];
-    explicitKeys.forEach(key => localStorage.removeItem(key));
+    keysToRemove.forEach(key => localStorage.removeItem(key));
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {

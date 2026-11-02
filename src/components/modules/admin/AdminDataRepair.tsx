@@ -50,7 +50,7 @@ export const AdminDataRepair: React.FC = () => {
             ဒေတာ ပြန်ပြင်ခြင်း (Data Repair)
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            အရင်က patientEmail မှားနေတာ / မပါတာကြောင့် လူနာဘက်မှာ မပေါ်တဲ့ မှတ်တမ်းဟောင်းတွေကို တစ်ခါတည်း ပြန်ပြင်ပေးပါမယ်။ ပြင်ပြီးရင် လူနာဘက်က ပြန်ဖွင့်ကြည့်ရင် မှတ်တမ်းတွေ ပြန်ပေါ်လာပါမယ်။
+            အရင်က patientEmail မှားနေတာ / မပါတာကြောင့် အသုံးပြုသူဘက်မှာ မပေါ်တဲ့ မှတ်တမ်းဟောင်းတွေကို တစ်ခါတည်း ပြန်ပြင်ပေးပါမယ်။ ပြင်ပြီးရင် အသုံးပြုသူဘက်က ပြန်ဖွင့်ကြည့်ရင် မှတ်တမ်းတွေ ပြန်ပေါ်လာပါမယ်။
           </p>
         </div>
       </div>
@@ -82,7 +82,7 @@ export const AdminDataRepair: React.FC = () => {
         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
           <div className="flex items-center gap-2 text-xs font-bold text-emerald-800">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>ပြီးပါပြီ — လူနာဘက်က ပြန်ဖွင့်ကြည့်ပါ</span>
+            <span>ပြီးပါပြီ — အသုံးပြုသူဘက်က ပြန်ဖွင့်ကြည့်ပါ</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
             <div className="bg-white p-3 rounded-xl border border-emerald-100">

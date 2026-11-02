@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { 
   Activity, 
+  AlertTriangle,
   Droplets, 
   FlaskConical, 
   Pill, 
@@ -93,8 +94,9 @@ const MainContent: React.FC = () => {
   const [isDataBackupOpen, setIsDataBackupOpen] = useState(false);
   const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
   const [showVersionUpdateModal, setShowVersionUpdateModal] = useState(false);
+  const [versionUpdatePendingReload, setVersionUpdatePendingReload] = useState(false);
   const [latestAppVersion, setLatestAppVersion] = useState(CURRENT_SYSTEM_VERSION);
-  const [versionToast, setVersionToast] = useState<{ message: string; type: 'checking' | 'success' | 'updated' } | null>(null);
+  const [versionToast, setVersionToast] = useState<{ message: string; type: 'checking' | 'success' | 'updated' | 'error' } | null>(null);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
 
   const pendingQuestionsCount = doctorQuestions.filter(q => q.status === 'pending').length;
@@ -187,47 +189,97 @@ const MainContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
 
-  // Live Version Check Handler (Manual Click or Auto Polling)
-  const handleCheckVersion = (isManual = false) => {
+  // Bundle hash this page actually loaded (production build only).
+  // Returns null on the dev server, where scripts are served from /src.
+  const getLoadedBundleHash = (): string | null => {
+    const script = document.querySelector('script[src*="/assets/index-"]');
+    const match = script?.getAttribute('src')?.match(/\/assets\/index-([A-Za-z0-9_-]+)\.js/);
+    return match ? match[1] : null;
+  };
+
+  // Real Version Check: compares the bundle hash this page loaded with the
+  // bundle hash the live server is currently serving. The old check only
+  // compared a localStorage value with CURRENT_SYSTEM_VERSION, so it always
+  // reported success and could never tell that a new deploy had arrived.
+  const handleCheckVersion = async (isManual = false) => {
+    if (isCheckingVersion) return;
     setIsCheckingVersion(true);
     if (isManual) {
       setVersionToast({ message: 'စနစ်ဗားရှင်း စစ်ဆေးနေပါသည်...', type: 'checking' });
     }
+    try {
+      const loadedHash = getLoadedBundleHash();
+      if (!loadedHash) {
+        // Dev server / non-bundled page: no bundle hash to compare.
+        // Fall back to the old localStorage behaviour.
+        const lastSeen = localStorage.getItem('myanmar_health_app_version');
+        if (!lastSeen || lastSeen !== CURRENT_SYSTEM_VERSION) {
+          localStorage.setItem('myanmar_health_app_version', CURRENT_SYSTEM_VERSION);
+          setVersionUpdatePendingReload(false);
+          setShowVersionUpdateModal(true);
+          setVersionToast({
+            message: `🔄 စနစ်ဗားရှင်းသစ် ${CURRENT_SYSTEM_VERSION} သို့ အောင်မြင်စွာ အဆင့်မြှင့်လိုက်ပါပြီ!`,
+            type: 'updated',
+          });
+        } else if (isManual) {
+          setVersionToast({
+            message: `✅ သင်သည် နောက်ဆုံးပေါ် စနစ်ဗားရှင်း ${CURRENT_SYSTEM_VERSION} ကို အသုံးပြုနေပါသည်!`,
+            type: 'success',
+          });
+        }
+        return;
+      }
 
-    setTimeout(() => {
-      const lastSeen = localStorage.getItem('myanmar_health_app_version');
-      if (!lastSeen || lastSeen !== CURRENT_SYSTEM_VERSION) {
-        localStorage.setItem('myanmar_health_app_version', CURRENT_SYSTEM_VERSION);
+      // Cache-buster + no-store so the service worker / edge cache cannot
+      // answer with the stale index page this device already has.
+      const res = await fetch(`/?_v=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const html = await res.text();
+      const servedMatch = html.match(/\/assets\/index-([A-Za-z0-9_-]+)\.js/);
+      if (!servedMatch) throw new Error('No bundle hash in served page');
+      const servedHash = servedMatch[1];
+
+      if (servedHash !== loadedHash) {
+        // A newer deploy is live on the server — this page is stale.
+        setLatestAppVersion(CURRENT_SYSTEM_VERSION);
+        setVersionUpdatePendingReload(true);
         setShowVersionUpdateModal(true);
-        setVersionToast({ 
-          message: `🔄 စနစ်ဗားရှင်းသစ် ${CURRENT_SYSTEM_VERSION} သို့ အောင်မြင်စွာ အဆင့်မြှင့်လိုက်ပါပြီ!`, 
-          type: 'updated' 
+        setVersionToast({
+          message: '🔄 ဗားရှင်းအသစ် ရောက်ရှိနေပါသည် — စာမျက်နှာကို ပြန်ဖွင့်ပြီး (Reload) အသစ်ရယူပါ။',
+          type: 'updated',
         });
       } else if (isManual) {
-        setVersionToast({ 
-          message: `✅ သင်သည် နောက်ဆုံးပေါ် စနစ်ဗားရှင်း ${CURRENT_SYSTEM_VERSION} ကို အသုံးပြုနေပါသည်!`, 
-          type: 'success' 
+        setVersionToast({
+          message: `✅ သင်သည် နောက်ဆုံးပေါ် စနစ်ဗားရှင်း ${CURRENT_SYSTEM_VERSION} ကို အသုံးပြုနေပါသည်!`,
+          type: 'success',
         });
       }
+    } catch (e) {
+      console.warn('Version check failed:', e);
+      if (isManual) {
+        setVersionToast({
+          message: '⚠️ ဗားရှင်း စစ်ဆေးခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။',
+          type: 'error',
+        });
+      }
+      // Auto check stays silent on failure — never claim up-to-date.
+    } finally {
       setIsCheckingVersion(false);
       setTimeout(() => setVersionToast(null), 3500);
-    }, isManual ? 600 : 200);
+    }
   };
 
-  // Background Auto-Check Version Engine (Runs every 30s + on focus/visibility change)
+  // Background Auto-Check Version Engine (on load + on focus/visibility change)
+  // No 30-second polling interval any more: a real server check whenever
+  // the user returns to the app is enough, and polling was needless chatter.
   useEffect(() => {
     handleCheckVersion(false);
-
-    const intervalId = setInterval(() => {
-      handleCheckVersion(false);
-    }, 30000);
 
     const handleFocus = () => handleCheckVersion(false);
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleFocus);
 
     return () => {
-      clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
     };
@@ -286,11 +338,16 @@ const MainContent: React.FC = () => {
           {versionToast.type === 'updated' && (
             <Sparkles className="w-4 h-4 text-amber-500 shrink-0 animate-bounce" />
           )}
+          {versionToast.type === 'error' && (
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+          )}
           <span className={
             versionToast.type === 'updated' 
               ? 'text-indigo-950 font-extrabold' 
               : versionToast.type === 'success' 
               ? 'text-emerald-900' 
+              : versionToast.type === 'error'
+              ? 'text-rose-900'
               : 'text-indigo-900'
           }>
             {versionToast.message}
@@ -464,6 +521,7 @@ const MainContent: React.FC = () => {
         {showVersionUpdateModal && (
           <VersionUpdateModal
             latestAppVersion={latestAppVersion}
+            pendingReload={versionUpdatePendingReload}
             onClose={() => setShowVersionUpdateModal(false)}
             onOpenFullHistory={() => {
               setShowVersionUpdateModal(false);

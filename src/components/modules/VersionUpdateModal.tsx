@@ -7,12 +7,16 @@ interface VersionUpdateModalProps {
   latestAppVersion: string;
   onClose: () => void;
   onOpenFullHistory: () => void;
+  // True when a newer deploy was detected while this (old) bundle is still
+  // loaded — the update is NOT installed yet, a reload is needed.
+  pendingReload?: boolean;
 }
 
 export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
   latestAppVersion,
   onClose,
   onOpenFullHistory,
+  pendingReload = false,
 }) => {
   const currentVersionInfo = VERSION_HISTORY_DATA.find(v => v.version === latestAppVersion) || VERSION_HISTORY_DATA[0];
 
@@ -29,10 +33,14 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
         </div>
 
         <h3 className="text-lg font-bold text-center text-slate-900 dark:text-white">
-          🎉 အက်ပ်ဗားရှင်းအသစ်သို့ တင်မြှင့်ပြီးပါပြီ!
+          {pendingReload ? '🎉 ဗားရှင်းအသစ် ရပါပြီ!' : '🎉 အက်ပ်ဗားရှင်းအသစ်သို့ တင်မြှင့်ပြီးပါပြီ!'}
         </h3>
         <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-1">
-          ဗားရှင်း <strong className="text-teal-600 font-bold">{latestAppVersion}</strong> သို့ အလိုအလျောက် အပ်ဒိတ်လုပ်ပြီးစီးပါပြီ။
+          {pendingReload ? (
+            <>ဗားရှင်း <strong className="text-teal-600 font-bold">{latestAppVersion}</strong> ကို ရယူရန် စာမျက်နှာကို ပြန်ဖွင့်ပေးပါ။</>
+          ) : (
+            <>ဗားရှင်း <strong className="text-teal-600 font-bold">{latestAppVersion}</strong> သို့ အလိုအလျောက် အပ်ဒိတ်လုပ်ပြီးစီးပါပြီ။</>
+          )}
         </p>
 
         {/* Dynamic highlights directly from the active version */}
@@ -74,10 +82,16 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              if (pendingReload) {
+                window.location.reload();
+              } else {
+                onClose();
+              }
+            }}
             className="flex-1 py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer text-center"
           >
-            စတင်အသုံးပြုမည်
+            {pendingReload ? 'ပြန်ဖွင့်မည်' : 'စတင်အသုံးပြုမည်'}
           </button>
         </div>
       </div>
