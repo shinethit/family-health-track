@@ -26,7 +26,7 @@ export const MedicalDisclaimer: React.FC<MedicalDisclaimerProps> = ({
 
   if (variant === 'print') {
     return (
-      <div className={`p-3.5 rounded-xl border border-slate-300 bg-slate-50 text-[10px] text-slate-700 leading-relaxed my-3 ${className}`}>
+      <div className={`p-3.5 rounded-xl border border-slate-300 bg-slate-50 text-[11px] text-slate-700 leading-relaxed my-3 ${className}`}>
         <div className="flex items-center gap-1.5 font-bold text-slate-900 mb-1">
           <ShieldCheck className="w-3.5 h-3.5 text-slate-700" />
           <span>ဆေးဘက်ဆိုင်ရာ တာဝန်ခံမှု ကင်းလွတ်ခွင့်နှင့် သတိပေးချက် (Medical Disclaimer)</span>

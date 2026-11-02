@@ -336,12 +336,12 @@ export const EmergencyIDModule: React.FC = () => {
               {/* Card Body */}
               <div className="space-y-3 text-xs">
                 <div>
-                  <p className="text-[10px] text-rose-200 uppercase font-bold tracking-wider">အသုံးပြုသူအမည်</p>
+                  <p className="text-[11px] text-rose-200 uppercase font-bold tracking-wider">အသုံးပြုသူအမည်</p>
                   <p className="text-lg font-black text-white">{emergencyData.patientName || 'မထည့်ရသေးပါ'}</p>
                 </div>
 
                 <div className="bg-white/15 backdrop-blur-xs rounded-xl p-2.5 border border-white/20">
-                  <p className="text-[10px] text-yellow-200 font-extrabold uppercase tracking-wider flex items-center gap-1">
+                  <p className="text-[11px] text-yellow-200 font-extrabold uppercase tracking-wider flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5" />
                     <span>ALLERGIES (ဓာတ်မတည့်ပါ)</span>
                   </p>
@@ -360,7 +360,7 @@ export const EmergencyIDModule: React.FC = () => {
                 )}
 
                 <div>
-                  <p className="text-[10px] text-rose-200 uppercase font-bold tracking-wider">အရေးပေါ် တိုက်ရိုက်ဆက်သွယ်ရန်</p>
+                  <p className="text-[11px] text-rose-200 uppercase font-bold tracking-wider">အရေးပေါ် တိုက်ရိုက်ဆက်သွယ်ရန်</p>
                   {emergencyData.primaryContactPhone ? (
                     <a 
                       href={`tel:${emergencyData.primaryContactPhone}`}
@@ -374,7 +374,7 @@ export const EmergencyIDModule: React.FC = () => {
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-white/20 flex items-center justify-between text-[10px] text-rose-100">
+                <div className="pt-2 border-t border-white/20 flex items-center justify-between text-[11px] text-rose-100">
                   <span>ဆေးရုံ: {emergencyData.preferredHospital || 'မထည့်ရသေးပါ'}</span>
                   <span className="font-bold">Family Health Track</span>
                 </div>

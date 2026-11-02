@@ -419,7 +419,7 @@ export const SpecialtyCareModule: React.FC = () => {
                     <RefreshCw className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-500 text-center">
+                <p className="text-[11px] text-slate-500 text-center">
                   * နေ့စဉ် မနက်/ည ၂ ကြိမ်၊ ၂ မိနစ်စီ ဖလူအိုရိုက် ပါသော သွားတိုက်ဆေးဖြင့် တိုက်ပေးပါ။
                 </p>
               </div>
@@ -435,7 +435,7 @@ export const SpecialtyCareModule: React.FC = () => {
                   <p className="text-slate-500 text-xs">သွားနံပါတ်တစ်ခုစီကို နှိပ်၍ အခြေအနေပြောင်းလဲမှတ်တမ်းတင်ပါ</p>
                 </div>
 
-                <div className="flex items-center gap-2 text-[10px] font-semibold">
+                <div className="flex items-center gap-2 text-[11px] font-semibold">
                   <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> ကျန်းမာ</span>
                   <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> ပိုးစား</span>
                   <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> ဖိထည့်/ဖာထား</span>
@@ -447,7 +447,7 @@ export const SpecialtyCareModule: React.FC = () => {
               <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 {/* Upper Jaw (Teeth 1 to 16) */}
                 <div>
-                  <div className="text-[10px] font-bold text-slate-500 text-center mb-1">အပေါ် မေးရိုး သွားများ (Upper Arch)</div>
+                  <div className="text-[11px] font-bold text-slate-500 text-center mb-1">အပေါ် မေးရိုး သွားများ (Upper Arch)</div>
                   <div className="grid grid-cols-8 sm:grid-cols-16 gap-1 text-center">
                     {Array.from({ length: 16 }, (_, i) => i + 1).map(num => {
                       const st = selectedTeeth[num] || 'Healthy';
@@ -473,7 +473,7 @@ export const SpecialtyCareModule: React.FC = () => {
 
                 {/* Lower Jaw (Teeth 17 to 32) */}
                 <div>
-                  <div className="text-[10px] font-bold text-slate-500 text-center mb-1">အောက် မေးရိုး သွားများ (Lower Arch)</div>
+                  <div className="text-[11px] font-bold text-slate-500 text-center mb-1">အောက် မေးရိုး သွားများ (Lower Arch)</div>
                   <div className="grid grid-cols-8 sm:grid-cols-16 gap-1 text-center">
                     {Array.from({ length: 16 }, (_, i) => 32 - i).map(num => {
                       const st = selectedTeeth[num] || 'Healthy';
@@ -623,7 +623,7 @@ export const SpecialtyCareModule: React.FC = () => {
                     စာလုံးသေးမည် →
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-500 text-center">
+                <p className="text-[11px] text-slate-500 text-center">
                   * မျက်မှန် တပ်ဆင်ထားသူဖြစ်ပါက မျက်မှန်တပ်လျက် တစ်ဖက်စီ ပိတ်၍ စစ်ဆေးနိုင်ပါသည်။
                 </p>
               </div>
@@ -864,7 +864,7 @@ export const SpecialtyCareModule: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-[10px] text-slate-400 mt-4 text-center">
+              <p className="text-[11px] text-slate-400 mt-4 text-center">
                 * အကြားအာရုံချို့ယွင်းမှုသည် အစပိုင်းတွင် မသိသာဘဲ တဖြည်းဖြည်း သတိမမူမိဘဲ ဖြစ်ပွားတတ်ပါသည်။
               </p>
             </div>

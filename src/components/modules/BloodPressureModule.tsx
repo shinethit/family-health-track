@@ -8,6 +8,9 @@ import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 export const BloodPressureModule: React.FC = () => {
   const { bpRecords, addBPRecord, deleteBPRecord, selectedPatient, selectedFamilyMember } = useHealthData();
+  // dataLoading is added by the context work in the same v2.4.8 batch; fall
+  // back to false if it is not present yet so this module still renders.
+  const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
   const { profile, isAdmin } = useAuth();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
@@ -42,6 +45,9 @@ export const BloodPressureModule: React.FC = () => {
   const [viewMode, setViewMode] = useState<'both' | 'graph' | 'table'>('both');
   // Timeframe state: 'all' | '1m' | '3m' | '6m'
   const [timeframe, setTimeframe] = useState<'all' | '1m' | '3m' | '6m'>('all');
+  // History search + paging (latest 20 by default)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   // Time boundaries for filtering
   const now = new Date();
@@ -65,6 +71,19 @@ export const BloodPressureModule: React.FC = () => {
       return true;
     });
   }, [sortedBP, timeframe]);
+
+  // Search the history list by date, notes or food record
+  const searchedBP = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return filteredBP;
+    return filteredBP.filter((r) => {
+      const hay = `${r.date || ''} ${r.timestamp || ''} ${r.notes || ''} ${r.dietRecord || ''} ${r.dietNotes || ''} ${r.foodIntake || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [filteredBP, searchQuery]);
+
+  // Newest first; show only the latest 20 unless expanded
+  const displayBP = showAllHistory ? [...searchedBP].reverse() : [...searchedBP].slice(-20).reverse();
 
   const targetPerson = selectedPatient || selectedFamilyMember || profile;
   const personAge = targetPerson?.age;
@@ -112,6 +131,17 @@ export const BloodPressureModule: React.FC = () => {
     }
   };
 
+  // While the first Firestore snapshot is still loading, show a loading
+  // state instead of empty charts / "no records" messages.
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-rose-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
+        <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Banner / Summary */}
@@ -156,7 +186,7 @@ export const BloodPressureModule: React.FC = () => {
               <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${latestEvaluation.bgColor} ${latestEvaluation.color} ${latestEvaluation.borderColor}`}>
                 {latestEvaluation.labelMm}
               </div>
-              <p className="text-[10px] text-slate-400 font-medium">
+              <p className="text-[11px] text-slate-400 font-medium">
                 စံသတ်မှတ်ချက်: {latestEvaluation.sourceMm}
               </p>
             </div>
@@ -322,8 +352,19 @@ export const BloodPressureModule: React.FC = () => {
               သွေးပေါင်ချိန် မှတ်တမ်းများ (Blood Pressure Log - {timeframe === 'all' ? 'အားလုံး' : timeframe === '1m' ? '၁ လစာ' : timeframe === '3m' ? '၃ လစာ' : '၆ လစာ'})
             </h3>
             <span className="text-xs text-slate-500 font-mono">
-              {filteredBP.length} records
+              {searchedBP.length} records
             </span>
+          </div>
+
+          {/* History search */}
+          <div className="px-4 pt-3">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ရှာဖွေမည် — ရက်စွဲ (သို့) မှတ်ချက်"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden placeholder:text-slate-400"
+            />
           </div>
 
           <div className="overflow-x-auto">
@@ -342,7 +383,7 @@ export const BloodPressureModule: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredBP.slice().reverse().map((record) => {
+                {displayBP.map((record) => {
                   const evalInfo = calculateBPCategory(record.systolic, record.diastolic);
                   const diet = record.dietRecord || record.dietNotes || record.foodIntake;
                   return (
@@ -351,13 +392,13 @@ export const BloodPressureModule: React.FC = () => {
                         {(record.date || record.timestamp || '').replace('T', ' ')}
                       </td>
                       <td className="py-3 px-4 font-bold text-rose-600 dark:text-rose-400 font-mono text-sm">
-                        {record.systolic} <span className="text-[10px] text-slate-400 font-normal">mmHg</span>
+                        {record.systolic} <span className="text-[11px] text-slate-400 font-normal">mmHg</span>
                       </td>
                       <td className="py-3 px-4 font-bold text-blue-600 dark:text-blue-400 font-mono text-sm">
-                        {record.diastolic} <span className="text-[10px] text-slate-400 font-normal">mmHg</span>
+                        {record.diastolic} <span className="text-[11px] text-slate-400 font-normal">mmHg</span>
                       </td>
                       <td className="py-3 px-4 font-semibold text-amber-600 dark:text-amber-400 font-mono">
-                        {record.pulse} <span className="text-[10px] text-slate-400 font-normal">bpm</span>
+                        {record.pulse} <span className="text-[11px] text-slate-400 font-normal">bpm</span>
                       </td>
                       <td className="py-3 px-4">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
@@ -387,8 +428,12 @@ export const BloodPressureModule: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <button
-                          onClick={() => deleteBPRecord(record.id)}
-                          className="text-slate-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
+                          onClick={() => {
+                            if (window.confirm('ဤသွေးပေါင်ချိန် မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
+                              deleteBPRecord(record.id);
+                            }
+                          }}
+                          className="text-slate-400 hover:text-rose-600 transition-colors p-2 cursor-pointer"
                           title="ဖျက်မည်"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -400,6 +445,16 @@ export const BloodPressureModule: React.FC = () => {
               </tbody>
             </table>
           </div>
+          {searchedBP.length > 20 && (
+            <div className="p-3 border-t border-slate-200 dark:border-slate-800 text-center">
+              <button
+                onClick={() => setShowAllHistory(!showAllHistory)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+              >
+                {showAllHistory ? 'အနည်းငယ်သာ ပြမည်' : `အားလုံး ကြည့်မည် (${searchedBP.length} ခု)`}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -503,7 +558,7 @@ export const BloodPressureModule: React.FC = () => {
                     <Utensils className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     <span>စားသုံးခဲ့သော အစားအသောက် မှတ်တမ်း</span>
                   </label>
-                  <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                  <span className="text-[11px] text-amber-700 dark:text-amber-400 font-medium">
                     သွေးတိုး/အဆစ်ကိုက်မှု သုံးသပ်ရန်
                   </span>
                 </div>
@@ -512,7 +567,7 @@ export const BloodPressureModule: React.FC = () => {
                   placeholder="ဥပမာ- ငပိရည်နှင့် အငန်များသောညစာ၊ အမဲသားဟင်း၊ ကော်ဖီ ၂ ခွက်"
                   value={dietRecord}
                   onChange={(e) => setDietRecord(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden placeholder:text-slate-400"
                 />
                 
                 {/* Quick Pick Chips */}
@@ -522,7 +577,7 @@ export const BloodPressureModule: React.FC = () => {
                       key={idx}
                       type="button"
                       onClick={() => handleAddDietTag(tag)}
-                      className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-800 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors cursor-pointer shrink-0"
+                      className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors cursor-pointer shrink-0"
                     >
                       + {tag}
                     </button>
@@ -540,7 +595,7 @@ export const BloodPressureModule: React.FC = () => {
                   type="datetime-local"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-mono"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden font-mono"
                 />
               </div>
 
@@ -551,7 +606,7 @@ export const BloodPressureModule: React.FC = () => {
                     လက်ရှိထည့်သွင်းချက် အကဲဖြတ်မှု:
                   </span>
                   <span className={`text-xs font-bold ${currentPreview.color}`}>
-                    {currentPreview.labelMm} ({currentPreview.labelEn})
+                    {currentPreview.labelMm}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
@@ -569,7 +624,7 @@ export const BloodPressureModule: React.FC = () => {
                   placeholder="ဥပမာ- ဆေးသောက်ပြီး ၂ နာရီ၊ ခေါင်းမူးနေသည်"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
                 />
               </div>
 
@@ -578,14 +633,14 @@ export const BloodPressureModule: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsOpenAdd(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   မလုပ်တော့ပါ
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : 'မှတ်တမ်းသိမ်းမည်'}
                 </button>

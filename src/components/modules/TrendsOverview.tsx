@@ -11,6 +11,7 @@ import {
   BarChart2,
   Table,
   History,
+  Loader2,
   TrendingUp,
   Clock,
   Heart,
@@ -45,7 +46,8 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
     selectedPatientId,
     setSelectedPatientId,
     patientsList,
-    latestBMI 
+    latestBMI,
+    dataLoading
   } = useHealthData();
   const { profile } = useAuth();
 
@@ -158,6 +160,21 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
     });
   }
 
+  // While the first Firestore snapshot is still on its way, show a loading
+  // state instead of the empty-data messages and charts — otherwise a slow
+  // connection looks like all records have vanished.
+  if (dataLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white dark:bg-slate-900 p-10 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col items-center justify-center text-center">
+          <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
+          <p className="text-sm font-bold text-slate-900 dark:text-white mt-4">ဒေတာ ရယူနေပါသည်...</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">ခဏစောင့်ပေးပါ</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -181,7 +198,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
           <div className="flex items-center gap-3 shrink-0">
             <div className="px-4 py-2 bg-white/10 rounded-2xl backdrop-blur-xs text-center border border-white/20">
-              <span className="text-[10px] text-emerald-100 block font-medium">ကျန်းမာရေးအဆင့်</span>
+              <span className="text-[11px] text-emerald-100 block font-medium">ကျန်းမာရေးအဆင့်</span>
               <span className="text-base font-bold">
                 {alerts.length === 0 ? '🟢 ပုံမှန်ကောင်းမွန်' : alerts.some(a => a.type === 'danger') ? '🔴 ဂရုပြုစောင့်ကြည့်' : '🟡 အလယ်အလတ်'}
               </span>
@@ -518,16 +535,16 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                       return (
                         <tr key={r.id || i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="py-2.5 px-4 font-mono text-slate-700 dark:text-slate-300">
-                            {dInfo.date} <span className="text-[10px] text-slate-400">{dInfo.time}</span>
+                            {dInfo.date} <span className="text-[11px] text-slate-400">{dInfo.time}</span>
                           </td>
                           <td className="py-2.5 px-4 font-extrabold text-rose-600 font-mono text-sm">
-                            {r.systolic} <span className="text-[10px] text-slate-400 font-normal">mmHg</span>
+                            {r.systolic} <span className="text-[11px] text-slate-400 font-normal">mmHg</span>
                           </td>
                           <td className="py-2.5 px-4 font-extrabold text-blue-600 font-mono text-sm">
-                            {r.diastolic} <span className="text-[10px] text-slate-400 font-normal">mmHg</span>
+                            {r.diastolic} <span className="text-[11px] text-slate-400 font-normal">mmHg</span>
                           </td>
                           <td className="py-2.5 px-4 font-semibold text-amber-600 font-mono">
-                            {r.pulse || r.pulseRate || '--'} <span className="text-[10px] text-slate-400 font-normal">bpm</span>
+                            {r.pulse || r.pulseRate || '--'} <span className="text-[11px] text-slate-400 font-normal">bpm</span>
                           </td>
                           <td className="py-2.5 px-4">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${evalB.bgColor} ${evalB.color} ${evalB.borderColor}`}>
@@ -597,10 +614,10 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                       return (
                         <tr key={r.id || i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="py-2.5 px-4 font-mono text-slate-700 dark:text-slate-300">
-                            {dInfo.date} <span className="text-[10px] text-slate-400">{dInfo.time}</span>
+                            {dInfo.date} <span className="text-[11px] text-slate-400">{dInfo.time}</span>
                           </td>
                           <td className="py-2.5 px-4 font-extrabold text-emerald-600 font-mono text-sm">
-                            {val ?? '—'} <span className="text-[10px] text-slate-400 font-normal">{type === 'hba1c' ? '%' : 'mg/dL'}</span>
+                            {val ?? '—'} <span className="text-[11px] text-slate-400 font-normal">{type === 'hba1c' ? '%' : 'mg/dL'}</span>
                           </td>
                           <td className="py-2.5 px-4 text-slate-700 dark:text-slate-300">
                             {type === 'fasting' && 'အစာမစားမီ (Fasting)'}
@@ -759,56 +776,56 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
             {/* Hb */}
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-slate-500 block text-[10px] font-bold">သွေးအား (Hb)</span>
+              <span className="text-slate-500 block text-[11px] font-bold">သွေးအား (Hb)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.cbc?.hemoglobin != null ? `${latestLab.cbc.hemoglobin} g/dL` : '--'}
               </span>
-              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">စံ: 12 - 17</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">စံ: 12 - 17</span>
             </div>
 
             {/* FBS */}
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-slate-500 block text-[10px] font-bold">ဆီးချို (FBS)</span>
+              <span className="text-slate-500 block text-[11px] font-bold">ဆီးချို (FBS)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.glucose?.fbs != null ? `${latestLab.glucose.fbs} mg/dL` : '--'}
               </span>
-              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">စံ: 70 - 99</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">စံ: 70 - 99</span>
             </div>
 
             {/* ALT */}
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-slate-500 block text-[10px] font-bold">အသည်း (SGPT/ALT)</span>
+              <span className="text-slate-500 block text-[11px] font-bold">အသည်း (SGPT/ALT)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.liver?.alt_sgpt != null ? `${latestLab.liver.alt_sgpt} U/L` : '--'}
               </span>
-              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 7 - 56</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 7 - 56</span>
             </div>
 
             {/* Creatinine */}
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-slate-500 block text-[10px] font-bold">ကျောက်ကပ် (Creatinine)</span>
+              <span className="text-slate-500 block text-[11px] font-bold">ကျောက်ကပ် (Creatinine)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.renal?.creatinine != null ? `${latestLab.renal.creatinine} mg/dL` : '--'}
               </span>
-              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 0.6 - 1.2</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 0.6 - 1.2</span>
             </div>
 
             {/* Uric Acid */}
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-slate-500 block text-[10px] font-bold">ဂေါက်/ယူရစ် (Uric Acid)</span>
+              <span className="text-slate-500 block text-[11px] font-bold">ဂေါက်/ယူရစ် (Uric Acid)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.renal?.uricAcid != null ? `${latestLab.renal.uricAcid} mg/dL` : '--'}
               </span>
-              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 3.5 - 7.2</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 3.5 - 7.2</span>
             </div>
 
             {/* Cholesterol */}
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <span className="text-slate-500 block text-[10px] font-bold">ကိုလက်စထရော (Chol)</span>
+              <span className="text-slate-500 block text-[11px] font-bold">ကိုလက်စထရော (Chol)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.lipid?.totalCholesterol != null ? `${latestLab.lipid.totalCholesterol} mg/dL` : '--'}
               </span>
-              <span className="text-[10px] text-slate-500 block mt-0.5 font-medium">စံနှုန်း: &lt; 200</span>
+              <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">စံနှုန်း: &lt; 200</span>
             </div>
           </div>
         </div>

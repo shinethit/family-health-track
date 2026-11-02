@@ -168,11 +168,11 @@ export const HomeMedicinesGuideModule: React.FC = () => {
                 {/* Quick Dosage Info */}
                 <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs">
                   <div>
-                    <span className="text-[10px] font-bold text-emerald-700 block uppercase">အနည်းဆုံး ပမာဏ (Min):</span>
+                    <span className="text-[11px] font-bold text-emerald-700 block uppercase">အနည်းဆုံး ပမာဏ (Min):</span>
                     <p className="font-semibold text-slate-800 text-[11px]">{med.minDose}</p>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-rose-700 block uppercase">အများဆုံး ပမာဏ (Max):</span>
+                    <span className="text-[11px] font-bold text-rose-700 block uppercase">အများဆုံး ပမာဏ (Max):</span>
                     <p className="font-semibold text-slate-800 text-[11px]">{med.maxDose}</p>
                   </div>
                 </div>

@@ -118,6 +118,8 @@ export const VaccinePassportModule: React.FC = () => {
   const [activeView, setActiveView] = useState<'records' | 'recommendations'>('records');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'adult' | 'child'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  // User records paging (latest 20 by default)
+  const [showAllVaccines, setShowAllVaccines] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -246,6 +248,9 @@ export const VaccinePassportModule: React.FC = () => {
     return matchesCat && matchesSearch;
   });
 
+  // Show only the latest 20 user records unless expanded
+  const displayRecords = showAllVaccines ? filteredRecords : filteredRecords.slice(0, 20);
+
   const completedCount = vaccineRecords.filter(r => r.status === 'completed').length;
   const scheduledCount = vaccineRecords.filter(r => r.status === 'scheduled').length;
 
@@ -349,7 +354,7 @@ export const VaccinePassportModule: React.FC = () => {
               placeholder="ကာကွယ်ဆေးအမည် ရှာဖွေရန်..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:border-teal-500 bg-slate-50"
+              className="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:border-teal-500 bg-slate-50"
             />
           </div>
         </div>
@@ -401,14 +406,14 @@ export const VaccinePassportModule: React.FC = () => {
               <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
                 <button
                   onClick={handleOpenBlankModal}
-                  className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow-xs cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow-xs cursor-pointer flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" />
                   <span>ကာကွယ်ဆေး အသစ်ထည့်မည်</span>
                 </button>
                 <button
                   onClick={() => setActiveView('recommendations')}
-                  className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs cursor-pointer flex items-center gap-1.5"
                 >
                   <BookOpen className="w-4 h-4 text-teal-600" />
                   <span>အကြံပြု ကာကွယ်ဆေးများ ကြည့်မည်</span>
@@ -416,8 +421,9 @@ export const VaccinePassportModule: React.FC = () => {
               </div>
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredRecords.map((vac) => {
+              {displayRecords.map((vac) => {
                 const isDone = vac.status === 'completed';
 
                 return (
@@ -528,6 +534,17 @@ export const VaccinePassportModule: React.FC = () => {
                 );
               })}
             </div>
+            {filteredRecords.length > 20 && (
+              <div className="text-center pt-3">
+                <button
+                  onClick={() => setShowAllVaccines(!showAllVaccines)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 cursor-pointer"
+                >
+                  {showAllVaccines ? 'အနည်းငယ်သာ ပြမည်' : `အားလုံး ကြည့်မည် (${filteredRecords.length} ခု)`}
+                </button>
+              </div>
+            )}
+            </>
           )}
         </div>
       )}
@@ -782,14 +799,14 @@ export const VaccinePassportModule: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 border border-slate-300 rounded-xl font-semibold hover:bg-slate-100 cursor-pointer"
+                className="px-4 py-2.5 border border-slate-300 rounded-xl font-semibold hover:bg-slate-100 cursor-pointer"
               >
                 မလုပ်တော့ပါ
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-5 py-2 bg-teal-700 text-white font-bold rounded-xl hover:bg-teal-800 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                className="px-5 py-2.5 bg-teal-700 text-white font-bold rounded-xl hover:bg-teal-800 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
                 {isSubmitting ? (
                   <>

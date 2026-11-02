@@ -12,14 +12,18 @@ import {
 } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 
-export const BroadcastMarqueeBanner: React.FC = () => {
+interface BroadcastMarqueeBannerProps {
+  dismissed: boolean;
+  onDismiss: () => void;
+}
+
+export const BroadcastMarqueeBanner: React.FC<BroadcastMarqueeBannerProps> = ({ dismissed, onDismiss }) => {
   const { broadcastTickers } = useHealthData();
-  const [isDismissed, setIsDismissed] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
   const activeTickers = broadcastTickers?.filter(t => t.isActive) || [];
 
-  if (isDismissed || activeTickers.length === 0) {
+  if (dismissed || activeTickers.length === 0) {
     return null;
   }
 
@@ -87,7 +91,7 @@ export const BroadcastMarqueeBanner: React.FC = () => {
           {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
         </button>
         <button
-          onClick={() => setIsDismissed(true)}
+          onClick={onDismiss}
           className="p-1 rounded-md hover:bg-white/20 transition-colors cursor-pointer"
           title="ပိတ်မည်"
         >

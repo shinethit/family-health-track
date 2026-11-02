@@ -179,7 +179,7 @@ export const PhysiotherapyModule: React.FC = () => {
           </div>
 
           {/* Daily Streak & Completion Card */}
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3.5 min-w-[220px] flex items-center justify-between gap-3">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-3.5 min-w-0 w-full md:min-w-[220px] md:w-auto flex items-center justify-between gap-3">
             <div>
               <div className="text-[11px] text-emerald-100 font-medium">ယနေ့ ပြုလုပ်ပြီးသမျှ</div>
               <div className="text-lg font-bold text-white flex items-center gap-1.5 mt-0.5">

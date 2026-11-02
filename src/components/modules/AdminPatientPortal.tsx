@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, AlertCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useHealthData, isPatientOnly, resolveCleanName } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { UserProfile } from '../../types/health';
@@ -13,6 +13,32 @@ import { AdminPatientList } from './admin/AdminPatientList';
 import { AdminPatientDetail } from './admin/AdminPatientDetail';
 import { AdminPatientComparison } from './admin/AdminPatientComparison';
 import { AdminAddPatientModal } from './admin/AdminAddPatientModal';
+
+// Collapsible wrapper for rarely-used admin tools — default collapsed so the
+// daily job (the user list) is reachable without scrolling past open panels.
+const CollapsibleToolPanel: React.FC<{
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}> = ({ title, open, onToggle, children }) => (
+  <div className="space-y-3">
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+    >
+      <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{title}</span>
+      {open ? (
+        <ChevronUp className="w-4 h-4 text-slate-500 shrink-0" />
+      ) : (
+        <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />
+      )}
+    </button>
+    {open && children}
+  </div>
+);
 
 export const AdminPatientPortal: React.FC = () => {
   const { 
@@ -46,6 +72,15 @@ export const AdminPatientPortal: React.FC = () => {
   const [filterCondition, setFilterCondition] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showQuotaDetails, setShowQuotaDetails] = useState(true);
+
+  // Admin tool panels — collapsed by default; the user list is the daily job.
+  const [openTools, setOpenTools] = useState<{ repair: boolean; roles: boolean; broadcast: boolean }>({
+    repair: false,
+    roles: false,
+    broadcast: false,
+  });
+  const toggleTool = (key: 'repair' | 'roles' | 'broadcast') =>
+    setOpenTools((prev) => ({ ...prev, [key]: !prev[key] }));
 
   // Edit & Delete Modal States
   const [editingPatient, setEditingPatient] = useState<UserProfile | null>(null);
@@ -267,18 +302,36 @@ export const AdminPatientPortal: React.FC = () => {
       />
 
       {/* 1b. Data Repair — ရှိပြီးသား မှတ်တမ်းဟောင်းတွေရဲ့ patientEmail ပြင်ဆင်ခြင်း */}
-      <AdminDataRepair />
+      <CollapsibleToolPanel
+        title="ဒေတာ ပြန်ပြင်ခြင်း (Data Repair)"
+        open={openTools.repair}
+        onToggle={() => toggleTool('repair')}
+      >
+        <AdminDataRepair />
+      </CollapsibleToolPanel>
 
       {/* 1c. Admin Role Manager — အသုံးပြုသူတစ်ယောက်ကို Admin အဖြစ် ရာထူးတင်ခြင်း */}
-      <AdminRoleManager />
+      <CollapsibleToolPanel
+        title="Admin ရာထူး စီမံခန့်ခွဲမှု"
+        open={openTools.roles}
+        onToggle={() => toggleTool('roles')}
+      >
+        <AdminRoleManager />
+      </CollapsibleToolPanel>
 
       {/* 2. Broadcast News / Marquee Manager */}
-      <AdminBroadcastManager
-        tickers={broadcastTickers}
-        onAddTicker={addBroadcastTicker}
-        onToggleTicker={toggleBroadcastTicker}
-        onDeleteTicker={deleteBroadcastTicker}
-      />
+      <CollapsibleToolPanel
+        title="အရေးပေါ် ကျန်းမာရေး သတင်းလွှာ / Banner စီမံခြင်း (Broadcast News)"
+        open={openTools.broadcast}
+        onToggle={() => toggleTool('broadcast')}
+      >
+        <AdminBroadcastManager
+          tickers={broadcastTickers}
+          onAddTicker={addBroadcastTicker}
+          onToggleTicker={toggleBroadcastTicker}
+          onDeleteTicker={deleteBroadcastTicker}
+        />
+      </CollapsibleToolPanel>
 
       {/* 3. Patient Comparison / Details / List */}
       {isComparing ? (

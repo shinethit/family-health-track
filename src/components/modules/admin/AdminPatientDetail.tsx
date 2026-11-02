@@ -237,7 +237,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               <span>နောက်ဆုံး သွေးပေါင်ချိန် (BP)</span>
             </div>
             {latestBP && (
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[11px] text-slate-400">
                 {new Date(latestBP.createdAt || latestBP.timestamp || latestBP.date || Date.now()).toLocaleDateString('my-MM')}
               </span>
             )}
@@ -275,7 +275,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               <span>နောက်ဆုံး သွေးချို (Glucose)</span>
             </div>
             {latestGlucose && (
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[11px] text-slate-400">
                 {new Date(latestGlucose.createdAt || latestGlucose.timestamp || latestGlucose.date || Date.now()).toLocaleDateString('my-MM')}
               </span>
             )}
@@ -472,7 +472,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                 <div key={q.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-bold text-slate-900 dark:text-white">{q.title}</p>
-                    <span className="text-[10px] text-slate-400 shrink-0">
+                    <span className="text-[11px] text-slate-400 shrink-0">
                       {q.createdAt ? new Date(q.createdAt).toLocaleDateString('my-MM') : ''}
                     </span>
                   </div>

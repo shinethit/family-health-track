@@ -213,7 +213,7 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
 
                   {/* Incomplete warning if any */}
                   {missing.length > 0 && (
-                    <div className="mt-2 text-[10px] text-amber-700 bg-amber-50 dark:bg-amber-950/30 p-1.5 rounded-lg border border-amber-200 flex items-center gap-1 font-semibold">
+                    <div className="mt-2 text-[11px] text-amber-700 bg-amber-50 dark:bg-amber-950/30 p-1.5 rounded-lg border border-amber-200 flex items-center gap-1 font-semibold">
                       <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
                       <span>ဖြည့်ရန်လို: {missing.join(', ')}</span>
                     </div>

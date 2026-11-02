@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  X, 
-  Bell, 
-  BookOpen, 
-  ShieldCheck, 
-  History, 
+import {
+  X,
+  Bell,
+  BookOpen,
+  ShieldCheck,
+  History,
   LogOut,
   ChevronRight,
   FileText,
@@ -18,13 +18,16 @@ import {
   Database,
   Trash2,
   Droplets,
-  Scale
+  Scale,
+  HelpCircle,
+  Lock
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
 import { calculateBPCategory, calculateGlucoseStatus, calculateBMI, parseDateToMs } from '../../lib/medicalCalculations';
+import { PWAInstallButton } from '../pwa/PWAInstallButton';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -36,6 +39,7 @@ interface SidebarProps {
   onOpenPassportModal: () => void;
   onOpenDataBackup?: () => void;
   onOpenDeleteAccount?: () => void;
+  onOpenChangePassword?: () => void;
   onManualCheckVersion?: () => void;
   setActiveTab: (tab: string) => void;
   setCategoryGroup: (group: string) => void;
@@ -51,11 +55,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenPassportModal,
   onOpenDataBackup,
   onOpenDeleteAccount,
+  onOpenChangePassword,
   onManualCheckVersion,
   setActiveTab,
   setCategoryGroup
 }) => {
-  const { profile, logout } = useAuth();
+  const { profile, logout, currentUser } = useAuth();
+  // Change Password only works for email/password accounts — Google-only
+  // accounts have no password to change.
+  const isPasswordUser = currentUser?.providerData?.some((p) => p.providerId === 'password') ?? false;
   const { bpRecords, glucoseRecords, bmiRecords, selectedPatient } = useHealthData();
   const { unreadCount } = useNotifications();
 
@@ -90,7 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-extrabold text-slate-900">Menu</h3>
+            <h3 className="font-extrabold text-slate-900">မီနူး</h3>
             <button onClick={onClose} className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 cursor-pointer">
               <X className="w-5 h-5" />
             </button>
@@ -126,8 +134,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                          }`} />
                          <span>သွေးပေါင်: {latestBP.systolic}/{latestBP.diastolic}</span>
                        </span>
-                       <span className={`font-bold text-[10px] ${bpEval.color}`}>
-                         {bpEval.labelEn || bpEval.category}
+                       <span className={`font-bold text-[11px] ${bpEval.color}`}>
+                         {bpEval.labelMm || bpEval.category}
                        </span>
                      </div>
                    )}
@@ -143,11 +151,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                          <span>သွေးချို: {latestGluValue ?? '—'} mg/dL</span>
                        </span>
                        {gluEval ? (
-                         <span className={`font-bold text-[10px] ${gluEval.color}`}>
-                           {gluEval.labelEn || gluEval.status}
+                         <span className={`font-bold text-[11px] ${gluEval.color}`}>
+                           {gluEval.labelMm || gluEval.status}
                          </span>
                        ) : (
-                         <span className="font-bold text-[10px] text-slate-400">—</span>
+                         <span className="font-bold text-[11px] text-slate-400">—</span>
                        )}
                      </div>
                    )}
@@ -162,8 +170,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                          }`} />
                          <span>BMI: {latestBMI.bmi}</span>
                        </span>
-                       <span className={`font-bold text-[10px] ${bmiEval.color}`}>
-                         {bmiEval.labelEn || bmiEval.category}
+                       <span className={`font-bold text-[11px] ${bmiEval.color}`}>
+                         {bmiEval.labelMm || bmiEval.category}
                        </span>
                      </div>
                    )}
@@ -194,6 +202,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             
             <div className="border-t border-slate-100 my-2 pt-2">
+                <MenuItem icon={HelpCircle} label="အသုံးပြုနည်း" onClick={() => { onOpenUserGuide(); onClose(); }} />
+                {isPasswordUser && onOpenChangePassword && (
+                  <MenuItem icon={Lock} label="စကားဝှက် ပြောင်းမည်" onClick={() => { onOpenChangePassword(); onClose(); }} />
+                )}
                 <MenuItem icon={ShieldCheck} label="မူဝါဒ & ဒေတာလုံခြုံရေး" onClick={() => { onOpenPrivacyPolicy(); onClose(); }} />
                 
                 {onManualCheckVersion && (
@@ -206,7 +218,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span>စနစ်ဗားရှင်း စစ်ဆေးမည်</span>
                     </div>
                     <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold font-mono">
-                      Check
+                      စစ်ဆေးမည်
                     </span>
                   </button>
                 )}
@@ -217,7 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <div className="flex items-center gap-3">
                     <History className="w-5 h-5 text-emerald-600" />
-                    <span className="font-bold text-sm">Version History</span>
+                    <span className="font-bold text-sm">ဗားရှင်း မှတ်တမ်း</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold font-mono">
@@ -242,7 +254,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-slate-100">
+          <div className="p-4 border-t border-slate-100 space-y-2">
+            <PWAInstallButton className="w-full justify-center" />
             <button onClick={logout} className="w-full flex items-center gap-3 p-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold cursor-pointer">
               <LogOut className="w-5 h-5" />
               အကောင့်ထွက်မည်

@@ -161,7 +161,7 @@ export const RemindersModule: React.FC = () => {
               <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
               <div>
                 <p className="font-bold">ဖုန်း/ကွန်ပျူတာ Screen ပေါ်တွင် သတိပေးစာ တက်စေလိုပါသလား?</p>
-                <p className="text-[11px] text-amber-800">Browser Notification Permission ကို ခွင့်ပြုပေးခြင်းဖြင့် ဆေးသောက်ချိန်ရောက်တိုင်း အလိုအလျောက် သတိပေးစာတက်လာမည် ဖြစ်ပါသည်</p>
+                <p className="text-[11px] text-amber-800">Browser Notification Permission ကို ခွင့်ပြုပေးခြင်းဖြင့် အက်ပ် ဖွင့်ထားချိန်တွင် သတိပေးစာ Screen ပေါ်တွင် တက်လာမည် ဖြစ်ပါသည်</p>
               </div>
             </div>
             <button
@@ -181,7 +181,7 @@ export const RemindersModule: React.FC = () => {
               🔔 အသိပေးချက် - သတိပေးစနစ် အလုပ်လုပ်ပုံနှင့် ကန့်သတ်ချက်များ
             </p>
             <p className="text-[11px] text-slate-600 leading-relaxed">
-              လက်ရှိ Web Browser Notification စနစ်သည် အက်ပ်ဖွင့်ထားချိန် (သို့မဟုတ် Background Tab တွင် ရှိနေချိန်) တွင်သာ တိကျစွာ အချက်ပေးနိုင်ပါသည်။ အက်ပ်ကို အပြီးတိုင်ပိတ်ထားချိန် သို့မဟုတ် ဖုန်း Screen ပိတ်ထားချိန်များတွင်ပါ Push Notification ရောက်ရှိစေရန်အတွက် <strong>Firebase Cloud Messaging (FCM)</strong> သို့မဟုတ် PWA Service Worker နှင့် Server-side Cron Job လိုအပ်ပါသည်။
+              ယခု အက်ပ်သည် ဖွင့်ထားချိန် (သို့မဟုတ် Background Tab တွင် ရှိနေချိန်) တွင် ၁ မိနစ်တစ်ခါ စစ်ဆေးပြီး သတ်မှတ်ထားသော အချိန်ရောက်လျှင် သတိပေးပါမည်။ အက်ပ်ကို အပြီးတိုင်ပိတ်ထားချိန် သို့မဟုတ် ဖုန်း Screen ပိတ်ထားချိန်များတွင်ပါ Push Notification ရောက်ရှိစေရန်အတွက် <strong>Firebase Cloud Messaging (FCM)</strong> သို့မဟုတ် PWA Service Worker နှင့် Server-side Cron Job လိုအပ်ပါသည်။
             </p>
           </div>
         </div>
@@ -334,7 +334,7 @@ export const RemindersModule: React.FC = () => {
                       <p className="text-xs text-slate-700 mt-1 leading-relaxed">
                         {n.message}
                       </p>
-                      <span className="text-[10px] text-slate-500 font-mono mt-1 block">
+                      <span className="text-[11px] text-slate-500 font-mono mt-1 block">
                         {new Date(n.timestamp).toLocaleString('my-MM')}
                       </span>
 
@@ -448,6 +448,11 @@ export const RemindersModule: React.FC = () => {
                   />
                 </div>
               </div>
+
+              <p className="text-[11px] text-slate-500 leading-relaxed flex items-start gap-1.5">
+                <Info className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <span>အက်ပ် ဖွင့်ထားချိန်မှသာ သတိပေးမည် — အက်ပ် ပိတ်ထားလျှင် သတိပေးချက် တက်မလာပါ။</span>
+              </p>
 
               <div>
                 <label className="block font-bold text-slate-800 mb-1">

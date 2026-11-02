@@ -500,7 +500,7 @@ export const ChildCareModule: React.FC = () => {
             ))}
           </div>
 
-          <div className="relative min-w-[200px]">
+          <div className="relative min-w-0 w-full sm:min-w-[200px] sm:w-auto">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
             <input 
               type="text"

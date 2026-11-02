@@ -351,13 +351,13 @@ export const PregnancyCareModule: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-teal-200/50 text-xs">
                 <div className="bg-white p-2.5 rounded-lg border border-teal-100">
-                  <span className="text-[10px] text-slate-500 block">လက်ရှိ ကိုယ်ဝန်သက်</span>
+                  <span className="text-[11px] text-slate-500 block">လက်ရှိ ကိုယ်ဝန်သက်</span>
                   <span className="font-bold text-slate-800">
                     {eddResult.currentWeeks} ပတ် + {eddResult.currentDays} ရက်
                   </span>
                 </div>
                 <div className="bg-white p-2.5 rounded-lg border border-teal-100">
-                  <span className="text-[10px] text-slate-500 block">ကာလ အဆင့်</span>
+                  <span className="text-[11px] text-slate-500 block">ကာလ အဆင့်</span>
                   <span className="font-bold text-teal-700">
                     {eddResult.trimester === 1 ? 'ပထမ ၃ လပတ်' : eddResult.trimester === 2 ? 'ဒုတိယ ၃ လပတ်' : 'တတိယ ၃ လပတ်'}
                   </span>
@@ -406,7 +406,7 @@ export const PregnancyCareModule: React.FC = () => {
                 <span className="text-3xl sm:text-4xl font-extrabold text-rose-600">{kickCount}</span>
                 <span className="text-sm font-bold text-slate-400">/ ၁၀ ကြိမ်</span>
               </div>
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[11px] text-slate-500">
                 {kickCount >= 10 
                   ? '🎉 ကောင်းမွန်ပါသည်! ၁၀ ကြိမ် ပြည့်မြောက်သွားပါပြီ။' 
                   : isTimerRunning 
@@ -568,7 +568,7 @@ export const PregnancyCareModule: React.FC = () => {
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <div className="text-right">
               <span className="text-xs font-bold text-slate-800">{packedItemsCount} / {totalBagItems} ပြီးစီး</span>
-              <span className="text-[10px] text-slate-500 block">({packedPercentage}%)</span>
+              <span className="text-[11px] text-slate-500 block">({packedPercentage}%)</span>
             </div>
             <div className="w-20 bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200">
               <div 

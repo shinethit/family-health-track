@@ -36,6 +36,9 @@ import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 export const BMIModule: React.FC = () => {
   const { profile, updateProfile } = useAuth();
   const { bmiRecords, addBMIRecord, deleteBMIRecord, selectedPatient } = useHealthData();
+  // dataLoading is added by the context work in the same v2.4.8 batch; fall
+  // back to false if it is not present yet so this module still renders.
+  const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   const [isOpenEditProfile, setIsOpenEditProfile] = useState(false);
@@ -44,6 +47,9 @@ export const BMIModule: React.FC = () => {
   const [viewMode, setViewMode] = useState<'both' | 'graph' | 'table'>('both');
   // Timeframe state: 'all' | '1m' | '3m' | '6m'
   const [timeframe, setTimeframe] = useState<'all' | '1m' | '3m' | '6m'>('all');
+  // History search + paging (latest 20 by default)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   // Time boundaries for filtering
   const now = new Date();
@@ -66,6 +72,19 @@ export const BMIModule: React.FC = () => {
       return true;
     });
   }, [sortedBMI, timeframe]);
+
+  // Search the history list by date or notes
+  const searchedBMI = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return filteredBMI;
+    return filteredBMI.filter((r) => {
+      const hay = `${r.date || ''} ${r.timestamp || ''} ${r.notes || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [filteredBMI, searchQuery]);
+
+  // Newest first; show only the latest 20 unless expanded
+  const displayBMI = showAllHistory ? [...searchedBMI].reverse() : [...searchedBMI].slice(-20).reverse();
 
   // Form states
   const [heightUnit, setHeightUnit] = useState<'cm' | 'ft'>('cm');
@@ -164,6 +183,17 @@ export const BMIModule: React.FC = () => {
     setIsOpenEditProfile(false);
   };
 
+  // While the first Firestore snapshot is still loading, show a loading
+  // state instead of empty charts / "no records" messages.
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-teal-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
+        <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Banner & Quick Actions */}
@@ -255,7 +285,7 @@ export const BMIModule: React.FC = () => {
             </span>
             {currentBMIResult && (
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${currentBMIResult.bgColor} ${currentBMIResult.color} ${currentBMIResult.borderColor}`}>
-                {currentBMIResult.labelEn}
+                {currentBMIResult.labelMm}
               </span>
             )}
           </div>
@@ -325,7 +355,7 @@ export const BMIModule: React.FC = () => {
 
           <div className="mt-2.5 space-y-2">
             <div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
                 သင့်အရပ်အတွက် သင့်တော်သော ကိုယ်အလေးချိန်:
               </span>
               <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
@@ -334,7 +364,7 @@ export const BMIModule: React.FC = () => {
             </div>
 
             <div className="pt-2 border-t border-emerald-200/40 dark:border-emerald-800/40">
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <Droplet className="w-3 h-3 text-cyan-500" />
                 တစ်နေ့ သောက်သင့်သော ရေပမာဏ:
               </span>
@@ -367,7 +397,7 @@ export const BMIModule: React.FC = () => {
                 left: `${Math.min(Math.max(((currentBMIResult.bmi - 15) / (35 - 15)) * 100, 2), 98)}%`
               }}
             >
-              <div className="px-2 py-0.5 rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-bold shadow-md whitespace-nowrap">
+              <div className="px-2 py-0.5 rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold shadow-md whitespace-nowrap">
                 သင့် BMI: {currentBMIResult.bmi}
               </div>
               <div className="w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900 dark:border-t-white" />
@@ -389,7 +419,7 @@ export const BMIModule: React.FC = () => {
           </div>
 
           {/* Labels underneath */}
-          <div className="grid grid-cols-5 text-center text-[10px] font-medium text-slate-500 dark:text-slate-400 mt-2 gap-1">
+          <div className="grid grid-cols-5 text-center text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-2 gap-1">
             <div>
               <span className="font-bold text-blue-600 dark:text-blue-400 block">&lt; 18.5</span>
               <span>ပိန်လွန်း</span>
@@ -569,29 +599,41 @@ export const BMIModule: React.FC = () => {
               </p>
             </div>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-              စုစုပေါင်း: {filteredBMI.length} ခု
+              စုစုပေါင်း: {searchedBMI.length} ခု
             </span>
           </div>
 
-          {filteredBMI.length === 0 ? (
+          {/* History search */}
+          <div className="px-6 pt-4">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ရှာဖွေမည် — ရက်စွဲ (သို့) မှတ်ချက်"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-teal-500 focus:outline-hidden placeholder:text-slate-400"
+            />
+          </div>
+
+          {searchedBMI.length === 0 ? (
             <div className="p-12 text-center">
               <div className="w-12 h-12 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3">
                 <Scale className="w-6 h-6" />
               </div>
               <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                ရွေးချယ်ထားသော ကာလအတွင်း BMI မှတ်တမ်း မရှိပါ
+                {searchQuery.trim() ? 'ရှာဖွေမှုနှင့် ကိုက်ညီသော BMI မှတ်တမ်း မရှိပါ' : 'ရွေးချယ်ထားသော ကာလအတွင်း BMI မှတ်တမ်း မရှိပါ'}
               </h4>
               <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
                 သင်၏ အရပ်နှင့် ကိုယ်အလေးချိန်ကို နေ့စဉ် သို့မဟုတ် အပတ်စဉ် မှတ်သားခြင်းဖြင့် သွေးတိုးနှင့် ဆီးချိုရောဂါ ကာကွယ်မှု တိုးတက်စေနိုင်ပါသည်
               </p>
               <button
                 onClick={() => setIsOpenAdd(true)}
-                className="mt-4 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                className="mt-4 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
               >
                 ပထမဆုံး BMI မှတ်တမ်း ထည့်သွင်းမည်
               </button>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
@@ -607,7 +649,7 @@ export const BMIModule: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredBMI.slice().reverse().map((r) => {
+                  {displayBMI.map((r) => {
                     const evalB = calculateBMI(r.weightKg, r.heightCm);
                     return (
                       <tr key={r.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
@@ -642,8 +684,12 @@ export const BMIModule: React.FC = () => {
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <button
-                            onClick={() => deleteBMIRecord(r.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                            onClick={() => {
+                              if (window.confirm('ဤ BMI မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
+                                deleteBMIRecord(r.id);
+                              }
+                            }}
+                            className="p-2 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                             title="ဖျက်မည်"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -655,6 +701,17 @@ export const BMIModule: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            {searchedBMI.length > 20 && (
+              <div className="p-3 border-t border-slate-200 dark:border-slate-800 text-center">
+                <button
+                  onClick={() => setShowAllHistory(!showAllHistory)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                >
+                  {showAllHistory ? 'အနည်းငယ်သာ ပြမည်' : `အားလုံး ကြည့်မည် (${searchedBMI.length} ခု)`}
+                </button>
+              </div>
+            )}
+            </>
           )}
         </div>
       )}
@@ -696,7 +753,7 @@ export const BMIModule: React.FC = () => {
                     <Ruler className="w-3.5 h-3.5 text-teal-600" />
                     အရပ်အမောင်း (Height)
                   </label>
-                  <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-[10px] font-bold">
+                  <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-[11px] font-bold">
                     <button
                       type="button"
                       onClick={() => setHeightUnit('cm')}
@@ -766,7 +823,7 @@ export const BMIModule: React.FC = () => {
                     <Scale className="w-3.5 h-3.5 text-teal-600" />
                     ကိုယ်အလေးချိန် (Weight)
                   </label>
-                  <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-[10px] font-bold">
+                  <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-[11px] font-bold">
                     <button
                       type="button"
                       onClick={() => setWeightUnit('kg')}
@@ -872,7 +929,7 @@ export const BMIModule: React.FC = () => {
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   placeholder="e.g. နံနက်စာမစားမီ ချိန်တွယ်ခြင်း"
                 />
               </div>

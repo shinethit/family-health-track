@@ -91,7 +91,7 @@ export const AdminQuotaBanner: React.FC<AdminQuotaBannerProps> = ({
             <div className="text-xl font-extrabold text-white mt-1">
               {(dbStats?.totalDocuments ?? 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">docs</span>
             </div>
-            <div className="text-[10px] text-slate-400 mt-1">
+            <div className="text-[11px] text-slate-400 mt-1">
               Users: {dbStats?.totalUsers ?? 0} | Vitals: {(dbStats?.totalBP ?? 0) + (dbStats?.totalGlucose ?? 0) + (dbStats?.totalBMI ?? 0)}
             </div>
           </div>
@@ -130,7 +130,7 @@ export const AdminQuotaBanner: React.FC<AdminQuotaBannerProps> = ({
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>Online & Synced</span>
             </div>
-            <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+            <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
               <Clock className="w-3 h-3 text-slate-500" />
               <span>နောက်ဆုံး စစ်ဆေးချိန်: {lastSync}</span>
             </div>

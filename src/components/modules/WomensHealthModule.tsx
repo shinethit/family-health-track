@@ -435,7 +435,7 @@ export const WomensHealthModule: React.FC = () => {
             <div className="bg-white p-3.5 rounded-xl border border-rose-100 shadow-2xs">
               <span className="text-[11px] font-bold text-rose-600 block mb-1">နောက်တစ်ကြိမ် ရာသီလာမည့်ရက်</span>
               <p className="text-sm font-bold text-slate-800">{cycleResults.nextPeriod}</p>
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[11px] text-slate-500">
                 {cycleResults.daysUntilNextPeriod > 0 
                   ? `(နောက်ထပ် ${cycleResults.daysUntilNextPeriod} ရက်အလို)` 
                   : `(ရက်စေ့ရောက်ရှိနေပါသည်)`}
@@ -445,13 +445,13 @@ export const WomensHealthModule: React.FC = () => {
             <div className="bg-white p-3.5 rounded-xl border border-pink-100 shadow-2xs">
               <span className="text-[11px] font-bold text-pink-600 block mb-1">ခန့်မှန်း သားဥကြွေမည့်ရက်</span>
               <p className="text-sm font-bold text-slate-800">{cycleResults.ovulationDate}</p>
-              <span className="text-[10px] text-slate-500">သားဥကြွေချိန်တွင် သန္ဓေတည်နိုင်ခြေ အမြင့်ဆုံးဖြစ်သည်</span>
+              <span className="text-[11px] text-slate-500">သားဥကြွေချိန်တွင် သန္ဓေတည်နိုင်ခြေ အမြင့်ဆုံးဖြစ်သည်</span>
             </div>
 
             <div className="bg-white p-3.5 rounded-xl border border-amber-100 shadow-2xs">
               <span className="text-[11px] font-bold text-amber-700 block mb-1">ကိုယ်ဝန်ရနိုင်ခြေ မြင့်မားသောကာလ</span>
               <p className="text-xs font-bold text-slate-800">{cycleResults.fertileWindow}</p>
-              <span className="text-[10px] text-slate-500">Fertile Window (ကလေးယူရန် သို့မဟုတ် သန္ဓေတားရန်)</span>
+              <span className="text-[11px] text-slate-500">Fertile Window (ကလေးယူရန် သို့မဟုတ် သန္ဓေတားရန်)</span>
             </div>
           </div>
         )}
@@ -584,7 +584,7 @@ export const WomensHealthModule: React.FC = () => {
           </div>
 
           {/* Search Box */}
-          <div className="relative min-w-[200px]">
+          <div className="relative min-w-0 w-full sm:min-w-[200px] sm:w-auto">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
             <input 
               type="text"

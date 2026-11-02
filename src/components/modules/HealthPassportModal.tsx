@@ -336,7 +336,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
                 <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
                   <span>နောက်ဆုံး သွေးပေါင်ချိန်</span>
-                  <span className="text-[10px] text-slate-400">{latestBP ? formatRecordDate(latestBP) : '-'}</span>
+                  <span className="text-[11px] text-slate-400">{latestBP ? formatRecordDate(latestBP) : '-'}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-black text-rose-600">
@@ -355,7 +355,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
                 <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
                   <span>နောက်ဆုံး ဆီးချို/သွေးချို</span>
-                  <span className="text-[10px] text-slate-400">{latestSugar ? formatRecordDate(latestSugar) : '-'}</span>
+                  <span className="text-[11px] text-slate-400">{latestSugar ? formatRecordDate(latestSugar) : '-'}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-black text-emerald-600">
@@ -374,7 +374,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
                 <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
                   <span>ကိုယ်အလေးချိန် & BMI</span>
-                  <span className="text-[10px] text-slate-400">{latestBMI ? formatRecordDate(latestBMI) : '-'}</span>
+                  <span className="text-[11px] text-slate-400">{latestBMI ? formatRecordDate(latestBMI) : '-'}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-black text-teal-600">
@@ -614,7 +614,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                       <Activity className="w-3.5 h-3.5 text-rose-600" />
                       <span>သွေးပေါင်ချိန် သမိုင်းမှတ်တမ်း (Blood Pressure Log - {displayedBP.length} ကြိမ်)</span>
                     </span>
-                    <span className="text-[10px] text-rose-700 font-semibold">mmHg / bpm</span>
+                    <span className="text-[11px] text-rose-700 font-semibold">mmHg / bpm</span>
                   </div>
                   {displayedBP.length === 0 ? (
                     <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း သွေးပေါင်ချိန် မှတ်တမ်း မရှိပါ။</p>
@@ -667,7 +667,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                       <Droplets className="w-3.5 h-3.5 text-emerald-600" />
                       <span>ဆီးချို/သွေးချို သမိုင်းမှတ်တမ်း (Blood Sugar Log - {displayedSugar.length} ကြိမ်)</span>
                     </span>
-                    <span className="text-[10px] text-emerald-700 font-semibold">mg/dL</span>
+                    <span className="text-[11px] text-emerald-700 font-semibold">mg/dL</span>
                   </div>
                   {displayedSugar.length === 0 ? (
                     <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း သွေးချို မှတ်တမ်း မရှိပါ။</p>
@@ -724,7 +724,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                       <Scale className="w-3.5 h-3.5 text-teal-600" />
                       <span>ကိုယ်အလေးချိန်နှင့် BMI သမိုင်းမှတ်တမ်း (Weight & BMI Log - {displayedBMI.length} ကြိမ်)</span>
                     </span>
-                    <span className="text-[10px] text-teal-700 font-semibold">kg / kg/m²</span>
+                    <span className="text-[11px] text-teal-700 font-semibold">kg / kg/m²</span>
                   </div>
                   {displayedBMI.length === 0 ? (
                     <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း ကိုယ်အလေးချိန် မှတ်တမ်း မရှိပါ။</p>
@@ -924,7 +924,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                   <div key={q.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
                     <p className="font-bold text-slate-900 mb-1">မေးခွန်း: {q.title}</p>
                     <p className="text-slate-700 italic">"{q.doctorAnswer?.answerText}"</p>
-                    <p className="text-[10px] text-slate-500 mt-1 font-semibold">
+                    <p className="text-[11px] text-slate-500 mt-1 font-semibold">
                       ဖြေကြားသူ: {q.doctorAnswer?.answeredBy} ({q.doctorAnswer?.answeredAt})
                     </p>
                   </div>

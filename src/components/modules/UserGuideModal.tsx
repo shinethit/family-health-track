@@ -256,7 +256,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
                       </div>
                       <div className="truncate">
                         <div className="text-xs font-bold truncate">{guide.title}</div>
-                        <div className={`text-[10px] ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
+                        <div className={`text-[11px] ${isSelected ? 'text-emerald-100' : 'text-slate-400'}`}>
                           {guide.category}
                         </div>
                       </div>

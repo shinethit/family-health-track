@@ -112,7 +112,16 @@ export const LoginScreen: React.FC = () => {
       setForgotSuccess(true);
     } catch (err: any) {
       console.error(err);
-      setForgotError(err.message || 'စကားဝှက်အသစ်တောင်းဆိုခြင်း မအောင်မြင်ပါ။ အီးမေးလ်မှန်ကန်ကြောင်း စစ်ဆေးပါ။');
+      // Never show the raw Firebase error text (English) to the user.
+      if (err.code === 'auth/user-not-found') {
+        setForgotError('ဤအီးမေးလ်ဖြင့် အကောင့်မရှိသေးပါ။ အီးမေးလ်မှန်ကန်ကြောင်း စစ်ဆေးပါ။');
+      } else if (err.code === 'auth/invalid-email') {
+        setForgotError('အီးမေးလ် ပုံစံ မမှန်ကန်ပါ။ (ဥပမာ- user@example.com)');
+      } else if (err.code === 'auth/too-many-requests') {
+        setForgotError('တောင်းဆိုမှု များလွန်းနေပါသည်။ ခဏနေ၍ ပြန်ကြိုးစားပါ။');
+      } else {
+        setForgotError('စကားဝှက်အသစ်တောင်းဆိုခြင်း မအောင်မြင်ပါ။ အီးမေးလ်မှန်ကန်ကြောင်း စစ်ဆေးပါ။');
+      }
     } finally {
       setForgotLoading(false);
     }
@@ -362,7 +371,7 @@ export const LoginScreen: React.FC = () => {
                   />
                 </div>
                 {mode === 'register' && (
-                  <p className="text-[10px] text-slate-400 mt-1">အနည်းဆုံး ၆ လုံး ထည့်သွင်းပါ</p>
+                  <p className="text-[11px] text-slate-400 mt-1">အနည်းဆုံး ၆ လုံး ထည့်သွင်းပါ</p>
                 )}
               </div>
 
@@ -391,7 +400,7 @@ export const LoginScreen: React.FC = () => {
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-slate-800" />
                 </div>
-                <div className="relative flex justify-center text-[10px]">
+                <div className="relative flex justify-center text-[11px]">
                   <span className="bg-slate-900 px-2 text-slate-500 font-semibold">သို့မဟုတ်</span>
                 </div>
               </div>
@@ -405,7 +414,18 @@ export const LoginScreen: React.FC = () => {
                     await loginWithGoogle();
                   } catch (e: any) {
                     console.error('Google Sign-in error:', e);
-                    setError(e.message || 'Google ဖြင့် အကောင့်ဝင်ခြင်း မအောင်မြင်ပါ။');
+                    // Never show the raw Firebase error text (English) to the user.
+                    if (e.code === 'auth/popup-closed-by-user') {
+                      setError('Google ပြတင်းပေါက်ကို ပိတ်လိုက်သဖြင့် ဝင်ရောက်မှု ရပ်တန့်သွားပါသည်။ ပြန်ကြိုးစားပါ။');
+                    } else if (e.code === 'auth/popup-blocked') {
+                      setError('Browser က Google ပြတင်းပေါက်ကို ပိတ်ထားပါသည်။ Popup ခွင့်ပြုပြီး ပြန်ကြိုးစားပါ။');
+                    } else if (e.code === 'auth/network-request-failed') {
+                      setError('အင်တာနက် ချိတ်ဆက်မှု မရပါ။ ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။');
+                    } else if (e.code === 'auth/account-exists-with-different-credential') {
+                      setError('ဤအီးမေးလ်ဖြင့် အခြားနည်းလမ်းဖြင့် အကောင့်ဖွင့်ပြီးသား ဖြစ်နေပါသည်။ အီးမေးလ် + စကားဝှက်ဖြင့် ဝင်ကြည့်ပါ။');
+                    } else {
+                      setError('Google ဖြင့် အကောင့်ဝင်ခြင်း မအောင်မြင်ပါ။ ပြန်လည်ကြိုးစားပါ။');
+                    }
                   }
                 }}
                 disabled={loading}

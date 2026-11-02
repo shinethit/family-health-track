@@ -9,6 +9,9 @@ import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
 export const BloodSugarModule: React.FC = () => {
   const { glucoseRecords, addGlucoseRecord, deleteGlucoseRecord, selectedPatient, selectedFamilyMember } = useHealthData();
+  // dataLoading is added by the context work in the same v2.4.8 batch; fall
+  // back to false if it is not present yet so this module still renders.
+  const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
   const { profile } = useAuth();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
@@ -43,6 +46,9 @@ export const BloodSugarModule: React.FC = () => {
   const [viewMode, setViewMode] = useState<'both' | 'graph' | 'table'>('both');
   // Timeframe state: 'all' | '1m' | '3m' | '6m'
   const [timeframe, setTimeframe] = useState<'all' | '1m' | '3m' | '6m'>('all');
+  // History search + paging (latest 20 by default)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   // Time boundaries for filtering
   const now = new Date();
@@ -65,6 +71,19 @@ export const BloodSugarModule: React.FC = () => {
       return true;
     });
   }, [sortedGlucose, timeframe]);
+
+  // Search the history list by date, notes, meal info or food record
+  const searchedGlucose = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return filteredGlucose;
+    return filteredGlucose.filter((r) => {
+      const hay = `${r.date || ''} ${r.timestamp || ''} ${r.notes || ''} ${r.mealInfo || ''} ${r.dietRecord || ''} ${r.dietNotes || ''} ${r.foodIntake || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [filteredGlucose, searchQuery]);
+
+  // Newest first; show only the latest 20 unless expanded
+  const displayGlucose = showAllHistory ? [...searchedGlucose].reverse() : [...searchedGlucose].slice(-20).reverse();
 
   // Latest records
   const latestRecord = sortedGlucose.length > 0 ? sortedGlucose[sortedGlucose.length - 1] : null;
@@ -126,6 +145,17 @@ export const BloodSugarModule: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  // While the first Firestore snapshot is still loading, show a loading
+  // state instead of empty charts / "no records" messages.
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-emerald-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
+        <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -334,8 +364,19 @@ export const BloodSugarModule: React.FC = () => {
               သကြားဓာတ် စစ်ဆေးမှုမှတ်တမ်းများ (Glucose Logs - {timeframe === 'all' ? 'အားလုံး' : timeframe === '1m' ? '၁ လစာ' : timeframe === '3m' ? '၃ လစာ' : '၆ လစာ'})
             </h3>
             <span className="text-xs text-slate-500 font-mono">
-              {filteredGlucose.length} records
+              {searchedGlucose.length} records
             </span>
+          </div>
+
+          {/* History search */}
+          <div className="px-4 pt-3">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ရှာဖွေမည် — ရက်စွဲ (သို့) မှတ်ချက်"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-400"
+            />
           </div>
 
           <div className="overflow-x-auto">
@@ -353,7 +394,7 @@ export const BloodSugarModule: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredGlucose.slice().reverse().map((record) => {
+                {displayGlucose.map((record) => {
                   const rVal = record.value ?? record.glucoseValue ?? null;
                   const rType = record.type || record.timing || 'fasting';
                   const evalInfo = rVal != null ? calculateGlucoseStatus(rVal, rType) : null;
@@ -374,7 +415,7 @@ export const BloodSugarModule: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 font-bold text-slate-900 dark:text-white font-mono text-sm">
                         {rVal ?? '—'}{' '}
-                        <span className="text-[10px] text-slate-400 font-normal">
+                        <span className="text-[11px] text-slate-400 font-normal">
                           {rType === 'hba1c' ? '%' : 'mg/dL'}
                         </span>
                       </td>
@@ -405,8 +446,12 @@ export const BloodSugarModule: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <button
-                          onClick={() => deleteGlucoseRecord(record.id)}
-                          className="text-slate-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
+                          onClick={() => {
+                            if (window.confirm('ဤသကြားဓာတ် မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
+                              deleteGlucoseRecord(record.id);
+                            }
+                          }}
+                          className="text-slate-400 hover:text-rose-600 transition-colors p-2 cursor-pointer"
                           title="ဖျက်မည်"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -418,6 +463,16 @@ export const BloodSugarModule: React.FC = () => {
               </tbody>
             </table>
           </div>
+          {searchedGlucose.length > 20 && (
+            <div className="p-3 border-t border-slate-200 dark:border-slate-800 text-center">
+              <button
+                onClick={() => setShowAllHistory(!showAllHistory)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+              >
+                {showAllHistory ? 'အနည်းငယ်သာ ပြမည်' : `အားလုံး ကြည့်မည် (${searchedGlucose.length} ခု)`}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -459,7 +514,7 @@ export const BloodSugarModule: React.FC = () => {
                       key={t.id}
                       type="button"
                       onClick={() => handleTypeChange(t.id as BloodSugarType)}
-                      className={`py-2 px-2 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
+                      className={`py-2.5 px-2 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
                         type === t.id
                           ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold shadow-xs'
                           : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -506,7 +561,7 @@ export const BloodSugarModule: React.FC = () => {
                     <Utensils className="w-3.5 h-3.5 text-emerald-600" />
                     စားသုံးခဲ့သော အစားအသောက် မှတ်တမ်း (Diet / Food Intake)
                   </label>
-                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
+                  <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
                     ဆီးချိုတက်မှု အကြောင်းရင်း သုံးသပ်ရန်
                   </span>
                 </div>
@@ -515,7 +570,7 @@ export const BloodSugarModule: React.FC = () => {
                   placeholder="ဥပမာ- ထမင်းဖြူ ၂ ပန်းကန်၊ ဒူးရင်းသီး ၂ မြွှာ၊ သကြားပါ လက်ဖက်ရည်"
                   value={dietRecord}
                   onChange={(e) => setDietRecord(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-400"
                 />
                 
                 {/* Quick Pick Chips */}
@@ -525,7 +580,7 @@ export const BloodSugarModule: React.FC = () => {
                       key={idx}
                       type="button"
                       onClick={() => handleAddDietTag(tag)}
-                      className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white dark:bg-slate-800 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
+                      className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
                     >
                       + {tag}
                     </button>
@@ -545,7 +600,7 @@ export const BloodSugarModule: React.FC = () => {
                     value={mealInfo}
                     onChange={(e) => setMealInfo(e.target.value)}
                     placeholder="ဥပမာ- နေ့လယ်စာစားပြီး ၂ နာရီ၊ ညအိပ်ရာဝင်"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
 
@@ -558,7 +613,7 @@ export const BloodSugarModule: React.FC = () => {
                     type="datetime-local"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
                   />
                 </div>
               </div>
@@ -588,7 +643,7 @@ export const BloodSugarModule: React.FC = () => {
                   placeholder="ဥပမာ- ဆီးချိုဆေး မနက်စာမစားမီ သောက်ခဲ့သည်"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
 
@@ -597,14 +652,14 @@ export const BloodSugarModule: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsOpenAdd(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   မလုပ်တော့ပါ
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : 'မှတ်တမ်းသိမ်းမည်'}
                 </button>

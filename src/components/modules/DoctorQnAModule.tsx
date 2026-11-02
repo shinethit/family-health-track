@@ -326,7 +326,7 @@ export const DoctorQnAModule: React.FC = () => {
                               <span className="text-xs font-bold text-emerald-950 block">
                                 {q.doctorAnswer?.answeredBy || 'ဆရာဝန်'} ၏ အကြံပြုအဖြေ
                               </span>
-                              <span className="text-[10px] text-emerald-700">
+                              <span className="text-[11px] text-emerald-700">
                                 {q.doctorAnswer?.answeredAt ? new Date(q.doctorAnswer.answeredAt).toLocaleString('my-MM') : ''}
                               </span>
                             </div>

@@ -230,12 +230,12 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
                       return (
                         <td key={s.patient.id} className="p-2.5">
                           <div className="font-extrabold text-slate-900 dark:text-white text-sm">
-                            {r.systolic}/{r.diastolic} <span className="text-[10px] font-semibold text-slate-400">mmHg</span>
+                            {r.systolic}/{r.diastolic} <span className="text-[11px] font-semibold text-slate-400">mmHg</span>
                           </div>
                           <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cat.bgColor} ${cat.color} ${cat.borderColor}`}>
                             {cat.labelMm}
                           </span>
-                          <div className="text-[10px] text-slate-400 mt-1">{fmtDate(r.date || r.timestamp || r.createdAt)}</div>
+                          <div className="text-[11px] text-slate-400 mt-1">{fmtDate(r.date || r.timestamp || r.createdAt)}</div>
                         </td>
                       );
                     })}
@@ -271,12 +271,12 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
                       return (
                         <td key={s.patient.id} className="p-2.5">
                           <div className="font-extrabold text-slate-900 dark:text-white text-sm">
-                            {v} <span className="text-[10px] font-semibold text-slate-400">mg/dL</span>
+                            {v} <span className="text-[11px] font-semibold text-slate-400">mg/dL</span>
                           </div>
                           <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${status.bgColor} ${status.color} ${status.borderColor}`}>
                             {status.labelMm}
                           </span>
-                          <div className="text-[10px] text-slate-400 mt-1">{fmtDate(r.date || r.timestamp || r.createdAt)}</div>
+                          <div className="text-[11px] text-slate-400 mt-1">{fmtDate(r.date || r.timestamp || r.createdAt)}</div>
                         </td>
                       );
                     })}
@@ -315,7 +315,7 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
                               <span className="font-bold">{b.text}</span>
                               {b.label && <span className="text-slate-400"> ({b.label})</span>}
                               {s.latestBMI && (
-                                <div className="text-[10px] text-slate-400 mt-1">{fmtDate(s.latestBMI.date || s.latestBMI.timestamp || s.latestBMI.createdAt)}</div>
+                                <div className="text-[11px] text-slate-400 mt-1">{fmtDate(s.latestBMI.date || s.latestBMI.timestamp || s.latestBMI.createdAt)}</div>
                               )}
                             </div>
                           )}
@@ -376,7 +376,7 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
                         {s.labs.length > 0 ? (
                           <div>
                             <span className="font-bold">{s.labs.length} ကြိမ်</span>
-                            <div className="text-[10px] text-slate-400 mt-1">
+                            <div className="text-[11px] text-slate-400 mt-1">
                               နောက်ဆုံး: {fmtDate(s.labs[0].testDate || s.labs[0].recordedAt || s.labs[0].createdAt)}
                             </div>
                           </div>

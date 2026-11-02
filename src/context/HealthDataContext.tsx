@@ -249,6 +249,9 @@ interface HealthDataContextType {
   allDoctorAdvices: DoctorAdvice[];
   broadcastTickers: BroadcastTicker[];
   dbStats: DatabaseStats;
+  // True until the first Firestore snapshot arrives, so modules can show a
+  // loading state instead of a false "no records yet" empty state.
+  dataLoading: boolean;
   refreshAdminData: () => Promise<void>;
   // One-time repair: backfill patientEmail on existing records (admin only)
   repairPatientEmails: () => Promise<{ checked: number; fixed: number; alreadyOk: number; errors: string[] }>;
@@ -345,9 +348,14 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string>(() => new Date().toLocaleTimeString('my-MM'));
 
+  // True until the first Firestore snapshot arrives. A fallback timeout
+  // clears it so it can never stick on true forever (e.g. a listener error).
+  const [dataLoading, setDataLoading] = useState(true);
+
   // Firestore Live Listeners attached strictly when authenticated
   useEffect(() => {
     if (!currentUser) {
+      setDataLoading(true);
       setAllBP([]);
       setAllGlucose([]);
       setAllLabs([]);
@@ -376,6 +384,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     let unsubscribeTickers = () => {};
 
     try {
+      // Safety net: never leave the UI stuck on "loading" if a snapshot
+      // never arrives (e.g. a listener error). Cleared on unmount.
+      const loadFallback = setTimeout(() => setDataLoading(false), 10000);
+
       // Dual-key merged subscription: a non-admin sees a document when EITHER
       // its userId is their uid OR its patientEmail is their email (older
       // records may carry only one of the two keys). The two single-field
@@ -389,6 +401,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setItems: (items: T[]) => void,
         warnLabel: string,
         toastMessage: string,
+        onFirstSnapshot?: () => void,
       ): (() => void) => {
         const queries = isAdmin
           ? [query(collection(db, collectionName))]
@@ -402,6 +415,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           perQuery.forEach(m => m.forEach((v, k) => merged.set(k, v)));
           setItems(Array.from(merged.values()));
         };
+        let firstSnapshotDone = false;
         const unsubs = queries.map((q, idx) =>
           onSnapshot(q, (snapshot) => {
             const m = new Map<string, T>();
@@ -410,6 +424,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             });
             perQuery[idx] = m;
             emit();
+            if (!firstSnapshotDone) {
+              firstSnapshotDone = true;
+              onFirstSnapshot?.();
+            }
           }, (e) => {
             console.warn(warnLabel, e);
             showToast(toastMessage, 'warning');
@@ -436,12 +454,14 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
       }
 
-      // 2. Vitals
+      // 2. Vitals — its first snapshot is the signal that the core data
+      // has arrived, so the loading state can be cleared.
       unsubscribeVitals = subscribeMerged<BloodPressureRecord>(
         'vitals',
         setAllBP,
         'Vitals snapshot:',
         'သွေးပေါင်ချိန် မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
+        () => setDataLoading(false),
       );
 
       // 3. Glucose
@@ -571,6 +591,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       return () => {
+        clearTimeout(loadFallback);
         unsubscribeUsers();
         unsubscribeVitals();
         unsubscribeGlu();
@@ -1502,6 +1523,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       toggleBroadcastTicker,
       deleteBroadcastTicker,
       dbStats,
+      dataLoading,
       refreshAdminData,
       repairPatientEmails,
       promoteToAdmin,

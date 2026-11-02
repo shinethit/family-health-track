@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Pill, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Calendar, Sparkles, X, Check } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -16,10 +16,16 @@ export const MedicationsModule: React.FC = () => {
     selectedPatient, 
     selectedFamilyMember 
   } = useHealthData();
+  // dataLoading is added by the context work in the same v2.4.8 batch; fall
+  // back to false if it is not present yet so this module still renders.
+  const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
   const { profile } = useAuth();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused' | 'completed'>('active');
+  // Medication list search + paging (latest 20 by default)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAllMeds, setShowAllMeds] = useState(false);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -78,6 +84,24 @@ export const MedicationsModule: React.FC = () => {
   const filteredMeds = filterStatus === 'all'
     ? medications
     : medications.filter(m => m.status === filterStatus);
+
+  // Search the medication list by name, chemical name, condition or notes
+  const searchedMeds = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return filteredMeds;
+    return filteredMeds.filter((m) => {
+      const hay = `${m.name || ''} ${m.genericName || ''} ${m.prescribedFor || ''} ${m.notes || ''} ${m.dosage || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [filteredMeds, searchQuery]);
+
+  // Newest first (by start date); show only the latest 20 unless expanded
+  const displayMeds = useMemo(() => {
+    const sorted = [...searchedMeds].sort((a, b) =>
+      (Date.parse(b.startDate || '') || 0) - (Date.parse(a.startDate || '') || 0)
+    );
+    return showAllMeds ? sorted : sorted.slice(0, 20);
+  }, [searchedMeds, showAllMeds]);
 
   const activeMeds = medications.filter(m => m.status === 'active');
   const activeCount = activeMeds.length;
@@ -153,6 +177,17 @@ export const MedicationsModule: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  // While the first Firestore snapshot is still loading, show a loading
+  // state instead of an empty medication list.
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-sky-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
+        <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -280,9 +315,23 @@ export const MedicationsModule: React.FC = () => {
         </button>
       </div>
 
+      {/* Medication search */}
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="ရှာဖွေမည် — ဆေးအမည်၊ ရောဂါ (သို့) မှတ်ချက်"
+        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-sky-500 focus:outline-hidden placeholder:text-slate-400"
+      />
+
       {/* Medications Grid */}
+      {searchedMeds.length === 0 && (
+        <p className="text-xs text-slate-500 text-center py-8">
+          {searchQuery.trim() ? 'ရှာဖွေမှုနှင့် ကိုက်ညီသော ဆေး မရှိပါ' : 'ဆေး မှတ်တမ်း မရှိသေးပါ'}
+        </p>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredMeds.map((med) => {
+        {displayMeds.map((med) => {
           return (
             <div
               key={med.id}
@@ -317,8 +366,12 @@ export const MedicationsModule: React.FC = () => {
                       {med.status === 'active' ? 'Active သောက်ဆဲ' : 'Paused ရပ်နား'}
                     </button>
                     <button
-                      onClick={() => deleteMedication(med.id)}
-                      className="text-slate-400 hover:text-rose-600 p-1 rounded-md cursor-pointer"
+                      onClick={() => {
+                        if (window.confirm(`"${med.name}" ဆေးမှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။`)) {
+                          deleteMedication(med.id);
+                        }
+                      }}
+                      className="text-slate-400 hover:text-rose-600 p-2 rounded-md cursor-pointer"
                       title="ဖျက်မည်"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -329,21 +382,21 @@ export const MedicationsModule: React.FC = () => {
                 {/* Details */}
                 <div className="grid grid-cols-2 gap-2 mt-4 text-xs">
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                    <span className="text-slate-400 text-[10px] block">ဆေးပမာဏ (Dosage)</span>
+                    <span className="text-slate-400 text-[11px] block">ဆေးပမာဏ (Dosage)</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
                       {med.dosage}
                     </span>
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                    <span className="text-slate-400 text-[10px] block">သောက်ချိန် (Schedule)</span>
+                    <span className="text-slate-400 text-[11px] block">သောက်ချိန် (Schedule)</span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
                       {med.frequency}
                     </span>
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                    <span className="text-slate-400 text-[10px] block">အစားအသောက် ဆက်စပ်မှု</span>
+                    <span className="text-slate-400 text-[11px] block">အစားအသောက် ဆက်စပ်မှု</span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
                       {med.timing === 'before_meal' && 'အစာမစားမီ'}
                       {med.timing === 'after_meal' && 'အစာစားပြီး'}
@@ -354,7 +407,7 @@ export const MedicationsModule: React.FC = () => {
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                    <span className="text-slate-400 text-[10px] block">စတင်သောက်သည့်ရက်</span>
+                    <span className="text-slate-400 text-[11px] block">စတင်သောက်သည့်ရက်</span>
                     <span className="font-mono text-slate-800 dark:text-slate-200">
                       {med.startDate}
                     </span>
@@ -380,6 +433,17 @@ export const MedicationsModule: React.FC = () => {
           );
         })}
       </div>
+
+      {searchedMeds.length > 20 && (
+        <div className="text-center">
+          <button
+            onClick={() => setShowAllMeds(!showAllMeds)}
+            className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+          >
+            {showAllMeds ? 'အနည်းငယ်သာ ပြမည်' : `အားလုံး ကြည့်မည် (${searchedMeds.length} ခု)`}
+          </button>
+        </div>
+      )}
 
       {/* Medical Disclaimer */}
       <MedicalDisclaimer />
@@ -443,7 +507,7 @@ export const MedicationsModule: React.FC = () => {
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Chemical Name (ဆေးအမည် အစစ် / Active Ingredient) *
                   </label>
-                  <span className="text-[10px] text-rose-500 font-bold">
+                  <span className="text-[11px] text-rose-500 font-bold">
                     မထည့်မဖြစ် လိုအပ်သည်
                   </span>
                 </div>
@@ -466,7 +530,7 @@ export const MedicationsModule: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleAddChemicalName}
-                    className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs"
+                    className="px-3.5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs"
                   >
                     + ထည့်မည်
                   </button>
@@ -505,7 +569,7 @@ export const MedicationsModule: React.FC = () => {
                     placeholder="ဥပမာ- 5 mg, 500 mg"
                     value={dosage}
                     onChange={(e) => setDosage(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
                 </div>
 
@@ -519,7 +583,7 @@ export const MedicationsModule: React.FC = () => {
                     placeholder="ဥပမာ- 30 ရက် (သို့) တစ်လစာ"
                     value={durationDays}
                     onChange={(e) => setDurationDays(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
                 </div>
               </div>
@@ -559,7 +623,7 @@ export const MedicationsModule: React.FC = () => {
                         setCustomFrequency(e.target.value);
                         setFrequency(e.target.value);
                       }}
-                      className="mt-2 w-full px-3.5 py-2 rounded-xl border border-sky-300 dark:border-sky-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-sky-500"
+                      className="mt-2 w-full px-3.5 py-2.5 rounded-xl border border-sky-300 dark:border-sky-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-sky-500"
                     />
                   )}
                 </div>
@@ -593,7 +657,7 @@ export const MedicationsModule: React.FC = () => {
                     placeholder="ဥပမာ- သွေးတိုး၊ ဆီးချို"
                     value={prescribedFor}
                     onChange={(e) => setPrescribedFor(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
                 </div>
 
@@ -605,7 +669,7 @@ export const MedicationsModule: React.FC = () => {
                     type="text"
                     value={prescribingDoctor}
                     onChange={(e) => setPrescribingDoctor(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
                 </div>
               </div>
@@ -620,7 +684,7 @@ export const MedicationsModule: React.FC = () => {
                   placeholder="ဥပမာ- ရေများများသောက်ရန်"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                 />
               </div>
 
@@ -629,14 +693,14 @@ export const MedicationsModule: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsOpenAdd(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   မလုပ်တော့ပါ
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : 'ဆေးမှတ်တမ်းသိမ်းမည်'}
                 </button>

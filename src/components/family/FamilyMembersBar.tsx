@@ -133,7 +133,7 @@ export const FamilyMembersBar: React.FC = () => {
                         <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
                           {member.name}
                         </h4>
-                        <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
+                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
                           {member.relationship}
                         </span>
                       </div>
@@ -144,7 +144,7 @@ export const FamilyMembersBar: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1">
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1">
                     <span>{member.age} နှစ်</span>
                     <span>•</span>
                     <span>{member.gender === 'female' ? 'အမျိုးသမီး' : 'အမျိုးသား'}</span>
@@ -163,7 +163,7 @@ export const FamilyMembersBar: React.FC = () => {
                 </div>
 
                 {isSelected && (
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
                     <span>✓ လက်ရှိရွေးချယ်ထားသည်</span>
                     {familyMembers.length > 0 && (
                       <button

@@ -489,7 +489,7 @@ export const LabInvestigationGuideModule: React.FC = () => {
           </select>
         </div>
 
-        <div className="relative min-w-[220px]">
+        <div className="relative min-w-0 w-full sm:min-w-[220px] sm:w-auto">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"

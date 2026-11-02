@@ -57,12 +57,53 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.7',
+    version: 'v2.4.8',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
     isLatest: true,
+    title: '🔔 [FIX] သတိပေးချက် အမှန်တကယ် အလုပ်ဖြစ်ခြင်း + UI/UX ပြင်ဆင်မှုများ',
+    badge: 'Latest Release (v2.4.8)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🔔 သတိပေးချက် အမှန်တကယ် အလုပ်ဖြစ်ခြင်း',
+        icon: Sparkles,
+        items: [
+          'သတိပေးချက် သတ်မှတ်ထားတဲ့ အချိန်ရောက်ရင် App ဖွင့်ထားချိန် ၁ မိနစ်တစ်ခါ စစ်ပြီး သတိပေးတော့မယ်',
+          'App ပိတ်ထားချိန် သတိပေးလို့မရဘူးဆိုတာ စာသားမှာ ရိုးရိုးသားသား ပြောထားပြီ'
+        ]
+      },
+      {
+        title: '🛡️ ဖျက်ခြင်း + မိသားစုဝင် + အကောင့်',
+        icon: ShieldCheck,
+        items: [
+          'မှတ်တမ်း ဖျက်ခင် အတည်ပြုမေးတော့မယ် (သွေးပေါင်/သွေးချို/BMI/ဆေး/Lab)',
+          'မိသားစုဝင် ရွေးတဲ့ ဘား ပေါ်လာပြီ — ကလေး/မိဘ မှတ်တမ်း ပြောင်းကြည့်လို့ရပြီ',
+          'အသုံးပြုနည်း လမ်းညွှန်၊ စကားဝှက် ပြောင်းတာ၊ App Install ခလုတ် Menu မှာ ပေါ်လာပြီ',
+          'ဒေတာ လာနေတုန်း "မှတ်တမ်း မရှိသေး" လို့ မှားမပြတော့ဘူး — Loading ပြမယ်'
+        ]
+      },
+      {
+        title: '✨ သုံးရတာ ပိုကောင်းအောင်',
+        icon: Database,
+        items: [
+          'မှတ်တမ်းတွေ ကြား Tab တန်း ပါလာပြီ — ၁ ချက်နဲ့ ပြောင်းလို့ရပြီ',
+          'Admin စာရင်းမှာ အသုံးပြုသူစာရင်း အပေါ်မှာ ရှိပြီး ကိရိယာ panel တွေ ခေါက်ထားလို့ရပြီ',
+          'စာလုံးတွေ ကြီးလာပြီ (အသေးဆုံး ၁၁px)၊ ခလုတ်တွေ လက်နဲ့ နှိပ်ရလွယ်လာပြီ',
+          'မှတ်တမ်းစာရင်း ၂၀ ပဲ ပြပြီး ကျန်တာ ခလုတ်နဲ့ ကြည့်လို့ရပြီ + ရှာလို့ရပြီ',
+          'Sidebar ကျန်းမာရေးအခြေအနေ မြန်မာလို ပေါ်တော့မယ်',
+          'Header အောက် အဖြူကွက်လပ် ပျောက်သွားပြီ'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.4.7',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: false,
     title: '🔍 [NEW] အသုံးပြုသူအချင်းချင်း နှိုင်းယှဉ်ခြင်း + Admin Detail ပြည့်စုံခြင်း',
-    badge: 'Latest Release (v2.4.7)',
+    badge: 'Previous Release (v2.4.7)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
@@ -1557,7 +1598,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
                   <button
                     type="button"
                     onClick={onManualCheckVersion}
-                    className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[10px] sm:text-[11px] font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95"
+                    className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[11px] sm:text-[11px] font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95"
                     title="စနစ်ဗားရှင်း အသစ် စစ်ဆေးမည်"
                   >
                     <RefreshCw className="w-3 h-3 text-purple-200 animate-spin-hover" />
@@ -1687,7 +1728,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
                           </span>
                         )}
                       </div>
-                      <p className={`text-[10px] truncate max-w-[170px] ${isSelected ? 'text-purple-100' : 'text-slate-400'}`}>
+                      <p className={`text-[11px] truncate max-w-[170px] ${isSelected ? 'text-purple-100' : 'text-slate-400'}`}>
                         {item.releaseDate}
                       </p>
                     </div>

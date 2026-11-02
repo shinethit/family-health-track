@@ -650,12 +650,40 @@ export const MASTER_LAB_TESTS: LabTestDef[] = [
 
 export const LabTestModule: React.FC = () => {
   const { labRecords, addLabRecord, deleteLabRecord, selectedPatient, selectedFamilyMember } = useHealthData();
+  // dataLoading is added by the context work in the same v2.4.8 batch; fall
+  // back to false if it is not present yet so this module still renders.
+  const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
   const { profile } = useAuth();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(() => 
-    labRecords.length > 0 ? labRecords[0].id : null
+  // Default to the newest record by testDate, matching the history list
+  // (newest first) — not labRecords[0], which is in stored order.
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(() =>
+    [...labRecords]
+      .sort((a, b) => (Date.parse(b.testDate || '') || 0) - (Date.parse(a.testDate || '') || 0))[0]?.id ?? null
   );
+  // History search + paging (latest 20 by default)
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [showAllHistory, setShowAllHistory] = useState(false);
+
+  // Newest first, then search by date, lab name or notes
+  const sortedLabs = useMemo(() => {
+    return [...labRecords].sort((a, b) =>
+      (Date.parse(b.testDate || '') || 0) - (Date.parse(a.testDate || '') || 0)
+    );
+  }, [labRecords]);
+
+  const searchedLabs = useMemo(() => {
+    const q = historySearchQuery.trim().toLowerCase();
+    if (!q) return sortedLabs;
+    return sortedLabs.filter((lab) => {
+      const testNames = (lab.tests || []).map((t: any) => t.name || '').join(' ');
+      const hay = `${lab.testDate || ''} ${lab.labName || ''} ${lab.notes || ''} ${testNames}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [sortedLabs, historySearchQuery]);
+
+  const displayLabs = showAllHistory ? searchedLabs : searchedLabs.slice(0, 20);
 
   // Form base states - CLEAN SLATE (No prefilled numbers)
   const [testDate, setTestDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -750,8 +778,10 @@ export const LabTestModule: React.FC = () => {
     });
   }, [activeCategory, searchQuery]);
 
-  // Active lab record currently selected
-  const activeRecord = labRecords.find(r => r.id === selectedRecordId) || (labRecords.length > 0 ? labRecords[0] : null);
+  // Active lab record currently selected; fall back to the newest record
+  // by testDate (sortedLabs[0]) so the detail panel matches the top of
+  // the history list even before anything is clicked.
+  const activeRecord = labRecords.find(r => r.id === selectedRecordId) || (sortedLabs.length > 0 ? sortedLabs[0] : null);
 
   // Extract recorded items list for display (supporting both new .tests array and backwards compatibility)
   const displayItems = useMemo<RecordedLabItem[]>(() => {
@@ -1040,6 +1070,17 @@ export const LabTestModule: React.FC = () => {
     { id: 'inflammatory', label: 'ရောင်ရမ်းမှု/ဗီတာမင်', icon: Sparkles }
   ];
 
+  // While the first Firestore snapshot is still loading, show a loading
+  // state instead of the "no records" message.
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-purple-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
+        <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Title & Add Button */}
@@ -1082,12 +1123,26 @@ export const LabTestModule: React.FC = () => {
           <div className="lg:col-span-4 space-y-3">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                စစ်ဆေးခဲ့သော ရက်စွဲများ ({labRecords.length})
+                စစ်ဆေးခဲ့သော ရက်စွဲများ ({searchedLabs.length})
               </span>
             </div>
 
+            {/* History search */}
+            <input
+              type="text"
+              value={historySearchQuery}
+              onChange={(e) => setHistorySearchQuery(e.target.value)}
+              placeholder="ရှာဖွေမည် — ရက်စွဲ၊ ဓာတ်ခွဲခန်း (သို့) မှတ်ချက်"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-purple-500 focus:outline-hidden placeholder:text-slate-400"
+            />
+
             <div className="space-y-2.5">
-              {labRecords.map((lab) => {
+              {searchedLabs.length === 0 && historySearchQuery.trim() !== '' && (
+                <p className="text-xs text-slate-500 text-center py-6">
+                  ရှာဖွေမှုနှင့် ကိုက်ညီသော ဓာတ်ခွဲခန်း မှတ်တမ်း မရှိပါ
+                </p>
+              )}
+              {displayLabs.map((lab) => {
                 const isSelected = activeRecord?.id === lab.id;
                 // Count of tests recorded
                 const count = lab.tests ? lab.tests.length : (
@@ -1118,9 +1173,11 @@ export const LabTestModule: React.FC = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteLabRecord(lab.id);
+                          if (window.confirm('ဤဓာတ်ခွဲခန်း စစ်ဆေးချက် မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
+                            deleteLabRecord(lab.id);
+                          }
                         }}
-                        className="text-slate-400 hover:text-rose-600 p-1 rounded-md"
+                        className="text-slate-400 hover:text-rose-600 p-2 rounded-md"
                         title="ဖျက်မည်"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1146,10 +1203,10 @@ export const LabTestModule: React.FC = () => {
                           </span>
                         ))
                       ) : (
-                        <span className="text-[10px] text-slate-400">စစ်ဆေးချက် အနှစ်ချုပ် ကြည့်ရှုရန် နှိပ်ပါ</span>
+                        <span className="text-[11px] text-slate-400">စစ်ဆေးချက် အနှစ်ချုပ် ကြည့်ရှုရန် နှိပ်ပါ</span>
                       )}
                       {lab.tests && lab.tests.length > 4 && (
-                        <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold self-center">
+                        <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold self-center">
                           +{lab.tests.length - 4} ပို
                         </span>
                       )}
@@ -1157,6 +1214,14 @@ export const LabTestModule: React.FC = () => {
                   </div>
                 );
               })}
+              {searchedLabs.length > 20 && (
+                <button
+                  onClick={() => setShowAllHistory(!showAllHistory)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                >
+                  {showAllHistory ? 'အနည်းငယ်သာ ပြမည်' : `အားလုံး ကြည့်မည် (${searchedLabs.length} ခု)`}
+                </button>
+              )}
             </div>
           </div>
 
@@ -1289,7 +1354,7 @@ export const LabTestModule: React.FC = () => {
                               စံနှုန်း (Ref): <strong className="font-mono text-slate-700 dark:text-slate-200">{item.refRangeText}</strong>
                             </span>
                             {item.isCustomRef && (
-                              <span className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">
+                              <span className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">
                                 * ဓာတ်ခွဲခန်းစံနှုန်းအတိုင်း ချိန်ညှိထားသည်
                               </span>
                             )}
@@ -1373,7 +1438,7 @@ export const LabTestModule: React.FC = () => {
                     value={testDate}
                     onChange={(e) => setTestDate(e.target.value)}
                     required
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono"
                   />
                 </div>
 
@@ -1386,7 +1451,7 @@ export const LabTestModule: React.FC = () => {
                     value={labName}
                     onChange={(e) => setLabName(e.target.value)}
                     placeholder="ဥပမာ- ပန်းလှိုင်၊ ဆာကူရာ၊ အထူးကုဓာတ်ခွဲခန်း"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
                 </div>
               </div>
@@ -1402,7 +1467,7 @@ export const LabTestModule: React.FC = () => {
                     <select
                       value={activeCategory}
                       onChange={(e) => setActiveCategory(e.target.value as LabCategory)}
-                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                      className="w-full px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs focus:ring-2 focus:ring-purple-500 cursor-pointer"
                     >
                       {categoriesList.map(cat => (
                         <option key={cat.id} value={cat.id}>
@@ -1420,7 +1485,7 @@ export const LabTestModule: React.FC = () => {
                       placeholder="စစ်ဆေးချက် ရှာရန်..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs"
+                      className="w-full pl-8 pr-3 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs"
                     />
                   </div>
                 </div>
@@ -1499,7 +1564,7 @@ export const LabTestModule: React.FC = () => {
                               placeholder="ရလဒ်ထည့်ပါ"
                               value={rawVal}
                               onChange={(e) => setTestValues({ ...testValues, [def.id]: e.target.value })}
-                              className="w-full pr-12 pl-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono font-bold focus:border-purple-500 focus:outline-hidden"
+                              className="w-full pr-12 pl-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono font-bold focus:border-purple-500 focus:outline-hidden"
                             />
                             <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 font-semibold pointer-events-none">
                               {def.unit}
@@ -1516,7 +1581,7 @@ export const LabTestModule: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => toggleEditRef(def.id)}
-                              className={`text-[10px] px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                              className={`text-[11px] px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                                 isCustom 
                                   ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
                                   : 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
@@ -1551,7 +1616,7 @@ export const LabTestModule: React.FC = () => {
                           </span>
                           
                           <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-slate-500">အနည်းဆုံး (Min):</span>
+                            <span className="text-[11px] text-slate-500">အနည်းဆုံး (Min):</span>
                             <input
                               type="number"
                               step="any"
@@ -1563,7 +1628,7 @@ export const LabTestModule: React.FC = () => {
                           </div>
 
                           <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-slate-500">အများဆုံး (Max):</span>
+                            <span className="text-[11px] text-slate-500">အများဆုံး (Max):</span>
                             <input
                               type="number"
                               step="any"
@@ -1581,7 +1646,7 @@ export const LabTestModule: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleResetToDefaultRef(def.id)}
-                            className="ml-auto text-[10px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline cursor-pointer"
+                            className="ml-auto text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline cursor-pointer"
                           >
                             မူလစံနှုန်းအတိုင်း ပြန်ထားမည်
                           </button>
@@ -1603,7 +1668,7 @@ export const LabTestModule: React.FC = () => {
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="ဥပမာ- ဆီးချိုနှင့် အသည်း/ကျောက်ကပ် ပုံမှန်စစ်ဆေးချက်"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
                 </div>
 
@@ -1616,7 +1681,7 @@ export const LabTestModule: React.FC = () => {
                     value={doctorReview}
                     onChange={(e) => setDoctorReview(e.target.value)}
                     placeholder="ဥပမာ- သွေးတွင်းသကြားဓာတ် ပုံမှန်ဖြစ်သဖြင့် လက်ရှိဆေးပမာဏအတိုင်း ဆက်လက်သောက်သုံးရန်"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
                 </div>
               </div>
@@ -1626,7 +1691,7 @@ export const LabTestModule: React.FC = () => {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-3.5 py-2 rounded-xl text-slate-500 hover:text-slate-700 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-2.5 rounded-xl text-slate-500 hover:text-slate-700 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>အကွက်အားလုံး ရှင်းလင်းမည်</span>
@@ -1636,14 +1701,14 @@ export const LabTestModule: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsOpenAdd(false)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
                     မလုပ်တော့ပါ
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting || filledCount === 0}
-                    className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                    className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>

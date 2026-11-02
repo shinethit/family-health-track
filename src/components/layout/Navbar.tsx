@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { 
-  HeartPulse, 
+import React from 'react';
+import {
+  HeartPulse,
   Menu,
   FileText,
   Bell,
@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
-import { ChangePasswordModal } from '../auth/ChangePasswordModal';
 import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
 
 interface NavbarProps {
@@ -28,8 +27,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const { profile, isAdmin } = useAuth();
   const { unreadCount } = useNotifications();
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
+  // Note: Change Password is opened from the Sidebar and rendered in App —
+  // it used to live here with no button that could ever open it.
   return (
     <>
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
@@ -57,7 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {onManualCheckVersion && (
                     <button
                       onClick={onManualCheckVersion}
-                      className="p-1 rounded-full bg-slate-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700 transition-colors cursor-pointer active:scale-90"
+                      className="p-2 rounded-full bg-slate-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700 transition-colors cursor-pointer active:scale-90"
                       title="စနစ်ဗားရှင်း စစ်ဆေးမည် (Check for Updates)"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
@@ -93,10 +93,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
       </header>
-      <ChangePasswordModal 
-        isOpen={showPasswordModal}
-        onClose={() => setShowPasswordModal(false)}
-      />
     </>
   );
 };

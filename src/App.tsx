@@ -76,10 +76,12 @@ const ElderlyCareModule = lazy(() => import('./components/modules/ElderlyCareMod
 const SpecialNeedsCareModule = lazy(() => import('./components/modules/SpecialNeedsCareModule').then(m => ({ default: m.SpecialNeedsCareModule })));
 import { BroadcastMarqueeBanner } from './components/layout/BroadcastMarqueeBanner';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
+import { FamilyMembersBar } from './components/family/FamilyMembersBar';
+import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 
 const MainContent: React.FC = () => {
   const { currentUser, profile, isAdmin, logout, loading } = useAuth();
-  const { selectedPatient, setSelectedPatientId, doctorQuestions } = useHealthData();
+  const { selectedPatient, setSelectedPatientId, doctorQuestions, broadcastTickers } = useHealthData();
   const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState<
     'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'home_testing_guide' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'special_needs' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
@@ -93,6 +95,7 @@ const MainContent: React.FC = () => {
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
   const [isDataBackupOpen, setIsDataBackupOpen] = useState(false);
   const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [showVersionUpdateModal, setShowVersionUpdateModal] = useState(false);
   const [versionUpdatePendingReload, setVersionUpdatePendingReload] = useState(false);
   const [latestAppVersion, setLatestAppVersion] = useState(CURRENT_SYSTEM_VERSION);
@@ -100,6 +103,23 @@ const MainContent: React.FC = () => {
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
 
   const pendingQuestionsCount = doctorQuestions.filter(q => q.status === 'pending').length;
+
+  // The broadcast banner only renders when an active ticker exists — the
+  // spacer / sticky offset below must match, or a dead white gap appears.
+  const hasActiveBroadcast = (broadcastTickers ?? []).some((t) => t.isActive);
+  // Dismiss state lives here (not in the banner) so the spacer / sticky
+  // offset shrink as soon as the user dismisses the banner. A new or
+  // changed set of active tickers clears the dismissal.
+  const [broadcastDismissed, setBroadcastDismissed] = useState(false);
+  const activeBroadcastKey = (broadcastTickers ?? [])
+    .filter((t) => t.isActive)
+    .map((t) => t.id)
+    .sort()
+    .join(',');
+  useEffect(() => {
+    setBroadcastDismissed(false);
+  }, [activeBroadcastKey]);
+  const showBroadcast = hasActiveBroadcast && !broadcastDismissed;
 
   // Group Categories for Clean Navigation
   const moduleCategories = [
@@ -174,7 +194,7 @@ const MainContent: React.FC = () => {
       badgeColor: 'bg-indigo-50 text-indigo-800 border-indigo-200',
       activeColor: 'bg-indigo-600 text-white shadow-xs',
       tabs: [
-        { id: 'admin', label: 'Admin Dashboard', icon: ShieldCheck, activeColor: 'bg-indigo-600 text-white' }
+        { id: 'admin', label: 'Admin ဒက်ရှ်ဘုတ်', icon: ShieldCheck, activeColor: 'bg-indigo-600 text-white' }
       ]
     }] : [])
   ];
@@ -365,6 +385,7 @@ const MainContent: React.FC = () => {
         onOpenPassportModal={() => setIsPassportOpen(true)}
         onOpenDataBackup={() => setIsDataBackupOpen(true)}
         onOpenDeleteAccount={() => setIsDeleteAccountOpen(true)}
+        onOpenChangePassword={() => setIsChangePasswordOpen(true)}
         onManualCheckVersion={() => handleCheckVersion(true)}
         setActiveTab={(tab) => setActiveTab(tab as any)}
         setCategoryGroup={setSelectedCategoryGroup}
@@ -378,11 +399,14 @@ const MainContent: React.FC = () => {
           onOpenVersionHistory={() => setIsVersionHistoryOpen(true)}
           onManualCheckVersion={() => handleCheckVersion(true)}
         />
-        <BroadcastMarqueeBanner />
+        <BroadcastMarqueeBanner dismissed={broadcastDismissed} onDismiss={() => setBroadcastDismissed(true)} />
       </div>
 
-      {/* Spacer to prevent content from hiding under fixed header */}
-      <div className="h-[105px] sm:h-[110px] shrink-0" />
+      {/* Spacer to prevent content from hiding under fixed header.
+          Only as tall as the header + banner when a broadcast is showing;
+          otherwise the banner renders null and the tall spacer leaves a
+          dead white gap under the navbar. */}
+      <div className={showBroadcast ? "h-[105px] sm:h-[110px] shrink-0" : "h-16 shrink-0"} />
 
       {/* Selected Patient Banner for Admin (Simple & Crisp) */}
       {selectedPatient && isAdmin && (
@@ -391,8 +415,8 @@ const MainContent: React.FC = () => {
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
             <span>လက်ရှိ ကြည့်ရှုနေသော အသုံးပြုသူ: <strong>{selectedPatient.displayName}</strong></span>
           </div>
-          <button 
-            onClick={() => setSelectedPatientId(null)}
+          <button
+            onClick={() => { setSelectedPatientId(null); setActiveTab('admin'); }}
             className="text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
           >
             အသုံးပြုသူများ စာရင်းသို့ ပြန်သွားမည် ✕
@@ -402,7 +426,7 @@ const MainContent: React.FC = () => {
 
       
       {/* Clean Minimal Module Indicator */}
-      <div className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-[105px] sm:top-[110px] z-30 w-full shadow-xs">
+      <div className={`bg-white/95 backdrop-blur-md border-b border-slate-200 sticky ${showBroadcast ? 'top-[105px] sm:top-[110px]' : 'top-16'} z-30 w-full shadow-xs`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
@@ -412,17 +436,46 @@ const MainContent: React.FC = () => {
               {currentCategoryTabs.find(t => t.id === activeTab)?.label || 'Menu'}
             </h2>
           </div>
-          <button 
-            onClick={() => setIsSidebarOpen(true)} 
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <span>မော်ဂျူး ပြောင်းမည်</span>
             <ChevronDown className="w-4 h-4" />
           </button>
         </div>
+        {/* Tab strip — one-tap switching between the current category's tabs */}
+        {currentCategoryTabs.length > 1 && (
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-2.5">
+            <div className="flex gap-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {currentCategoryTabs.map((tab) => {
+                const TabIcon = tab.icon;
+                const isActive = tab.id === activeTab;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${isActive ? tab.activeColor : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                  >
+                    <TabIcon className="w-4 h-4" />
+                    <span>{tab.label}</span>
+                    {(tab as { badge?: number }).badge !== undefined && (tab as { badge?: number }).badge! > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold">
+                        {(tab as { badge?: number }).badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
       {/* Main Content Area - Pure White Clean Layout */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* Family member switcher — only on the record tabs it applies to.
+            (Admins see the full user directory instead; the bar hides itself.) */}
+        {['bp', 'sugar', 'bmi', 'labs', 'medications'].includes(activeTab) && <FamilyMembersBar />}
         <Suspense fallback={<div className="flex items-center justify-center py-16 text-slate-500 font-medium text-sm">ဖွင့်နေသည်...</div>}>
           {activeTab === 'admin' && isAdmin && <AdminPatientPortal />}
           {activeTab === 'doctor_qa' && <DoctorQnAModule />}
@@ -516,6 +569,12 @@ const MainContent: React.FC = () => {
           <DeleteAccountModal
             isOpen={isDeleteAccountOpen}
             onClose={() => setIsDeleteAccountOpen(false)}
+          />
+        )}
+        {isChangePasswordOpen && (
+          <ChangePasswordModal
+            isOpen={isChangePasswordOpen}
+            onClose={() => setIsChangePasswordOpen(false)}
           />
         )}
         {showVersionUpdateModal && (

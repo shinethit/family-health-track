@@ -113,6 +113,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [customReminders, setCustomReminders] = useState<CustomReminder[]>([]);
 
+  // Due-reminder ticker (v2.4.8 A1): which custom reminders already fired, as
+  // { reminderId: 'YYYY-MM-DD' }. Persisted per user so a reload inside the
+  // same minute does not re-fire. Only today's entries are kept.
+  const [firedToday, setFiredToday] = useState<Record<string, string>>({});
+
+  const localDateStr = (d: Date): string =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
   // Load user-scoped notifications & reminders when user logs in or switches
   useEffect(() => {
     if (!profile?.id) {
@@ -164,6 +172,40 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const remKey = `family_health_custom_reminders_${profile.id}`;
     localStorage.setItem(remKey, JSON.stringify(customReminders));
   }, [customReminders, profile?.id]);
+
+  // Load / save the fired-today map for this user (pruned to today's date)
+  useEffect(() => {
+    if (!profile?.id) {
+      setFiredToday({});
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(`family_health_reminders_fired_${profile.id}`);
+      if (!saved) {
+        setFiredToday({});
+        return;
+      }
+      const parsed: Record<string, string> = JSON.parse(saved);
+      const today = localDateStr(new Date());
+      const pruned: Record<string, string> = {};
+      Object.entries(parsed).forEach(([k, v]) => {
+        if (v === today) pruned[k] = v;
+      });
+      setFiredToday(pruned);
+    } catch {
+      setFiredToday({});
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    const today = localDateStr(new Date());
+    const pruned: Record<string, string> = {};
+    Object.entries(firedToday).forEach(([k, v]) => {
+      if (v === today) pruned[k] = v;
+    });
+    localStorage.setItem(`family_health_reminders_fired_${profile.id}`, JSON.stringify(pruned));
+  }, [firedToday, profile?.id]);
 
   const requestPermission = async (): Promise<boolean> => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -220,6 +262,57 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     playChime();
     sendBrowserNotification(title, message);
   }, [sendBrowserNotification, isAdmin]);
+
+  // Due-reminder check (v2.4.8 A1): fire active custom reminders whose set
+  // time (HH:MM) matches the current minute and that have not fired today.
+  // Medication reminders carry no clock-time field (only a free-text
+  // frequency and a before/after-meal timing), so their on-open generation
+  // below is left as-is.
+  const checkDueReminders = useCallback(() => {
+    if (!profile?.id) return;
+    const now = new Date();
+    const todayStr = localDateStr(now);
+    const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const day = now.getDay();
+    const due = customReminders.filter(
+      (r) =>
+        r.isActive &&
+        r.time === hhmm &&
+        (!r.daysOfWeek || r.daysOfWeek.includes(day)) &&
+        firedToday[r.id] !== todayStr
+    );
+    if (due.length === 0) return;
+    due.forEach((rem) => {
+      sendManualNotification(
+        `🔔 သတိပေးချက် အချိန်ရောက်ပါပြီ: ${rem.title}`,
+        rem.notes
+          ? `${rem.notes} (အချိန် ${rem.time})`
+          : `အချိန် ${rem.time} တွင် သတ်မှတ်ထားသော သတိပေးချက် ရောက်ရှိပါပြီ`,
+        'custom_reminder',
+        'normal'
+      );
+    });
+    setFiredToday((prev) => {
+      const next = { ...prev };
+      due.forEach((rem) => {
+        next[rem.id] = todayStr;
+      });
+      return next;
+    });
+  }, [profile?.id, customReminders, firedToday, sendManualNotification]);
+
+  // Tick every minute while the app is open so custom reminders fire at
+  // their set time. Runs once immediately on (re)mount too, so opening the
+  // app exactly at a reminder minute still fires. Cleaned up on unmount.
+  // NOTE: this can only work while the app is open — real push while closed
+  // needs FCM + a server (out of scope). The confirmation copy in
+  // addCustomReminder and the Reminders module say so honestly.
+  useEffect(() => {
+    if (!profile?.id) return;
+    checkDueReminders();
+    const id = setInterval(checkDueReminders, 60 * 1000);
+    return () => clearInterval(id);
+  }, [profile?.id, checkDueReminders]);
 
   // Sync / Generate Active Medication Reminders & Vitals Reminders on mount/update
   // ONLY for respective patients. Admin NEVER receives medication reminders.
@@ -396,10 +489,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
     setCustomReminders(prev => [newRem, ...prev]);
     
-    // Post confirmation notification
+    // Post confirmation notification — honest wording (v2.4.8 A1): reminders
+    // only fire while the app is open; they cannot ring when it is closed.
     sendManualNotification(
       `🔔 သတိပေးချက် အသစ် သတ်မှတ်ပြီးပါပြီ`,
-      `"${newRem.title}" ကို အချိန် ${newRem.time} တွင် နေ့စဉ် ပုံမှန် သတိပေးပါမည်`,
+      `"${newRem.title}" ကို နေ့စဉ် ${newRem.time} တွင် သတိပေးပါမည်။ အက်ပ် ဖွင့်ထားချိန်မှသာ သတိပေးနိုင်ပြီး အက်ပ် ပိတ်ထားချိန်တွင် သတိပေးချက် တက်မလာနိုင်ပါ။`,
       'custom_reminder',
       'normal'
     );

@@ -520,15 +520,15 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
               {/* Records count badge */}
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-slate-400 text-[10px] block">သွေးပေါင်ချိန်</span>
+                  <span className="text-slate-400 text-[11px] block">သွေးပေါင်ချိန်</span>
                   <span className="font-extrabold text-sm text-slate-800">{bpRecords.length} ခု</span>
                 </div>
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-slate-400 text-[10px] block">သွေးချို</span>
+                  <span className="text-slate-400 text-[11px] block">သွေးချို</span>
                   <span className="font-extrabold text-sm text-slate-800">{glucoseRecords.length} ခု</span>
                 </div>
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-slate-400 text-[10px] block">ဆေးဝါး & ဓာတ်ခွဲ</span>
+                  <span className="text-slate-400 text-[11px] block">ဆေးဝါး & ဓာတ်ခွဲ</span>
                   <span className="font-extrabold text-sm text-slate-800">{medications.length + labRecords.length} ခု</span>
                 </div>
               </div>
@@ -588,7 +588,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
                   <p className="font-bold text-slate-800 text-xs">
                     ဖိုင်ရွေးချယ်ရန် ဤနေရာကို နှိပ်ပါ
                   </p>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[11px] text-slate-400">
                     သီးသန့် .json ဖိုင်များကိုသာ လက်ခံပါသည်
                   </p>
                 </label>
@@ -618,7 +618,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
                       <Layers className="w-4 h-4 text-emerald-600" />
                       <span>ဖိုင်အချက်အလက် စစ်ဆေးပြီးမှု အကျဉ်း:</span>
                     </span>
-                    <span className="text-[10px] text-slate-500 font-mono">{importPreview.filename}</span>
+                    <span className="text-[11px] text-slate-500 font-mono">{importPreview.filename}</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
