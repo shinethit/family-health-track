@@ -27,7 +27,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
-import { calculateBPCategory, calculateGlucoseStatus, calculateBMI, parseDateToMs } from '../../lib/medicalCalculations';
+import { calculateBPCategory, calculateGlucoseStatus, calculateBMI, parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
 
 interface SidebarProps {
@@ -63,26 +63,82 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab,
   setCategoryGroup
 }) => {
-  const { profile, logout, currentUser } = useAuth();
+  const { profile, logout, currentUser, isAdmin } = useAuth();
   // Change Password only works for email/password accounts — accounts
   // created with Google before v2.4.12 have no password until one is set
   // via "forgot password".
   const isPasswordUser = currentUser?.providerData?.some((p) => p.providerId === 'password') ?? false;
-  const { bpRecords, glucoseRecords, bmiRecords, selectedPatient } = useHealthData();
+  const {
+    selectedPatient, selectedFamilyMember,
+    ownBPRecords, ownGlucoseRecords, ownBMIRecords,
+    allBPRecords, allGlucoseRecords, allBMIRecords,
+    dataLoading,
+  } = useHealthData();
   const { unreadCount } = useNotifications();
 
-  // Compute real health status summary from latest records.
-  // Firestore returns no ordering, so sort a copy by date (newest first)
-  // before taking [0] — otherwise the "latest" reading can be a stale one.
-  const targetAge = selectedPatient?.age ?? profile?.age;
-  const isPregnant = selectedPatient?.chronicConditions?.includes('ကိုယ်ဝန်ဆောင်') || profile?.chronicConditions?.includes('ကိုယ်ဝန်ဆောင်');
+  // WHOSE vitals does this card show? (v2.4.15) Exactly one definite
+  // person — never a pooled "newest of everyone" presented as one
+  // person's summary. The old code took sortByDateDesc(bpRecords)[0]
+  // where bpRecords for an admin with NO patient selected was ALL users'
+  // records pooled, while the header showed the admin's own name.
+  //   admin + patient selected -> that patient only ('လူနာ')
+  //   family member selected  -> that member only ('မိသားစုဝင်')
+  //   anything else           -> the signed-in user's own records only
+  //     (covers admin with no patient selected AND family 'all' view)
+  const isPatientView = isAdmin && !!selectedPatient;
+  const isMemberView = !isAdmin && !!selectedFamilyMember;
 
+  const summaryBP = isPatientView
+    ? allBPRecords.filter(r => r.userId === selectedPatient!.id || (!r.userId && !!selectedPatient!.email && r.patientEmail === selectedPatient!.email))
+    : isMemberView
+      ? allBPRecords.filter(r => r.userId === selectedFamilyMember!.id)
+      : ownBPRecords;
+  const summaryGlu = isPatientView
+    ? allGlucoseRecords.filter(r => r.userId === selectedPatient!.id || (!r.userId && !!selectedPatient!.email && r.patientEmail === selectedPatient!.email))
+    : isMemberView
+      ? allGlucoseRecords.filter(r => r.userId === selectedFamilyMember!.id)
+      : ownGlucoseRecords;
+  const summaryBMI = isPatientView
+    ? allBMIRecords.filter(r => r.userId === selectedPatient!.id || (!r.userId && !!selectedPatient!.email && r.patientEmail === selectedPatient!.email))
+    : isMemberView
+      ? allBMIRecords.filter(r => r.userId === selectedFamilyMember!.id)
+      : ownBMIRecords;
+
+  const summaryName = isPatientView
+    ? selectedPatient!.displayName
+    : isMemberView
+      ? selectedFamilyMember!.name
+      : (profile?.displayName || 'အသုံးပြုသူ');
+  // Second header line: the patient's email, the member's relationship,
+  // or the signed-in user's own email.
+  const summarySubline = isPatientView
+    ? (selectedPatient!.email || '')
+    : isMemberView
+      ? `မိသားစုဝင် • ${selectedFamilyMember!.relationship}`
+      : (profile?.email || currentUser?.email || '');
+  const summaryRoleLabel = isPatientView ? 'လူနာ' : isMemberView ? 'မိသားစုဝင်' : null;
+  const targetAge = isPatientView
+    ? selectedPatient!.age
+    : isMemberView
+      ? selectedFamilyMember!.age
+      : profile?.age;
+  const targetConditions = isPatientView
+    ? selectedPatient!.chronicConditions
+    : isMemberView
+      ? selectedFamilyMember!.chronicConditions
+      : profile?.chronicConditions;
+  const isPregnant = targetConditions?.includes('ကိုယ်ဝန်ဆောင်') ?? false;
+
+  // Compute real health status summary from the SUMMARY PERSON's latest
+  // records only. Firestore returns no ordering, so sort a copy by date
+  // (newest first) before taking [0] — otherwise the "latest" reading
+  // can be a stale one.
   const sortByDateDesc = <T extends { date?: string; timestamp?: string; createdAt?: string }>(arr: T[]): T[] =>
     [...arr].sort((a, b) => parseDateToMs(b.date || b.timestamp || b.createdAt) - parseDateToMs(a.date || a.timestamp || a.createdAt));
 
-  const latestBP = sortByDateDesc(bpRecords)[0] ?? null;
-  const latestGlu = sortByDateDesc(glucoseRecords)[0] ?? null;
-  const latestBMI = sortByDateDesc(bmiRecords)[0] ?? null;
+  const latestBP = sortByDateDesc(summaryBP)[0] ?? null;
+  const latestGlu = sortByDateDesc(summaryGlu)[0] ?? null;
+  const latestBMI = sortByDateDesc(summaryBMI)[0] ?? null;
 
   const bpEval = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic, targetAge, isPregnant) : null;
   // No fabricated fallback: a record with no glucose value has no status.
@@ -91,6 +147,59 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const bmiEval = latestBMI ? calculateBMI(latestBMI.weightKg, latestBMI.heightCm, targetAge) : null;
 
   const hasAnyRecords = Boolean(latestBP || latestGlu || latestBMI);
+
+  // Plain-language status words (v2.4.15): the medical category is kept
+  // in parentheses, but the words a user reads first are plain — never
+  // jargon alone. Each row also shows the measurement date.
+  const plainBPStatus = (category: string): string => {
+    switch (category) {
+      case 'normal': return 'ပုံမှန်ပါ';
+      case 'elevated': return 'အနည်းငယ် မြင့်နေပါတယ်';
+      case 'stage1': return 'အနည်းငယ် မြင့်နေပါတယ်';
+      case 'stage2': return 'တော်တော် မြင့်နေပါတယ်';
+      case 'crisis': return 'အရမ်း မြင့်နေပါတယ် — ဆရာဝန်နှင့် အမြန်ပြပါ';
+      default: return 'ပုံမှန်ပါ';
+    }
+  };
+  const plainGluStatus = (status: string): string => {
+    switch (status) {
+      case 'normal': return 'ပုံမှန်ပါ';
+      case 'pre_diabetic': return 'ပုံမှန်ထက် အနည်းငယ် မြင့်နေပါတယ်';
+      case 'high': return 'မြင့်နေပါတယ်';
+      case 'critical': return 'အလွန်မြင့်နေပါတယ် — ဆရာဝန်နှင့် အမြန်ပြပါ';
+      case 'low': return 'နည်းနေပါတယ်';
+      default: return 'ပုံမှန်ပါ';
+    }
+  };
+  const plainBMIStatus = (category: string): string => {
+    switch (category) {
+      case 'underweight': return 'ပိန်လွန်းနေပါတယ်';
+      case 'normal': return 'ပုံမှန်ပါ';
+      case 'overweight': return 'အလေးချိန် အနည်းငယ် များနေပါတယ်';
+      case 'obese1': return 'အလေးချိန် များနေပါတယ်';
+      case 'obese2': return 'အလေးချိန် အရမ်း များနေပါတယ်';
+      default: return 'ပုံမှန်ပါ';
+    }
+  };
+  // Medical label in parentheses only when it adds information (never
+  // for a plain "normal" row, where the plain words already say it all).
+  // Children: adult cut-offs do not apply, so show the guard label itself
+  // ("ကလေး/ဆယ်ကျော်သက် ... ဆရာဝန်နှင့် စစ်ဆေးရန်") instead of "ပုံမှန်ပါ".
+  const statusWithLabel = (plain: string, labelMm: string | undefined, isNormal: boolean, isPediatric?: boolean): string =>
+    isPediatric
+      ? (labelMm || plain)
+      : (!isNormal && labelMm && labelMm !== plain) ? `${plain} (${labelMm})` : plain;
+  const recordDate = (r: { date?: string; timestamp?: string; createdAt?: string }): string =>
+    formatDateLabel(r.date || r.timestamp || r.createdAt).date;
+
+  // Open one metric's module for the SAME person the card shows: the
+  // person selection (patient / family member / self) is already set in
+  // context, so navigating to the tab lands on that person's data.
+  const openMetricTab = (tab: 'bp' | 'sugar' | 'bmi') => {
+    setActiveTab(tab);
+    setCategoryGroup('records');
+    onClose();
+  };
 
   return (
     <>
@@ -108,84 +217,117 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
 
-          {/* Profile & Dynamic Summary */}
+          {/* Profile & Dynamic Summary — the header AND the card always
+              show the SAME person (the summary person: patient / family
+              member / self). The old code showed the admin's own name
+              here while the card below showed a pooled stranger's vitals. */}
           <div className="p-4 border-b border-slate-100 bg-slate-50">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                {profile?.displayName?.charAt(0) || 'U'}
+                {summaryName?.charAt(0) || 'U'}
               </div>
-              <div className="truncate">
-                <p className="font-bold text-slate-900 truncate">{selectedPatient?.displayName || profile?.displayName}</p>
-                <p className="text-xs text-slate-500 truncate">{selectedPatient?.email || profile?.email}</p>
+              <div className="truncate min-w-0">
+                <p className="font-bold text-slate-900 truncate flex items-center gap-1.5">
+                  <span className="truncate">{summaryName}</span>
+                  {summaryRoleLabel && (
+                    <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-extrabold">{summaryRoleLabel}</span>
+                  )}
+                </p>
+                <p className="text-xs text-slate-500 truncate">{summarySubline}</p>
               </div>
             </div>
             
-            {/* Real computed health summary card */}
+            {/* Real computed health summary card — one clear line per
+                metric: plain-language status + measurement date, and each
+                row is tappable to open that person's module view. */}
             <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1.5">
-               <p className="text-[11px] font-bold text-slate-500">ကျန်းမာရေးအခြေနေ အကျဉ်း</p>
+               <div className="flex items-center justify-between gap-2">
+                 <p className="text-[11px] font-bold text-slate-500">ကျန်းမာရေးအခြေနေ အကျဉ်း</p>
+                 {summaryRoleLabel && (
+                   <span className="px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-extrabold">{summaryRoleLabel}</span>
+                 )}
+               </div>
+               <p className="text-[11px] text-slate-400 font-semibold">{summaryName} ၏ နောက်ဆုံး တိုင်းတာချက်များ</p>
                
-               {!hasAnyRecords ? (
-                 <p className="text-xs text-slate-400 font-semibold italic">မှတ်တမ်း မရှိသေးပါ</p>
+               {dataLoading ? (
+                 <p className="text-xs text-slate-400 font-semibold italic">တင်နေသည်…</p>
+               ) : !hasAnyRecords ? (
+                 <p className="text-xs text-slate-400 font-semibold italic">{summaryName} အတွက် မှတ်တမ်း မရှိသေးပါ</p>
                ) : (
                  <div className="space-y-1 text-xs">
                    {latestBP && bpEval && (
-                     <div className="flex items-center justify-between text-[11px]">
-                       <span className="flex items-center gap-1.5 text-slate-600">
-                         <span className={`w-2 h-2 rounded-full ${
-                           bpEval.category === 'normal' ? 'bg-emerald-500' :
-                           bpEval.category === 'elevated' ? 'bg-yellow-500' :
-                           bpEval.category === 'stage1' ? 'bg-amber-500' : 'bg-rose-500'
-                         }`} />
-                         <span>သွေးပေါင်: {latestBP.systolic}/{latestBP.diastolic}</span>
+                     <button onClick={() => openMetricTab('bp')} className="w-full text-left p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors">
+                       <span className="flex items-center justify-between text-[11px]">
+                         <span className="flex items-center gap-1.5 text-slate-700 font-bold">
+                           <span className={`w-2 h-2 rounded-full ${
+                             bpEval.category === 'normal' ? 'bg-emerald-500' :
+                             bpEval.category === 'elevated' ? 'bg-yellow-500' :
+                             bpEval.category === 'stage1' ? 'bg-amber-500' : 'bg-rose-500'
+                           }`} />
+                           <span>သွေးပေါင်: {latestBP.systolic}/{latestBP.diastolic}</span>
+                         </span>
+                         <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                        </span>
-                       <span className={`font-bold text-[11px] ${bpEval.color}`}>
-                         {bpEval.labelMm || bpEval.category}
+                       <span className={`block text-[11px] font-bold mt-0.5 pl-3.5 ${bpEval.color}`}>
+                         {statusWithLabel(plainBPStatus(bpEval.category), bpEval.labelMm, bpEval.category === 'normal', bpEval.isPediatric)}
                        </span>
-                     </div>
+                       <span className="block text-[10px] text-slate-400 font-semibold pl-3.5">တိုင်းတာတဲ့နေ့: {recordDate(latestBP)}</span>
+                     </button>
                    )}
 
                    {latestGlu && (
-                     <div className="flex items-center justify-between text-[11px]">
-                       <span className="flex items-center gap-1.5 text-slate-600">
-                         <span className={`w-2 h-2 rounded-full ${
-                           gluEval?.status === 'normal' ? 'bg-emerald-500' :
-                           gluEval?.status === 'pre_diabetic' ? 'bg-amber-500' :
-                           gluEval?.status === 'low' ? 'bg-blue-500' : 'bg-rose-500'
-                         }`} />
-                         <span>သွေးချို: {latestGluValue ?? '—'} mg/dL</span>
+                     <button onClick={() => openMetricTab('sugar')} className="w-full text-left p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors">
+                       <span className="flex items-center justify-between text-[11px]">
+                         <span className="flex items-center gap-1.5 text-slate-700 font-bold">
+                           <span className={`w-2 h-2 rounded-full ${
+                             gluEval?.status === 'normal' ? 'bg-emerald-500' :
+                             gluEval?.status === 'pre_diabetic' ? 'bg-amber-500' :
+                             gluEval?.status === 'low' ? 'bg-blue-500' : 'bg-rose-500'
+                           }`} />
+                           <span>သွေးချို: {latestGluValue ?? '—'} mg/dL</span>
+                         </span>
+                         <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                        </span>
                        {gluEval ? (
-                         <span className={`font-bold text-[11px] ${gluEval.color}`}>
-                           {gluEval.labelMm || gluEval.status}
+                         <span className={`block text-[11px] font-bold mt-0.5 pl-3.5 ${gluEval.color}`}>
+                           {statusWithLabel(plainGluStatus(gluEval.status), gluEval.labelMm, gluEval.status === 'normal')}
                          </span>
                        ) : (
-                         <span className="font-bold text-[11px] text-slate-400">—</span>
+                         <span className="block text-[11px] font-bold mt-0.5 pl-3.5 text-slate-400">—</span>
                        )}
-                     </div>
+                       <span className="block text-[10px] text-slate-400 font-semibold pl-3.5">တိုင်းတာတဲ့နေ့: {recordDate(latestGlu)}</span>
+                     </button>
                    )}
 
                    {latestBMI && bmiEval && (
-                     <div className="flex items-center justify-between text-[11px]">
-                       <span className="flex items-center gap-1.5 text-slate-600">
-                         <span className={`w-2 h-2 rounded-full ${
-                           bmiEval.category === 'normal' ? 'bg-emerald-500' :
-                           bmiEval.category === 'underweight' ? 'bg-blue-500' :
-                           bmiEval.category === 'overweight' ? 'bg-amber-500' : 'bg-rose-500'
-                         }`} />
-                         <span>BMI: {latestBMI.bmi}</span>
+                     <button onClick={() => openMetricTab('bmi')} className="w-full text-left p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors">
+                       <span className="flex items-center justify-between text-[11px]">
+                         <span className="flex items-center gap-1.5 text-slate-700 font-bold">
+                           <span className={`w-2 h-2 rounded-full ${
+                             bmiEval.category === 'normal' ? 'bg-emerald-500' :
+                             bmiEval.category === 'underweight' ? 'bg-blue-500' :
+                             bmiEval.category === 'overweight' ? 'bg-amber-500' : 'bg-rose-500'
+                           }`} />
+                           <span>BMI: {latestBMI.bmi}</span>
+                         </span>
+                         <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                        </span>
-                       <span className={`font-bold text-[11px] ${bmiEval.color}`}>
-                         {bmiEval.labelMm || bmiEval.category}
+                       <span className={`block text-[11px] font-bold mt-0.5 pl-3.5 ${bmiEval.color}`}>
+                         {statusWithLabel(plainBMIStatus(bmiEval.category), bmiEval.labelMm, bmiEval.category === 'normal', bmiEval.isPediatric)}
                        </span>
-                     </div>
+                       <span className="block text-[10px] text-slate-400 font-semibold pl-3.5">တိုင်းတာတဲ့နေ့: {recordDate(latestBMI)}</span>
+                     </button>
                    )}
                  </div>
                )}
             </div>
           </div>
 
-          {/* Menu Items */}
+          {/* Menu Items — grouped under small section headers (v2.4.15)
+              so the list reads as 3 groups, not ~13 loose items. No item
+              was removed and no onClick behaviour changed. */}
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <p className="px-3 pt-2 pb-1 text-[10px] font-extrabold tracking-wide text-slate-400">လုပ်ဆောင်ချက်များ</p>
             <MenuItem icon={FileText} label="ဆေးခန်းပြရန် PDF ထုတ်မည်" onClick={() => { onOpenPassportModal(); onClose(); }} />
             <MenuItem icon={Bell} label="သတိပေးချက်များ" badge={unreadCount} onClick={() => { onOpenNotifications(); onClose(); }} />
             
@@ -198,6 +340,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
 
             <div className="border-t border-slate-100 my-2 pt-2">
+                <p className="px-3 pb-1 text-[10px] font-extrabold tracking-wide text-slate-400">ကျန်းမာရေး အပိုင်းများ</p>
                 <MenuItem icon={Activity} label="ကျန်းမာရေး မှတ်တမ်းများ" onClick={() => { setActiveTab('trends'); setCategoryGroup('records'); onClose(); }} />
                 <MenuItem icon={BookOpen} label="သိမှတ်ဖွယ်ရာများ" onClick={() => { setActiveTab('home_testing_guide'); setCategoryGroup('knowledge'); onClose(); }} />
                 <MenuItem icon={Users} label="အထူး ဂရုစိုက်ပေးရန် လိုသူများ" onClick={() => { setActiveTab('special_needs'); setCategoryGroup('family_care'); onClose(); }} />
@@ -206,6 +349,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             
             <div className="border-t border-slate-100 my-2 pt-2">
+                <p className="px-3 pb-1 text-[10px] font-extrabold tracking-wide text-slate-400">အကောင့်နှင့် စနစ်</p>
                 <MenuItem icon={HelpCircle} label="အသုံးပြုနည်း" onClick={() => { onOpenUserGuide(); onClose(); }} />
                 {onOpenProfileEdit && (
                   <MenuItem icon={User} label="ကိုယ်ရေးအချက်အလက် ပြင်ဆင်မည်" onClick={() => { onOpenProfileEdit(); onClose(); }} />

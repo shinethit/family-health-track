@@ -263,6 +263,13 @@ interface HealthDataContextType {
   allBPRecords: BloodPressureRecord[];
   allGlucoseRecords: BloodSugarRecord[];
   allBMIRecords: BMIRecord[];
+  // The signed-in user's OWN records only — never pooled. The sidebar
+  // summary uses these so an admin with no patient selected (or a user in
+  // family 'all' view) sees their own latest vitals, never a stranger's
+  // newest record presented as their own.
+  ownBPRecords: BloodPressureRecord[];
+  ownGlucoseRecords: BloodSugarRecord[];
+  ownBMIRecords: BMIRecord[];
   allLabRecords: LabTestRecord[];
   allMedicationRecords: Medication[];
   allVaccineRecords: VaccinationRecord[];
@@ -910,6 +917,17 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const bmiRecords = currentTargetUserId
     ? allBMI.filter(b => inVisibleScope(b.userId))
     : (isAdmin ? allBMI : []);
+
+  // The signed-in user's OWN records only (v2.4.15). userId is the primary
+  // match; the no-userId + own-email fallback covers legacy records written
+  // before userId stamping. Family records always carry their member doc id
+  // as userId, so they can never leak in here.
+  const ownEmail = profile?.email || currentUser?.email || '';
+  const isOwnRecord = (r: { userId?: string; patientEmail?: string }): boolean =>
+    !!currentUser?.uid && (r.userId === currentUser.uid || (!r.userId && !!ownEmail && r.patientEmail === ownEmail));
+  const ownBPRecords = allBP.filter(isOwnRecord);
+  const ownGlucoseRecords = allGlucose.filter(isOwnRecord);
+  const ownBMIRecords = allBMI.filter(isOwnRecord);
 
   const doctorQuestions = currentTargetUserId
     ? allQuestions.filter(q => inVisibleScope(q.userId))
@@ -1812,6 +1830,9 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       allBPRecords: allBP,
       allGlucoseRecords: allGlucose,
       allBMIRecords: allBMI,
+      ownBPRecords,
+      ownGlucoseRecords,
+      ownBMIRecords,
       allLabRecords: allLabs,
       allMedicationRecords: allMeds,
       allVaccineRecords: allVaccines,
