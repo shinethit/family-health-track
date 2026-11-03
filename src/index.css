@@ -51,6 +51,80 @@
   }
 }
 
+@layer components {
+  /* v2.4.12 — depth for primary actions (Apple Health / Google Fit feel).
+     A subtle vertical gradient + soft shadow + bright top edge makes the
+     button look raised instead of flat. Layout classes (padding, radius,
+     font) stay on the button via Tailwind; these classes only own the
+     surface. The pressed state deepens the shadow instead of moving the
+     button, so no layout shifts. NOTE: do NOT pair these with Tailwind
+     bg-* utilities on the same button — utilities win over components. */
+  .btn-primary {
+    background-image: linear-gradient(180deg, #34d399 0%, #10b981 45%, #059669 100%);
+    border: 1px solid rgba(4, 120, 87, 0.45);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 1px 2px rgba(6, 78, 59, 0.25),
+      0 8px 18px -8px rgba(5, 150, 105, 0.6);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-image: linear-gradient(180deg, #6ee7b7 0%, #34d399 45%, #10b981 100%);
+  }
+  .btn-primary:active:not(:disabled) {
+    box-shadow:
+      inset 0 2px 5px rgba(0, 0, 0, 0.22),
+      0 1px 2px rgba(6, 78, 59, 0.3);
+    filter: brightness(0.97);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+  }
+
+  /* Teal twin of .btn-primary for the BMI module's teal actions. */
+  .btn-teal {
+    background-image: linear-gradient(180deg, #2dd4bf 0%, #14b8a6 45%, #0d9488 100%);
+    border: 1px solid rgba(17, 94, 89, 0.45);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 1px 2px rgba(19, 78, 74, 0.25),
+      0 8px 18px -8px rgba(20, 184, 166, 0.6);
+    color: #fff;
+  }
+  .btn-teal:hover:not(:disabled) {
+    background-image: linear-gradient(180deg, #5eead4 0%, #2dd4bf 45%, #14b8a6 100%);
+  }
+  .btn-teal:active:not(:disabled) {
+    box-shadow:
+      inset 0 2px 5px rgba(0, 0, 0, 0.22),
+      0 1px 2px rgba(19, 78, 74, 0.3);
+    filter: brightness(0.97);
+  }
+  .btn-teal:disabled {
+    opacity: 0.5;
+  }
+
+  /* Extra press depth for any button that needs a stronger tap feel. */
+  .btn-press:active:not(:disabled) {
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.2);
+    filter: brightness(0.94);
+  }
+
+  /* Depth for tappable cards (hover only; a shadow change moves no layout).
+     Not applied anywhere yet — use on cards that navigate, e.g. Trends. */
+  .card-interactive {
+    box-shadow:
+      0 1px 3px rgba(15, 23, 42, 0.06),
+      0 4px 12px -6px rgba(15, 23, 42, 0.12);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .card-interactive:hover {
+    box-shadow:
+      0 2px 6px rgba(15, 23, 42, 0.08),
+      0 12px 24px -10px rgba(15, 23, 42, 0.22);
+  }
+}
+
 /* Global Button Click Effects */
 button {
   transition: transform 0.15s ease, filter 0.15s ease, background-color 0.2s ease;

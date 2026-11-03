@@ -136,7 +136,7 @@ const MainContent: React.FC = () => {
   // the modal can always be skipped. A real SAVE stops the reminders for
   // good; a SKIP only postpones them — remind again on the next login, at
   // most twice, then stop nagging. Previously ANY close (including skip)
-  // set the seen flag, so a first-time Google user who skipped once was
+  // set the seen flag, so a first-time user who skipped once was
   // never reminded again and their profile stayed mostly empty.
   const profileSetupSavedRef = useRef(false);
   const markProfileSetupSeen = () => {

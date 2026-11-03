@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { User, Check, Calendar, Ruler, Scale, AlertCircle } from 'lucide-react';
+import { User, Check, Calendar, Ruler, Scale, AlertCircle, AtSign } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../common/Modal';
 import { UserProfile } from '../../types/health';
+import { ftInToCm, cmToFtIn, lbToKg, kgToLb } from '../../lib/medicalCalculations';
 
 interface ProfileSetupModalProps {
   isOpen: boolean;
@@ -14,13 +15,37 @@ interface ProfileSetupModalProps {
 
 const CHRONIC_CONDITIONS = ['သွေးတိုး', 'ဆီးချို', 'အသည်းအဆီဖုံး', 'နှလုံး', 'ကျောက်ကပ်', 'ယူရစ်အက်စစ်'];
 
+// v2.4.12 — height/weight unit preference + username live on the profile.
+// The UserProfile type gains those fields in the same batch (AuthContext
+// work); read/write them through this narrow cast so this file compiles
+// either way. Canonical storage stays heightCm / weightKg.
+type HeightUnit = 'cm' | 'm' | 'ft';
+type WeightUnit = 'kg' | 'lb';
+type ProfileUnitPrefs = { heightUnit?: HeightUnit; weightUnit?: WeightUnit; username?: string };
+const profilePrefs = (p: UserProfile | null | undefined): ProfileUnitPrefs =>
+  (p ?? {}) as ProfileUnitPrefs;
+
+// Username rules: lowercase letters / numbers / _ / . , 3-20 chars.
+const USERNAME_RE = /^[a-z0-9_.]{3,20}$/;
+
 export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, onClose, onSaved }) => {
-  const { updateProfile, profile } = useAuth();
+  const auth = useAuth();
+  const { updateProfile, profile } = auth;
+  // setUsername is added by the AuthContext work in the same v2.4.12 batch;
+  // the cast keeps this file compiling if that lands after this file.
+  const setUsername = (auth as unknown as { setUsername?: (username: string) => Promise<void> }).setUsername;
   const [displayName, setDisplayName] = useState('');
+  const [username, setUsernameInput] = useState('');
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState<'' | 'male' | 'female' | 'other'>('');
-  const [heightCm, setHeightCm] = useState<number | string>('');
-  const [weightKg, setWeightKg] = useState<number | string>('');
+  const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
+  const [heightCmInput, setHeightCmInput] = useState<number | string>('');
+  const [heightMInput, setHeightMInput] = useState<number | string>('');
+  const [heightFeetInput, setHeightFeetInput] = useState<number | string>('');
+  const [heightInchesInput, setHeightInchesInput] = useState<number | string>('');
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
+  const [weightKgInput, setWeightKgInput] = useState<number | string>('');
+  const [weightLbInput, setWeightLbInput] = useState<number | string>('');
   const [chronicConditions, setChronicConditions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,13 +53,33 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
 
   // Pre-fill from the current profile every time the modal opens, so the
   // same modal works both for first-time setup and for later editing.
+  // Height/weight show in the user's saved unit (v2.4.12); the stored
+  // canonical values are heightCm / weightKg.
   useEffect(() => {
     if (!isOpen) return;
+    const prefs = profilePrefs(profile);
     setDisplayName(profile?.displayName || '');
+    setUsernameInput(prefs.username || '');
     setDob(profile?.dateOfBirth || '');
     setGender(profile?.gender || '');
-    setHeightCm(profile?.heightCm ?? '');
-    setWeightKg(profile?.weightKg ?? '');
+    const hUnit: HeightUnit = prefs.heightUnit ?? 'cm';
+    setHeightUnit(hUnit);
+    const hCm = profile?.heightCm;
+    setHeightCmInput(hUnit === 'cm' ? (hCm ?? '') : '');
+    setHeightMInput(hUnit === 'm' && hCm ? String(Math.round((hCm / 100) * 100) / 100) : '');
+    if (hUnit === 'ft' && hCm) {
+      const ft = cmToFtIn(hCm);
+      setHeightFeetInput(String(ft.feet));
+      setHeightInchesInput(String(ft.inches));
+    } else {
+      setHeightFeetInput('');
+      setHeightInchesInput('');
+    }
+    const wUnit: WeightUnit = prefs.weightUnit ?? 'kg';
+    setWeightUnit(wUnit);
+    const wKg = profile?.weightKg;
+    setWeightKgInput(wUnit === 'kg' ? (wKg ?? '') : '');
+    setWeightLbInput(wUnit === 'lb' && wKg ? String(kgToLb(wKg)) : '');
     setChronicConditions(profile?.chronicConditions || []);
     setError(null);
     setSuccess(false);
@@ -50,6 +95,44 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
     }
   };
 
+  // Canonical values for saving: height in cm, weight in kg.
+  // Math (shared with BMIModule via lib/medicalCalculations):
+  //   m -> cm: m x 100 | ft-in -> cm: (ft x 12 + in) x 2.54 | lb -> kg: lb x 0.45359237
+  const resolveHeightCm = (): number => {
+    if (heightUnit === 'cm') return Number(heightCmInput) || 0;
+    if (heightUnit === 'm') return Math.round((Number(heightMInput) || 0) * 100 * 10) / 10;
+    return ftInToCm(Number(heightFeetInput) || 0, Number(heightInchesInput) || 0);
+  };
+  const resolveWeightKg = (): number =>
+    weightUnit === 'kg' ? Number(weightKgInput) || 0 : lbToKg(Number(weightLbInput) || 0);
+
+  // Switching units converts the entered value — never discards it.
+  const switchHeightUnit = (unit: HeightUnit) => {
+    if (unit === heightUnit) return;
+    const cm = resolveHeightCm();
+    if (cm > 0) {
+      if (unit === 'cm') setHeightCmInput(String(Math.round(cm * 10) / 10));
+      if (unit === 'm') setHeightMInput(String(Math.round((cm / 100) * 100) / 100));
+      if (unit === 'ft') {
+        const ft = cmToFtIn(cm);
+        setHeightFeetInput(String(ft.feet));
+        setHeightInchesInput(String(ft.inches));
+      }
+    }
+    setHeightUnit(unit);
+  };
+  const switchWeightUnit = (unit: WeightUnit) => {
+    if (unit === weightUnit) return;
+    if (unit === 'lb') {
+      const kg = Number(weightKgInput);
+      if (kg > 0) setWeightLbInput(String(kgToLb(kg)));
+    } else {
+      const lb = Number(weightLbInput);
+      if (lb > 0) setWeightKgInput(String(lbToKg(lb)));
+    }
+    setWeightUnit(unit);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -60,18 +143,35 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
       return;
     }
 
+    const newUsername = username.trim().toLowerCase();
+    const currentUsername = profilePrefs(profile).username || '';
+    const usernameChanged = !!newUsername && newUsername !== currentUsername;
+    if (usernameChanged && !USERNAME_RE.test(newUsername)) {
+      setError('အသုံးပြုသူအမည် (username) သည် အင်္ဂလိပ်အက္ခရာအသေး၊ ဂဏန်း၊ _ သို့မဟုတ် . သာ ပါရပြီး ၃ လုံးမှ ၂၀ လုံးအထိ ဖြစ်ရပါမည်');
+      return;
+    }
+
     // Only include fields the user actually entered — an empty field keeps
     // whatever value the profile already had.
+    const heightCm = resolveHeightCm();
+    const weightKg = resolveWeightKg();
     const data: Partial<UserProfile> = { displayName: displayName.trim() };
     if (dob) data.dateOfBirth = dob;
     if (gender) data.gender = gender;
-    if (heightCm !== '' && !Number.isNaN(Number(heightCm))) data.heightCm = Number(heightCm);
-    if (weightKg !== '' && !Number.isNaN(Number(weightKg))) data.weightKg = Number(weightKg);
+    if (heightCm > 0) data.heightCm = Math.round(heightCm * 10) / 10;
+    if (weightKg > 0) data.weightKg = Math.round(weightKg * 10) / 10;
     data.chronicConditions = chronicConditions;
+    // Save the unit preference so every form shows the user's units next time.
+    const prefsToSave = { heightUnit, weightUnit } as Partial<UserProfile>;
 
     setLoading(true);
     try {
-      await updateProfile(data);
+      // Username first: a taken name must stop the save and keep the modal
+      // open with the error shown inline — never silently swallowed.
+      if (usernameChanged && setUsername) {
+        await setUsername(newUsername);
+      }
+      await updateProfile({ ...data, ...prefsToSave });
       setSuccess(true);
       onSaved?.();
       setTimeout(() => {
@@ -142,6 +242,25 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
             </div>
           </div>
 
+          <div>
+            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              အသုံးပြုသူအမည် (Username)
+            </label>
+            <div className="relative">
+              <AtSign className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                placeholder="ဥပမာ- aungkyaw123"
+                value={username}
+                onChange={(e) => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, ''))}
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              အင်္ဂလိပ်အက္ခရာအသေး၊ ဂဏန်း၊ _ သို့မဟုတ် . သာ — ၃ လုံးမှ ၂၀ လုံးအထိ။ Email အစား ဒီ username နဲ့ ဝင်လို့ရပါမယ်။
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -177,36 +296,133 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                အရပ် (cm)
-              </label>
-              <div className="relative">
-                <Ruler className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="number"
-                  placeholder="168"
-                  value={heightCm}
-                  onChange={(e) => setHeightCm(e.target.value)}
-                  className="w-full pl-10 pr-2 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                  အရပ်
+                </label>
+                <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => switchHeightUnit('cm')}
+                    className={`px-2 py-0.5 rounded-md cursor-pointer ${heightUnit === 'cm' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-2xs' : 'text-slate-500'}`}
+                  >
+                    cm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchHeightUnit('m')}
+                    className={`px-2 py-0.5 rounded-md cursor-pointer ${heightUnit === 'm' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-2xs' : 'text-slate-500'}`}
+                  >
+                    m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchHeightUnit('ft')}
+                    className={`px-2 py-0.5 rounded-md cursor-pointer ${heightUnit === 'ft' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-2xs' : 'text-slate-500'}`}
+                  >
+                    ft/in
+                  </button>
+                </div>
               </div>
+              {heightUnit === 'cm' ? (
+                <div className="relative">
+                  <Ruler className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="1"
+                    placeholder="168"
+                    value={heightCmInput}
+                    onChange={(e) => setHeightCmInput(e.target.value)}
+                    className="w-full pl-10 pr-2 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+              ) : heightUnit === 'm' ? (
+                <div className="relative">
+                  <Ruler className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.5"
+                    max="2.5"
+                    placeholder="1.68"
+                    value={heightMInput}
+                    onChange={(e) => setHeightMInput(e.target.value)}
+                    className="w-full pl-10 pr-2 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    min="2"
+                    max="7"
+                    placeholder="ပေ"
+                    value={heightFeetInput}
+                    onChange={(e) => setHeightFeetInput(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="11"
+                    step="0.5"
+                    placeholder="လက်မ"
+                    value={heightInchesInput}
+                    onChange={(e) => setHeightInchesInput(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+              )}
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                ကိုယ်အလေးချိန် (kg)
-              </label>
-              <div className="relative">
-                <Scale className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="number"
-                  step="0.5"
-                  placeholder="65"
-                  value={weightKg}
-                  onChange={(e) => setWeightKg(e.target.value)}
-                  className="w-full pl-10 pr-2 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                  ကိုယ်အလေးချိန်
+                </label>
+                <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => switchWeightUnit('kg')}
+                    className={`px-2 py-0.5 rounded-md cursor-pointer ${weightUnit === 'kg' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-2xs' : 'text-slate-500'}`}
+                  >
+                    kg
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchWeightUnit('lb')}
+                    className={`px-2 py-0.5 rounded-md cursor-pointer ${weightUnit === 'lb' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-2xs' : 'text-slate-500'}`}
+                  >
+                    lb
+                  </button>
+                </div>
               </div>
+              {weightUnit === 'kg' ? (
+                <div className="relative">
+                  <Scale className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="number"
+                    step="0.5"
+                    placeholder="65"
+                    value={weightKgInput}
+                    onChange={(e) => setWeightKgInput(e.target.value)}
+                    className="w-full pl-10 pr-2 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+              ) : (
+                <div className="relative">
+                  <Scale className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="number"
+                    step="0.5"
+                    placeholder="143"
+                    value={weightLbInput}
+                    onChange={(e) => setWeightLbInput(e.target.value)}
+                    className="w-full pl-10 pr-2 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -247,7 +463,7 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
             <button
               type="submit"
               disabled={loading || success}
-              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-md shadow-emerald-600/20 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              className="btn-primary px-5 py-2.5 rounded-xl text-white font-bold transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
             >
               {loading ? (
                 <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />

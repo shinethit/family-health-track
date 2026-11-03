@@ -68,6 +68,23 @@ const isPrnMedication = (m: Medication): boolean =>
   /လိုအပ်သည့်အခါ|PRN/i.test(m.frequency || '');
 const localDateStr = (d: Date): string =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// Local (Asia/Rangoon) date-time for a datetime-local input —
+// new Date().toISOString() is UTC, so a record entered early in the morning
+// got yesterday's date (v2.4.11 F4). Same helper the patient modules use.
+const localDateTimeStr = (d: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+// v2.4.12 (A): measurement date + time, the same way the patient modules
+// render it — 'YYYY-MM-DD HH:MM' when the record carries a time, date only
+// for old date-only records. createdAt is only the last fallback when the
+// record has no measurement date at all — never substitute the save time
+// for a past measurement date.
+const showRecordDateTime = (value?: string): string => {
+  if (!value) return '—';
+  const m = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+  return m ? `${m[1]} ${m[2]}` : value;
+};
 
 interface AdminPatientDetailProps {
   patient: UserProfile;
@@ -142,12 +159,12 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   const [bpSys, setBpSys] = useState('');
   const [bpDia, setBpDia] = useState('');
   const [bpPulse, setBpPulse] = useState('');
-  const [bpDate, setBpDate] = useState(localDateStr(new Date()));
+  const [bpDate, setBpDate] = useState(localDateTimeStr(new Date()));
   const [gluValue, setGluValue] = useState('');
   const [gluType, setGluType] = useState('fasting');
-  const [gluDate, setGluDate] = useState(localDateStr(new Date()));
+  const [gluDate, setGluDate] = useState(localDateTimeStr(new Date()));
   const [labName, setLabName] = useState('');
-  const [labDate, setLabDate] = useState(localDateStr(new Date()));
+  const [labDate, setLabDate] = useState(localDateTimeStr(new Date()));
   const [labTestName, setLabTestName] = useState('');
   const [labTestValue, setLabTestValue] = useState('');
   const [labTestUnit, setLabTestUnit] = useState('');
@@ -165,7 +182,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   const [vaxDisease, setVaxDisease] = useState('');
   const [vaxDose, setVaxDose] = useState('1');
   const [vaxTotal, setVaxTotal] = useState('1');
-  const [vaxDate, setVaxDate] = useState(localDateStr(new Date()));
+  const [vaxDate, setVaxDate] = useState(localDateTimeStr(new Date()));
   const [vaxCategory, setVaxCategory] = useState<'adult' | 'child' | 'travel'>('adult');
 
   const sortedUserBP = [...bpRecords].sort((a, b) => 
@@ -316,6 +333,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         setBpSys('');
         setBpDia('');
         setBpPulse('');
+        setBpDate(localDateTimeStr(new Date()));
       } else if (kind === 'sugar') {
         const v = Number(gluValue);
         if (!v || v < 20 || v > 900) {
@@ -329,6 +347,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
           date: gluDate,
         });
         setGluValue('');
+        setGluDate(localDateTimeStr(new Date()));
       } else if (kind === 'lab') {
         if (!labName.trim()) {
           throw new Error('ဓာတ်ခွဲခန်း အမည် ဖြည့်ပါ');
@@ -375,6 +394,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         setLabTestUnit('');
         setLabRefMin('');
         setLabRefMax('');
+        setLabDate(localDateTimeStr(new Date()));
       } else if (kind === 'med') {
         if (!medName.trim() || !medDosage.trim() || !medFrequency.trim() || !medFor.trim()) {
           throw new Error('ဆေးအမည်၊ ပမာဏ၊ ကြိမ်နှုန်းနှင့် ရောဂါ ဖြည့်ပါ');
@@ -416,6 +436,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         setVaxDisease('');
         setVaxDose('1');
         setVaxTotal('1');
+        setVaxDate(localDateTimeStr(new Date()));
       }
       setRecordMsg({ type: 'success', text: 'မှတ်တမ်း ထည့်သွင်းပြီးပါပြီ — အသုံးပြုသူဘက်က မြင်ရပါမည်။' });
       setOpenRecordForm(null);
@@ -558,9 +579,9 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             <input type="number" required placeholder="Systolic (အပေါ်) *" value={bpSys} onChange={(e) => setBpSys(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" required placeholder="Diastolic (အောက်) *" value={bpDia} onChange={(e) => setBpDia(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" placeholder="Pulse (bpm)" value={bpPulse} onChange={(e) => setBpPulse(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <input type="date" required value={bpDate} onChange={(e) => setBpDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="datetime-local" required value={bpDate} onChange={(e) => setBpDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <div className="col-span-2 sm:col-span-4 flex justify-end">
-              <button type="submit" disabled={recordSaving} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50">
+              <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
                 {recordSaving ? 'ထည့်နေသည်...' : 'သွေးပေါင်ချိန် ထည့်မည်'}
               </button>
             </div>
@@ -577,9 +598,9 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               <option value="random">အချိန်မရွေး (Random)</option>
               <option value="bedtime">ညအိပ်ရာဝင်</option>
             </select>
-            <input type="date" required value={gluDate} onChange={(e) => setGluDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="datetime-local" required value={gluDate} onChange={(e) => setGluDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <div className="col-span-2 sm:col-span-3 flex justify-end">
-              <button type="submit" disabled={recordSaving} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50">
+              <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
                 {recordSaving ? 'ထည့်နေသည်...' : 'သွေးချို ထည့်မည်'}
               </button>
             </div>
@@ -589,7 +610,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         {openRecordForm === 'lab' && (
           <form onSubmit={(e) => { e.preventDefault(); submitRecord('lab'); }} className="grid grid-cols-2 gap-2">
             <input type="text" required placeholder="ဓာတ်ခွဲခန်း အမည် * (ဥပမာ- ABC Lab)" value={labName} onChange={(e) => setLabName(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <input type="date" required value={labDate} onChange={(e) => setLabDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="datetime-local" required value={labDate} onChange={(e) => setLabDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="text" placeholder="စစ်ဆေးချက် အမည် (ဥပမာ- FBS)" value={labTestName} onChange={(e) => setLabTestName(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" step="any" placeholder="ရလဒ် တန်ဖိုး" value={labTestValue} onChange={(e) => setLabTestValue(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="text" placeholder="ယူနစ် (ဥပမာ- mg/dL)" value={labTestUnit} onChange={(e) => setLabTestUnit(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
@@ -599,7 +620,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             </div>
             <p className="col-span-2 text-[11px] text-slate-400">စံသတ်မှတ်ချက် ဖြည့်ရင် ရလဒ်ကို အနိမ့်/ပုံမှန်/မြင့် လို့ အကဲဖြတ်ပြပါမည်။ မဖြည့်ရင် "မှတ်တမ်းတင်ထားသည်" လို့သာ ပြပါမည်။</p>
             <div className="col-span-2 flex justify-end">
-              <button type="submit" disabled={recordSaving} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50">
+              <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
                 {recordSaving ? 'ထည့်နေသည်...' : 'ဓာတ်ခွဲခန်း မှတ်တမ်း ထည့်မည်'}
               </button>
             </div>
@@ -623,7 +644,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             <input type="time" placeholder="သောက်ရမည့်အချိန် (မဖြည့်လည်းရသည်)" value={medDoseTime} onChange={(e) => setMedDoseTime(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="text" placeholder="ညွှန်ကြားသော ဆရာဝန် (မဖြည့်လည်းရသည်)" value={medDoctor} onChange={(e) => setMedDoctor(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <div className="col-span-2 flex justify-end">
-              <button type="submit" disabled={recordSaving} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50">
+              <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
                 {recordSaving ? 'ထည့်နေသည်...' : 'ဆေး ထည့်မည်'}
               </button>
             </div>
@@ -636,14 +657,14 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             <input type="text" placeholder="ကာကွယ်သော ရောဂါ (ဥပမာ- တုပ်ကွေး)" value={vaxDisease} onChange={(e) => setVaxDisease(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" min={1} placeholder="အကြိမ် (ဥပမာ- 1)" value={vaxDose} onChange={(e) => setVaxDose(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" min={1} placeholder="စုစုပေါင်း အကြိမ် (ဥပမာ- 1)" value={vaxTotal} onChange={(e) => setVaxTotal(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <input type="date" required value={vaxDate} onChange={(e) => setVaxDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="datetime-local" required value={vaxDate} onChange={(e) => setVaxDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <select value={vaxCategory} onChange={(e) => setVaxCategory(e.target.value as 'adult' | 'child' | 'travel')} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold">
               <option value="adult">လူကြီး</option>
               <option value="child">ကလေး</option>
               <option value="travel">ခရီးသွား</option>
             </select>
             <div className="col-span-2 flex justify-end">
-              <button type="submit" disabled={recordSaving} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50">
+              <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
                 {recordSaving ? 'ထည့်နေသည်...' : 'ကာကွယ်ဆေး ထည့်မည်'}
               </button>
             </div>
@@ -662,7 +683,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             </div>
             {latestBP && (
               <span className="text-[11px] text-slate-400">
-                {new Date(latestBP.createdAt || latestBP.timestamp || latestBP.date || Date.now()).toLocaleDateString('my-MM')}
+                {showRecordDateTime(latestBP.date || latestBP.timestamp || latestBP.createdAt)}
               </span>
             )}
           </div>
@@ -700,7 +721,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             </div>
             {latestGlucose && (
               <span className="text-[11px] text-slate-400">
-                {new Date(latestGlucose.createdAt || latestGlucose.timestamp || latestGlucose.date || Date.now()).toLocaleDateString('my-MM')}
+                {showRecordDateTime(latestGlucose.date || latestGlucose.timestamp || latestGlucose.createdAt)}
               </span>
             )}
           </div>
@@ -779,7 +800,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="py-2 text-slate-500">{item.date ? new Date(item.date).toLocaleDateString('my-MM') : '—'}</td>
+                      <td className="py-2 text-slate-500">{showRecordDateTime(item.date)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -847,7 +868,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                       </p>
                     </div>
                     <span className="text-slate-500 font-semibold shrink-0">
-                      {v.dateAdministered ? new Date(v.dateAdministered).toLocaleDateString('my-MM') : '—'}
+                      {showRecordDateTime(v.dateAdministered)}
                     </span>
                   </div>
                 ))}
@@ -871,7 +892,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                     {b.weightKg ? `${b.weightKg} kg` : ''}{b.weightKg && b.heightCm ? ' • ' : ''}{b.heightCm ? `${b.heightCm} cm` : ''}
                   </span>
                   <span className="text-slate-400 shrink-0">
-                    {new Date(b.date || b.timestamp || b.createdAt || Date.now()).toLocaleDateString('my-MM')}
+                    {showRecordDateTime(b.date || b.timestamp || b.createdAt)}
                   </span>
                 </div>
               ))}

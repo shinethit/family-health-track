@@ -64,8 +64,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCategoryGroup
 }) => {
   const { profile, logout, currentUser } = useAuth();
-  // Change Password only works for email/password accounts — Google-only
-  // accounts have no password to change.
+  // Change Password only works for email/password accounts — accounts
+  // created with Google before v2.4.12 have no password until one is set
+  // via "forgot password".
   const isPasswordUser = currentUser?.providerData?.some((p) => p.providerId === 'password') ?? false;
   const { bpRecords, glucoseRecords, bmiRecords, selectedPatient } = useHealthData();
   const { unreadCount } = useNotifications();

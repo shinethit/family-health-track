@@ -15,6 +15,12 @@ export interface UserProfile {
   gender?: 'male' | 'female' | 'other';
   heightCm?: number;
   weightKg?: number;
+  // v2.4.12: preferred display units (canonical storage stays cm/kg).
+  heightUnit?: 'cm' | 'm' | 'ft';
+  weightUnit?: 'kg' | 'lb';
+  // v2.4.12: unique login name (lowercase); stored in the public
+  // `usernames` collection as well for email-or-username login.
+  username?: string;
   waistCm?: number;
   bmi?: number;
   bloodType?: string;

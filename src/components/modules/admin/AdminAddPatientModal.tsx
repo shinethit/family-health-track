@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { UserPlus, Heart, Sparkles, AlertCircle } from 'lucide-react';
 import { Modal } from '../../common/Modal';
+import { ftInToCm, cmToFtIn, lbToKg, kgToLb } from '../../../lib/medicalCalculations';
+
+// v2.4.12 — height/weight unit options (kg/lb, cm/m/ft-in). Values are
+// converted to the canonical heightCm / weightKg before onSave, so the
+// patient record and BMI keep working unchanged.
+type HeightUnit = 'cm' | 'm' | 'ft';
+type WeightUnit = 'kg' | 'lb';
 
 interface AdminAddPatientModalProps {
   isOpen: boolean;
@@ -30,12 +37,55 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
   const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
   const [conditions, setConditions] = useState<string[]>([]);
   const [height, setHeight] = useState<number | string>('');
+  const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
+  const [heightM, setHeightM] = useState<number | string>('');
+  const [heightFeet, setHeightFeet] = useState<number | string>('');
+  const [heightInches, setHeightInches] = useState<number | string>('');
   const [weight, setWeight] = useState<number | string>('');
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
+  const [weightLb, setWeightLb] = useState<number | string>('');
   const [bloodType, setBloodType] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  // Canonical values for saving: height in cm, weight in kg.
+  // m -> cm: m x 100 | ft-in -> cm: (ft x 12 + in) x 2.54 | lb -> kg: lb x 0.45359237
+  const resolveHeightCm = (): number => {
+    if (heightUnit === 'cm') return Number(height) || 0;
+    if (heightUnit === 'm') return Math.round((Number(heightM) || 0) * 100 * 10) / 10;
+    return ftInToCm(Number(heightFeet) || 0, Number(heightInches) || 0);
+  };
+  const resolveWeightKg = (): number =>
+    weightUnit === 'kg' ? Number(weight) || 0 : lbToKg(Number(weightLb) || 0);
+
+  // Switching units converts the entered value — never discards it.
+  const switchHeightUnit = (unit: HeightUnit) => {
+    if (unit === heightUnit) return;
+    const cm = resolveHeightCm();
+    if (cm > 0) {
+      if (unit === 'cm') setHeight(String(Math.round(cm * 10) / 10));
+      if (unit === 'm') setHeightM(String(Math.round((cm / 100) * 100) / 100));
+      if (unit === 'ft') {
+        const ft = cmToFtIn(cm);
+        setHeightFeet(String(ft.feet));
+        setHeightInches(String(ft.inches));
+      }
+    }
+    setHeightUnit(unit);
+  };
+  const switchWeightUnit = (unit: WeightUnit) => {
+    if (unit === weightUnit) return;
+    if (unit === 'lb') {
+      const kg = Number(weight);
+      if (kg > 0) setWeightLb(String(kgToLb(kg)));
+    } else {
+      const lb = Number(weightLb);
+      if (lb > 0) setWeight(String(lbToKg(lb)));
+    }
+    setWeightUnit(unit);
+  };
 
   const resetForm = () => {
     setName('');
@@ -45,7 +95,13 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
     setGender('');
     setConditions([]);
     setHeight('');
+    setHeightUnit('cm');
+    setHeightM('');
+    setHeightFeet('');
+    setHeightInches('');
     setWeight('');
+    setWeightUnit('kg');
+    setWeightLb('');
     setBloodType('');
     setSaveError(null);
   };
@@ -65,6 +121,8 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
       // Wait for the real save result: only close (and clear the form)
       // after onSave actually succeeds. On failure the modal stays open
       // with the entered values intact so the admin can retry.
+      const heightCm = resolveHeightCm();
+      const weightKg = resolveWeightKg();
       await onSave({
         displayName: name.trim(),
         email: email.trim() || undefined,
@@ -72,8 +130,8 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
         age: age === '' ? undefined : Number(age),
         gender: gender || undefined,
         chronicConditions: conditions,
-        heightCm: height === '' ? undefined : Number(height),
-        weightKg: weight === '' ? undefined : Number(weight),
+        heightCm: heightCm > 0 ? Math.round(heightCm * 10) / 10 : undefined,
+        weightKg: weightKg > 0 ? Math.round(weightKg * 10) / 10 : undefined,
         bloodType: bloodType || undefined,
       });
       resetForm();
@@ -211,29 +269,127 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label htmlFor="add-patient-height" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              အရပ် (cm)
-            </label>
-            <input
-              id="add-patient-height"
-              type="number"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="add-patient-height" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                အရပ်
+              </label>
+              <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => switchHeightUnit('cm')}
+                  className={`px-2 py-0.5 rounded-md cursor-pointer ${heightUnit === 'cm' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-2xs' : 'text-slate-500'}`}
+                >
+                  cm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchHeightUnit('m')}
+                  className={`px-2 py-0.5 rounded-md cursor-pointer ${heightUnit === 'm' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-2xs' : 'text-slate-500'}`}
+                >
+                  m
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchHeightUnit('ft')}
+                  className={`px-2 py-0.5 rounded-md cursor-pointer ${heightUnit === 'ft' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-2xs' : 'text-slate-500'}`}
+                >
+                  ft/in
+                </button>
+              </div>
+            </div>
+            {heightUnit === 'cm' ? (
+              <input
+                id="add-patient-height"
+                type="number"
+                step="0.5"
+                min="1"
+                placeholder="168"
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
+              />
+            ) : heightUnit === 'm' ? (
+              <input
+                id="add-patient-height"
+                type="number"
+                step="0.01"
+                min="0.5"
+                max="2.5"
+                placeholder="1.68"
+                value={heightM}
+                onChange={(e) => setHeightM(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
+              />
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  min="2"
+                  max="7"
+                  placeholder="ပေ"
+                  value={heightFeet}
+                  onChange={(e) => setHeightFeet(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  max="11"
+                  step="0.5"
+                  placeholder="လက်မ"
+                  value={heightInches}
+                  onChange={(e) => setHeightInches(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
+                />
+              </div>
+            )}
           </div>
 
           <div>
-            <label htmlFor="add-patient-weight" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              ကိုယ်အလေးချိန် (kg)
-            </label>
-            <input
-              id="add-patient-weight"
-              type="number"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="add-patient-weight" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                ကိုယ်အလေးချိန်
+              </label>
+              <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => switchWeightUnit('kg')}
+                  className={`px-2 py-0.5 rounded-md cursor-pointer ${weightUnit === 'kg' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-2xs' : 'text-slate-500'}`}
+                >
+                  kg
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchWeightUnit('lb')}
+                  className={`px-2 py-0.5 rounded-md cursor-pointer ${weightUnit === 'lb' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-2xs' : 'text-slate-500'}`}
+                >
+                  lb
+                </button>
+              </div>
+            </div>
+            {weightUnit === 'kg' ? (
+              <input
+                id="add-patient-weight"
+                type="number"
+                step="0.5"
+                min="1"
+                placeholder="65"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
+              />
+            ) : (
+              <input
+                id="add-patient-weight"
+                type="number"
+                step="0.5"
+                min="1"
+                placeholder="143"
+                value={weightLb}
+                onChange={(e) => setWeightLb(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
+              />
+            )}
           </div>
         </div>
 
@@ -280,7 +436,7 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
+            className="btn-primary px-5 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50"
           >
             {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : 'အသုံးပြုသူသိမ်းဆည်းမည်'}
           </button>

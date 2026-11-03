@@ -522,7 +522,7 @@ export const VaccinePassportModule: React.FC = () => {
                       {vac.dateAdministered && (
                         <p className="flex items-center gap-1.5 text-emerald-800 font-semibold">
                           <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>ထိုးနှံခဲ့သည့်ရက်စွဲ: {vac.dateAdministered}</span>
+                          <span>ထိုးနှံခဲ့သည့်ရက်စွဲ: {(vac.dateAdministered || '').replace('T', ' ')}</span>
                         </p>
                       )}
 

@@ -1215,7 +1215,7 @@ export const LabTestModule: React.FC = () => {
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                        {lab.testDate}
+                        {(lab.testDate || '').replace('T', ' ')}
                       </span>
                       <button
                         onClick={(e) => {
@@ -1290,7 +1290,7 @@ export const LabTestModule: React.FC = () => {
                     <div className="text-right">
                       <span className="text-xs text-slate-400 block">စစ်ဆေးသည့်ရက်စွဲ</span>
                       <span className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        {activeRecord.testDate}
+                        {(activeRecord.testDate || '').replace('T', ' ')}
                       </span>
                     </div>
                     <div className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold">

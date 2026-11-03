@@ -33,6 +33,26 @@ import {
 } from '../types/health';
 import { calculateBPCategory, calculateGlucoseStatus, calculateBMI } from '../lib/medicalCalculations';
 
+// v2.4.12 (B): dedupe helper for post-write inserts. Firestore's local
+// listener delivers a newly written doc immediately, and the manual prepend
+// after addDoc resolves then adds a SECOND copy with the same id (the
+// server-ack snapshot does not re-fire, so the duplicate stays until
+// refresh). Every insert below skips when the id is already present — the
+// optimistic insert itself stays (the listener can lag), it just never
+// duplicates.
+const prependUnique = <T extends { id: string }>(prev: T[], item: T): T[] =>
+  prev.some(x => x.id === item.id) ? prev : [item, ...prev];
+
+// Rollback helper for failed deletes: restore ONLY the deleted item (and
+// only if the listener has not already delivered it), instead of
+// restoring a stale whole-list snapshot that would drop records the
+// listener delivered meanwhile. Returns a state updater.
+const restoreDeleted = <T extends { id: string }>(prev: T[], id: string) => (cur: T[]): T[] => {
+  const deleted = prev.find(x => x.id === id);
+  if (!deleted || cur.some(x => x.id === id)) return cur;
+  return [deleted, ...cur];
+};
+
 // Helper to resolve clean display name for users
 export const resolveCleanName = (name?: string, email?: string, phone?: string): string => {
   const trimmed = (name || '').trim();
@@ -955,8 +975,9 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // has actually succeeded. Inserting optimistically before the write
       // left a phantom user in the list when the save failed (e.g. rules
       // deny) and dropped the admin into the detail view of a user that
-      // does not exist in Firestore.
-      setPatientsList(prev => [newPatient, ...prev]);
+      // does not exist in Firestore. (v2.4.12 B: dedupe — the users
+      // listener may already have delivered this user.)
+      setPatientsList(prev => prependUnique(prev, newPatient));
       setSelectedPatientId(newId);
       showToast('အသုံးပြုသူမှတ်တမ်း အသစ်ကို အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ', 'success');
     } catch (e) {
@@ -1008,7 +1029,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'users', id));
     } catch (e) {
-      setPatientsList(prevPatients);
+      setPatientsList(restoreDeleted(prevPatients, id));
       setSelectedPatientId(prevSelected);
       console.warn('Error deleting patient from firestore users collection:', e);
       showToast('အသုံးပြုသူပရိုဖိုင် ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
@@ -1104,7 +1125,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const docRef = await addDoc(collection(db, 'vitals'), sanitizeForFirestore(newRecord));
-    setAllBP(prev => [{ ...newRecord, id: docRef.id }, ...prev]);
+    setAllBP(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
   };
 
   const deleteBPRecord = async (id: string) => {
@@ -1113,7 +1134,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'vitals', id));
     } catch (e) {
-      setAllBP(prev);
+      setAllBP(restoreDeleted(prev, id));
       console.warn('Error deleting vital from firestore:', e);
       showToast('သွေးပေါင်ချိန် မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1154,7 +1175,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const docRef = await addDoc(collection(db, 'glucose'), sanitizeForFirestore(newRecord));
-    setAllGlucose(prev => [{ ...newRecord, id: docRef.id }, ...prev]);
+    setAllGlucose(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
   };
 
   const deleteGlucoseRecord = async (id: string) => {
@@ -1163,7 +1184,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'glucose', id));
     } catch (e) {
-      setAllGlucose(prev);
+      setAllGlucose(restoreDeleted(prev, id));
       console.warn('Error deleting glucose from firestore:', e);
       showToast('ဆီးချို မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1183,7 +1204,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const docRef = await addDoc(collection(db, 'labTests'), sanitizeForFirestore(newRecord));
-    setAllLabs(prev => [{ ...newRecord, id: docRef.id }, ...prev]);
+    setAllLabs(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
   };
 
   const deleteLabRecord = async (id: string) => {
@@ -1192,7 +1213,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'labTests', id));
     } catch (e) {
-      setAllLabs(prev);
+      setAllLabs(restoreDeleted(prev, id));
       console.warn('Error deleting lab test from firestore:', e);
       showToast('ဓာတ်ခွဲခန်း မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1212,7 +1233,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const docRef = await addDoc(collection(db, 'medications'), sanitizeForFirestore(newMed));
-    setAllMeds(prev => [{ ...newMed, id: docRef.id }, ...prev]);
+    setAllMeds(prev => prependUnique(prev, { ...newMed, id: docRef.id }));
   };
 
   const updateMedicationStatus = async (id: string, status: Medication['status']) => {
@@ -1232,7 +1253,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'medications', id));
     } catch (e) {
-      setAllMeds(prev);
+      setAllMeds(restoreDeleted(prev, id));
       console.warn('Error deleting medication from firestore:', e);
       showToast('ဆေးမှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1252,7 +1273,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const docRef = await addDoc(collection(db, 'vaccines'), sanitizeForFirestore(newRecord));
-    setAllVaccines(prev => [{ ...newRecord, id: docRef.id }, ...prev]);
+    setAllVaccines(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
   };
 
   const updateVaccineRecord = async (id: string, updates: Partial<VaccinationRecord>) => {
@@ -1281,7 +1302,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'vaccines', id));
     } catch (e) {
-      setAllVaccines(prev);
+      setAllVaccines(restoreDeleted(prev, id));
       console.warn('Error deleting vaccine record from firestore:', e);
       showToast('ကာကွယ်ဆေး မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1311,7 +1332,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const docRef = await addDoc(collection(db, 'doctorAdvices'), sanitizeForFirestore(newAdvice));
-    setAllAdvices(prev => [{ ...newAdvice, id: docRef.id }, ...prev]);
+    setAllAdvices(prev => prependUnique(prev, { ...newAdvice, id: docRef.id }));
   };
 
   const deleteDoctorAdvice = async (id: string) => {
@@ -1323,7 +1344,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'doctorAdvices', id));
     } catch (e) {
-      setAllAdvices(prev);
+      setAllAdvices(restoreDeleted(prev, id));
       console.warn('Error deleting doctor advice from firestore:', e);
       showToast('ဆရာဝန် အကြံပြုချက် ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1359,7 +1380,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const docRef = await addDoc(collection(db, 'bmi'), sanitizeForFirestore(newRecord));
-    setAllBMI(prev => [{ ...newRecord, id: docRef.id }, ...prev]);
+    setAllBMI(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
   };
 
   const deleteBMIRecord = async (id: string) => {
@@ -1368,7 +1389,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'bmi', id));
     } catch (e) {
-      setAllBMI(prev);
+      setAllBMI(restoreDeleted(prev, id));
       console.warn('Error deleting BMI record from firestore:', e);
       showToast('BMI မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1390,7 +1411,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const docRef = await addDoc(collection(db, 'doctorQuestions'), sanitizeForFirestore(newQuestion));
-    setAllQuestions(prev => [{ ...newQuestion, id: docRef.id }, ...prev]);
+    setAllQuestions(prev => prependUnique(prev, { ...newQuestion, id: docRef.id }));
   };
 
   const answerDoctorQuestion = async (questionId: string, answer: DoctorAnswer) => {
@@ -1466,7 +1487,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'doctorQuestions', id));
     } catch (e) {
-      setAllQuestions(prev);
+      setAllQuestions(restoreDeleted(prev, id));
       console.warn('Error deleting doctor question from firestore:', e);
       showToast('မေးခွန်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1485,7 +1506,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const docRef = await addDoc(collection(db, 'broadcastTickers'), sanitizeForFirestore(newTicker));
-    setBroadcastTickers(prev => [{ ...newTicker, id: docRef.id }, ...prev]);
+    setBroadcastTickers(prev => prependUnique(prev, { ...newTicker, id: docRef.id }));
   };
 
   const toggleBroadcastTicker = async (id: string, isActive: boolean) => {
@@ -1509,7 +1530,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'broadcastTickers', id));
     } catch (e) {
-      setBroadcastTickers(prev);
+      setBroadcastTickers(restoreDeleted(prev, id));
       console.warn('Error deleting broadcast ticker from firestore:', e);
       showToast('သတိပေးစာတန်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1534,7 +1555,9 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const docRef = await addDoc(collection(db, 'familyMembers'), sanitizeForFirestore(newMember));
     const created = { ...newMember, id: docRef.id };
-    setFamilyMembers(prev => [...prev, created]);
+    // v2.4.12 (B): the family-members listener may already have delivered
+    // this doc — never append a second copy with the same id.
+    setFamilyMembers(prev => prev.some(f => f.id === created.id) ? prev : [...prev, created]);
     setSelectedFamilyMemberId(created.id);
   };
 
@@ -1549,7 +1572,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       await deleteDoc(doc(db, 'familyMembers', id));
     } catch (e) {
-      setFamilyMembers(prev);
+      setFamilyMembers(restoreDeleted(prev, id));
       setSelectedFamilyMemberId(prevSelected);
       console.warn('Error deleting family member from firestore:', e);
       showToast('မိသားစုဝင် မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
@@ -1603,7 +1626,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       };
       try {
         const docRef = await addDoc(collection(db, 'medicationLogs'), sanitizeForFirestore(newLog));
-        setAllMedLogs(prev => [{ ...newLog, id: docRef.id }, ...prev]);
+        setAllMedLogs(prev => prependUnique(prev, { ...newLog, id: docRef.id }));
         return true;
       } catch (err) {
         console.warn('Error adding med log:', err);

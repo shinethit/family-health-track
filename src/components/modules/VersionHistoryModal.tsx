@@ -57,12 +57,49 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.11',
+    version: 'v2.4.12',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
     isLatest: true,
+    title: '🔝 [FIX] ဆရာဝန်မှတ်တမ်း အချိန် + Google login ဖြုတ်ခြင်း + Unit တွေ',
+    badge: 'Latest Release (v2.4.12)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🕐 ဆရာဝန် မှတ်တမ်းမှာ အချိန်ပေါ်ပြီ + ၂ ခါ မပေါ်တော့ဘူး',
+        icon: ShieldCheck,
+        items: [
+          'ဆရာဝန်/Admin မှတ်တမ်းထည့်တာ ရက် + အချိန် နှစ်ခုလုံး ပါပြီ (အရင် ရက်ပဲ ပါတာ)',
+          'မှတ်တမ်းအသစ် ၂ ခါ ပေါ်တဲ့ ပြဿနာ ဖြေရှင်းပြီ — ထည့်ပြီးချင်း တခုပဲ ပေါ်မယ်',
+          'သွေးပေါင်/သွေးချို/Lab/ကာကွယ်ဆေး/BMI မှတ်တမ်းစာရင်းမှာ အချိန်ပါ ပြပေးတယ်'
+        ]
+      },
+      {
+        title: '🔑 Google login ဖြုတ်ပြီး အီးမေးလ်/Username နဲ့ ဝင်မယ်',
+        icon: Sparkles,
+        items: [
+          'Google ဖြင့် ဝင်တာ ဖြုတ်လိုက်ပြီ — VPN မလိုတော့ဘူး',
+          'အီးမေးလ် သို့မဟုတ် Username + စကားဝှက်နဲ့ ဝင်လို့ရပြီ (အကောင့်ဖွင့်တုန်း Username ရွေးရမယ်)',
+          'Google နဲ့ ဖွင့်ထားတဲ့ အကောင့်တွေက "စကားဝှက် မေ့သွားလား" နဲ့ စကားဝှက် သတ်မှတ်ပြီး အီးမေးလ်နဲ့ ဝင်နိုင်ပါတယ်'
+        ]
+      },
+      {
+        title: '⚖️ Unit တွေ + ခလုတ် အလှ',
+        icon: Database,
+        items: [
+          'အလေးချိန် kg/lb၊ အရပ် cm/m/ft-in ရွေးလို့ရပြီ (BMI တွက်တာ အမှန်အတိုင်း)',
+          'အဓိက ခလုတ်တွေ (Login၊ သိမ်းမယ်၊ မှတ်တမ်းထည့်မယ်) ကို နှိပ်ရတာ သိသာအောင် အလှဆင်ပြီးပြီ'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.4.11',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: false,
     title: '🔝 [FIX] ကျန်နေတဲ့ ပြဿနာတွေ အကုန်လုံး ပြင်ဆင်ခြင်း',
-    badge: 'Latest Release (v2.4.11)',
+    badge: 'Previous Release (v2.4.11)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {

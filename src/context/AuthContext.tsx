@@ -7,16 +7,10 @@ import {
   onAuthStateChanged,
   updatePassword as fbUpdatePassword,
   sendPasswordResetEmail,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   confirmPasswordReset,
-  verifyPasswordResetCode,
-  setPersistence,
-  browserLocalPersistence
+  verifyPasswordResetCode
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { UserProfile } from '../types/health';
 import { calculateAge, calculateBMI } from '../lib/medicalCalculations';
@@ -57,8 +51,6 @@ export const getAuthErrorMessage = (error: any): string => {
       return 'လျှို့ဝှက်နံပါတ်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်။';
     case 'auth/unauthorized-domain':
       return 'ဤဝက်ဘ်ဆိုဒ်လိပ်စာကို Firebase မှ ခွင့်မပြုထားပါ။ Firebase Console > Authentication > Settings > Authorized domains တွင် သင့် App လိပ်စာ (localhost) ကို ထည့်သွင်းပေးပါ။';
-    case 'auth/popup-closed-by-user':
-      return 'Google ဖြင့် အကောင့်ဝင်ရောက်မှုကို ပယ်ဖျက်လိုက်ပါသည်။';
     case 'auth/invalid-action-code':
     case 'auth/expired-action-code':
       // Password-reset (or other action) link that is expired or already used.
@@ -71,11 +63,32 @@ export const getAuthErrorMessage = (error: any): string => {
 // Re-throw an auth error keeping the Firebase error code attached, so
 // callers (LoginScreen) can branch on err.code for specific messages.
 // `new Error(message)` alone drops .code, which made every specific
-// login / Google / forgot-password message in LoginScreen dead code.
+// login / forgot-password message in LoginScreen dead code.
 const throwAuthError = (err: any): never => {
   const e: any = new Error(getAuthErrorMessage(err));
   if (err?.code) e.code = err.code;
   throw e;
+};
+
+// Username (v2.4.12): login accepts an email OR a username. Usernames are
+// 3–20 chars, letters / numbers / _ / ., stored lowercase, and unique —
+// the `usernames` collection maps the lowercase username to { uid, email }
+// so a signed-out user can resolve a username to its email before signing
+// in (the /users docs themselves are owner/admin-only, so they cannot be
+// used for the lookup).
+// UserProfile lives in the shared types file (another agent's slice), so
+// the optional username rides on this local alias instead.
+export type ProfileWithUsername = UserProfile & { username?: string };
+
+export const normalizeUsername = (raw: string): string => raw.trim().toLowerCase();
+
+// Returns a Burmese error message when the username is invalid, else null.
+export const validateUsername = (raw: string): string | null => {
+  const u = normalizeUsername(raw);
+  if (u.length < 3) return 'အသုံးပြုသူအမည်သည် အနည်းဆုံး ၃ လုံး ရှိရပါမည်။';
+  if (u.length > 20) return 'အသုံးပြုသူအမည်သည် အများဆုံး အက္ခရာ ၂၀ အထိသာ ရပါမည်။';
+  if (!/^[a-z0-9_.]+$/.test(u)) return 'အသုံးပြုသူအမည်တွင် အင်္ဂလိပ် စာလုံး၊ ဂဏန်း၊ _ နှင့် . သာ သုံးနိုင်ပါသည်။';
+  return null;
 };
 
 interface AuthContextType {
@@ -83,12 +96,12 @@ interface AuthContextType {
   profile: UserProfile | null;
   isAdmin: boolean;
   loading: boolean;
-  // True while a login / register / Google attempt is running. App uses it
+  // True while a login / register attempt is running. App uses it
   // to keep the login form visible during an attempt (inline spinner on
   // the button) instead of replacing the whole screen with a spinner.
   authAttempting: boolean;
-  login: (email: string, pass: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  // identifier is an email OR a username (no '@' in it).
+  login: (identifier: string, pass: string) => Promise<void>;
   register: (
     email: string, 
     pass: string, 
@@ -97,8 +110,12 @@ interface AuthContextType {
     gender?: 'male'|'female'|'other', 
     heightCm?: number, 
     weightKg?: number,
-    chronicConditions?: string[]
+    chronicConditions?: string[],
+    username?: string
   ) => Promise<void>;
+  // Set (or change) the signed-in user's username. Existing users have
+  // none yet — ProfileSetupModal wires an input to this.
+  setUsername: (username: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>, options?: { silent?: boolean }) => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
@@ -145,30 +162,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let unsubscribe = () => {};
 
     const initAuth = async () => {
-      const isRedirectPending = sessionStorage.getItem('auth_redirect_pending');
-      
-      // 1. Resolve any pending redirects FIRST before doing anything else
-      try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-          console.log('Redirect login successful:', result.user.email);
-        }
-      } catch (error: any) {
-        // Surface redirect errors to the user — previously only
-        // auth/unauthorized-domain got a toast and everything else was
-        // console.error only, so a failed redirect looked like nothing
-        // happened at all.
-        console.error('Redirect login error:', error);
-        showToast(getAuthErrorMessage(error), 'error');
-      } finally {
-        if (isRedirectPending) {
-          sessionStorage.removeItem('auth_redirect_pending');
-        }
-      }
-
-      if (!isMounted) return;
-
-      // 2. After redirect handling is completely done, setup the auth listener
+      // Google sign-in was removed in v2.4.12 (it needed a VPN and kept
+      // failing) — there is no redirect flow left to resolve here.
+      // Set up the auth listener directly.
       unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
         if (!isMounted) return;
         
@@ -188,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (!isMounted) return;
             
             if (userSnap.exists()) {
-              const data = userSnap.data() as UserProfile;
+              const data = userSnap.data() as ProfileWithUsername;
               const finalProfile: UserProfile = {
                 ...data,
                 id: fbUser.uid,
@@ -242,84 +238,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isMounted = false;
       unsubscribe();
     };
-  }, []); const loginWithGoogle = async () => {
+  }, []);
+
+  // identifier is an email OR a username. A username (no '@') is resolved
+  // to its email through the public `usernames` collection first — the
+  // /users docs are owner/admin-only, so they cannot be read signed-out.
+  const login = async (identifier: string, pass: string) => {
     setLoading(true);
     setAuthAttempting(true);
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-
-    // Safety net: if the popup succeeds but auth state never arrives
-    // (e.g. the Firestore profile fetch hangs), stop spinning after 10s
-    // so the user is not stuck on the full-screen spinner forever.
-    // onAuthStateChanged also clears loading on the normal path.
-    const safetyTimer = setTimeout(() => {
-      setLoading(false);
-      setAuthAttempting(false);
-    }, 10000);
+    const clean = identifier.trim();
 
     try {
-      const popupFlow = (async () => {
-        await setPersistence(auth, browserLocalPersistence);
-        await signInWithPopup(auth, provider);
-      })();
-      // Race the popup against a 30s timeout: a hung popup (e.g. a VPN
-      // blocking accounts.google.com) must not leave the app on the
-      // full-screen spinner with no way to retry.
-      const popupTimeout = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          const e: any = new Error('Google ဖြင့် ဝင်ရောက်ခြင်း ကြာမြင့်နေပါသည်။ VPN/အင်တာနက် စစ်ပြီး ပြန်ကြိုးစားပါ။');
-          e.code = 'auth/timeout';
-          reject(e);
-        }, 30000);
-      });
-      await Promise.race([popupFlow, popupTimeout]);
-      // Popup resolved: sign-in succeeded. Loading is cleared by
-      // onAuthStateChanged once the profile is ready (or by the
-      // safety timer above if that never arrives).
-    } catch (err: any) {
-      clearTimeout(safetyTimer);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setLoading(false);
-        setAuthAttempting(false);
-      }
-      console.error('Google Popup Sign-in failed:', err);
-      
-      if (
-        err.code === 'auth/popup-blocked' || 
-        err.code === 'auth/operation-not-supported-in-this-environment' ||
-        err.code === 'auth/cancelled-popup-request'
-      ) {
-        try {
-          // Tell the user BEFORE navigating away: the popup was blocked,
-          // so the page will continue with Google sign-in via redirect.
-          // Previously this fallback happened silently and the whole page
-          // just vanished with no explanation.
-          showToast('Browser က Google ပြတင်းပေါက်ကို ပိတ်ထားပါသည်။ Google ဖြင့် ဆက်လက် ဝင်ရောက်ရန် စာမျက်နှာ ပြောင်းနေပါသည် — ခဏစောင့်ပါ။', 'info');
-          sessionStorage.setItem('auth_redirect_pending', 'true');
-          await signInWithRedirect(auth, provider);
-          return; 
-        } catch (redirectErr: any) {
-          console.error('Google Redirect Sign-in failed:', redirectErr);
-          sessionStorage.removeItem('auth_redirect_pending');
-          setLoading(false);
-          setAuthAttempting(false);
-          throwAuthError(redirectErr);
+      let cleanEmail = clean;
+      if (!clean.includes('@')) {
+        const nameDoc = await getDoc(doc(db, 'usernames', normalizeUsername(clean)));
+        const resolvedEmail = (nameDoc.exists() ? (nameDoc.data() as { email?: string }).email : '') || '';
+        if (!resolvedEmail) {
+          // Deliberately vague about whether the name exists — and never
+          // reveal whether an email is registered.
+          throw new Error('အသုံးပြုသူအမည် မတွေ့ပါ — အီးမေးလ်ဖြင့် ဝင်ကြည့်ပါ');
         }
+        cleanEmail = resolvedEmail;
       }
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setLoading(false);
-        setAuthAttempting(false);
-      }
-      throwAuthError(err);
-    }
-  };
 
-  const login = async (email: string, pass: string) => {
-    setLoading(true);
-    setAuthAttempting(true);
-    const cleanEmail = email.trim();
-
-    try {
       // Authenticate strictly with Firebase Auth
       const res = await signInWithEmailAndPassword(auth, cleanEmail, pass);
       if (res && res.user) {
@@ -332,7 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const snap = await getDoc(doc(db, 'users', res.user.uid));
           if (snap.exists()) {
-            const loaded = snap.data() as UserProfile;
+            const loaded = snap.data() as ProfileWithUsername;
             activeProf = {
               ...loaded,
               id: res.user.uid,
@@ -381,11 +322,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     gender?: 'male'|'female'|'other', 
     heightCm?: number, 
     weightKg?: number,
-    chronicConditions?: string[]
+    chronicConditions?: string[],
+    username?: string
   ) => {
     setLoading(true);
     setAuthAttempting(true);
     const cleanEmail = email.trim();
+
+    // Validate the username and check availability BEFORE creating the
+    // auth account, so a taken username never leaves a half-created
+    // account behind. (The `usernames` docs are public-read, so this
+    // check works while signed out.)
+    const cleanUsername = username ? normalizeUsername(username) : '';
+    if (username) {
+      const usernameError = validateUsername(username);
+      if (!cleanUsername || usernameError) {
+        setLoading(false);
+        setAuthAttempting(false);
+        throw new Error(usernameError || 'အသုံးပြုသူအမည် မမှန်ကန်ပါ။');
+      }
+      let taken = false;
+      try {
+        const existing = await getDoc(doc(db, 'usernames', cleanUsername));
+        taken = existing.exists();
+      } catch {
+        setLoading(false);
+        setAuthAttempting(false);
+        throw new Error('အင်တာနက်ချိတ်ဆက်မှု မရှိပါ သို့မဟုတ် ကွန်ရက်ချို့ယွင်းနေပါသည်။');
+      }
+      if (taken) {
+        setLoading(false);
+        setAuthAttempting(false);
+        throw new Error('ဤအသုံးပြုသူအမည် သုံးပြီးသား ဖြစ်နေပါသည်။ တခြား အမည် ရွေးပါ။');
+      }
+    }
 
     try {
       // Create user strictly via Firebase Auth
@@ -398,12 +368,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const isUserAdmin = await verifyIsAdmin(res.user.uid);
       setIsAdmin(isUserAdmin);
 
+      // Reserve the username atomically (a second registration racing
+      // the pre-check above must not steal it). If this fails the auth
+      // account already exists — the user can still log in with their
+      // email and pick another username in their profile afterwards.
+      if (cleanUsername) {
+        try {
+          await runTransaction(db, async (tx) => {
+            const ref = doc(db, 'usernames', cleanUsername);
+            const snap = await tx.get(ref);
+            if (snap.exists()) {
+              throw new Error('USERNAME_TAKEN');
+            }
+            tx.set(ref, { uid: res.user.uid, email: cleanEmail });
+          });
+        } catch (txErr: any) {
+          if (txErr?.message === 'USERNAME_TAKEN') {
+            throw new Error('ဤအသုံးပြုသူအမည် သုံးပြီးသား ဖြစ်နေပါသည်။ အကောင့်ကို အီးမေးလ်ဖြင့် ဖွင့်ပြီးပါပြီ — အကောင့်ဝင်ပြီး ပရိုဖိုင်တွင် တခြား အမည် သတ်မှတ်ပါ။');
+          }
+          throw txErr;
+        }
+      }
+
       const calculatedAge = dob ? calculateAge(dob)?.years : undefined;
       const numH = heightCm ? Number(heightCm) : undefined;
       const numW = weightKg ? Number(weightKg) : undefined;
       const calculatedBMI = (numH && numW) ? calculateBMI(numW, numH)?.bmi : undefined;
 
-      const newProf: UserProfile = {
+      const newProf: ProfileWithUsername = {
         id: res.user.uid,
         email: cleanEmail,
         displayName: name.trim() || 'အသုံးပြုသူ',
@@ -415,6 +407,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         weightKg: numW,
         bmi: calculatedBMI,
         chronicConditions: chronicConditions || [],
+        username: cleanUsername || undefined,
         createdAt: new Date().toISOString(),
       };
       
@@ -430,6 +423,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
       setAuthAttempting(false);
     }
+  };
+
+  // Set (or change) the signed-in user's username — for existing users,
+  // who signed up before usernames existed. Same validation and
+  // uniqueness rules as register(). The old name (if any) is freed only
+  // after the new one is reserved, inside one transaction.
+  const setUsername = async (username: string): Promise<void> => {
+    if (!currentUser || !profile) {
+      throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
+    }
+    const usernameError = validateUsername(username);
+    const clean = normalizeUsername(username);
+    if (!clean || usernameError) {
+      throw new Error(usernameError || 'အသုံးပြုသူအမည် မမှန်ကန်ပါ။');
+    }
+    const oldUsername = (profile as ProfileWithUsername).username;
+    if (oldUsername === clean) return;
+
+    await runTransaction(db, async (tx) => {
+      const ref = doc(db, 'usernames', clean);
+      const snap = await tx.get(ref);
+      if (snap.exists() && (snap.data() as { uid?: string }).uid !== currentUser.uid) {
+        throw new Error('ဤအသုံးပြုသူအမည် သုံးပြီးသား ဖြစ်နေပါသည်။ တခြား အမည် ရွေးပါ။');
+      }
+      tx.set(ref, { uid: currentUser.uid, email: currentUser.email || profile.email });
+      if (oldUsername) {
+        tx.delete(doc(db, 'usernames', oldUsername));
+      }
+    });
+
+    // Reservation succeeded — now claim the name on the profile. The
+    // usernames doc is written first, so a failure here never leaves the
+    // profile claiming a name it does not own.
+    await updateProfile({ username: clean } as Partial<UserProfile>);
   };
 
   const logout = async () => {
@@ -585,8 +612,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading,
       authAttempting,
       login,
-      loginWithGoogle,
       register,
+      setUsername,
       logout,
       updateProfile,
       changePassword,

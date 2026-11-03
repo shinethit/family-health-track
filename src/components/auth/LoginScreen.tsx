@@ -19,13 +19,14 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, validateUsername } from '../../context/AuthContext';
 
 export const LoginScreen: React.FC = () => {
-  const { login, register, loginWithGoogle, resetPassword, verifyResetCode, confirmResetPassword } = useAuth();
+  const { login, register, resetPassword, verifyResetCode, confirmResetPassword } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
@@ -114,17 +115,21 @@ export const LoginScreen: React.FC = () => {
     try {
       if (mode === 'login') {
         if (!email.trim() || !password) {
-          throw new Error('ကျေးဇူးပြု၍ အီးမေးလ်နှင့် လျှို့ဝှက်နံပါတ် ဖြည့်သွင်းပါ');
+          throw new Error('ကျေးဇူးပြု၍ အီးမေးလ်/အသုံးပြုသူအမည်နှင့် လျှို့ဝှက်နံပါတ် ဖြည့်သွင်းပါ');
         }
         await login(email, password);
       } else {
         if (!name.trim() || !email.trim() || !password) {
           throw new Error('ကျေးဇူးပြု၍ အမည်၊ အီးမေးလ်နှင့် လျှို့ဝှက်နံပါတ် ဖြည့်သွင်းပါ');
         }
+        const usernameError = validateUsername(username);
+        if (usernameError) {
+          throw new Error(usernameError);
+        }
         if (password.length < 6) {
           throw new Error('စကားဝှက်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်');
         }
-        await register(email, password, name);
+        await register(email, password, name, undefined, undefined, undefined, undefined, undefined, username);
       }
     } catch (err: any) {
       console.error(err);
@@ -133,7 +138,7 @@ export const LoginScreen: React.FC = () => {
         err.code === 'auth/wrong-password' || 
         err.code === 'auth/invalid-credential'
       ) {
-        setError('အီးမေးလ် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။ စကားဝှက် မှန်ကန်စွာ ရိုက်ထည့်ပါ (အကောင့်မရှိသေးပါက "အကောင့်သစ်ဖွင့်ရန်" တွင် ဖွင့်နိုင်ပါသည်)');
+        setError('အီးမေးလ်/အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။ စကားဝှက် မှန်ကန်စွာ ရိုက်ထည့်ပါ (အကောင့်မရှိသေးပါက "အကောင့်သစ်ဖွင့်ရန်" တွင် ဖွင့်နိုင်ပါသည်)');
       } else if (err.code === 'auth/email-already-in-use') {
         setError('ဤအီးမေးလ်ဖြင့် အကောင့်ဖွင့်ပြီးသား ဖြစ်နေပါသည်။ ကျေးဇူးပြု၍ "အကောင့်ဝင်ရန် (Log In)" Tab သို့ သွားပြီး Login ဝင်ပါ');
       } else if (err.code === 'auth/weak-password') {
@@ -395,20 +400,39 @@ export const LoginScreen: React.FC = () => {
                       />
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-xs font-bold text-white mb-1.5">
+                      အသုံးပြုသူအမည် (Username) *
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                      <input
+                        type="text"
+                        required
+                        autoComplete="username"
+                        placeholder="ဥပမာ- aungkyaw123"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">အင်္ဂလိပ် စာလုံး၊ ဂဏန်း၊ _ နှင့် . သာ — အနည်းဆုံး ၃ လုံး။ အကောင့်ဝင်ရာတွင် အီးမေးလ်အစား သုံးနိုင်ပါသည်။</p>
+                  </div>
                 </>
               )}
 
-              {/* Email Field */}
+              {/* Email / Username Field */}
               <div>
                 <label className="block text-xs font-bold text-white mb-1.5">
-                  အီးမေးလ် (Email) *
+                  {mode === 'login' ? 'အီးမေးလ် သို့မဟုတ် အသုံးပြုသူအမည် *' : 'အီးမေးလ် (Email) *'}
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
-                    type="email"
+                    type={mode === 'login' ? 'text' : 'email'}
                     required
-                    placeholder="name@example.com"
+                    autoComplete={mode === 'login' ? 'username' : 'email'}
+                    placeholder={mode === 'login' ? 'name@example.com သို့မဟုတ် aungkyaw123' : 'name@example.com'}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
@@ -483,55 +507,29 @@ export const LoginScreen: React.FC = () => {
                 )}
               </button>
 
-              <div className="relative my-3">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-800" />
+              {/* Google sign-in was removed in v2.4.12 (it needed a VPN and kept
+                  failing). Anyone who previously signed in with Google should
+                  set a password via "forgot password" and then log in with
+                  their email. */}
+              {mode === 'login' && (
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
+                  Google ဖြင့် ဝင်ရောက်ခြင်း ဖယ်ရှားလိုက်ပါပြီ။ အရင် Google ဖြင့် ဝင်ခဲ့သူများ
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPassword(true);
+                      setForgotEmail(email.includes('@') ? email : '');
+                      setForgotSuccess(false);
+                      setForgotError(null);
+                      setResendNote(false);
+                    }}
+                    className="font-semibold text-emerald-400 hover:underline cursor-pointer"
+                  >
+                    {' '}စကားဝှက်မေ့နေပါသလား?{' '}
+                  </button>
+                  ကို နှိပ်ပြီး စကားဝှက် အသစ် သတ်မှတ်ပြီးမှ အီးမေးလ်ဖြင့် ဝင်ပါ။
                 </div>
-                <div className="relative flex justify-center text-[11px]">
-                  <span className="bg-slate-900 px-2 text-slate-500 font-semibold">သို့မဟုတ်</span>
-                </div>
-              </div>
-
-              {/* Google Sign-In Button */}
-              <button
-                type="button"
-                onClick={async () => {
-                  setError(null);
-                  try {
-                    await loginWithGoogle();
-                  } catch (e: any) {
-                    console.error('Google Sign-in error:', e);
-                    // Never show the raw Firebase error text (English) to the user.
-                    if (e.code === 'auth/popup-closed-by-user') {
-                      setError('Google ပြတင်းပေါက်ကို ပိတ်လိုက်သဖြင့် ဝင်ရောက်မှု ရပ်တန့်သွားပါသည်။ ပြန်ကြိုးစားပါ။');
-                    } else if (e.code === 'auth/popup-blocked') {
-                      // The popup was blocked, so AuthContext falls back to a
-                      // full-page redirect — the page is already navigating
-                      // away at this point, so this text only shows if the
-                      // redirect itself could not start.
-                      setError('Browser က Google ပြတင်းပေါက်ကို ပိတ်ထားပါသည်။ Google ဖြင့် ဆက်လက် ဝင်ရောက်ရန် စာမျက်နှာ ပြောင်းနေပါသည် — ခဏစောင့်ပါ။');
-                    } else if (e.code === 'auth/timeout') {
-                      setError(e.message || 'Google ဖြင့် ဝင်ရောက်ခြင်း ကြာမြင့်နေပါသည်။ VPN/အင်တာနက် စစ်ပြီး ပြန်ကြိုးစားပါ။');
-                    } else if (e.code === 'auth/network-request-failed') {
-                      setError('အင်တာနက် ချိတ်ဆက်မှု မရပါ။ VPN/အင်တာနက် စစ်ပြီး ပြန်ကြိုးစားပါ။');
-                    } else if (e.code === 'auth/account-exists-with-different-credential') {
-                      setError('ဤအီးမေးလ်ဖြင့် အခြားနည်းလမ်းဖြင့် အကောင့်ဖွင့်ပြီးသား ဖြစ်နေပါသည်။ အီးမေးလ် + စကားဝှက်ဖြင့် ဝင်ကြည့်ပါ။');
-                    } else {
-                      setError('Google ဖြင့် အကောင့်ဝင်ခြင်း မအောင်မြင်ပါ။ ပြန်လည်ကြိုးစားပါ။');
-                    }
-                  }
-                }}
-                disabled={loading}
-                className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-                <span>Google အကောင့်ဖြင့် တိုက်ရိုက်ဝင်မည်</span>
-              </button>
+              )}
             </form>
 
             <div className="mt-5 pt-4 border-t border-slate-800 text-center text-[11px] text-slate-400">

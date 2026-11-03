@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Scale, 
   Ruler, 
@@ -94,15 +94,36 @@ export const BMIModule: React.FC = () => {
   const displayBMI = showAllHistory ? [...searchedBMI].reverse() : [...searchedBMI].slice(-20).reverse();
 
   // Form states
-  const [heightUnit, setHeightUnit] = useState<'cm' | 'ft'>('cm');
-  const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>('kg');
+  // Saved unit preference (v2.4.12) — read through a narrow cast; the
+  // UserProfile type gains heightUnit/weightUnit in the same batch. 'm'
+  // has no switch in this module, so it displays as cm (same metric family).
+  const profileUnitPrefs = (profile ?? {}) as { heightUnit?: 'cm' | 'm' | 'ft'; weightUnit?: 'kg' | 'lb' };
+  const prefHeightUnit: 'cm' | 'ft' = profileUnitPrefs.heightUnit === 'ft' ? 'ft' : 'cm';
+  const prefWeightUnit: 'kg' | 'lb' = profileUnitPrefs.weightUnit === 'lb' ? 'lb' : 'kg';
+  const [heightUnit, setHeightUnit] = useState<'cm' | 'ft'>(prefHeightUnit);
+  const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>(prefWeightUnit);
 
-  const [heightCmInput, setHeightCmInput] = useState<string>(() => profile?.heightCm ? String(profile.heightCm) : '');
-  const [heightFeetInput, setHeightFeetInput] = useState<string>('');
-  const [heightInchesInput, setHeightInchesInput] = useState<string>('');
+  const [heightCmInput, setHeightCmInput] = useState<string>(() => {
+    if (!profile?.heightCm || profileUnitPrefs.heightUnit === 'ft') return '';
+    return String(profile.heightCm);
+  });
+  const [heightFeetInput, setHeightFeetInput] = useState<string>(() => {
+    if (!profile?.heightCm || profileUnitPrefs.heightUnit !== 'ft') return '';
+    return String(cmToFtIn(profile.heightCm).feet);
+  });
+  const [heightInchesInput, setHeightInchesInput] = useState<string>(() => {
+    if (!profile?.heightCm || profileUnitPrefs.heightUnit !== 'ft') return '';
+    return String(cmToFtIn(profile.heightCm).inches);
+  });
 
-  const [weightKgInput, setWeightKgInput] = useState<string>(() => profile?.weightKg ? String(profile.weightKg) : '');
-  const [weightLbInput, setWeightLbInput] = useState<string>('');
+  const [weightKgInput, setWeightKgInput] = useState<string>(() => {
+    if (!profile?.weightKg || profileUnitPrefs.weightUnit === 'lb') return '';
+    return String(profile.weightKg);
+  });
+  const [weightLbInput, setWeightLbInput] = useState<string>(() => {
+    if (!profile?.weightKg || profileUnitPrefs.weightUnit !== 'lb') return '';
+    return String(kgToLb(profile.weightKg));
+  });
 
   const [waistInput, setWaistInput] = useState<string>(() => profile?.waistCm ? String(profile.waistCm) : '');
   // Local (Asia/Rangoon) date — new Date().toISOString() is UTC, so a record
@@ -141,8 +162,13 @@ export const BMIModule: React.FC = () => {
 
   // Switching units must NOT discard what the user already typed (v2.4.11
   // F10): convert the current value into the other unit's fields instead.
+  // The refs remember a manual switch so the preference effect below never
+  // overrides a unit the user already picked in this form.
+  const userPickedHeightUnit = useRef(false);
+  const userPickedWeightUnit = useRef(false);
   const switchHeightUnit = (unit: 'cm' | 'ft') => {
     if (unit === heightUnit) return;
+    userPickedHeightUnit.current = true;
     if (unit === 'ft') {
       const cm = Number(heightCmInput);
       if (cm > 0) {
@@ -159,6 +185,7 @@ export const BMIModule: React.FC = () => {
 
   const switchWeightUnit = (unit: 'kg' | 'lb') => {
     if (unit === weightUnit) return;
+    userPickedWeightUnit.current = true;
     if (unit === 'lb') {
       const kg = Number(weightKgInput);
       if (kg > 0) setWeightLbInput(String(Math.round(kgToLb(kg) * 10) / 10));
@@ -168,6 +195,39 @@ export const BMIModule: React.FC = () => {
     }
     setWeightUnit(unit);
   };
+
+  // Adopt the profile's saved unit preference once it loads (v2.4.12).
+  // The useState initializers above run before the profile finishes
+  // loading, so without this the switches would stay cm/kg even for a
+  // user who saved ft/lb. Runs once; prefill only touches empty fields
+  // so a value the user already typed is never overwritten.
+  const prefApplied = useRef(false);
+  useEffect(() => {
+    if (prefApplied.current || !profile) return;
+    prefApplied.current = true;
+    if (!userPickedHeightUnit.current && prefHeightUnit !== heightUnit) {
+      switchHeightUnit(prefHeightUnit);
+    }
+    if (!userPickedWeightUnit.current && prefWeightUnit !== weightUnit) {
+      switchWeightUnit(prefWeightUnit);
+    }
+    const heightTouched = heightCmInput !== '' || heightFeetInput !== '' || heightInchesInput !== '';
+    const weightTouched = weightKgInput !== '' || weightLbInput !== '';
+    if (profile.heightCm && !heightTouched) {
+      if (prefHeightUnit === 'ft') {
+        const ft = cmToFtIn(profile.heightCm);
+        setHeightFeetInput(String(ft.feet));
+        setHeightInchesInput(String(ft.inches));
+      } else {
+        setHeightCmInput(String(profile.heightCm));
+      }
+    }
+    if (profile.weightKg && !weightTouched) {
+      if (prefWeightUnit === 'lb') setWeightLbInput(String(kgToLb(profile.weightKg)));
+      else setWeightKgInput(String(profile.weightKg));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile]);
 
   // Handle Save BMI Record
   const handleSubmitRecord = async (e: React.FormEvent) => {
@@ -282,7 +342,7 @@ export const BMIModule: React.FC = () => {
 
           <button
             onClick={() => setIsOpenAdd(true)}
-            className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98"
+            className="btn-teal px-4 py-2.5 rounded-xl text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             BMI မှတ်တမ်းအသစ် ထည့်မည်
@@ -684,7 +744,7 @@ export const BMIModule: React.FC = () => {
               </p>
               <button
                 onClick={() => setIsOpenAdd(true)}
-                className="mt-4 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                className="btn-teal mt-4 px-4 py-2.5 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 ပထမဆုံး BMI မှတ်တမ်း ထည့်သွင်းမည်
               </button>
@@ -711,7 +771,7 @@ export const BMIModule: React.FC = () => {
                     return (
                       <tr key={r.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="py-3.5 px-4 font-medium text-slate-900 dark:text-white">
-                          {r.date}
+                          {(r.date || '').replace('T', ' ')}
                         </td>
                         <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300">
                           {r.heightCm} cm
@@ -1006,7 +1066,7 @@ export const BMIModule: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
+                  className="btn-teal px-5 py-2.5 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : 'မှတ်တမ်းသိမ်းမည်'}
                 </button>
@@ -1115,7 +1175,7 @@ export const BMIModule: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+                  className="btn-teal px-5 py-2.5 rounded-xl text-white text-xs font-bold cursor-pointer"
                 >
                   အချက်အလက် အတည်ပြုမည်
                 </button>
