@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Pill, Plus, Trash2, Clock, Sparkles, X, Check } from 'lucide-react';
+import { Pill, Plus, Trash2, Clock, Sparkles, X, Check, Pencil } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -44,11 +44,12 @@ export const MedicationsModule: React.FC = () => {
     medications, 
     medicationLogs,
     toggleMedicationDoseTaken,
-    addMedication, 
-    updateMedicationStatus, 
-    deleteMedication, 
-    selectedPatient, 
-    selectedFamilyMember 
+    addMedication,
+    updateMedication,
+    updateMedicationStatus,
+    deleteMedication,
+    selectedPatient,
+    selectedFamilyMember
   } = useHealthData();
   // dataLoading is added by the context work in the same v2.4.8 batch; fall
   // back to false if it is not present yet so this module still renders.
@@ -98,6 +99,86 @@ export const MedicationsModule: React.FC = () => {
   const [prescribingDoctor, setPrescribingDoctor] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // v2.4.13 edit: id of the medication being edited, null in add mode.
+  // The same modal/form is reused, prefilled from the record.
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Split the duration merged into notes back into duration + notes (the
+  // add path writes `သောက်ရမည့်ရက်: X ရက် | notes` into one notes field).
+  const parseDurationNotes = (notesValue: string | undefined): { durationDays: string; notes: string } => {
+    const m = (notesValue || '').match(/^သောက်ရမည့်ရက်: (.+?) ရက်(?: \| (.*))?$/s);
+    if (!m) return { durationDays: '', notes: notesValue || '' };
+    return { durationDays: m[1], notes: m[2] || '' };
+  };
+
+  // Fresh add-mode defaults (used when leaving edit mode so the next Add
+  // never shows the edited medication's values).
+  const resetMedForm = () => {
+    setTradeName('');
+    setChemicalNames([]);
+    setChemicalNamesInput('');
+    setDosage('');
+    setDurationDays('');
+    setPrescribedFor('');
+    setStartDate(localDateStr(new Date()));
+    setPrescribingDoctor('');
+    setTiming('after_meal');
+    setNotes('');
+    setDoseTime('');
+    setEndDate('');
+    setSelectedFreqOption('မနက် (၁) ကြိမ်');
+    setCustomFrequency('');
+    setFrequency('မနက် (၁) ကြိမ်');
+  };
+
+  // Open the form prefilled with an existing medication for editing.
+  const startEdit = (med: typeof medications[number]) => {
+    setEditingId(med.id);
+    setTradeName(med.name);
+    setChemicalNames(med.genericName ? med.genericName.split(', ').filter(Boolean) : []);
+    setChemicalNamesInput('');
+    setDosage(med.dosage || '');
+    if (FREQUENCY_OPTIONS.includes(med.frequency)) {
+      setSelectedFreqOption(med.frequency);
+      setCustomFrequency('');
+    } else {
+      setSelectedFreqOption('custom');
+      setCustomFrequency(med.frequency || '');
+    }
+    setFrequency(med.frequency || 'မနက် (၁) ကြိမ်');
+    setTiming(med.timing || 'after_meal');
+    const parsed = parseDurationNotes(med.notes);
+    setDurationDays(parsed.durationDays);
+    setNotes(parsed.notes);
+    setPrescribedFor(med.prescribedFor || '');
+    // The form has no start-date input: keep the original start date in
+    // state so the update sends it back unchanged.
+    setStartDate(med.startDate || localDateStr(new Date()));
+    setDoseTime(med.doseTime || '');
+    setEndDate(med.endDate || '');
+    setPrescribingDoctor(med.prescribingDoctor || '');
+    setIsOpenAdd(true);
+  };
+
+  // Close the form. In edit mode the prefilled values are cleared back to
+  // fresh add defaults so a later Add never inherits them.
+  const closeForm = () => {
+    if (editingId) {
+      resetMedForm();
+      setEditingId(null);
+    }
+    setIsOpenAdd(false);
+  };
+
+  // Open the form in add mode (defensive: never carry an edit id in).
+  const openAdd = () => {
+    if (editingId) {
+      resetMedForm();
+      setEditingId(null);
+    }
+    setIsOpenAdd(true);
+  };
 
   // Toggle one dose slot for today (v2.4.11 6.4): a twice-daily med has two
   // checkboxes (one per doseIndex), so it can reach 100%, not just 50%.
@@ -211,6 +292,28 @@ export const MedicationsModule: React.FC = () => {
       : (notesText || undefined);
 
     try {
+      if (editingId) {
+        // v2.4.13 edit: same fields as add, but NO status (a paused or
+        // completed medication must not reset to 'active') and no userId.
+        await updateMedication(editingId, {
+          name: tradeName,
+          genericName: finalChems.length > 0 ? finalChems.join(', ') : undefined,
+          dosage,
+          frequency: effectiveFrequency,
+          timing,
+          prescribedFor,
+          startDate,
+          doseTime: doseTime || undefined,
+          endDate: endDate || undefined,
+          prescribingDoctor,
+          notes: combinedNotes,
+        });
+        setIsOpenAdd(false);
+        setEditingId(null);
+        resetMedForm();
+        showToast('ဆေးမှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ', 'success');
+        return;
+      }
       await addMedication({
         userId: selectedPatient ? selectedPatient.id : (selectedFamilyMember ? selectedFamilyMember.id : profile.id),
         name: tradeName,
@@ -248,9 +351,12 @@ export const MedicationsModule: React.FC = () => {
       showToast('ဆေးမှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
     } catch (err) {
       // Save failed: keep the form open with all values intact so the user
-      // can retry (v2.4.11 F3 — saves used to fail silently).
+      // can retry (v2.4.11 F3 — saves used to fail silently). In edit mode
+      // the context already shows its own failure toast, so no second one.
       console.warn('Error saving medication:', err);
-      showToast('ဆေးမှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+      if (!editingId) {
+        showToast('ဆေးမှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -284,7 +390,7 @@ export const MedicationsModule: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setIsOpenAdd(true)}
+          onClick={openAdd}
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-medium shadow-sm transition-all cursor-pointer active:scale-98"
         >
           <Plus className="w-4 h-4" />
@@ -454,6 +560,13 @@ export const MedicationsModule: React.FC = () => {
 
                   <div className="flex items-center gap-1">
                     <button
+                      onClick={() => startEdit(med)}
+                      className="text-slate-400 hover:text-sky-600 p-2 rounded-md cursor-pointer"
+                      title="ပြင်ဆင်မည်"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => updateMedicationStatus(med.id, med.status === 'active' ? 'paused' : 'active')}
                       className={`px-2 py-0.5 rounded text-[10px] font-medium border cursor-pointer ${
                         med.status === 'active'
@@ -562,10 +675,10 @@ export const MedicationsModule: React.FC = () => {
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Pill className="w-5 h-5 text-sky-500" />
-                ဆေးအသစ် ထည့်သွင်းခြင်း
+                {editingId ? 'ဆေး မှတ်တမ်း ပြင်ဆင်မည်' : 'ဆေးအသစ် ထည့်သွင်းခြင်း'}
               </h3>
               <button
-                onClick={() => setIsOpenAdd(false)}
+                onClick={closeForm}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none"
               >
                 ✕
@@ -827,7 +940,7 @@ export const MedicationsModule: React.FC = () => {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsOpenAdd(false)}
+                  onClick={closeForm}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   မလုပ်တော့ပါ
@@ -837,7 +950,7 @@ export const MedicationsModule: React.FC = () => {
                   disabled={isSubmitting}
                   className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : 'ဆေးမှတ်တမ်းသိမ်းမည်'}
+                  {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : editingId ? 'ပြင်ဆင်မှုကို သိမ်းဆည်းမည်' : 'ဆေးမှတ်တမ်းသိမ်းမည်'}
                 </button>
               </div>
             </form>

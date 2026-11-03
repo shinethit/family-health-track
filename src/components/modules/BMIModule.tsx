@@ -16,7 +16,8 @@ import {
   HeartPulse,
   UserCheck,
   BarChart2,
-  Table
+  Table,
+  Pencil
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
@@ -41,13 +42,16 @@ const localDateStr = (d: Date): string =>
 
 export const BMIModule: React.FC = () => {
   const { profile, updateProfile } = useAuth();
-  const { bmiRecords, addBMIRecord, deleteBMIRecord, selectedPatient, selectedFamilyMember } = useHealthData();
+  const { bmiRecords, addBMIRecord, updateBMIRecord, deleteBMIRecord, selectedPatient, selectedFamilyMember } = useHealthData();
   // dataLoading is added by the context work in the same v2.4.8 batch; fall
   // back to false if it is not present yet so this module still renders.
   const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
   const { showToast } = useToast();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
+  // v2.4.13 edit: id of the record being edited, null in add mode. The
+  // same modal/form is reused, prefilled from the record.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isOpenEditProfile, setIsOpenEditProfile] = useState(false);
 
   // View state: 'both' | 'graph' | 'table'
@@ -229,6 +233,81 @@ export const BMIModule: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
+  // v2.4.13 edit helpers — restore the form to fresh add-mode defaults
+  // (the profile's values, in the current units) so a later Add never
+  // shows the edited record's values.
+  const resetBMIForm = () => {
+    if (profile?.heightCm) {
+      if (heightUnit === 'ft') {
+        const ft = cmToFtIn(profile.heightCm);
+        setHeightFeetInput(String(ft.feet));
+        setHeightInchesInput(String(ft.inches));
+      } else {
+        setHeightCmInput(String(profile.heightCm));
+      }
+    } else {
+      setHeightCmInput('');
+      setHeightFeetInput('');
+      setHeightInchesInput('');
+    }
+    if (profile?.weightKg) {
+      if (weightUnit === 'lb') setWeightLbInput(String(kgToLb(profile.weightKg)));
+      else setWeightKgInput(String(profile.weightKg));
+    } else {
+      setWeightKgInput('');
+      setWeightLbInput('');
+    }
+    setWaistInput(profile?.waistCm ? String(profile.waistCm) : '');
+    setRecordDate(localDateStr(new Date()));
+    setNotes('');
+  };
+
+  // Open the form prefilled with an existing record for editing (height /
+  // weight shown in the units currently selected in this form).
+  const startEdit = (r: typeof bmiRecords[number]) => {
+    setEditingId(r.id);
+    if (heightUnit === 'ft') {
+      const ft = cmToFtIn(r.heightCm);
+      setHeightFeetInput(String(ft.feet));
+      setHeightInchesInput(String(ft.inches));
+      setHeightCmInput('');
+    } else {
+      setHeightCmInput(String(r.heightCm));
+      setHeightFeetInput('');
+      setHeightInchesInput('');
+    }
+    if (weightUnit === 'lb') {
+      setWeightLbInput(String(kgToLb(r.weightKg)));
+      setWeightKgInput('');
+    } else {
+      setWeightKgInput(String(r.weightKg));
+      setWeightLbInput('');
+    }
+    setWaistInput(r.waistCm ? String(r.waistCm) : '');
+    setRecordDate((r.date || '').slice(0, 10) || localDateStr(new Date()));
+    setNotes(r.notes || '');
+    setIsOpenAdd(true);
+  };
+
+  // Close the form. In edit mode the prefilled values are cleared back to
+  // fresh add defaults so a later Add never inherits them.
+  const closeForm = () => {
+    if (editingId) {
+      resetBMIForm();
+      setEditingId(null);
+    }
+    setIsOpenAdd(false);
+  };
+
+  // Open the form in add mode (defensive: never carry an edit id in).
+  const openAdd = () => {
+    if (editingId) {
+      resetBMIForm();
+      setEditingId(null);
+    }
+    setIsOpenAdd(true);
+  };
+
   // Handle Save BMI Record
   const handleSubmitRecord = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -246,6 +325,27 @@ export const BMIModule: React.FC = () => {
       // height/weight, do not save a made-up 22 / 'normal' record.
       if (!calculated) {
         showToast('BMI တွက်ချက်၍ မရပါ — အရပ်နှင့် ကိုယ်အလေးချိန် မှန်ကန်စွာ ထည့်ပေးပါ', 'error');
+        return;
+      }
+      if (editingId) {
+        // v2.4.13 edit: BMI is recomputed here from the edited height /
+        // weight with the same helper the add path uses (the context also
+        // recomputes, but an explicitly passed valid BMI wins there).
+        // The profile is deliberately NOT updated on edit: an old record's
+        // corrected weight must not overwrite the user's current profile.
+        await updateBMIRecord(editingId, {
+          heightCm: resolvedHeightCm,
+          weightKg: resolvedWeightKg,
+          waistCm: waistInput ? Number(waistInput) : undefined,
+          bmi: calculated.bmi,
+          category: calculated.category,
+          date: recordDate,
+          notes: notes.trim() || undefined,
+        });
+        setIsOpenAdd(false);
+        setEditingId(null);
+        resetBMIForm();
+        showToast('BMI မှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ', 'success');
         return;
       }
       await addBMIRecord({
@@ -279,9 +379,12 @@ export const BMIModule: React.FC = () => {
       showToast('BMI မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
     } catch (err) {
       // Save failed: keep the form open with all values intact so the user
-      // can retry (v2.4.11 F3 — saves used to fail silently).
+      // can retry (v2.4.11 F3 — saves used to fail silently). In edit mode
+      // the context already shows its own failure toast, so no second one.
       console.warn('Error saving BMI record:', err);
-      showToast('BMI မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+      if (!editingId) {
+        showToast('BMI မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -341,7 +444,7 @@ export const BMIModule: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setIsOpenAdd(true)}
+            onClick={openAdd}
             className="btn-teal px-4 py-2.5 rounded-xl text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -743,7 +846,7 @@ export const BMIModule: React.FC = () => {
                 သင်၏ အရပ်နှင့် ကိုယ်အလေးချိန်ကို နေ့စဉ် သို့မဟုတ် အပတ်စဉ် မှတ်သားခြင်းဖြင့် သွေးတိုးနှင့် ဆီးချိုရောဂါ ကာကွယ်မှု တိုးတက်စေနိုင်ပါသည်
               </p>
               <button
-                onClick={() => setIsOpenAdd(true)}
+                onClick={openAdd}
                 className="btn-teal mt-4 px-4 py-2.5 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 ပထမဆုံး BMI မှတ်တမ်း ထည့်သွင်းမည်
@@ -801,6 +904,13 @@ export const BMIModule: React.FC = () => {
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <button
+                            onClick={() => startEdit(r)}
+                            className="p-2 text-slate-400 hover:text-teal-600 transition-colors cursor-pointer"
+                            title="ပြင်ဆင်မည်"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={() => {
                               if (window.confirm('ဤ BMI မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
                                 deleteBMIRecord(r.id);
@@ -847,7 +957,7 @@ export const BMIModule: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    BMI နှင့် ကိုယ်အလေးချိန် မှတ်တမ်းအသစ်
+                    {editingId ? 'BMI မှတ်တမ်း ပြင်ဆင်မည်' : 'BMI နှင့် ကိုယ်အလေးချိန် မှတ်တမ်းအသစ်'}
                   </h3>
                   <span className="text-[11px] text-slate-400">
                     {selectedPatient ? selectedPatient.displayName : profile?.displayName} အတွက်
@@ -855,7 +965,7 @@ export const BMIModule: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={() => setIsOpenAdd(false)}
+                onClick={closeForm}
                 className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg cursor-pointer"
               >
                 ✕
@@ -1058,7 +1168,7 @@ export const BMIModule: React.FC = () => {
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsOpenAdd(false)}
+                  onClick={closeForm}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
                 >
                   မလုပ်တော့ပါ
@@ -1068,7 +1178,7 @@ export const BMIModule: React.FC = () => {
                   disabled={isSubmitting}
                   className="btn-teal px-5 py-2.5 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
-                  {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : 'မှတ်တမ်းသိမ်းမည်'}
+                  {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : editingId ? 'ပြင်ဆင်မှုကို သိမ်းဆည်းမည်' : 'မှတ်တမ်းသိမ်းမည်'}
                 </button>
               </div>
             </form>

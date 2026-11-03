@@ -57,12 +57,41 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.12',
+    version: 'v2.4.13',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
     isLatest: true,
+    title: '🔝 [FIX] မှတ်တမ်း ပြင်ဆင်ခြင်း + Admin form အပြည့်အစုံ',
+    badge: 'Latest Release (v2.4.13)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '✏️ မှတ်တမ်း ပြင်ဆင်လို့ရပြီ',
+        icon: ShieldCheck,
+        items: [
+          'သွေးပေါင်/သွေးချို/BMI/Lab/ဆေး/ကာကွယ်ဆေး — မှတ်တမ်းတိုင်းမှာ ပြင်ဆင်မည် ခလုတ် ပါပြီ',
+          'အရင် ရက်ပဲ ပါတဲ့ မှတ်တမ်းဟောင်းမှာ အချိန် ပြန်ဖြည့်လို့ရပြီ',
+          'ပြင်ရင် တန်ဖိုး ပြောင်းတာနဲ့အမျှ အမျိုးအစား (ပုံမှန်/မြင့်/နိမ့်) လည်း အလိုအလျောက် ပြန်တွက်ပေးတယ်'
+        ]
+      },
+      {
+        title: '👨‍⚕️ ဆရာဝန်/Admin form လူနာဘက်နဲ့ အတူတူဖြစ်ပြီ',
+        icon: Sparkles,
+        items: [
+          'Admin ထည့်တဲ့ မှတ်တမ်းမှာ မှတ်ချက်၊ တိုင်းချိန်၊ အစားအသောက်၊ ဆေးအသေးစိတ် အကုန်ပါပြီ',
+          'Admin ဘက်က BMI မှတ်တမ်း ထည့်လို့ရပြီ (အရင် မရခဲ့ဘူး)',
+          'နှစ်ဘက်လုံး တူညီတဲ့ အကွက်တွေမို့ ဒေတာ နှိုင်းယှဉ်လို့ ရပြီ'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.4.12',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: false,
     title: '🔝 [FIX] ဆရာဝန်မှတ်တမ်း အချိန် + Google login ဖြုတ်ခြင်း + Unit တွေ',
-    badge: 'Latest Release (v2.4.12)',
+    badge: 'Previous Release (v2.4.12)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {

@@ -311,15 +311,19 @@ interface HealthDataContextType {
 
   // Actions
   addBPRecord: (data: Omit<BloodPressureRecord, 'id' | 'category' | 'createdAt'>) => Promise<void>;
+  updateBPRecord: (id: string, updates: Partial<BloodPressureRecord>) => Promise<void>;
   deleteBPRecord: (id: string) => Promise<void>;
   
   addGlucoseRecord: (data: Omit<BloodSugarRecord, 'id' | 'status' | 'createdAt'>) => Promise<void>;
+  updateGlucoseRecord: (id: string, updates: Partial<BloodSugarRecord>) => Promise<void>;
   deleteGlucoseRecord: (id: string) => Promise<void>;
 
   addLabRecord: (data: Omit<LabTestRecord, 'id' | 'createdAt'>) => Promise<void>;
+  updateLabRecord: (id: string, updates: Partial<LabTestRecord>) => Promise<void>;
   deleteLabRecord: (id: string) => Promise<void>;
 
   addMedication: (data: Omit<Medication, 'id' | 'createdAt'>) => Promise<void>;
+  updateMedication: (id: string, updates: Partial<Medication>) => Promise<void>;
   updateMedicationStatus: (id: string, status: Medication['status']) => Promise<void>;
   deleteMedication: (id: string) => Promise<void>;
 
@@ -328,6 +332,7 @@ interface HealthDataContextType {
   deleteVaccineRecord: (id: string) => Promise<void>;
 
   addBMIRecord: (data: Omit<BMIRecord, 'id' | 'category' | 'bmi' | 'createdAt'> & { bmi?: number; category?: any }) => Promise<void>;
+  updateBMIRecord: (id: string, updates: Partial<BMIRecord>) => Promise<void>;
   deleteBMIRecord: (id: string) => Promise<void>;
 
   addDoctorAdvice: (patientId: string, adviceText: string, diet?: string) => Promise<void>;
@@ -1128,6 +1133,39 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setAllBP(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
   };
 
+  // v2.4.13: edit an already-saved BP record (e.g. add the time to an old
+  // date-only record, or correct a reading). Mirrors updateVaccineRecord:
+  // optimistic local update first, setDoc merge, deleteField() for any key
+  // passed as `undefined` so a field can be cleared, rollback on failure.
+  const updateBPRecord = async (id: string, updates: Partial<BloodPressureRecord>) => {
+    const prev = allBP;
+    // Keep the derived category in sync — an edit that changes the readings
+    // must not leave the old classification on the record. The measurement
+    // `condition` (e.g. morning/resting) is never touched here.
+    const merged: Partial<BloodPressureRecord> = { ...updates };
+    if (updates.systolic !== undefined || updates.diastolic !== undefined) {
+      const current = prev.find(r => r.id === id);
+      const sys = updates.systolic ?? current?.systolic;
+      const dia = updates.diastolic ?? current?.diastolic;
+      if (typeof sys === 'number' && typeof dia === 'number') {
+        merged.category = calculateBPCategory(sys, dia).category;
+      }
+    }
+    setAllBP(prev => prev.map(r => (r.id === id ? { ...r, ...merged } : r)));
+    try {
+      const payload: Record<string, any> = sanitizeForFirestore(merged);
+      Object.keys(merged).forEach(k => {
+        if ((merged as Record<string, any>)[k] === undefined) payload[k] = deleteField();
+      });
+      await setDoc(doc(db, 'vitals', id), payload, { merge: true });
+    } catch (e) {
+      setAllBP(prev);
+      console.warn('Error updating blood pressure record in firestore:', e);
+      showToast('သွေးပေါင်ချိန် မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
+    }
+  };
+
   const deleteBPRecord = async (id: string) => {
     const prev = allBP;
     setAllBP(prev.filter(b => b.id !== id));
@@ -1178,6 +1216,41 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setAllGlucose(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
   };
 
+  // v2.4.13: edit an already-saved glucose record. Same pattern as
+  // updateBPRecord — optimistic update, setDoc merge, deleteField() for
+  // cleared fields, rollback on failure. Value/timing aliases stay in sync
+  // the way addGlucoseRecord keeps them, and the status is recomputed when
+  // the value or timing changes.
+  const updateGlucoseRecord = async (id: string, updates: Partial<BloodSugarRecord>) => {
+    const prev = allGlucose;
+    const merged: Partial<BloodSugarRecord> = { ...updates };
+    if (updates.value !== undefined || updates.glucoseValue !== undefined || updates.timing !== undefined || updates.type !== undefined) {
+      const current = prev.find(r => r.id === id);
+      const val = updates.glucoseValue ?? updates.value ?? current?.glucoseValue ?? current?.value;
+      const timing = updates.timing ?? updates.type ?? current?.timing ?? current?.type ?? 'fasting';
+      if (typeof val === 'number' && Number.isFinite(val) && val > 0) {
+        merged.glucoseValue = val;
+        merged.value = val;
+        merged.timing = timing;
+        merged.type = timing;
+        merged.status = calculateGlucoseStatus(val, timing).status;
+      }
+    }
+    setAllGlucose(prev => prev.map(r => (r.id === id ? { ...r, ...merged } : r)));
+    try {
+      const payload: Record<string, any> = sanitizeForFirestore(merged);
+      Object.keys(merged).forEach(k => {
+        if ((merged as Record<string, any>)[k] === undefined) payload[k] = deleteField();
+      });
+      await setDoc(doc(db, 'glucose', id), payload, { merge: true });
+    } catch (e) {
+      setAllGlucose(prev);
+      console.warn('Error updating glucose record in firestore:', e);
+      showToast('သွေးချို မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
+    }
+  };
+
   const deleteGlucoseRecord = async (id: string) => {
     const prev = allGlucose;
     setAllGlucose(prev.filter(g => g.id !== id));
@@ -1205,6 +1278,27 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const docRef = await addDoc(collection(db, 'labTests'), sanitizeForFirestore(newRecord));
     setAllLabs(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
+  };
+
+  // v2.4.13: edit an already-saved lab record (e.g. correct a test value
+  // or the test date/time). Same pattern as updateVaccineRecord — optimistic
+  // update, setDoc merge, deleteField() for cleared fields, rollback on
+  // failure. The tests[] array is replaced whole when passed.
+  const updateLabRecord = async (id: string, updates: Partial<LabTestRecord>) => {
+    const prev = allLabs;
+    setAllLabs(prev => prev.map(r => (r.id === id ? { ...r, ...updates } : r)));
+    try {
+      const payload: Record<string, any> = sanitizeForFirestore(updates);
+      Object.keys(updates).forEach(k => {
+        if ((updates as Record<string, any>)[k] === undefined) payload[k] = deleteField();
+      });
+      await setDoc(doc(db, 'labTests', id), payload, { merge: true });
+    } catch (e) {
+      setAllLabs(prev);
+      console.warn('Error updating lab test record in firestore:', e);
+      showToast('ဓာတ်ခွဲခန်း မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
+    }
   };
 
   const deleteLabRecord = async (id: string) => {
@@ -1243,6 +1337,27 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } catch (e) {
       console.warn('Error updating medication in firestore:', e);
       showToast('ဆေးအခြေအနေ ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
+    }
+  };
+
+  // v2.4.13: edit an already-saved medication (dose, frequency, dates,
+  // notes…). Same pattern as updateVaccineRecord — optimistic update,
+  // setDoc merge, deleteField() for cleared fields, rollback on failure.
+  // (updateMedicationStatus stays for status-only toggles.)
+  const updateMedication = async (id: string, updates: Partial<Medication>) => {
+    const prev = allMeds;
+    setAllMeds(prev => prev.map(m => (m.id === id ? { ...m, ...updates } : m)));
+    try {
+      const payload: Record<string, any> = sanitizeForFirestore(updates);
+      Object.keys(updates).forEach(k => {
+        if ((updates as Record<string, any>)[k] === undefined) payload[k] = deleteField();
+      });
+      await setDoc(doc(db, 'medications', id), payload, { merge: true });
+    } catch (e) {
+      setAllMeds(prev);
+      console.warn('Error updating medication in firestore:', e);
+      showToast('ဆေးမှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1381,6 +1496,46 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const docRef = await addDoc(collection(db, 'bmi'), sanitizeForFirestore(newRecord));
     setAllBMI(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
+  };
+
+  // v2.4.13: edit an already-saved BMI record (e.g. correct the weight or
+  // the date). Same pattern as updateBPRecord — optimistic update, setDoc
+  // merge, deleteField() for cleared fields, rollback on failure. BMI and
+  // category are recomputed when weight/height change (mirroring
+  // addBMIRecord: an explicitly passed valid BMI wins, else compute).
+  const updateBMIRecord = async (id: string, updates: Partial<BMIRecord>) => {
+    const prev = allBMI;
+    const merged: Partial<BMIRecord> = { ...updates };
+    if (updates.weightKg !== undefined || updates.heightCm !== undefined) {
+      const current = prev.find(r => r.id === id);
+      const w = updates.weightKg ?? current?.weightKg;
+      const h = updates.heightCm ?? current?.heightCm;
+      if (typeof w === 'number' && typeof h === 'number' && w > 0 && h > 0) {
+        const bmiEval = calculateBMI(w, h);
+        if (bmiEval) {
+          // Mirror addBMIRecord: an explicitly passed valid BMI wins, else compute.
+          if (!(typeof updates.bmi === 'number' && Number.isFinite(updates.bmi) && updates.bmi > 0)) {
+            merged.bmi = bmiEval.bmi;
+          }
+          if (updates.category === undefined) {
+            merged.category = bmiEval.category;
+          }
+        }
+      }
+    }
+    setAllBMI(prev => prev.map(r => (r.id === id ? { ...r, ...merged } : r)));
+    try {
+      const payload: Record<string, any> = sanitizeForFirestore(merged);
+      Object.keys(merged).forEach(k => {
+        if ((merged as Record<string, any>)[k] === undefined) payload[k] = deleteField();
+      });
+      await setDoc(doc(db, 'bmi', id), payload, { merge: true });
+    } catch (e) {
+      setAllBMI(prev);
+      console.warn('Error updating BMI record in firestore:', e);
+      showToast('BMI မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
+    }
   };
 
   const deleteBMIRecord = async (id: string) => {
@@ -1686,18 +1841,23 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       deletePatient,
       clearAllPatients,
       addBPRecord,
+      updateBPRecord,
       deleteBPRecord,
       addGlucoseRecord,
+      updateGlucoseRecord,
       deleteGlucoseRecord,
       addLabRecord,
+      updateLabRecord,
       deleteLabRecord,
       addMedication,
+      updateMedication,
       updateMedicationStatus,
       deleteMedication,
       addVaccineRecord,
       updateVaccineRecord,
       deleteVaccineRecord,
       addBMIRecord,
+      updateBMIRecord,
       deleteBMIRecord,
       addDoctorAdvice,
       deleteDoctorAdvice,

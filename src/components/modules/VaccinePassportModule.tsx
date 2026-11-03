@@ -16,7 +16,8 @@ import {
   BookmarkPlus,
   BookOpen,
   X,
-  FileCheck2
+  FileCheck2,
+  Pencil
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
@@ -146,8 +147,65 @@ export const VaccinePassportModule: React.FC = () => {
   const [newBatchNumber, setNewBatchNumber] = useState('');
   const [newNotes, setNewNotes] = useState('');
 
+  // v2.4.13 edit: id of the record being edited, null in add mode. The
+  // same modal/form is reused, prefilled from the record.
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Fresh add-mode defaults, shared by the blank-modal opener and by
+  // leaving edit mode (so a later Add never shows edited values).
+  const resetVaccineForm = () => {
+    setNewVaccineName('');
+    setNewTargetDisease('');
+    setNewDoseNumber(1);
+    setNewTotalDoses(1);
+    setNewCategory('adult');
+    setNewDate('');
+    setNewStatus('completed');
+    setNewNextDate('');
+    setNewAdministeredBy('');
+    setNewBatchNumber('');
+    setNewNotes('');
+  };
+
+  // Close the modal. In edit mode the prefilled values are cleared back to
+  // fresh add defaults so a later Add never inherits them.
+  const closeModal = () => {
+    if (editingId) {
+      resetVaccineForm();
+      setEditingId(null);
+    }
+    setShowAddModal(false);
+  };
+
+  // Open the modal prefilled with an existing record for editing.
+  const startEdit = (vac: VaccinationRecord) => {
+    setEditingId(vac.id);
+    setNewVaccineName(vac.vaccineName);
+    setNewTargetDisease(vac.targetDisease || '');
+    setNewDoseNumber(vac.doseNumber || 1);
+    setNewTotalDoses(vac.totalDoses || 1);
+    setNewCategory(vac.category === 'child' ? 'child' : vac.category === 'travel' ? 'travel' : 'adult');
+    // A record whose status is neither 'completed' nor 'scheduled' (e.g. a
+    // legacy 'overdue') is treated as scheduled — it has no administered
+    // date to show, only a due date.
+    const isDone = vac.status === 'completed';
+    setNewStatus(isDone ? 'completed' : 'scheduled');
+    if (isDone) {
+      setNewDate((vac.dateAdministered || '').slice(0, 10));
+      setNewNextDate((vac.nextDueDate || '').slice(0, 10));
+    } else {
+      setNewDate((vac.nextDueDate || '').slice(0, 10));
+      setNewNextDate('');
+    }
+    setNewAdministeredBy(vac.administeredBy || '');
+    setNewBatchNumber(vac.batchNumber || '');
+    setNewNotes(vac.notes || '');
+    setShowAddModal(true);
+  };
+
   // Open modal pre-filled from Recommended Vaccine
   const handlePreFillFromRecommendation = (rec: RecommendedVaccine) => {
+    setEditingId(null);
     setNewVaccineName(rec.vaccineName);
     setNewTargetDisease(rec.targetDisease);
     setNewDoseNumber(rec.doseNumber);
@@ -163,17 +221,8 @@ export const VaccinePassportModule: React.FC = () => {
   };
 
   const handleOpenBlankModal = () => {
-    setNewVaccineName('');
-    setNewTargetDisease('');
-    setNewDoseNumber(1);
-    setNewTotalDoses(1);
-    setNewCategory('adult');
-    setNewDate('');
-    setNewStatus('completed');
-    setNewNextDate('');
-    setNewAdministeredBy('');
-    setNewBatchNumber('');
-    setNewNotes('');
+    resetVaccineForm();
+    setEditingId(null);
     setShowAddModal(true);
   };
 
@@ -186,6 +235,30 @@ export const VaccinePassportModule: React.FC = () => {
 
     try {
       const isScheduled = newStatus === 'scheduled';
+      if (editingId) {
+        // v2.4.13 edit: the same date mapping as add; userId/patientName
+        // never change. dateAdministered: undefined when scheduled relies
+        // on the context's deleteField handling (in place since v2.4.11).
+        await updateVaccineRecord(editingId, {
+          vaccineName: newVaccineName.trim(),
+          targetDisease: newTargetDisease.trim() || 'ကာကွယ်ဆေး',
+          doseNumber: Number(newDoseNumber),
+          totalDoses: Number(newTotalDoses),
+          dateAdministered: !isScheduled ? (newDate || undefined) : undefined,
+          nextDueDate: isScheduled ? (newDate || newNextDate || undefined) : (newNextDate || undefined),
+          administeredBy: newAdministeredBy.trim() || undefined,
+          batchNumber: newBatchNumber.trim() || undefined,
+          status: newStatus,
+          category: newCategory,
+          notes: newNotes.trim() || undefined,
+        });
+        closeModal();
+        setActiveView('records');
+        setStatusMessage('ကာကွယ်ဆေး မှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ');
+        showToast('ကာကွယ်ဆေး မှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ', 'success');
+        setTimeout(() => setStatusMessage(null), 3000);
+        return;
+      }
       await addVaccineRecord({
         userId: currentPatient?.id || '',
         patientName: currentPatient?.displayName || 'အသုံးပြုသူ',
@@ -213,7 +286,11 @@ export const VaccinePassportModule: React.FC = () => {
     } catch (err: any) {
       console.error('Failed to save vaccine record:', err);
       setStatusMessage('ကာကွယ်ဆေး သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်');
-      showToast('ကာကွယ်ဆေး သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်', 'error');
+      // In edit mode the context already shows its own failure toast, so
+      // no second one; the form stays open with its values for a retry.
+      if (!editingId) {
+        showToast('ကာကွယ်ဆေး သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -485,6 +562,14 @@ export const VaccinePassportModule: React.FC = () => {
                       {/* Status Toggle & Delete Buttons */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
+                          onClick={() => startEdit(vac)}
+                          aria-label={`${vac.vaccineName} ပြင်ဆင်မည်`}
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-teal-600 hover:bg-teal-50 transition-colors cursor-pointer"
+                          title="ပြင်ဆင်မည်"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleToggleStatus(vac)}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                             isDone 
@@ -661,12 +746,12 @@ export const VaccinePassportModule: React.FC = () => {
       {/* Add / Edit Vaccine Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onClose={closeModal}
         size="md"
         title={
           <span className="flex items-center gap-2">
             <Syringe className="w-5 h-5 text-teal-600" />
-            <span>ကာကွယ်ဆေး မှတ်တမ်းအသစ် ထည့်သွင်းမည်</span>
+            <span>{editingId ? 'ကာကွယ်ဆေး မှတ်တမ်း ပြင်ဆင်မည်' : 'ကာကွယ်ဆေး မှတ်တမ်းအသစ် ထည့်သွင်းမည်'}</span>
           </span>
         }
       >
@@ -849,7 +934,7 @@ export const VaccinePassportModule: React.FC = () => {
             <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
+                onClick={closeModal}
                 className="px-4 py-2.5 border border-slate-300 rounded-xl font-semibold hover:bg-slate-100 cursor-pointer"
               >
                 မလုပ်တော့ပါ
@@ -865,7 +950,7 @@ export const VaccinePassportModule: React.FC = () => {
                     <span>သိမ်းဆည်းနေသည်...</span>
                   </>
                 ) : (
-                  <span>သိမ်းဆည်းမည်</span>
+                  <span>{editingId ? 'ပြင်ဆင်မှုကို သိမ်းဆည်းမည်' : 'သိမ်းဆည်းမည်'}</span>
                 )}
               </button>
             </div>

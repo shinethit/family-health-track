@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Heart, Activity, AlertCircle, Info, Calendar, BarChart2, Table, TrendingUp, Utensils } from 'lucide-react';
+import { Plus, Trash2, Heart, Activity, AlertCircle, Info, Calendar, BarChart2, Table, TrendingUp, Utensils, Pencil } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -15,7 +15,19 @@ const localDateTimeStr = (d: Date): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-// Labels for the measurement-time condition the user picks in the form.
+// Convert a stored date value into a datetime-local input value (v2.4.13
+// edit). Stored values may be date-only ('2026-11-03', old records) or
+// full ('2026-11-03T14:30'); a date-only value gets the current local time
+// so the user can adjust it instead of the field showing blank.
+const toDateTimeLocal = (value: string | undefined): string => {
+  if (!value) return localDateTimeStr(new Date());
+  if (/T\d{2}:\d{2}/.test(value)) return value.slice(0, 16);
+  return `${value}T${localDateTimeStr(new Date()).slice(11, 16)}`;
+};
+
+// Valid measurement-condition options (a stored `condition` may be a legacy
+// BP category such as 'stage1' — that is not a measurement condition).
+const MEASUREMENT_CONDITIONS = ['resting', 'morning', 'night', 'after_exercise', 'stress'] as const;
 const MEASUREMENT_CONDITION_LABELS: Record<string, string> = {
   morning: 'မနက်နိုးနိုးချင်း',
   night: 'ညအိပ်ရာဝင်',
@@ -43,7 +55,7 @@ const measurementTimeLabel = (record: { condition?: string; date?: string; times
 };
 
 export const BloodPressureModule: React.FC = () => {
-  const { bpRecords, addBPRecord, deleteBPRecord, selectedPatient, selectedFamilyMember } = useHealthData();
+  const { bpRecords, addBPRecord, updateBPRecord, deleteBPRecord, selectedPatient, selectedFamilyMember } = useHealthData();
   // dataLoading is added by the context work in the same v2.4.8 batch; fall
   // back to false if it is not present yet so this module still renders.
   const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
@@ -51,6 +63,9 @@ export const BloodPressureModule: React.FC = () => {
   const { showToast } = useToast();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
+  // v2.4.13 edit: id of the record being edited, null in add mode. The
+  // same modal/form is reused, prefilled from the record.
+  const [editingId, setEditingId] = useState<string | null>(null);
   // No prefilled values: 120/80/72 invited fake-normal records (v2.4.11 F5).
   // Inputs start empty; the user must enter their own real readings.
   const [systolic, setSystolic] = useState<number | ''>('');
@@ -61,6 +76,54 @@ export const BloodPressureModule: React.FC = () => {
   const [date, setDate] = useState<string>(() => localDateTimeStr(new Date()));
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fresh add-mode defaults (used when leaving edit mode so the next Add
+  // never shows the edited record's values).
+  const resetForm = () => {
+    setSystolic('');
+    setDiastolic('');
+    setPulse('');
+    setCondition('resting');
+    setDietRecord('');
+    setDate(localDateTimeStr(new Date()));
+    setNotes('');
+  };
+
+  // Open the form prefilled with an existing record for editing.
+  const startEdit = (record: typeof bpRecords[number]) => {
+    setEditingId(record.id);
+    setSystolic(record.systolic);
+    setDiastolic(record.diastolic);
+    setPulse(record.pulse ?? record.pulseRate ?? '');
+    setCondition(
+      MEASUREMENT_CONDITIONS.includes(record.condition as any)
+        ? (record.condition as typeof condition)
+        : 'resting'
+    );
+    setDietRecord(record.dietRecord || record.dietNotes || record.foodIntake || '');
+    setDate(toDateTimeLocal(record.date || record.timestamp));
+    setNotes(record.notes || '');
+    setIsOpenAdd(true);
+  };
+
+  // Close the form. In edit mode the prefilled values are cleared back to
+  // fresh add defaults so a later Add never inherits them.
+  const closeForm = () => {
+    if (editingId) {
+      resetForm();
+      setEditingId(null);
+    }
+    setIsOpenAdd(false);
+  };
+
+  // Open the form in add mode (defensive: never carry an edit id in).
+  const openAdd = () => {
+    if (editingId) {
+      resetForm();
+      setEditingId(null);
+    }
+    setIsOpenAdd(true);
+  };
 
   // Quick diet suggestions
   const quickDietPresets = [
@@ -155,6 +218,26 @@ export const BloodPressureModule: React.FC = () => {
     }
     setIsSubmitting(true);
     try {
+      if (editingId) {
+        // v2.4.13 edit: only the editable fields; the context recomputes
+        // the category from the new readings. userId/userName never change.
+        await updateBPRecord(editingId, {
+          systolic: Number(systolic),
+          diastolic: Number(diastolic),
+          pulse: Number(pulse),
+          condition,
+          dietNotes: dietRecord.trim() || undefined,
+          foodIntake: dietRecord.trim() || undefined,
+          dietRecord: dietRecord.trim() || undefined,
+          date,
+          notes: notes.trim() || undefined,
+        });
+        setIsOpenAdd(false);
+        setEditingId(null);
+        resetForm();
+        showToast('သွေးပေါင်ချိန် မှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ', 'success');
+        return;
+      }
       await addBPRecord({
         userId: selectedPatient ? selectedPatient.id : (selectedFamilyMember ? selectedFamilyMember.id : profile.id),
         userName: selectedPatient ? selectedPatient.displayName : (selectedFamilyMember ? selectedFamilyMember.name : profile.displayName),
@@ -178,9 +261,12 @@ export const BloodPressureModule: React.FC = () => {
       showToast('သွေးပေါင်ချိန် မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
     } catch (err) {
       // Save failed: keep the form open with all values intact so the user
-      // can retry (v2.4.11 F3 — saves used to fail silently).
+      // can retry (v2.4.11 F3 — saves used to fail silently). In edit mode
+      // the context already shows its own failure toast, so no second one.
       console.warn('Error saving BP record:', err);
-      showToast('သွေးပေါင်ချိန် မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+      if (!editingId) {
+        showToast('သွေးပေါင်ချိန် မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -214,7 +300,7 @@ export const BloodPressureModule: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setIsOpenAdd(true)}
+          onClick={openAdd}
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-medium shadow-sm transition-all cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
@@ -485,6 +571,13 @@ export const BloodPressureModule: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <button
+                          onClick={() => startEdit(record)}
+                          className="text-slate-400 hover:text-rose-600 transition-colors p-2 cursor-pointer"
+                          title="ပြင်ဆင်မည်"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => {
                             if (window.confirm('ဤသွေးပေါင်ချိန် မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
                               deleteBPRecord(record.id);
@@ -525,11 +618,11 @@ export const BloodPressureModule: React.FC = () => {
             <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Activity className="w-5 h-5 text-rose-500 shrink-0" />
-                <span>သွေးပေါင်ချိန် အသစ်ထည့်သွင်းခြင်း</span>
+                <span>{editingId ? 'သွေးပေါင်ချိန် မှတ်တမ်း ပြင်ဆင်မည်' : 'သွေးပေါင်ချိန် အသစ်ထည့်သွင်းခြင်း'}</span>
               </h3>
               <button
                 type="button"
-                onClick={() => setIsOpenAdd(false)}
+                onClick={closeForm}
                 className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center justify-center text-sm font-bold cursor-pointer transition-colors shrink-0"
               >
                 ✕
@@ -700,7 +793,7 @@ export const BloodPressureModule: React.FC = () => {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsOpenAdd(false)}
+                  onClick={closeForm}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   မလုပ်တော့ပါ
@@ -710,7 +803,7 @@ export const BloodPressureModule: React.FC = () => {
                   disabled={isSubmitting}
                   className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : 'မှတ်တမ်းသိမ်းမည်'}
+                  {isSubmitting ? 'သိမ်းဆည်းနေသည်...' : editingId ? 'ပြင်ဆင်မှုကို သိမ်းဆည်းမည်' : 'မှတ်တမ်းသိမ်းမည်'}
                 </button>
               </div>
             </form>

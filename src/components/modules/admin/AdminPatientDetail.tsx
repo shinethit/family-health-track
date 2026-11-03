@@ -126,7 +126,12 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   getResolvedName,
 }) => {
   const { profile } = useAuth();
-  const { addBPRecord, addGlucoseRecord, addLabRecord, addMedication, addVaccineRecord } = useHealthData();
+  const {
+    addBPRecord, addGlucoseRecord, addLabRecord, addMedication, addVaccineRecord, addBMIRecord,
+    // v2.4.13: edit support — added by the sibling HealthDataContext work;
+    // these are called here, never defined here.
+    updateBPRecord, updateGlucoseRecord, updateBMIRecord, updateLabRecord, updateMedication, updateVaccineRecord,
+  } = useHealthData();
   // The answer is attributed to the admin who actually writes it — never
   // the patient's name, and never an invented doctor name. No display name
   // on the admin's profile → the honest role label 'Admin'.
@@ -152,7 +157,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   // resolveTarget() files the record under the selected patient (the admin
   // has this patient selected while viewing this detail page). One form
   // open at a time.
-  type RecordFormKind = 'bp' | 'sugar' | 'lab' | 'med' | 'vaccine';
+  type RecordFormKind = 'bp' | 'sugar' | 'lab' | 'med' | 'vaccine' | 'bmi';
   const [openRecordForm, setOpenRecordForm] = useState<RecordFormKind | null>(null);
   const [recordMsg, setRecordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [recordSaving, setRecordSaving] = useState(false);
@@ -185,6 +190,186 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   const [vaxDate, setVaxDate] = useState(localDateTimeStr(new Date()));
   const [vaxCategory, setVaxCategory] = useState<'adult' | 'child' | 'travel'>('adult');
 
+  // v2.4.13: admin forms collect the SAME fields as the patient forms, so a
+  // medical record is complete whichever side enters it.
+  const [bpCondition, setBpCondition] = useState<'resting' | 'morning' | 'night' | 'after_exercise' | 'stress'>('resting');
+  const [bpNotes, setBpNotes] = useState('');
+  const [bpDiet, setBpDiet] = useState('');
+  const [gluMealInfo, setGluMealInfo] = useState('');
+  const [gluDiet, setGluDiet] = useState('');
+  const [gluNotes, setGluNotes] = useState('');
+  const [labNotes, setLabNotes] = useState('');
+  const [labDoctorReview, setLabDoctorReview] = useState('');
+  const [medChemical, setMedChemical] = useState('');
+  const [medEndDate, setMedEndDate] = useState('');
+  const [medDuration, setMedDuration] = useState('');
+  const [medNotes, setMedNotes] = useState('');
+  const [medStatus, setMedStatus] = useState<Medication['status']>('active');
+  const [vaxNextDate, setVaxNextDate] = useState('');
+  const [vaxAdminBy, setVaxAdminBy] = useState('');
+  const [vaxBatch, setVaxBatch] = useState('');
+  const [vaxNotes, setVaxNotes] = useState('');
+  const [vaxStatus, setVaxStatus] = useState<'completed' | 'scheduled'>('completed');
+  const [bmiHeight, setBmiHeight] = useState('');
+  const [bmiWeight, setBmiWeight] = useState('');
+  const [bmiWaist, setBmiWaist] = useState('');
+  const [bmiDate, setBmiDate] = useState(localDateStr(new Date()));
+  const [bmiNotes, setBmiNotes] = useState('');
+  // Edit mode (v2.4.13): which record the open form is editing, if any.
+  // null = add mode. Tapping ✏️ on a list row prefills the form and
+  // switches it to edit mode.
+  const [editingRecord, setEditingRecord] = useState<{ kind: RecordFormKind; id: string } | null>(null);
+
+  // Normalize a stored date for a datetime-local input: a date-only value
+  // ('2026-11-03') would show as empty, so it becomes midnight that day;
+  // a full ISO value is trimmed to minutes.
+  const toDateTimeLocal = (value?: string): string => {
+    if (!value) return localDateTimeStr(new Date());
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T00:00`;
+    const m = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+    return m ? `${m[1]}T${m[2]}` : localDateTimeStr(new Date());
+  };
+  const toDateOnly = (value?: string): string => (value ? value.slice(0, 10) : '');
+
+  // Blank each form back to its defaults (v2.4.13: every field, including
+  // the new ones, is reset after a successful save).
+  const resetBpForm = () => {
+    setBpSys(''); setBpDia(''); setBpPulse('');
+    setBpCondition('resting'); setBpNotes(''); setBpDiet('');
+    setBpDate(localDateTimeStr(new Date()));
+  };
+  const resetSugarForm = () => {
+    setGluValue(''); setGluType('fasting'); setGluMealInfo('');
+    setGluDiet(''); setGluNotes(''); setGluDate(localDateTimeStr(new Date()));
+  };
+  const resetLabForm = () => {
+    setLabName(''); setLabTestName(''); setLabTestValue(''); setLabTestUnit('');
+    setLabRefMin(''); setLabRefMax(''); setLabNotes(''); setLabDoctorReview('');
+    setLabDate(localDateTimeStr(new Date()));
+  };
+  const resetMedForm = () => {
+    setMedName(''); setMedChemical(''); setMedDosage(''); setMedFrequency('');
+    setMedTiming('after_meal'); setMedFor(''); setMedStart(localDateStr(new Date()));
+    setMedDoseTime(''); setMedEndDate(''); setMedDuration(''); setMedNotes('');
+    setMedDoctor(''); setMedStatus('active');
+  };
+  const resetVaccineForm = () => {
+    setVaxName(''); setVaxDisease(''); setVaxDose('1'); setVaxTotal('1');
+    setVaxDate(localDateTimeStr(new Date())); setVaxCategory('adult');
+    setVaxNextDate(''); setVaxAdminBy(''); setVaxBatch(''); setVaxNotes('');
+    setVaxStatus('completed');
+  };
+  const resetBmiForm = () => {
+    setBmiHeight(''); setBmiWeight(''); setBmiWaist('');
+    setBmiDate(localDateStr(new Date())); setBmiNotes('');
+  };
+  const resetRecordForm = (kind: RecordFormKind) => {
+    if (kind === 'bp') resetBpForm();
+    else if (kind === 'sugar') resetSugarForm();
+    else if (kind === 'lab') resetLabForm();
+    else if (kind === 'med') resetMedForm();
+    else if (kind === 'vaccine') resetVaccineForm();
+    else resetBmiForm();
+  };
+  // Back to add mode: clear the edit target and blank the form.
+  const cancelEdit = () => {
+    if (openRecordForm) resetRecordForm(openRecordForm);
+    setEditingRecord(null);
+  };
+
+  // Prefill a form from an existing record and switch it to edit mode.
+  const BP_CONDITIONS = ['resting', 'morning', 'night', 'after_exercise', 'stress'] as const;
+  const startEditBp = (r: BloodPressureRecord) => {
+    setBpSys(String(r.systolic));
+    setBpDia(String(r.diastolic));
+    setBpPulse(r.pulse ?? r.pulseRate ? String(r.pulse ?? r.pulseRate) : '');
+    // Old records may carry a BP category in `condition` (pre-v2.4.11
+    // overwrite bug) — only a real measurement condition is kept.
+    setBpCondition(
+      (BP_CONDITIONS as readonly string[]).includes(r.condition || '')
+        ? (r.condition as typeof bpCondition)
+        : 'resting'
+    );
+    setBpNotes(r.notes || '');
+    setBpDiet(r.dietRecord || r.dietNotes || r.foodIntake || '');
+    setBpDate(toDateTimeLocal(r.date || r.timestamp));
+    setEditingRecord({ kind: 'bp', id: r.id });
+    setOpenRecordForm('bp');
+  };
+  const startEditSugar = (r: BloodSugarRecord) => {
+    setGluValue(String(r.glucoseValue ?? r.value ?? ''));
+    setGluType(r.type || r.timing || 'fasting');
+    setGluMealInfo(r.mealInfo || '');
+    setGluDiet(r.dietRecord || r.dietNotes || r.foodIntake || '');
+    setGluNotes(r.notes || '');
+    setGluDate(toDateTimeLocal(r.date || r.timestamp));
+    setEditingRecord({ kind: 'sugar', id: r.id });
+    setOpenRecordForm('sugar');
+  };
+  const startEditLab = (recordId: string) => {
+    const rec = labRecords.find((x) => x.id === recordId);
+    if (!rec) return;
+    setLabName(rec.labName || '');
+    setLabDate(toDateTimeLocal(rec.testDate || rec.recordedAt));
+    setLabNotes(rec.notes || '');
+    setLabDoctorReview(rec.doctorReview || '');
+    const first = rec.tests && rec.tests.length > 0 ? rec.tests[0] : null;
+    setLabTestName(first ? (first.nameMm || first.nameEn || '') : '');
+    setLabTestValue(first && first.value !== null && first.value !== undefined ? String(first.value) : '');
+    setLabTestUnit(first ? (first.unit || '') : '');
+    setLabRefMin(first && first.refMin !== undefined ? String(first.refMin) : '');
+    setLabRefMax(first && first.refMax !== undefined ? String(first.refMax) : '');
+    setEditingRecord({ kind: 'lab', id: rec.id });
+    setOpenRecordForm('lab');
+  };
+  const startEditMed = (m: Medication) => {
+    setMedName(m.name);
+    setMedChemical(m.genericName || '');
+    setMedDosage(m.dosage);
+    setMedFrequency(m.frequency);
+    setMedTiming(m.timing);
+    setMedFor(m.prescribedFor);
+    setMedStart(toDateOnly(m.startDate) || localDateStr(new Date()));
+    setMedEndDate(toDateOnly(m.endDate));
+    setMedDoseTime(m.doseTime || '');
+    setMedDoctor(m.prescribingDoctor || '');
+    setMedNotes(m.notes || '');
+    // The stored notes may already carry a "သောက်ရမည့်ရက်: N ရက်" prefix
+    // from a previous save; it stays inside the notes text and is not
+    // parsed back into the duration box.
+    setMedDuration('');
+    setMedStatus(m.status);
+    setEditingRecord({ kind: 'med', id: m.id });
+    setOpenRecordForm('med');
+  };
+  const startEditVaccine = (v: VaccinationRecord) => {
+    setVaxName(v.vaccineName);
+    setVaxDisease(v.targetDisease || '');
+    setVaxDose(String(v.doseNumber || 1));
+    setVaxTotal(String(v.totalDoses || 1));
+    setVaxCategory(v.category || 'adult');
+    const status = v.status === 'scheduled' ? 'scheduled' : 'completed';
+    setVaxStatus(status);
+    // Completed: the date is when it was given. Scheduled: there is no
+    // administered date — the picked date is the planned (next due) date.
+    setVaxDate(toDateTimeLocal(status === 'completed' ? (v.dateAdministered || v.nextDueDate) : v.nextDueDate));
+    setVaxNextDate(toDateOnly(v.nextDueDate));
+    setVaxAdminBy(v.administeredBy || '');
+    setVaxBatch(v.batchNumber || '');
+    setVaxNotes(v.notes || '');
+    setEditingRecord({ kind: 'vaccine', id: v.id });
+    setOpenRecordForm('vaccine');
+  };
+  const startEditBmi = (b: BMIRecord) => {
+    setBmiHeight(String(b.heightCm));
+    setBmiWeight(String(b.weightKg));
+    setBmiWaist(b.waistCm ? String(b.waistCm) : '');
+    setBmiDate(toDateOnly(b.date) || localDateStr(new Date()));
+    setBmiNotes(b.notes || '');
+    setEditingRecord({ kind: 'bmi', id: b.id });
+    setOpenRecordForm('bmi');
+  };
+
   const sortedUserBP = [...bpRecords].sort((a, b) => 
     parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
   );
@@ -207,13 +392,14 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
       if (rec.tests && rec.tests.length > 0) {
         return rec.tests.map((t) => ({
           key: `${rec.id}-${t.id}`,
+          recordId: rec.id,
           name: t.nameMm || t.nameEn || 'ဓာတ်ခွဲစစ်ဆေးမှု',
           value: t.value as number | null,
           unit: t.unit || '',
           date,
         }));
       }
-      return [{ key: rec.id, name: rec.labName || 'ဓာတ်ခွဲစစ်ဆေးမှု', value: null as number | null, unit: '', date }];
+      return [{ key: rec.id, recordId: rec.id, name: rec.labName || 'ဓာတ်ခွဲစစ်ဆေးမှု', value: null as number | null, unit: '', date }];
     })
     .slice(0, 5);
 
@@ -316,38 +502,73 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
     setRecordSaving(true);
     setRecordMsg(null);
     try {
+      // Edit mode: the open form is editing an existing record. On success
+      // the form is blanked back to add mode and stays open; on failure the
+      // error shows and the form keeps its values.
+      const isEditing = editingRecord?.kind === kind;
       if (kind === 'bp') {
         const sys = Number(bpSys);
         const dia = Number(bpDia);
         if (!sys || !dia || sys < 40 || sys > 300 || dia < 20 || dia > 200) {
           throw new Error('သွေးပေါင်ချိန် တန်ဖိုး မှန်ကန်စွာ ဖြည့်ပါ');
         }
-        await addBPRecord({
-          userId: patient.id,
-          userName: cleanName,
-          systolic: sys,
-          diastolic: dia,
-          pulse: bpPulse ? Number(bpPulse) : undefined,
-          date: bpDate,
-        });
-        setBpSys('');
-        setBpDia('');
-        setBpPulse('');
-        setBpDate(localDateTimeStr(new Date()));
+        const diet = bpDiet.trim() || undefined;
+        if (isEditing) {
+          await updateBPRecord(editingRecord!.id, {
+            systolic: sys,
+            diastolic: dia,
+            pulse: bpPulse ? Number(bpPulse) : undefined,
+            condition: bpCondition,
+            date: bpDate,
+            notes: bpNotes.trim() || undefined,
+            dietNotes: diet,
+            foodIntake: diet,
+            dietRecord: diet,
+            category: calculateBPCategory(sys, dia).category,
+          });
+        } else {
+          await addBPRecord({
+            userId: patient.id,
+            userName: cleanName,
+            systolic: sys,
+            diastolic: dia,
+            pulse: bpPulse ? Number(bpPulse) : undefined,
+            condition: bpCondition,
+            date: bpDate,
+            notes: bpNotes.trim() || undefined,
+            dietNotes: diet,
+            foodIntake: diet,
+            dietRecord: diet,
+          });
+        }
       } else if (kind === 'sugar') {
         const v = Number(gluValue);
         if (!v || v < 20 || v > 900) {
           throw new Error('သွေးချို တန်ဖိုး မှန်ကန်စွာ ဖြည့်ပါ');
         }
-        await addGlucoseRecord({
-          userId: patient.id,
-          userName: cleanName,
+        const diet = gluDiet.trim() || undefined;
+        const payload = {
           value: v,
           type: gluType,
+          mealInfo: gluMealInfo.trim() || undefined,
+          dietNotes: diet,
+          foodIntake: diet,
+          dietRecord: diet,
           date: gluDate,
-        });
-        setGluValue('');
-        setGluDate(localDateTimeStr(new Date()));
+          notes: gluNotes.trim() || undefined,
+        };
+        if (isEditing) {
+          await updateGlucoseRecord(editingRecord!.id, {
+            ...payload,
+            status: calculateGlucoseStatus(v, gluType as any).status,
+          });
+        } else {
+          await addGlucoseRecord({
+            userId: patient.id,
+            userName: cleanName,
+            ...payload,
+          });
+        }
       } else if (kind === 'lab') {
         if (!labName.trim()) {
           throw new Error('ဓာတ်ခွဲခန်း အမည် ဖြည့်ပါ');
@@ -380,69 +601,145 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         } else if (labTestName.trim()) {
           notes = `စစ်ဆေးချက်: ${labTestName.trim()}${labTestValue ? ` = ${labTestValue} ${labTestUnit.trim()}` : ''}`;
         }
-        await addLabRecord({
-          userId: patient.id,
-          userName: cleanName,
-          testDate: labDate,
-          labName: labName.trim(),
-          tests,
-          notes,
-        });
-        setLabName('');
-        setLabTestName('');
-        setLabTestValue('');
-        setLabTestUnit('');
-        setLabRefMin('');
-        setLabRefMax('');
-        setLabDate(localDateTimeStr(new Date()));
+        // Edit mode with no test typed in: keep the record's existing tests
+        // — editing the lab name/notes must not wipe the saved results.
+        if (isEditing && !tests) {
+          const existing = labRecords.find((x) => x.id === editingRecord!.id);
+          if (existing?.tests) tests = existing.tests;
+        }
+        const labNotesValue = labNotes.trim() || notes;
+        if (isEditing) {
+          await updateLabRecord(editingRecord!.id, {
+            testDate: labDate,
+            labName: labName.trim(),
+            tests,
+            notes: labNotesValue,
+            doctorReview: labDoctorReview.trim() || undefined,
+          });
+        } else {
+          await addLabRecord({
+            userId: patient.id,
+            userName: cleanName,
+            testDate: labDate,
+            labName: labName.trim(),
+            tests,
+            notes: labNotesValue,
+            doctorReview: labDoctorReview.trim() || undefined,
+          });
+        }
       } else if (kind === 'med') {
         if (!medName.trim() || !medDosage.trim() || !medFrequency.trim() || !medFor.trim()) {
           throw new Error('ဆေးအမည်၊ ပမာဏ၊ ကြိမ်နှုန်းနှင့် ရောဂါ ဖြည့်ပါ');
         }
-        await addMedication({
-          userId: patient.id,
+        // Duration is not a real field on the record — same as the patient
+        // module, it is stored at the front of the notes.
+        const durationText = medDuration.trim();
+        const notesText = medNotes.trim();
+        const combinedNotes = durationText
+          ? `သောက်ရမည့်ရက်: ${durationText} ရက်${notesText ? ' | ' + notesText : ''}`
+          : (notesText || undefined);
+        const payload = {
           name: medName.trim(),
+          genericName: medChemical.trim() || undefined,
           dosage: medDosage.trim(),
           frequency: medFrequency.trim(),
           timing: medTiming,
           prescribedFor: medFor.trim(),
           startDate: medStart,
+          endDate: medEndDate || undefined,
           doseTime: medDoseTime || undefined,
-          status: 'active',
           prescribingDoctor: medDoctor.trim() || undefined,
-        });
-        setMedName('');
-        setMedDosage('');
-        setMedFrequency('');
-        setMedFor('');
-        setMedDoseTime('');
-        setMedDoctor('');
-      } else {
+          notes: combinedNotes,
+        };
+        if (isEditing) {
+          await updateMedication(editingRecord!.id, {
+            ...payload,
+            status: medStatus,
+          });
+        } else {
+          await addMedication({
+            userId: patient.id,
+            ...payload,
+            status: 'active',
+          });
+        }
+      } else if (kind === 'vaccine') {
         if (!vaxName.trim()) {
           throw new Error('ကာကွယ်ဆေး အမည် ဖြည့်ပါ');
         }
-        await addVaccineRecord({
-          userId: patient.id,
-          patientName: cleanName,
+        const isScheduled = vaxStatus === 'scheduled';
+        const payload = {
           vaccineName: vaxName.trim(),
           targetDisease: vaxDisease.trim() || 'ကာကွယ်ဆေး',
           doseNumber: Number(vaxDose) || 1,
           totalDoses: Number(vaxTotal) || 1,
-          dateAdministered: vaxDate,
-          status: 'completed',
+          // Completed: the date is when it was given. Scheduled: there is
+          // no administered date — the picked date is the planned date.
+          dateAdministered: !isScheduled ? (vaxDate || undefined) : undefined,
+          nextDueDate: isScheduled ? (vaxDate || vaxNextDate || undefined) : (vaxNextDate || undefined),
+          administeredBy: vaxAdminBy.trim() || undefined,
+          batchNumber: vaxBatch.trim() || undefined,
+          status: vaxStatus,
           category: vaxCategory,
-        });
-        setVaxName('');
-        setVaxDisease('');
-        setVaxDose('1');
-        setVaxTotal('1');
-        setVaxDate(localDateTimeStr(new Date()));
+          notes: vaxNotes.trim() || undefined,
+        };
+        if (isEditing) {
+          await updateVaccineRecord(editingRecord!.id, payload);
+        } else {
+          await addVaccineRecord({
+            userId: patient.id,
+            patientName: cleanName,
+            ...payload,
+          });
+        }
+      } else {
+        // BMI — the admin had no form for this before (v2.4.13). BMI and
+        // its category are computed from height/weight with the same
+        // calculateBMI helper the patient module uses.
+        const h = Number(bmiHeight);
+        const w = Number(bmiWeight);
+        if (!h || !w || h < 50 || h > 250 || w < 1 || w > 500) {
+          throw new Error('အရပ်/ကိုယ်အလေးချိန် မှန်ကန်စွာ ဖြည့်ပါ');
+        }
+        if (isEditing) {
+          const calc = calculateBMI(w, h);
+          if (!calc) throw new Error('BMI တွက်ရန် ကိုယ်အလေးချိန်/အရပ် လိုအပ်ပါသည်');
+          await updateBMIRecord(editingRecord!.id, {
+            heightCm: h,
+            weightKg: w,
+            waistCm: bmiWaist ? Number(bmiWaist) : undefined,
+            date: bmiDate,
+            notes: bmiNotes.trim() || undefined,
+            bmi: calc.bmi,
+            category: calc.category,
+          });
+        } else {
+          await addBMIRecord({
+            userId: patient.id,
+            userName: cleanName,
+            heightCm: h,
+            weightKg: w,
+            waistCm: bmiWaist ? Number(bmiWaist) : undefined,
+            date: bmiDate,
+            notes: bmiNotes.trim() || undefined,
+          });
+        }
       }
-      setRecordMsg({ type: 'success', text: 'မှတ်တမ်း ထည့်သွင်းပြီးပါပြီ — အသုံးပြုသူဘက်က မြင်ရပါမည်။' });
-      setOpenRecordForm(null);
+      resetRecordForm(kind);
+      if (isEditing) {
+        setRecordMsg({ type: 'success', text: 'မှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ — အသုံးပြုသူဘက်က မြင်ရပါမည်။' });
+        setEditingRecord(null);
+        // The form stays open, blank, in add mode.
+      } else {
+        setRecordMsg({ type: 'success', text: 'မှတ်တမ်း ထည့်သွင်းပြီးပါပြီ — အသုံးပြုသူဘက်က မြင်ရပါမည်။' });
+        setOpenRecordForm(null);
+      }
       setTimeout(() => setRecordMsg(null), 4000);
     } catch (err: any) {
-      setRecordMsg({ type: 'error', text: err?.message || 'မှတ်တမ်း ထည့်သွင်းခြင်း မအောင်မြင်ပါ' });
+      setRecordMsg({
+        type: 'error',
+        text: err?.message || (editingRecord?.kind === kind ? 'မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ' : 'မှတ်တမ်း ထည့်သွင်းခြင်း မအောင်မြင်ပါ'),
+      });
     } finally {
       setRecordSaving(false);
     }
@@ -557,11 +854,24 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             { kind: 'lab', label: 'ဓာတ်ခွဲခန်း', Icon: FlaskConical },
             { kind: 'med', label: 'ဆေး', Icon: Pill },
             { kind: 'vaccine', label: 'ကာကွယ်ဆေး', Icon: Syringe },
+            { kind: 'bmi', label: 'BMI', Icon: Scale },
           ] as const).map(({ kind, label, Icon }) => (
             <button
               key={kind}
               type="button"
-              onClick={() => setOpenRecordForm(openRecordForm === kind ? null : kind)}
+              onClick={() => {
+                if (openRecordForm === kind) {
+                  // Closing an edit form also leaves edit mode and blanks
+                  // it, so reopening never shows stale edit values.
+                  if (editingRecord?.kind === kind) {
+                    resetRecordForm(kind);
+                    setEditingRecord(null);
+                  }
+                  setOpenRecordForm(null);
+                } else {
+                  setOpenRecordForm(kind);
+                }
+              }}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-colors cursor-pointer ${
                 openRecordForm === kind
                   ? 'bg-emerald-600 text-white border-emerald-600'
@@ -574,15 +884,48 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
           ))}
         </div>
 
+        {editingRecord && openRecordForm && (
+          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>
+                ✏️ ပြင်ဆင်နေသည် — {
+                  openRecordForm === 'bp' ? 'သွေးပေါင်ချိန်' :
+                  openRecordForm === 'sugar' ? 'သွေးချို' :
+                  openRecordForm === 'lab' ? 'ဓာတ်ခွဲခန်း' :
+                  openRecordForm === 'med' ? 'ဆေး' :
+                  openRecordForm === 'vaccine' ? 'ကာကွယ်ဆေး' : 'BMI'
+                } မှတ်တမ်း
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold cursor-pointer shrink-0"
+            >
+              ပယ်ဖျက်မည်
+            </button>
+          </div>
+        )}
+
         {openRecordForm === 'bp' && (
           <form onSubmit={(e) => { e.preventDefault(); submitRecord('bp'); }} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <input type="number" required placeholder="Systolic (အပေါ်) *" value={bpSys} onChange={(e) => setBpSys(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" required placeholder="Diastolic (အောက်) *" value={bpDia} onChange={(e) => setBpDia(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" placeholder="Pulse (bpm)" value={bpPulse} onChange={(e) => setBpPulse(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="datetime-local" required value={bpDate} onChange={(e) => setBpDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <select value={bpCondition} onChange={(e) => setBpCondition(e.target.value as typeof bpCondition)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold">
+              <option value="resting">တိုင်းချိန် — နားနေချိန်</option>
+              <option value="morning">တိုင်းချိန် — မနက်နိုးနိုးချင်း</option>
+              <option value="night">တိုင်းချိန် — ညအိပ်ရာဝင်</option>
+              <option value="after_exercise">တိုင်းချိန် — လှုပ်ရှားပြီးစ</option>
+              <option value="stress">တိုင်းချိန် — စိတ်ဖိစီးချိန်</option>
+            </select>
+            <input type="text" placeholder="အစားအသောက် မှတ်တမ်း (ဥပမာ- ဆားများများစားခဲ့သည်)" value={bpDiet} onChange={(e) => setBpDiet(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="text" placeholder="မှတ်ချက် (မဖြည့်လည်းရသည်)" value={bpNotes} onChange={(e) => setBpNotes(e.target.value)} className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <div className="col-span-2 sm:col-span-4 flex justify-end">
               <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
-                {recordSaving ? 'ထည့်နေသည်...' : 'သွေးပေါင်ချိန် ထည့်မည်'}
+                {recordSaving ? (editingRecord?.kind === 'bp' ? 'သိမ်းဆည်းနေသည်...' : 'ထည့်နေသည်...') : (editingRecord?.kind === 'bp' ? 'သိမ်းဆည်းမည်' : 'သွေးပေါင်ချိန် ထည့်မည်')}
               </button>
             </div>
           </form>
@@ -599,9 +942,12 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               <option value="bedtime">ညအိပ်ရာဝင်</option>
             </select>
             <input type="datetime-local" required value={gluDate} onChange={(e) => setGluDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="text" placeholder="အစာအကြောင်း (ဥပမာ- မနက်အစာမစားမီ ၈ နာရီအစာငတ်)" value={gluMealInfo} onChange={(e) => setGluMealInfo(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="text" placeholder="အစားအသောက် မှတ်တမ်း (မဖြည့်လည်းရသည်)" value={gluDiet} onChange={(e) => setGluDiet(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="text" placeholder="မှတ်ချက် (မဖြည့်လည်းရသည်)" value={gluNotes} onChange={(e) => setGluNotes(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <div className="col-span-2 sm:col-span-3 flex justify-end">
               <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
-                {recordSaving ? 'ထည့်နေသည်...' : 'သွေးချို ထည့်မည်'}
+                {recordSaving ? (editingRecord?.kind === 'sugar' ? 'သိမ်းဆည်းနေသည်...' : 'ထည့်နေသည်...') : (editingRecord?.kind === 'sugar' ? 'သိမ်းဆည်းမည်' : 'သွေးချို ထည့်မည်')}
               </button>
             </div>
           </form>
@@ -619,9 +965,11 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               <input type="number" step="any" placeholder="အမြင့်ဆုံး" value={labRefMax} onChange={(e) => setLabRefMax(e.target.value)} className="w-1/2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             </div>
             <p className="col-span-2 text-[11px] text-slate-400">စံသတ်မှတ်ချက် ဖြည့်ရင် ရလဒ်ကို အနိမ့်/ပုံမှန်/မြင့် လို့ အကဲဖြတ်ပြပါမည်။ မဖြည့်ရင် "မှတ်တမ်းတင်ထားသည်" လို့သာ ပြပါမည်။</p>
+            <textarea rows={2} placeholder="မှတ်ချက် (မဖြည့်လည်းရသည်)" value={labNotes} onChange={(e) => setLabNotes(e.target.value)} className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <textarea rows={2} placeholder="ဆရာဝန်၏ သုံးသပ်ချက် (မဖြည့်လည်းရသည်)" value={labDoctorReview} onChange={(e) => setLabDoctorReview(e.target.value)} className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <div className="col-span-2 flex justify-end">
               <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
-                {recordSaving ? 'ထည့်နေသည်...' : 'ဓာတ်ခွဲခန်း မှတ်တမ်း ထည့်မည်'}
+                {recordSaving ? (editingRecord?.kind === 'lab' ? 'သိမ်းဆည်းနေသည်...' : 'ထည့်နေသည်...') : (editingRecord?.kind === 'lab' ? 'သိမ်းဆည်းမည်' : 'ဓာတ်ခွဲခန်း မှတ်တမ်း ထည့်မည်')}
               </button>
             </div>
           </form>
@@ -631,6 +979,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
           <form onSubmit={(e) => { e.preventDefault(); submitRecord('med'); }} className="grid grid-cols-2 gap-2">
             <input type="text" required placeholder="ဆေးအမည် * (Brand နာမည်)" value={medName} onChange={(e) => setMedName(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="text" required placeholder="ပမာဏ * (ဥပမာ- 5 mg)" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="text" placeholder="Chemical နာမည် (မဖြည့်လည်းရသည် — ဥပမာ- Amlodipine)" value={medChemical} onChange={(e) => setMedChemical(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="text" required placeholder="ကြိမ်နှုန်း * (ဥပမာ- မနက် (၁) ကြိမ်)" value={medFrequency} onChange={(e) => setMedFrequency(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <select value={medTiming} onChange={(e) => setMedTiming(e.target.value as Medication['timing'])} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold">
               <option value="after_meal">အစာစားပြီး</option>
@@ -641,11 +990,19 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             </select>
             <input type="text" required placeholder="ရောဂါ * (ဥပမာ- သွေးတိုး)" value={medFor} onChange={(e) => setMedFor(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="date" required value={medStart} onChange={(e) => setMedStart(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="date" placeholder="ပြီးဆုံးမည့်ရက် (မဖြည့်လည်းရသည်)" value={medEndDate} onChange={(e) => setMedEndDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="time" placeholder="သောက်ရမည့်အချိန် (မဖြည့်လည်းရသည်)" value={medDoseTime} onChange={(e) => setMedDoseTime(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="number" min={1} placeholder="သောက်ရမည့်ရက် (ရက် — မဖြည့်လည်းရသည်)" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="text" placeholder="ညွှန်ကြားသော ဆရာဝန် (မဖြည့်လည်းရသည်)" value={medDoctor} onChange={(e) => setMedDoctor(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <select value={medStatus} onChange={(e) => setMedStatus(e.target.value as Medication['status'])} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold">
+              <option value="active">သောက်နေဆဲ</option>
+              <option value="paused">ခဏရပ်ထား</option>
+              <option value="completed">ပြီးဆုံး</option>
+            </select>
+            <input type="text" placeholder="မှတ်ချက် (မဖြည့်လည်းရသည်)" value={medNotes} onChange={(e) => setMedNotes(e.target.value)} className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <div className="col-span-2 flex justify-end">
               <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
-                {recordSaving ? 'ထည့်နေသည်...' : 'ဆေး ထည့်မည်'}
+                {recordSaving ? (editingRecord?.kind === 'med' ? 'သိမ်းဆည်းနေသည်...' : 'ထည့်နေသည်...') : (editingRecord?.kind === 'med' ? 'သိမ်းဆည်းမည်' : 'ဆေး ထည့်မည်')}
               </button>
             </div>
           </form>
@@ -663,9 +1020,32 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               <option value="child">ကလေး</option>
               <option value="travel">ခရီးသွား</option>
             </select>
+            <select value={vaxStatus} onChange={(e) => setVaxStatus(e.target.value as 'completed' | 'scheduled')} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold">
+              <option value="completed">ထိုးပြီးသား</option>
+              <option value="scheduled">ထိုးရန် စီစဉ်ထား (မထိုးရသေး)</option>
+            </select>
+            <input type="date" placeholder="နောက်တစ်ကြိမ် ထိုးရမည့်ရက် (မဖြည့်လည်းရသည်)" value={vaxNextDate} onChange={(e) => setVaxNextDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="text" placeholder="ထိုးပေးသူ (မဖြည့်လည်းရသည်)" value={vaxAdminBy} onChange={(e) => setVaxAdminBy(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="text" placeholder="Batch နံပါတ် (မဖြည့်လည်းရသည်)" value={vaxBatch} onChange={(e) => setVaxBatch(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="text" placeholder="မှတ်ချက် (မဖြည့်လည်းရသည်)" value={vaxNotes} onChange={(e) => setVaxNotes(e.target.value)} className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <div className="col-span-2 flex justify-end">
               <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
-                {recordSaving ? 'ထည့်နေသည်...' : 'ကာကွယ်ဆေး ထည့်မည်'}
+                {recordSaving ? (editingRecord?.kind === 'vaccine' ? 'သိမ်းဆည်းနေသည်...' : 'ထည့်နေသည်...') : (editingRecord?.kind === 'vaccine' ? 'သိမ်းဆည်းမည်' : 'ကာကွယ်ဆေး ထည့်မည်')}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {openRecordForm === 'bmi' && (
+          <form onSubmit={(e) => { e.preventDefault(); submitRecord('bmi'); }} className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <input type="number" step="any" required placeholder="အရပ် (cm) *" value={bmiHeight} onChange={(e) => setBmiHeight(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="number" step="any" required placeholder="ကိုယ်အလေးချိန် (kg) *" value={bmiWeight} onChange={(e) => setBmiWeight(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="number" step="any" placeholder="ခါးပတ်လည် (cm — မဖြည့်လည်းရသည်)" value={bmiWaist} onChange={(e) => setBmiWaist(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="date" required value={bmiDate} onChange={(e) => setBmiDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="text" placeholder="မှတ်ချက် (မဖြည့်လည်းရသည်)" value={bmiNotes} onChange={(e) => setBmiNotes(e.target.value)} className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <div className="col-span-2 sm:col-span-3 flex justify-end">
+              <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
+                {recordSaving ? (editingRecord?.kind === 'bmi' ? 'သိမ်းဆည်းနေသည်...' : 'ထည့်နေသည်...') : (editingRecord?.kind === 'bmi' ? 'သိမ်းဆည်းမည်' : 'BMI ထည့်မည်')}
               </button>
             </div>
           </form>
@@ -682,9 +1062,19 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               <span>နောက်ဆုံး သွေးပေါင်ချိန် (BP)</span>
             </div>
             {latestBP && (
-              <span className="text-[11px] text-slate-400">
-                {showRecordDateTime(latestBP.date || latestBP.timestamp || latestBP.createdAt)}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400">
+                  {showRecordDateTime(latestBP.date || latestBP.timestamp || latestBP.createdAt)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => startEditBp(latestBP)}
+                  className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>ပြင်ဆင်မည်</span>
+                </button>
+              </div>
             )}
           </div>
           {latestBP ? (
@@ -720,9 +1110,19 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               <span>နောက်ဆုံး သွေးချို (Glucose)</span>
             </div>
             {latestGlucose && (
-              <span className="text-[11px] text-slate-400">
-                {showRecordDateTime(latestGlucose.date || latestGlucose.timestamp || latestGlucose.createdAt)}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400">
+                  {showRecordDateTime(latestGlucose.date || latestGlucose.timestamp || latestGlucose.createdAt)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => startEditSugar(latestGlucose)}
+                  className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>ပြင်ဆင်မည်</span>
+                </button>
+              </div>
             )}
           </div>
           {latestGlucose ? (
@@ -786,7 +1186,8 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                   <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500">
                     <th className="text-left font-semibold py-2 pr-2">စစ်ဆေးချက်</th>
                     <th className="text-left font-semibold py-2 pr-2">တန်ဖိုး</th>
-                    <th className="text-left font-semibold py-2">ရက်စွဲ</th>
+                    <th className="text-left font-semibold py-2 pr-2">ရက်စွဲ</th>
+                    <th className="py-2" aria-label="ပြင်ဆင်မည်" />
                   </tr>
                 </thead>
                 <tbody>
@@ -800,7 +1201,17 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="py-2 text-slate-500">{showRecordDateTime(item.date)}</td>
+                      <td className="py-2 pr-2 text-slate-500">{showRecordDateTime(item.date)}</td>
+                      <td className="py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => startEditLab(item.recordId)}
+                          className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 hover:underline cursor-pointer whitespace-nowrap"
+                          title="ဓာတ်ခွဲခန်း မှတ်တမ်း ပြင်ဆင်မည်"
+                        >
+                          ✏️ ပြင်ဆင်မည်
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -827,15 +1238,25 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                       {m.prescribedFor ? ` • ${m.prescribedFor}` : ''}
                     </p>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                    m.status === 'active'
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      : m.status === 'completed'
-                        ? 'bg-slate-100 text-slate-600 border border-slate-300'
-                        : 'bg-amber-100 text-amber-800 border border-amber-300'
-                  }`}>
-                    {medicationStatusLabel(m.status)}
-                  </span>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      m.status === 'active'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : m.status === 'completed'
+                          ? 'bg-slate-100 text-slate-600 border border-slate-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300'
+                    }`}>
+                      {medicationStatusLabel(m.status)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => startEditMed(m)}
+                      className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 hover:underline cursor-pointer whitespace-nowrap"
+                      title="ဆေးမှတ်တမ်း ပြင်ဆင်မည်"
+                    >
+                      ✏️ ပြင်ဆင်မည်
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -867,9 +1288,19 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                         {v.targetDisease || ''}{v.doseNumber && v.totalDoses ? ` • အကြိမ် ${v.doseNumber}/${v.totalDoses}` : ''}
                       </p>
                     </div>
-                    <span className="text-slate-500 font-semibold shrink-0">
-                      {showRecordDateTime(v.dateAdministered)}
-                    </span>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-slate-500 font-semibold">
+                        {showRecordDateTime(v.dateAdministered)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => startEditVaccine(v)}
+                        className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 hover:underline cursor-pointer whitespace-nowrap"
+                        title="ကာကွယ်ဆေး မှတ်တမ်း ပြင်ဆင်မည်"
+                      >
+                        ✏️ ပြင်ဆင်မည်
+                      </button>
+                    </div>
                   </div>
                 ))}
             </div>
@@ -891,9 +1322,19 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                   <span className="text-slate-500">
                     {b.weightKg ? `${b.weightKg} kg` : ''}{b.weightKg && b.heightCm ? ' • ' : ''}{b.heightCm ? `${b.heightCm} cm` : ''}
                   </span>
-                  <span className="text-slate-400 shrink-0">
-                    {showRecordDateTime(b.date || b.timestamp || b.createdAt)}
-                  </span>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-slate-400">
+                      {showRecordDateTime(b.date || b.timestamp || b.createdAt)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => startEditBmi(b)}
+                      className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 hover:underline cursor-pointer whitespace-nowrap"
+                      title="BMI မှတ်တမ်း ပြင်ဆင်မည်"
+                    >
+                      ✏️ ပြင်ဆင်မည်
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

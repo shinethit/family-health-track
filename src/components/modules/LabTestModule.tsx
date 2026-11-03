@@ -655,7 +655,7 @@ export const MASTER_LAB_TESTS: LabTestDef[] = [
 ];
 
 export const LabTestModule: React.FC = () => {
-  const { labRecords, addLabRecord, deleteLabRecord, selectedPatient, selectedFamilyMember } = useHealthData();
+  const { labRecords, addLabRecord, updateLabRecord, deleteLabRecord, selectedPatient, selectedFamilyMember } = useHealthData();
   // dataLoading is added by the context work in the same v2.4.8 batch; fall
   // back to false if it is not present yet so this module still renders.
   const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
@@ -663,6 +663,13 @@ export const LabTestModule: React.FC = () => {
   const { showToast } = useToast();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
+  // v2.4.13 edit: id of the record being edited, null in add mode. The
+  // same modal/form is reused, prefilled from the record.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // Time part of a stored testDate, preserved across an edit. The form's
+  // date input is date-only, so without this the stored time would be lost
+  // when an old record is edited.
+  const [editingTestTime, setEditingTestTime] = useState<string>('');
   // Default to the newest record by testDate, matching the history list
   // (newest first) — not labRecords[0], which is in stored order.
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(() =>
@@ -719,6 +726,85 @@ export const LabTestModule: React.FC = () => {
     setTestValues({});
     setCustomRefRanges({});
     setSearchQuery('');
+  };
+
+  // Open the form prefilled with an existing record for editing.
+  const startEdit = (lab: typeof labRecords[number]) => {
+    setEditingId(lab.id);
+    const values: Record<string, string> = {};
+    const ranges: Record<string, { min?: string; max?: string; isEditing?: boolean }> = {};
+    if (lab.tests && lab.tests.length > 0) {
+      lab.tests.forEach(t => {
+        values[t.id] = String(t.value);
+        if (t.isCustomRef) {
+          ranges[t.id] = {
+            min: t.refMin != null ? String(t.refMin) : undefined,
+            max: t.refMax != null ? String(t.refMax) : undefined,
+            isEditing: false,
+          };
+        }
+      });
+    } else {
+      // Legacy record (no tests[] array): rebuild values from the nested
+      // objects, mirroring the detail view's displayItems logic.
+      const legacy: Record<string, number | undefined> = {
+        hemoglobin: lab.cbc?.hemoglobin, wbc: lab.cbc?.wbc, platelets: lab.cbc?.platelets,
+        rbc: lab.cbc?.rbc, pcv_hematocrit: lab.cbc?.pcv_hematocrit, esr: lab.cbc?.esr,
+        neutrophils: lab.cbc?.neutrophils, lymphocytes: lab.cbc?.lymphocytes,
+        fbs: lab.glucose?.fbs, ppbs: lab.glucose?.ppbs, rbs: lab.glucose?.rbs, hba1c: lab.glucose?.hba1c,
+        alt_sgpt: lab.liver?.alt_sgpt ?? lab.liver?.alt, ast_sgot: lab.liver?.ast_sgot ?? lab.liver?.ast,
+        totalBilirubin: lab.liver?.totalBilirubin, directBilirubin: lab.liver?.directBilirubin,
+        alp: lab.liver?.alp, albumin: lab.liver?.albumin, totalProtein: lab.liver?.totalProtein,
+        globulin: lab.liver?.globulin,
+        creatinine: lab.renal?.creatinine, uricAcid: lab.renal?.uricAcid, bun: lab.renal?.bun,
+        egfr: lab.renal?.egfr, sodium: lab.renal?.sodium, potassium: lab.renal?.potassium,
+        chloride: lab.renal?.chloride,
+        totalCholesterol: lab.lipid?.totalCholesterol, triglycerides: lab.lipid?.triglycerides,
+        hdl: lab.lipid?.hdl, ldl: lab.lipid?.ldl, vldl: lab.lipid?.vldl,
+        tsh: lab.thyroid?.tsh, ft4: lab.thyroid?.ft4, ft3: lab.thyroid?.ft3,
+        totalT4: lab.thyroid?.totalT4, totalT3: lab.thyroid?.totalT3, antiTpo: lab.thyroid?.antiTpo,
+        urineMicroalbumin: lab.urine?.microalbumin,
+        crp: lab.inflammatory?.crp, ferritin: lab.inflammatory?.ferritin,
+        vitaminD: lab.inflammatory?.vitaminD, vitaminB12: lab.inflammatory?.vitaminB12,
+      };
+      Object.entries(legacy).forEach(([id, v]) => { if (v != null) values[id] = String(v); });
+    }
+    // Urine string fields (pus cells / RBC) are not in tests[] — keep them
+    // in testValues so the edit round-trips them instead of dropping them.
+    if (lab.urine?.pusCells) values['urinePusCells'] = lab.urine.pusCells;
+    if (lab.urine?.rbc) values['urineRbc'] = lab.urine.rbc;
+    setTestValues(values);
+    setCustomRefRanges(ranges);
+    setTestDate((lab.testDate || '').slice(0, 10) || localDateStr(new Date()));
+    setEditingTestTime((lab.testDate || '').includes('T') ? (lab.testDate || '').slice(11, 16) : '');
+    setLabName(lab.labName || '');
+    setNotes(lab.notes || '');
+    setDoctorReview(lab.doctorReview || '');
+    setSearchQuery('');
+    setActiveCategory('all');
+    setIsOpenAdd(true);
+  };
+
+  // Close the form. In edit mode the prefilled values are cleared back to
+  // fresh add defaults so a later Add never inherits them. resetForm stays
+  // field-only: the in-modal "အကုန်ရှင်းမည်" button must not exit edit mode.
+  const closeForm = () => {
+    if (editingId) {
+      resetForm();
+      setEditingTestTime('');
+      setEditingId(null);
+    }
+    setIsOpenAdd(false);
+  };
+
+  // Open the form in add mode (defensive: never carry an edit id in).
+  const openAdd = () => {
+    if (editingId) {
+      resetForm();
+      setEditingTestTime('');
+      setEditingId(null);
+    }
+    setIsOpenAdd(true);
   };
 
   // Fingerprint of the record just saved, so the detail panel can follow it
@@ -1064,20 +1150,12 @@ export const LabTestModule: React.FC = () => {
       };
       const hasInfl = Object.values(inflObj).some(v => v !== undefined);
 
-      // Remember the record just entered so the detail panel follows it
-      // (v2.4.11 F11) — addLabRecord returns no id, so we match by content
-      // once the record list updates.
-      setPendingSelectFingerprint({
-        testDate,
-        labName: labName.trim() || 'ဆေးဓာတ်ခွဲခန်း',
-        testCount: recordedTests.length,
-        firstTestKey: recordedTests.length > 0 ? `${recordedTests[0].id}:${recordedTests[0].value}` : '',
-      });
-
-      await addLabRecord({
-        userId: selectedPatient ? selectedPatient.id : (selectedFamilyMember ? selectedFamilyMember.id : profile.id),
-        userName: selectedPatient ? selectedPatient.displayName : (selectedFamilyMember ? selectedFamilyMember.name : profile.displayName),
-        testDate,
+      // Shared payload for both add and edit (userId/userName only in add).
+      // In edit mode the stored time part is re-attached: the form's date
+      // input is date-only, so without this an old record's time would be
+      // lost on every edit.
+      const payload = {
+        testDate: editingId && editingTestTime ? `${testDate}T${editingTestTime}` : testDate,
         labName: labName.trim() || 'ဆေးဓာတ်ခွဲခန်း',
         tests: recordedTests,
         cbc: hasCbc ? cbcObj : undefined,
@@ -1090,6 +1168,35 @@ export const LabTestModule: React.FC = () => {
         inflammatory: hasInfl ? inflObj : undefined,
         notes: notes.trim() || undefined,
         doctorReview: doctorReview.trim() || undefined
+      };
+
+      if (editingId) {
+        // v2.4.13 edit: update in place; userId/userName never change.
+        // The detail panel already shows this record (selectedRecordId),
+        // so no fingerprint follow-up is needed.
+        await updateLabRecord(editingId, payload);
+        resetForm();
+        setEditingTestTime('');
+        setEditingId(null);
+        setIsOpenAdd(false);
+        showToast('Lab စစ်ဆေးချက် မှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ', 'success');
+        return;
+      }
+
+      // Remember the record just entered so the detail panel follows it
+      // (v2.4.11 F11) — addLabRecord returns no id, so we match by content
+      // once the record list updates.
+      setPendingSelectFingerprint({
+        testDate: payload.testDate,
+        labName: payload.labName,
+        testCount: recordedTests.length,
+        firstTestKey: recordedTests.length > 0 ? `${recordedTests[0].id}:${recordedTests[0].value}` : '',
+      });
+
+      await addLabRecord({
+        userId: selectedPatient ? selectedPatient.id : (selectedFamilyMember ? selectedFamilyMember.id : profile.id),
+        userName: selectedPatient ? selectedPatient.displayName : (selectedFamilyMember ? selectedFamilyMember.name : profile.displayName),
+        ...payload
       });
 
       resetForm();
@@ -1097,9 +1204,12 @@ export const LabTestModule: React.FC = () => {
       showToast('Lab စစ်ဆေးချက် မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
     } catch (err) {
       // Save failed: keep the form open with all values intact so the user
-      // can retry (v2.4.11 F3 — saves used to fail silently).
+      // can retry (v2.4.11 F3 — saves used to fail silently). In edit mode
+      // the context already shows its own failure toast, so no second one.
       console.warn('Error saving lab record:', err);
-      showToast('Lab စစ်ဆေးချက် သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+      if (!editingId) {
+        showToast('Lab စစ်ဆေးချက် သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -1145,10 +1255,7 @@ export const LabTestModule: React.FC = () => {
         </div>
 
         <button
-          onClick={() => {
-            resetForm();
-            setIsOpenAdd(true);
-          }}
+          onClick={openAdd}
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium shadow-sm transition-all cursor-pointer active:scale-98"
         >
           <Plus className="w-4 h-4" />
@@ -1217,18 +1324,30 @@ export const LabTestModule: React.FC = () => {
                         <Calendar className="w-3.5 h-3.5 text-purple-600" />
                         {(lab.testDate || '').replace('T', ' ')}
                       </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm('ဤဓာတ်ခွဲခန်း စစ်ဆေးချက် မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
-                            deleteLabRecord(lab.id);
-                          }
-                        }}
-                        className="text-slate-400 hover:text-rose-600 p-2 rounded-md"
-                        title="ဖျက်မည်"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEdit(lab);
+                          }}
+                          className="text-slate-400 hover:text-purple-600 p-2 rounded-md"
+                          title="ပြင်ဆင်မည်"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('ဤဓာတ်ခွဲခန်း စစ်ဆေးချက် မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
+                              deleteLabRecord(lab.id);
+                            }
+                          }}
+                          className="text-slate-400 hover:text-rose-600 p-2 rounded-md"
+                          title="ဖျက်မည်"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between gap-1">
@@ -1445,7 +1564,7 @@ export const LabTestModule: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
-                    ဓာတ်ခွဲခန်းစစ်ဆေးချက် အသစ်ထည့်သွင်းခြင်း (Lab Test Entry)
+                    {editingId ? 'ဓာတ်ခွဲခန်းစစ်ဆေးချက် ပြင်ဆင်မည်' : 'ဓာတ်ခွဲခန်းစစ်ဆေးချက် အသစ်ထည့်သွင်းခြင်း (Lab Test Entry)'}
                   </h3>
                   <p className="text-[11px] text-slate-500">
                     မိမိစစ်ဆေးခဲ့သော ဓာတ်ခွဲအဖြေကိုသာ ရိုက်ထည့်ပါ (မထည့်သော စစ်ဆေးချက်များ အလိုအလျောက် ပယ်ဖျက်ပါမည်)
@@ -1464,7 +1583,7 @@ export const LabTestModule: React.FC = () => {
                   <span className="hidden sm:inline">အကုန်ရှင်းမည်</span>
                 </button>
                 <button
-                  onClick={() => setIsOpenAdd(false)}
+                  onClick={closeForm}
                   className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none p-1 rounded-lg cursor-pointer"
                 >
                   ✕
@@ -1747,7 +1866,7 @@ export const LabTestModule: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsOpenAdd(false)}
+                    onClick={closeForm}
                     className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
                     မလုပ်တော့ပါ
@@ -1759,9 +1878,11 @@ export const LabTestModule: React.FC = () => {
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>
-                      {isSubmitting 
-                        ? 'သိမ်းဆည်းနေသည်...' 
-                        : `ရွေးချယ်ထားသော (${filledCount}) ခု သိမ်းမည်`}
+                      {isSubmitting
+                        ? 'သိမ်းဆည်းနေသည်...'
+                        : editingId
+                          ? 'ပြင်ဆင်မှုကို သိမ်းဆည်းမည်'
+                          : `ရွေးချယ်ထားသော (${filledCount}) ခု သိမ်းမည်`}
                     </span>
                   </button>
                 </div>
