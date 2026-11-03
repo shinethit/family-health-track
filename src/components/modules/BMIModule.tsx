@@ -42,7 +42,7 @@ const localDateStr = (d: Date): string =>
 
 export const BMIModule: React.FC = () => {
   const { profile, updateProfile } = useAuth();
-  const { bmiRecords, addBMIRecord, updateBMIRecord, deleteBMIRecord, selectedPatient, selectedFamilyMember } = useHealthData();
+  const { bmiRecords, latestBMI, addBMIRecord, updateBMIRecord, deleteBMIRecord, selectedPatient, selectedFamilyMember } = useHealthData();
   // dataLoading is added by the context work in the same v2.4.8 batch; fall
   // back to false if it is not present yet so this module still renders.
   const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
@@ -142,16 +142,23 @@ export const BMIModule: React.FC = () => {
   const [editBloodType, setEditBloodType] = useState<string>(() => profile?.bloodType || '');
 
   // Compute active user metrics
-  const activeDOB = selectedPatient?.dateOfBirth || profile?.dateOfBirth;
+  // v2.4.14: the current-BMI card must read the latest BMI RECORD first
+  // (same pattern as TrendsOverview) — a height/weight that lives only
+  // in a record (added by the doctor, family or import) still counts.
+  // The profile is only the fallback. Before this, the card said
+  // 'မှတ်တမ်း မရှိသေးပါ' even when BMI records existed.
+  // Family-member view: the age/DOB must come from THAT member (a
+  // FamilyMember has an age but no dateOfBirth), never the owner's.
+  const activeDOB = selectedFamilyMember ? undefined : (selectedPatient?.dateOfBirth || profile?.dateOfBirth);
   const activeAgeResult = calculateAge(activeDOB);
-  const activeAgeYears = activeAgeResult ? activeAgeResult.years : (selectedPatient?.age || profile?.age || null);
+  const activeAgeYears = activeAgeResult ? activeAgeResult.years : (selectedPatient?.age || selectedFamilyMember?.age || profile?.age || null);
 
-  const activeHeight = selectedPatient?.heightCm || profile?.heightCm || null;
-  const activeWeight = selectedPatient?.weightKg || profile?.weightKg || null;
-  const activeWaist = selectedPatient?.waistCm || profile?.waistCm || null;
+  const activeHeight = latestBMI?.heightCm || selectedPatient?.heightCm || profile?.heightCm || null;
+  const activeWeight = latestBMI?.weightKg || selectedPatient?.weightKg || profile?.weightKg || null;
+  const activeWaist = latestBMI?.waistCm || selectedPatient?.waistCm || profile?.waistCm || null;
 
   const currentBMIResult = (activeWeight && activeHeight) ? calculateBMI(activeWeight, activeHeight, activeAgeYears ?? undefined) : null;
-  const waistRisk = activeWaist ? calculateWaistRisk(activeWaist, (selectedPatient?.gender || profile?.gender || 'male')) : null;
+  const waistRisk = activeWaist ? calculateWaistRisk(activeWaist, (selectedPatient?.gender || selectedFamilyMember?.gender || profile?.gender || 'male')) : null;
 
   // Live calculator inside Modal
   const resolvedHeightCm = heightUnit === 'cm' 
@@ -305,6 +312,40 @@ export const BMIModule: React.FC = () => {
       resetBMIForm();
       setEditingId(null);
     }
+    // v2.4.14: when a family member is selected, the form must NOT open
+    // prefilled with the signed-in user's own height/weight (the form
+    // defaults come from the profile). Prefill from THAT member's latest
+    // record instead, or blank when they have none — otherwise the
+    // owner's measurements could be saved under the member by mistake.
+    if (selectedFamilyMember) {
+      if (latestBMI) {
+        if (heightUnit === 'ft') {
+          const ft = cmToFtIn(latestBMI.heightCm);
+          setHeightFeetInput(String(ft.feet));
+          setHeightInchesInput(String(ft.inches));
+          setHeightCmInput('');
+        } else {
+          setHeightCmInput(String(latestBMI.heightCm));
+          setHeightFeetInput('');
+          setHeightInchesInput('');
+        }
+        if (weightUnit === 'lb') {
+          setWeightLbInput(String(kgToLb(latestBMI.weightKg)));
+          setWeightKgInput('');
+        } else {
+          setWeightKgInput(String(latestBMI.weightKg));
+          setWeightLbInput('');
+        }
+        setWaistInput(latestBMI.waistCm ? String(latestBMI.waistCm) : '');
+      } else {
+        setHeightCmInput('');
+        setHeightFeetInput('');
+        setHeightInchesInput('');
+        setWeightKgInput('');
+        setWeightLbInput('');
+        setWaistInput('');
+      }
+    }
     setIsOpenAdd(true);
   };
 
@@ -350,7 +391,11 @@ export const BMIModule: React.FC = () => {
       }
       await addBMIRecord({
         userId: selectedPatient ? selectedPatient.id : (profile?.id || 'guest-user'),
-        userName: selectedPatient ? selectedPatient.displayName : (profile?.displayName || 'အသုံးပြုသူ'),
+        // v2.4.14: file the record under the family member's own name when
+        // one is selected (the context stamps userId from the target, but
+        // a passed userName wins there — the owner's name used to land on
+        // a member's record).
+        userName: selectedFamilyMember ? selectedFamilyMember.name : (selectedPatient ? selectedPatient.displayName : (profile?.displayName || 'အသုံးပြုသူ')),
         heightCm: resolvedHeightCm,
         weightKg: resolvedWeightKg,
         waistCm: waistInput ? Number(waistInput) : undefined,
@@ -960,7 +1005,7 @@ export const BMIModule: React.FC = () => {
                     {editingId ? 'BMI မှတ်တမ်း ပြင်ဆင်မည်' : 'BMI နှင့် ကိုယ်အလေးချိန် မှတ်တမ်းအသစ်'}
                   </h3>
                   <span className="text-[11px] text-slate-400">
-                    {selectedPatient ? selectedPatient.displayName : profile?.displayName} အတွက်
+                    {selectedPatient ? selectedPatient.displayName : (selectedFamilyMember ? selectedFamilyMember.name : profile?.displayName)} အတွက်
                   </span>
                 </div>
               </div>

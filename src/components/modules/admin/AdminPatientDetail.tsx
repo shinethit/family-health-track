@@ -442,9 +442,17 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
 
   const ageObj = calculateAge(patient.dateOfBirth);
   const resolvedAge = ageObj ? ageObj.years : (patient.age || null);
-  const patientBMI = (patient.weightKg && patient.heightCm)
-    ? calculateBMI(patient.weightKg, patient.heightCm)
-    : null;
+  // v2.4.14: the header BMI badge must not depend on the profile alone —
+  // a patient whose height/weight live only in BMI records (added by the
+  // doctor, family or import) still has a current BMI. Fall back to the
+  // latest BMI record first, same pattern as TrendsOverview / BMIModule.
+  // Before this, the badge simply vanished for such a patient.
+  const latestPatientBMI = latestBMIHistory[0] || null;
+  const patientBMI = (latestPatientBMI?.heightCm && latestPatientBMI?.weightKg)
+    ? calculateBMI(latestPatientBMI.weightKg, latestPatientBMI.heightCm)
+    : (patient.weightKg && patient.heightCm)
+      ? calculateBMI(patient.weightKg, patient.heightCm)
+      : null;
 
   const cleanName = getResolvedName(patient);
 

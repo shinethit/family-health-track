@@ -44,6 +44,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
     doctorAdvices, 
     selectedPatient, 
     selectedPatientId,
+    selectedFamilyMember,
     setSelectedPatientId,
     patientsList,
     latestBMI,
@@ -116,13 +117,17 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
   const gluEval = latestGlucose && latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestGlucose.type || latestGlucose.timing || 'fasting') : null;
 
   // Active user age & BMI
-  const activeDOB = selectedPatient?.dateOfBirth || profile?.dateOfBirth;
+  // v2.4.14: family-member view — the age must come from THAT member (a
+  // FamilyMember has an age but no dateOfBirth), never the owner's DOB.
+  // And pass the age into calculateBMI so its category matches the BMI
+  // module (pediatric guard for under-18s) instead of adult cutoffs.
+  const activeDOB = selectedFamilyMember ? undefined : (selectedPatient?.dateOfBirth || profile?.dateOfBirth);
   const ageObj = calculateAge(activeDOB);
-  const activeAgeYears = ageObj ? ageObj.years : (selectedPatient?.age || profile?.age || null);
+  const activeAgeYears = ageObj ? ageObj.years : (selectedPatient?.age || selectedFamilyMember?.age || profile?.age || null);
 
   const activeHeight = latestBMI?.heightCm || selectedPatient?.heightCm || profile?.heightCm || null;
   const activeWeight = latestBMI?.weightKg || selectedPatient?.weightKg || profile?.weightKg || null;
-  const bmiEval = (activeWeight && activeHeight) ? calculateBMI(activeWeight, activeHeight) : null;
+  const bmiEval = (activeWeight && activeHeight) ? calculateBMI(activeWeight, activeHeight, activeAgeYears ?? undefined) : null;
 
   // Active critical alerts
   const alerts: { title: string; desc: string; type: 'warning' | 'danger' | 'info' }[] = [];

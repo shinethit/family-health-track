@@ -57,12 +57,40 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.13',
+    version: 'v2.4.14',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
     isLatest: true,
+    title: '🔝 [FIX] BMI ကတ် မှတ်တမ်း ရှိလျက်နဲ့ မရှိဘူးလို့ ပြတာ',
+    badge: 'Latest Release (v2.4.14)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '⚖️ BMI ကတ် နောက်ဆုံး မှတ်တမ်းကို ပြပြီ',
+        icon: ShieldCheck,
+        items: [
+          'အရပ်/ကိုယ်အလေးချိန် ထည့်ထားလျက်နဲ့ BMI ကတ်က "မှတ်တမ်း မရှိသေးပါ" လို့ ပြနေတာ ဖြေရှင်းပြီ',
+          'နောက်ဆုံး BMI မှတ်တမ်းက အရပ်/ကိုယ်အလေးချိန်ကို ကတ်မှာ ပြမယ် — ပရိုဖိုင်မှာ မထည့်ထားလည်း ရပြီ',
+          'မိသားစုဝင် ရွေးထားရင် အဲဒီဝင်ရဲ့ BMI ပဲ ပြမယ် — ကိုယ့်အချက်အလက် မရောတော့ဘူး'
+        ]
+      },
+      {
+        title: '👨‍⚕️ Admin ဘက်က BMI badge လည်း တူညီပြီ',
+        icon: Sparkles,
+        items: [
+          'အသုံးပြုသူရဲ့ BMI မှတ်တမ်းရှိရင် Admin ဘက်က ခေါင်းစဉ် BMI badge မှာ ပေါ်ပြီ',
+          'မှတ်တမ်း ဖျက်လိုက်ရင် ကတ်က ပရိုဖိုင်တန်ဖိုးကို ပြန်ပြမယ် — တကယ်မရှိမှ "မရှိသေးပါ" လို့ ပြမယ်'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.4.13',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: false,
     title: '🔝 [FIX] မှတ်တမ်း ပြင်ဆင်ခြင်း + Admin form အပြည့်အစုံ',
-    badge: 'Latest Release (v2.4.13)',
+    badge: 'Previous Release (v2.4.13)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
