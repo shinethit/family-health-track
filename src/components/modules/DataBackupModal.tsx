@@ -17,10 +17,12 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { useToast } from '../../context/ToastContext';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 import { Modal } from '../common/Modal';
+import { isOwnLocalKey, localKeyOwnerUid } from '../../lib/perUserStorage';
 
 interface DataBackupModalProps {
   isOpen: boolean;
@@ -36,12 +38,14 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
     labRecords, 
     medications, 
     vaccineRecords,
-    familyMembers, 
-    doctorAdvices, 
-    doctorQuestions, 
+    familyMembers,
+    doctorAdvices,
+    doctorQuestions,
+    medicationLogs,
     selectedPatient,
     refreshAdminData
   } = useHealthData();
+  const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
   const [isExporting, setIsExporting] = useState(false);
@@ -55,6 +59,38 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
 
   const targetName = selectedPatient?.displayName || profile?.displayName || 'user';
   const targetUid = selectedPatient?.id || currentUser?.uid;
+  const targetEmail = selectedPatient?.email || profile?.email || currentUser?.email || '';
+  // Phone-only (localStorage) data lives on THIS device and belongs to the
+  // signed-in user. When an admin exports a selected patient's backup,
+  // localData must NOT be included — it is the admin's own device data,
+  // not the patient's.
+  const isOwnExport = !selectedPatient;
+  const exportProfile = selectedPatient || profile || null;
+  // Per-user storage keys (v2.4.11): the same uid source the modules use
+  // (profile.id, falling back to the auth uid).
+  const storageUid = profile?.id || currentUser?.uid || '';
+
+  // Collect phone-only (localStorage) data for export: dental/eye/hearing
+  // (fht_*), physio progress (physio_*), special-care checklists
+  // (special_care_*), bookmarks, and per-user notification/reminder keys.
+  // Raw strings are stored so the round-trip back is exact. ONLY this
+  // user's keys are collected — another user's suffixed keys on a shared
+  // phone must never end up in this backup.
+  const collectLocalData = (): Record<string, string> => {
+    const out: Record<string, string> = {};
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (!isOwnLocalKey(key, storageUid)) continue;
+        const val = localStorage.getItem(key);
+        if (val != null) out[key] = val;
+      }
+    } catch (e) {
+      console.warn('Could not read local data for export:', e);
+    }
+    return out;
+  };
 
   // 1. Export JSON Data
   const handleExportJSON = () => {
@@ -67,8 +103,15 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
         patient: {
           id: targetUid,
           displayName: targetName,
-          email: selectedPatient?.email || profile?.email || '',
+          email: targetEmail,
         },
+        // Profile + Emergency ID (top level so they are never lost)
+        profile: exportProfile,
+        emergencyProfile: exportProfile?.emergencyProfile || null,
+        // Medication intake logs (top level, like the other record arrays)
+        medicationLogs: medicationLogs,
+        // Phone-only data — only for your own export (see isOwnExport above)
+        localData: isOwnExport ? collectLocalData() : {},
         data: {
           vitals: bpRecords,
           glucose: glucoseRecords,
@@ -92,6 +135,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
       downloadAnchor.remove();
     } catch (err: any) {
       console.error('Export JSON error:', err);
+      showToast('ဒေတာ ထုတ်ယူခြင်း မအောင်မြင်ပါ။ ပြန်လည်ကြိုးစားပါ။', 'error');
     } finally {
       setIsExporting(false);
     }
@@ -111,99 +155,242 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
     URL.revokeObjectURL(url);
   };
 
-  // 2. Export Individual CSVs with UTF-8 BOM
-  const handleExportAllCSVs = () => {
+  // CSV cell: always quoted, inner quotes doubled — Burmese text, commas
+  // and newlines inside notes must never break the columns.
+  const csvCell = (v: any): string => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csvDoc = (headers: string[], rows: any[][]): string =>
+    [headers.map(csvCell).join(','), ...rows.map(r => r.map(csvCell).join(','))].join('\r\n');
+  const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+  // 2. Export CSVs with UTF-8 BOM — ALL exported record types, not just
+  // the 5 the old version covered. One file per type, downloaded one at a
+  // time with a short delay between them: firing up to 5 downloads at once
+  // made browsers block the 2nd and later files. Only types that actually
+  // have records are downloaded; the button note below says so honestly.
+  // Phone-only data (fht_*/physio_*/checklist/bookmarks) has no CSV form —
+  // it is only in the JSON export.
+  const handleExportAllCSVs = async () => {
     const dateStr = new Date().toISOString().split('T')[0];
+    setIsExporting(true);
+    try {
+      const files: { filename: string; csv: string }[] = [];
+      const safeName = targetName.replace(/\s+/g, '_');
 
-    // (a) BP CSV
-    if (bpRecords.length > 0) {
-      const headers = ['ရက်စွဲ (Date)', 'အပေါ်သွေး (Systolic)', 'အောက်သွေး (Diastolic)', 'နှလုံးခုန်နှုန်း (Pulse)', 'အဆင့်အတန်း (Category)', 'အသုံးပြုသူအမည် (User)', 'မှတ်ချက် (Notes)'];
-      const rows = bpRecords.map(b => [
-        `"${b.recordedAt || b.createdAt || ''}"`,
-        b.systolic,
-        b.diastolic,
-        b.pulse,
-        `"${b.category || ''}"`,
-        `"${b.patientName || targetName}"`,
-        `"${(b.notes || '').replace(/"/g, '""')}"`
-      ]);
-      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-      downloadCSVWithBOM(csv, `BloodPressure_${targetName}_${dateStr}.csv`);
-    }
+      // (a) BP CSV
+      if (bpRecords.length > 0) {
+        files.push({
+          filename: `BloodPressure_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['ရက်စွဲ (Date)', 'အပေါ်သွေး (Systolic)', 'အောက်သွေး (Diastolic)', 'နှလုံးခုန်နှုန်း (Pulse)', 'အဆင့်အတန်း (Category)', 'အသုံးပြုသူအမည် (User)', 'မှတ်ချက် (Notes)'],
+            bpRecords.map(b => [b.recordedAt || b.createdAt || '', b.systolic, b.diastolic, b.pulse, b.category || '', b.patientName || targetName, b.notes || ''])
+          ),
+        });
+      }
 
-    // (b) Glucose CSV
-    if (glucoseRecords.length > 0) {
-      const headers = ['ရက်စွဲ (Date)', 'သကြားဓာတ် (mg/dL)', 'တိုင်းတာချိန် (Type)', 'အဆင့်အတန်း (Status)', 'အသုံးပြုသူအမည် (User)', 'မှတ်ချက် (Notes)'];
-      const rows = glucoseRecords.map(g => [
-        `"${g.recordedAt || g.createdAt || ''}"`,
-        g.glucoseValue || g.value,
-        `"${g.timing || g.type || ''}"`,
-        `"${g.status || ''}"`,
-        `"${g.patientName || targetName}"`,
-        `"${(g.notes || '').replace(/"/g, '""')}"`
-      ]);
-      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-      downloadCSVWithBOM(csv, `BloodSugar_${targetName}_${dateStr}.csv`);
-    }
+      // (b) Glucose CSV
+      if (glucoseRecords.length > 0) {
+        files.push({
+          filename: `BloodSugar_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['ရက်စွဲ (Date)', 'သကြားဓာတ် (mg/dL)', 'တိုင်းတာချိန် (Type)', 'အဆင့်အတန်း (Status)', 'အသုံးပြုသူအမည် (User)', 'မှတ်ချက် (Notes)'],
+            glucoseRecords.map(g => [g.recordedAt || g.createdAt || '', g.glucoseValue || g.value, g.timing || g.type || '', g.status || '', g.patientName || targetName, g.notes || ''])
+          ),
+        });
+      }
 
-    // (c) BMI CSV
-    if (bmiRecords.length > 0) {
-      const headers = ['ရက်စွဲ (Date)', 'အရပ် (cm)', 'ကိုယ်အလေးချိန် (kg)', 'BMI ညွှန်းကိန်း', 'အဆင့်အတန်း (Category)'];
-      const rows = bmiRecords.map(b => [
-        `"${b.date || b.timestamp || b.createdAt || ''}"`,
-        b.heightCm,
-        b.weightKg,
-        b.bmi,
-        `"${b.category || ''}"`
-      ]);
-      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-      downloadCSVWithBOM(csv, `BMIRecords_${targetName}_${dateStr}.csv`);
-    }
+      // (c) BMI CSV
+      if (bmiRecords.length > 0) {
+        files.push({
+          filename: `BMIRecords_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['ရက်စွဲ (Date)', 'အရပ် (cm)', 'ကိုယ်အလေးချိန် (kg)', 'BMI ညွှန်းကိန်း', 'အဆင့်အတန်း (Category)'],
+            bmiRecords.map(b => [b.date || b.timestamp || b.createdAt || '', b.heightCm, b.weightKg, b.bmi, b.category || ''])
+          ),
+        });
+      }
 
-    // (d) Lab Tests CSV
-    if (labRecords.length > 0) {
-      const headers = ['ရက်စွဲ (Date)', 'ဓာတ်ခွဲခန်း (Lab)', 'ဆေးစစ်ချက်အမည် (Test Name)', 'အဖြေ (Result)', 'ပုံမှန်သတ်မှတ်ချက် (Normal Range)', 'အကဲဖြတ်ချက် (Status)'];
-      const rows: string[][] = [];
-      labRecords.forEach(l => {
-        if (l.tests && l.tests.length > 0) {
-          l.tests.forEach(t => {
+      // (d) Lab Tests CSV
+      if (labRecords.length > 0) {
+        const rows: any[][] = [];
+        labRecords.forEach(l => {
+          if (l.tests && l.tests.length > 0) {
+            l.tests.forEach(t => {
+              rows.push([
+                l.testDate || l.recordedAt || l.createdAt || '',
+                l.labName || '',
+                t.nameMm || t.nameEn || '',
+                `${t.value} ${t.unit || ''}`,
+                t.refRangeText || `${t.refMin ?? ''} - ${t.refMax ?? ''}`,
+                t.statusLabelMm || t.status || '',
+              ]);
+            });
+          } else {
             rows.push([
-              `"${l.testDate || l.recordedAt || l.createdAt || ''}"`,
-              `"${l.labName || ''}"`,
-              `"${t.nameMm || t.nameEn || ''}"`,
-              `"${t.value} ${t.unit || ''}"`,
-              `"${t.refRangeText || `${t.refMin ?? ''} - ${t.refMax ?? ''}`}"`,
-              `"${t.statusLabelMm || t.status || ''}"`
+              l.testDate || l.recordedAt || l.createdAt || '',
+              l.labName || '',
+              (l as any).testName || 'ဓာတ်ခွဲစစ်ဆေးချက်',
+              (l as any).resultValue || '',
+              (l as any).referenceRange || '',
+              '-',
             ]);
-          });
-        } else {
-          rows.push([
-            `"${l.testDate || l.recordedAt || l.createdAt || ''}"`,
-            `"${l.labName || ''}"`,
-            `"${(l as any).testName || 'ဓာတ်ခွဲစစ်ဆေးချက်'}"`,
-            `"${(l as any).resultValue || ''}"`,
-            `"${(l as any).referenceRange || ''}"`,
-            `"-"`
-          ]);
-        }
-      });
-      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-      downloadCSVWithBOM(csv, `LabTests_${targetName}_${dateStr}.csv`);
-    }
+          }
+        });
+        files.push({
+          filename: `LabTests_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['ရက်စွဲ (Date)', 'ဓာတ်ခွဲခန်း (Lab)', 'ဆေးစစ်ချက်အမည် (Test Name)', 'အဖြေ (Result)', 'ပုံမှန်သတ်မှတ်ချက် (Normal Range)', 'အကဲဖြတ်ချက် (Status)'],
+            rows
+          ),
+        });
+      }
 
-    // (e) Medications CSV
-    if (medications.length > 0) {
-      const headers = ['ဆေးအမည် (Trade Name)', 'ဓာတုအမည် (Generic Name)', 'ဆေးပမာဏ (Dosage)', 'သောက်သုံးချိန် (Frequency)', 'သောက်နည်း (Timing)', 'အခြေအနေ (Status)'];
-      const rows = medications.map(m => [
-        `"${m.name || ''}"`,
-        `"${m.genericName || ''}"`,
-        `"${m.dosage || ''}"`,
-        `"${m.frequency || ''}"`,
-        `"${m.timing || ''}"`,
-        `"${m.status || ''}"`
-      ]);
-      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
-      downloadCSVWithBOM(csv, `Medications_${targetName}_${dateStr}.csv`);
+      // (e) Medications CSV
+      if (medications.length > 0) {
+        files.push({
+          filename: `Medications_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['ဆေးအမည် (Trade Name)', 'ဓာတုအမည် (Generic Name)', 'ဆေးပမာဏ (Dosage)', 'သောက်သုံးချိန် (Frequency)', 'သောက်နည်း (Timing)', 'သောက်ရမည့်အချိန် (Dose Time)', 'အခြေအနေ (Status)'],
+            medications.map(m => [m.name || '', m.genericName || '', m.dosage || '', m.frequency || '', m.timing || '', m.doseTime || '', m.status || ''])
+          ),
+        });
+      }
+
+      // (f) Vaccines CSV
+      if (vaccineRecords.length > 0) {
+        files.push({
+          filename: `Vaccines_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['ရက်စွဲ (Date)', 'ကာကွယ်ဆေး (Vaccine)', 'ကာကွယ်သည့်ရောဂါ (Disease)', 'အကြိမ်ရေ (Dose)', 'နောက်တစ်ကြိမ် (Next Due)', 'အခြေအနေ (Status)', 'မှတ်ချက် (Notes)'],
+            vaccineRecords.map(v => [
+              v.dateAdministered || v.createdAt || '',
+              v.vaccineName || '',
+              v.targetDisease || '',
+              v.doseNumber != null ? `${v.doseNumber}/${v.totalDoses ?? ''}` : '',
+              v.nextDueDate || '',
+              v.status || '',
+              v.notes || '',
+            ])
+          ),
+        });
+      }
+
+      // (g) Family Members CSV
+      if (familyMembers.length > 0) {
+        files.push({
+          filename: `FamilyMembers_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['အမည် (Name)', 'တော်စပ်ပုံ (Relationship)', 'အသက် (Age)', 'ကျား/မ (Gender)', 'သွေးအုပ်စု (Blood Type)', 'နာတာရှည် ရောဂါများ (Conditions)', 'မှတ်ချက် (Notes)'],
+            familyMembers.map(f => [
+              f.name || '',
+              f.relationship || (f as any).relation || '',
+              f.age ?? '',
+              f.gender || '',
+              f.bloodType || '',
+              (f.chronicConditions || []).join('; '),
+              f.notes || '',
+            ])
+          ),
+        });
+      }
+
+      // (h) Doctor Advices CSV
+      if (doctorAdvices.length > 0) {
+        files.push({
+          filename: `DoctorAdvices_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['ရက်စွဲ (Date)', 'အကြံပြုချက် (Advice)', 'အစားအသောက် (Diet)', 'ဆရာဝန်အမည် (Doctor)', 'အသုံးပြုသူအမည် (User)'],
+            doctorAdvices.map(a => [
+              a.date || a.createdAt || '',
+              a.advice || '',
+              a.dietRecommendation || '',
+              a.doctorName || '',
+              a.patientName || targetName,
+            ])
+          ),
+        });
+      }
+
+      // (i) Doctor Questions CSV
+      if (doctorQuestions.length > 0) {
+        files.push({
+          filename: `DoctorQuestions_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['ရက်စွဲ (Date)', 'အမျိုးအစား (Category)', 'ခေါင်းစဉ် (Title)', 'မေးခွန်း (Question)', 'အခြေအနေ (Status)', 'အဖြေ (Answer)', 'ဖြေကြားသူ (Answered By)'],
+            doctorQuestions.map(q => [
+              q.createdAt || '',
+              q.category || '',
+              q.title || '',
+              q.questionDetails || '',
+              q.status || '',
+              q.doctorAnswer ? [q.doctorAnswer.answerText, (q.doctorAnswer.recommendations || []).join('; ')].filter(Boolean).join(' | ') : '',
+              q.doctorAnswer?.answeredBy || '',
+            ])
+          ),
+        });
+      }
+
+      // (j) Medication intake logs CSV
+      if (medicationLogs.length > 0) {
+        files.push({
+          filename: `MedicationLogs_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['ရက်စွဲ (Date)', 'ဆေးအမည် (Medication)', 'အကြိမ်စဉ် (Dose #)', 'သောက်ပြီး (Taken)', 'သောက်ချိန် (Taken At)'],
+            medicationLogs.map(m => [
+              m.date || '',
+              m.medicationName || '',
+              (m.doseIndex ?? 0) + 1,
+              m.taken ? 'သောက်ပြီး' : 'မသောက်ရသေး',
+              m.takenAt || '',
+            ])
+          ),
+        });
+      }
+
+      // (k) Profile CSV (one row: the profile + emergency contact)
+      if (exportProfile) {
+        const ep = exportProfile.emergencyProfile;
+        files.push({
+          filename: `Profile_${safeName}_${dateStr}.csv`,
+          csv: csvDoc(
+            ['အမည် (Name)', 'အီးမေးလ် (Email)', 'ဖုန်း (Phone)', 'မွေးသက္ကရာဇ် (DOB)', 'အသက် (Age)', 'ကျား/မ (Gender)', 'အရပ် (cm)', 'ကိုယ်အလေးချိန် (kg)', 'သွေးအုပ်စု (Blood Type)', 'နာတာရှည် ရောဂါများ (Conditions)', 'ဓာတ်မတည့်မှု (Allergies)', 'အရေးပေါ် ဆက်သွယ်ရန် (Emergency Contact)', 'ဆရာဝန်အမည် (Doctor)', 'ဆရာဝန်ဖုန်း (Doctor Phone)', 'ဆေးရုံ (Hospital)'],
+            [[
+              exportProfile.displayName || '',
+              exportProfile.email || '',
+              exportProfile.phone || '',
+              exportProfile.dateOfBirth || ep?.dateOfBirth || '',
+              exportProfile.age ?? '',
+              exportProfile.gender || '',
+              exportProfile.heightCm ?? '',
+              exportProfile.weightKg ?? '',
+              exportProfile.bloodType || ep?.bloodType || '',
+              (exportProfile.chronicConditions || ep?.chronicConditions || []).join('; '),
+              (exportProfile.allergies || ep?.allergies || []).join('; '),
+              ep ? `${ep.primaryContactName || ''} ${ep.primaryContactPhone || ''}`.trim() : (exportProfile.emergencyContact || ''),
+              ep?.attendingDoctorName || '',
+              ep?.attendingDoctorPhone || '',
+              ep?.preferredHospital || '',
+            ]]
+          ),
+        });
+      }
+
+      if (files.length === 0) {
+        showToast('CSV ထုတ်ယူရန် မှတ်တမ်း မရှိသေးပါ။', 'error');
+        return;
+      }
+      // One download at a time, ~600ms apart — browsers block simultaneous
+      // downloads after the first, so the old all-at-once version silently
+      // lost files.
+      for (const f of files) {
+        downloadCSVWithBOM(f.csv, f.filename);
+        await sleep(600);
+      }
+      showToast(`CSV ဖိုင် (${files.length}) ခု ဒေါင်းလုဒ်ဆွဲပြီးပါပြီ။`, 'success');
+    } catch (err: any) {
+      console.error('Export CSV error:', err);
+      showToast('CSV ထုတ်ယူခြင်း မအောင်မြင်ပါ။ ပြန်လည်ကြိုးစားပါ။', 'error');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -222,12 +409,15 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
         const text = event.target?.result as string;
         const parsed = JSON.parse(text);
 
-        // Validation
-        if (!parsed || (!parsed.data && !parsed.vitals)) {
+        // Validation — accept the current format (data + top-level
+        // profile/medicationLogs/localData) and the older format (data only).
+        if (!parsed || (!parsed.data && !parsed.vitals && !parsed.localData && !parsed.profile && !parsed.medicationLogs)) {
           throw new Error('တရားဝင်သော Backup JSON ဖိုင်ပုံစံ မဟုတ်ပါ။');
         }
 
         const dataObj = parsed.data || parsed;
+        const localDataObj = (parsed.localData && typeof parsed.localData === 'object') ? parsed.localData : {};
+        const medLogsArr = Array.isArray(parsed.medicationLogs) ? parsed.medicationLogs : (Array.isArray(dataObj.medicationLogs) ? dataObj.medicationLogs : []);
         const counts = {
           vitals: Array.isArray(dataObj.vitals) ? dataObj.vitals.length : 0,
           glucose: Array.isArray(dataObj.glucose) ? dataObj.glucose.length : 0,
@@ -238,10 +428,12 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
           familyMembers: Array.isArray(dataObj.familyMembers) ? dataObj.familyMembers.length : 0,
           doctorAdvices: Array.isArray(dataObj.doctorAdvices) ? dataObj.doctorAdvices.length : 0,
           doctorQuestions: Array.isArray(dataObj.doctorQuestions) ? dataObj.doctorQuestions.length : 0,
+          medicationLogs: medLogsArr.length,
+          localData: Object.keys(localDataObj).length,
         };
 
         const totalRecords = Object.values(counts).reduce((a, b) => a + b, 0);
-        if (totalRecords === 0) {
+        if (totalRecords === 0 && !parsed.profile) {
           throw new Error('ဖိုင်အတွင်း ထည့်သွင်းနိုင်သော ကျန်းမာရေးမှတ်တမ်း မတွေ့ရှိပါ။');
         }
 
@@ -251,6 +443,10 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
           counts,
           totalRecords,
           data: dataObj,
+          profile: parsed.profile || null,
+          emergencyProfile: parsed.emergencyProfile || null,
+          medicationLogs: medLogsArr,
+          localData: localDataObj,
         });
       } catch (err: any) {
         setImportError(err.message || 'JSON ဖိုင်ဖတ်ရှုခြင်း မအောင်မြင်ပါ။');
@@ -259,7 +455,11 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
     reader.readAsText(file);
   };
 
-  // 4. Confirm Import with Deduplication & Forced Current UID
+  // 4. Confirm Import with Deduplication & Forced Target UID
+  // Import goes to the current target: the admin's selected patient when
+  // one is selected, otherwise the signed-in user (same target the rest of
+  // the app uses). patientEmail is stamped alongside userId so the dual-key
+  // listeners make the records visible to the patient too.
   const handleConfirmImport = async () => {
     if (!importPreview || !currentUser) return;
     setIsImporting(true);
@@ -269,168 +469,426 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
       const { data } = importPreview;
       let insertedCount = 0;
       let skippedCount = 0;
+      // Collections that failed (e.g. doctorAdvices can only be written by
+      // an admin — a regular user restoring advice is denied by the rules).
+      // One collection failing must not abort the rest.
+      const failedKinds: string[] = [];
+      const safeImport = async (label: string, run: () => Promise<void>) => {
+        try {
+          await run();
+        } catch (e: any) {
+          console.error(`Import failed for ${label}:`, e);
+          failedKinds.push(label);
+        }
+      };
 
-      // Helper to import collection with deduplication
+      // Stable hash of a record's content (id/userId/patientEmail excluded)
+      // so the same record is recognised as a duplicate even after re-export.
+      const contentHash = (item: any): string => {
+        const clean: Record<string, any> = {};
+        Object.keys(item || {}).sort().forEach((k) => {
+          if (k === 'id' || k === 'userId' || k === 'patientEmail') return;
+          clean[k] = (item as any)[k];
+        });
+        const str = JSON.stringify(clean);
+        let h = 5381;
+        for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
+        return 'h' + h.toString(16);
+      };
+
+      // Number helper: keeps a real number, returns undefined when missing.
+      // Never invents a value — and Firestore rejects NaN, so Number(undefined)
+      // must never reach a write.
+      const numOrUndef = (v: any): number | undefined => {
+        if (v === undefined || v === null || v === '') return undefined;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : undefined;
+      };
+
+      // Firestore rejects undefined field values — strip them (a missing
+      // field must stay missing, never be invented).
+      const stripUndefined = (obj: Record<string, any>) => {
+        Object.keys(obj).forEach((k) => { if (obj[k] === undefined) delete obj[k]; });
+        return obj;
+      };
+
+      // Helper to import a collection with deduplication, in atomic
+      // Firestore batches (max 500 writes per batch — chunked). All payloads
+      // are built and de-duplicated FIRST; then each chunk is committed as
+      // one batch, so a failed chunk writes nothing at all instead of
+      // leaving a half-restored collection. insertedCount only counts
+      // chunks that actually committed. A failed collection is reported by
+      // safeImport and the other collections still import.
+      const BATCH_LIMIT = 500;
       const importCollection = async (
-        colName: string, 
-        items: any[], 
-        keyGenerator: (item: any) => string,
-        transform: (item: any) => any
+        colName: string,
+        items: any[],
+        keyGenerator: (item: any, docId?: string) => string,
+        transform: (item: any) => any | null
       ) => {
         if (!Array.isArray(items) || items.length === 0) return;
 
-        // Fetch existing records for this user to check duplicate keys
-        const q = query(collection(db, colName), where('userId', '==', currentUser.uid));
+        // Fetch existing records for the TARGET user to check duplicate keys.
+        // Both the collection's natural key AND a content hash are tracked:
+        // the natural key catches re-imports, the content hash catches
+        // records whose id was lost (e.g. hand-edited backups).
+        const q = query(collection(db, colName), where('userId', '==', targetUid));
         const snap = await getDocs(q);
         const existingKeySet = new Set<string>();
         snap.forEach(d => {
-          existingKeySet.add(keyGenerator(d.data()));
+          existingKeySet.add(keyGenerator(d.data(), d.id));
+          existingKeySet.add('content:' + contentHash(d.data()));
         });
 
+        // Build every payload first (dedup + transform), writing nothing.
+        const payloads: Record<string, any>[] = [];
         for (const item of items) {
-          const itemKey = keyGenerator(item);
-          if (existingKeySet.has(itemKey)) {
+          const transformed = transform(item);
+          if (!transformed) {
+            skippedCount++;
+            continue;
+          }
+          const itemKey = keyGenerator(item, item.id);
+          if (existingKeySet.has(itemKey) || existingKeySet.has('content:' + contentHash(item))) {
             skippedCount++;
             continue;
           }
 
-          // Build clean payload strictly forcing owner to currentUser.uid
-          const payload = {
-            ...transform(item),
-            userId: currentUser.uid,
+          // Build clean payload strictly forcing owner to the target user
+          const payload = stripUndefined({
+            ...transformed,
+            userId: targetUid,
+            patientEmail: targetEmail,
             createdAt: item.createdAt || new Date().toISOString(),
-          };
+          });
           delete (payload as any).id;
 
-          await addDoc(collection(db, colName), payload);
+          payloads.push(payload);
           existingKeySet.add(itemKey);
-          insertedCount++;
+          existingKeySet.add('content:' + contentHash(item));
+        }
+
+        // Commit in batches of 500. Each batch is all-or-nothing: a failed
+        // batch writes nothing. If the FIRST batch fails, nothing from this
+        // collection was restored and the error throws (safeImport reports
+        // the collection). If a LATER batch fails, earlier batches already
+        // committed — report honestly as partial instead of claiming the
+        // whole collection failed.
+        const labelMm: Record<string, string> = {
+          vitals: 'သွေးပေါင်ချိန်',
+          glucose: 'သွေးချို',
+          bmi: 'BMI',
+          labTests: 'ဓာတ်ခွဲခန်း',
+          medications: 'ဆေးဝါး',
+          familyMembers: 'မိသားစုဝင်',
+          vaccines: 'ကာကွယ်ဆေး',
+          doctorAdvices: 'ဆရာဝန် အကြံပြုချက်',
+          doctorQuestions: 'ဆရာဝန် မေးခွန်း',
+          medicationLogs: 'ဆေးသောက်မှတ်တမ်း',
+        };
+        let committedHere = 0;
+        for (let i = 0; i < payloads.length; i += BATCH_LIMIT) {
+          const chunk = payloads.slice(i, i + BATCH_LIMIT);
+          const batch = writeBatch(db);
+          chunk.forEach((p) => batch.set(doc(collection(db, colName)), p));
+          try {
+            await batch.commit();
+            committedHere += chunk.length;
+            insertedCount += chunk.length;
+          } catch (e) {
+            console.error(`Import batch failed for ${colName} (records ${i + 1}-${i + chunk.length}):`, e);
+            if (committedHere === 0) throw e;
+            failedKinds.push(`${labelMm[colName] || colName} (တစ်စိတ်တစ်ပိုင်းသာ ရောက်သည် — ${committedHere} ခု ရောက်ပြီး၊ ကျန်တာ မရောက်ပါ)`);
+            return;
+          }
         }
       };
 
-      // Vitals
-      await importCollection(
+      // Vitals — missing pulse/category are left missing, never invented
+      await safeImport('သွေးပေါင်ချိန်', () => importCollection(
         'vitals',
         data.vitals || [],
         (v) => `${v.recordedAt || v.createdAt}_${v.systolic}_${v.diastolic}`,
-        (v) => ({
-          systolic: Number(v.systolic),
-          diastolic: Number(v.diastolic),
-          pulse: Number(v.pulse || 75),
-          category: v.category || 'normal',
-          condition: v.condition || v.category || 'normal',
-          patientName: v.patientName || profile?.displayName || 'အသုံးပြုသူ',
-          recordedAt: v.recordedAt || v.createdAt || new Date().toISOString(),
-          notes: v.notes || '',
-        })
-      );
+        (v) => {
+          const sys = numOrUndef(v.systolic);
+          const dia = numOrUndef(v.diastolic);
+          if (sys === undefined || dia === undefined) return null;
+          return {
+            systolic: sys,
+            diastolic: dia,
+            pulse: numOrUndef(v.pulse),
+            category: v.category,
+            condition: v.condition,
+            patientName: v.patientName || targetName,
+            recordedAt: v.recordedAt || v.createdAt || new Date().toISOString(),
+            notes: v.notes || '',
+          };
+        }
+      ));
 
-      // Glucose
-      await importCollection(
+      // Glucose — missing test type / status are left missing, never invented
+      await safeImport('သွေးချို', () => importCollection(
         'glucose',
         data.glucose || [],
         (g) => `${g.recordedAt || g.createdAt}_${g.glucoseValue || g.value}`,
-        (g) => ({
-          glucoseValue: Number(g.glucoseValue || g.value),
-          value: Number(g.glucoseValue || g.value),
-          timing: g.timing || g.type || 'fasting',
-          type: g.type || g.timing || 'fasting',
-          status: g.status || 'normal',
-          patientName: g.patientName || profile?.displayName || 'အသုံးပြုသူ',
-          recordedAt: g.recordedAt || g.createdAt || new Date().toISOString(),
-          notes: g.notes || '',
-        })
-      );
+        (g) => {
+          const val = numOrUndef(g.glucoseValue ?? g.value);
+          if (val === undefined) return null;
+          return {
+            glucoseValue: val,
+            value: val,
+            timing: g.timing || g.type,
+            type: g.type || g.timing,
+            status: g.status,
+            patientName: g.patientName || targetName,
+            recordedAt: g.recordedAt || g.createdAt || new Date().toISOString(),
+            notes: g.notes || '',
+          };
+        }
+      ));
 
       // BMI
-      await importCollection(
+      await safeImport('BMI', () => importCollection(
         'bmi',
         data.bmi || [],
         (b) => `${b.date || b.timestamp || b.createdAt}_${b.weightKg}_${b.heightCm}`,
-        (b) => ({
-          heightCm: Number(b.heightCm),
-          weightKg: Number(b.weightKg),
-          bmi: Number(b.bmi),
-          category: b.category || 'normal',
-          userName: b.userName || profile?.displayName || 'အသုံးပြုသူ',
-          date: b.date || b.timestamp || b.createdAt || new Date().toISOString(),
-        })
-      );
+        (b) => {
+          const h = numOrUndef(b.heightCm);
+          const w = numOrUndef(b.weightKg);
+          if (h === undefined || w === undefined) return null;
+          return {
+            heightCm: h,
+            weightKg: w,
+            bmi: numOrUndef(b.bmi),
+            category: b.category,
+            userName: b.userName || targetName,
+            date: b.date || b.timestamp || b.createdAt || new Date().toISOString(),
+          };
+        }
+      ));
 
-      // Lab Tests
-      await importCollection(
+      // Lab Tests — preserve the original shape exactly (tests[] + panels).
+      // The old flat transform (testName/resultValue/referenceRange) wrote
+      // fields LabTestRecord does not have, so imported labs rendered as
+      // nothing. Dedup by record id when present, else by content hash —
+      // the old `${date}_${testName}` key was `<date>_undefined` for every
+      // lab, so only the first lab per date ever imported.
+      await safeImport('ဓာတ်ခွဲခန်း', () => importCollection(
         'labTests',
         data.labTests || [],
-        (l) => `${l.testDate || l.createdAt}_${l.testName}`,
-        (l) => ({
-          testName: l.testName || 'Lab Test',
-          resultValue: String(l.resultValue || ''),
-          unit: l.unit || '',
-          referenceRange: l.referenceRange || '',
-          testDate: l.testDate || l.createdAt || new Date().toISOString(),
-          labName: l.labName || '',
-          notes: l.notes || '',
-        })
-      );
+        (l, docId) => (docId || l.id) ? `lab:${docId || l.id}` : `lab:${contentHash(l)}`,
+        (l) => {
+          const hasTests = Array.isArray(l.tests) && l.tests.length > 0;
+          const hasPanel = ['cbc', 'glucose', 'liver', 'renal', 'lipid', 'thyroid', 'urine', 'inflammatory'].some((p) => l[p] != null);
+          if (!hasTests && !hasPanel && !l.labName) return null;
+          return {
+            testDate: l.testDate || l.createdAt || new Date().toISOString(),
+            recordedAt: l.recordedAt,
+            labName: l.labName || '',
+            tests: l.tests,
+            cbc: l.cbc,
+            glucose: l.glucose,
+            liver: l.liver,
+            renal: l.renal,
+            lipid: l.lipid,
+            thyroid: l.thyroid,
+            urine: l.urine,
+            inflammatory: l.inflammatory,
+            notes: l.notes || '',
+            doctorReview: l.doctorReview,
+            patientName: l.patientName || targetName,
+          };
+        }
+      ));
 
-      // Medications
-      await importCollection(
+      // Medications — missing frequency/timing/startDate are left missing,
+      // never invented (no fake 'မနက် (၁) ကြိမ်' / after_meal / today)
+      await safeImport('ဆေးဝါး', () => importCollection(
         'medications',
         data.medications || [],
         (m) => `${m.name}_${m.dosage}`,
-        (m) => ({
-          name: m.name || '',
-          genericName: m.genericName || '',
-          dosage: m.dosage || '',
-          frequency: m.frequency || 'မနက် (၁) ကြိမ်',
-          timing: m.timing || 'after_meal',
-          status: m.status || 'active',
-          startDate: m.startDate || new Date().toISOString().split('T')[0],
-          notes: m.notes || '',
-        })
-      );
+        (m) => {
+          if (!m.name) return null;
+          return {
+            name: m.name,
+            genericName: m.genericName || '',
+            dosage: m.dosage || '',
+            frequency: m.frequency,
+            timing: m.timing,
+            status: m.status,
+            prescribedFor: m.prescribedFor,
+            prescribingDoctor: m.prescribingDoctor,
+            startDate: m.startDate,
+            endDate: m.endDate,
+            doseTime: m.doseTime,
+            notes: m.notes || '',
+          };
+        }
+      ));
 
-      // Family Members
-      await importCollection(
+      // Family Members — the real field is `relationship` (the old code
+      // wrote `relation`, which the app never reads). Missing age/gender/
+      // blood type are left missing — never 0 / 'male' / 'O+'.
+      await safeImport('မိသားစုဝင်', () => importCollection(
         'familyMembers',
         data.familyMembers || [],
-        (f) => `${f.name}_${f.relation}`,
-        (f) => ({
-          name: f.name || 'မိသားစုဝင်',
-          relation: f.relation || 'အခြား',
-          age: Number(f.age || 0),
-          gender: f.gender || 'male',
-          bloodType: f.bloodType || 'O+',
-          chronicConditions: f.chronicConditions || [],
-          emergencyContact: f.emergencyContact || '',
-          avatarColor: f.gender === 'female' ? 'bg-rose-600' : 'bg-emerald-600',
-        })
-      );
+        (f) => `${f.name}_${f.relationship || f.relation}`,
+        (f) => {
+          if (!f.name) return null;
+          return {
+            name: f.name,
+            relationship: f.relationship || f.relation || 'အခြား',
+            age: numOrUndef(f.age),
+            gender: f.gender,
+            bloodType: f.bloodType,
+            chronicConditions: f.chronicConditions || [],
+            emergencyContact: f.emergencyContact || '',
+            notes: f.notes,
+            avatarColor: f.avatarColor || (f.gender === 'female' ? 'bg-rose-600' : 'bg-emerald-600'),
+          };
+        }
+      ));
 
       // Vaccines
-      await importCollection(
+      await safeImport('ကာကွယ်ဆေး', () => importCollection(
         'vaccines',
         data.vaccines || [],
         (vac) => `${vac.vaccineName}_${vac.doseNumber}_${vac.dateAdministered || vac.createdAt || ''}`,
-        (vac) => ({
-          vaccineName: vac.vaccineName || 'ကာကွယ်ဆေး',
-          targetDisease: vac.targetDisease || '',
-          doseNumber: Number(vac.doseNumber || 1),
-          totalDoses: Number(vac.totalDoses || 1),
-          dateAdministered: vac.dateAdministered || '',
-          nextDueDate: vac.nextDueDate || '',
-          status: vac.status || (vac.dateAdministered ? 'completed' : 'scheduled'),
-          category: vac.category || 'adult',
-          notes: vac.notes || '',
-          patientName: vac.patientName || targetName,
-        })
-      );
+        (vac) => {
+          if (!vac.vaccineName) return null;
+          return {
+            vaccineName: vac.vaccineName,
+            targetDisease: vac.targetDisease || '',
+            doseNumber: numOrUndef(vac.doseNumber),
+            totalDoses: numOrUndef(vac.totalDoses),
+            dateAdministered: vac.dateAdministered || '',
+            nextDueDate: vac.nextDueDate || '',
+            administeredBy: vac.administeredBy,
+            batchNumber: vac.batchNumber,
+            status: vac.status || (vac.dateAdministered ? 'completed' : 'scheduled'),
+            category: vac.category,
+            notes: vac.notes || '',
+            patientName: vac.patientName || targetName,
+          };
+        }
+      ));
 
-      setImportStatus({
-        success: true,
-        message: `မှတ်တမ်း အသစ် (${insertedCount}) ခု အောင်မြင်စွာ ပြန်လည်သွင်းယူပြီးပါပြီ! (ထပ်နေသော မှတ်တမ်း ${skippedCount} ခုကို ကျော်ခဲ့ပါသည်)`,
-        count: insertedCount
+      // Doctor Advices — previously counted in the preview but never
+      // imported at all. Batched writes (not addDoctorAdvice) so the
+      // original date/doctor are preserved; note the rules only let an
+      // admin create advice, so a regular user restoring advice fails
+      // honestly and is reported below instead of aborting the import.
+      await safeImport('ဆရာဝန် အကြံပြုချက်', () => importCollection(
+        'doctorAdvices',
+        data.doctorAdvices || [],
+        (a, docId) => (docId || a.id) ? `adv:${docId || a.id}` : `adv:${contentHash(a)}`,
+        (a) => {
+          if (!a.advice) return null;
+          return {
+            advice: a.advice,
+            dietRecommendation: a.dietRecommendation,
+            doctorName: a.doctorName,
+            doctorEmail: a.doctorEmail,
+            patientName: a.patientName || targetName,
+            date: a.date || (a.createdAt ? String(a.createdAt).split('T')[0] : undefined),
+          };
+        }
+      ));
+
+      // Doctor Questions — same: previously counted, never imported.
+      // Status is derived from the answer when missing, never invented.
+      await safeImport('ဆရာဝန် မေးခွန်း', () => importCollection(
+        'doctorQuestions',
+        data.doctorQuestions || [],
+        (q, docId) => (docId || q.id) ? `q:${docId || q.id}` : `q:${contentHash(q)}`,
+        (q) => {
+          if (!q.title && !q.questionDetails) return null;
+          return {
+            category: q.category,
+            title: q.title || '',
+            questionDetails: q.questionDetails || '',
+            duration: q.duration,
+            recentBP: q.recentBP,
+            recentSugar: q.recentSugar,
+            currentMedications: q.currentMedications,
+            urgency: q.urgency,
+            status: q.status || (q.doctorAnswer ? 'answered' : 'pending'),
+            doctorAnswer: q.doctorAnswer,
+            patientName: q.patientName || targetName,
+          };
+        }
+      ));
+
+      // Medication intake logs
+      await safeImport('ဆေးသောက်မှတ်တမ်း', () => importCollection(
+        'medicationLogs',
+        importPreview.medicationLogs || [],
+        (m) => `${m.medicationId || ''}_${m.date || ''}_${m.doseIndex ?? 0}`,
+        (m) => {
+          if (!m.medicationId || !m.date) return null;
+          return {
+            medicationId: m.medicationId,
+            medicationName: m.medicationName,
+            date: m.date,
+            doseIndex: m.doseIndex ?? 0,
+            taken: m.taken ?? true,
+            takenAt: m.takenAt,
+          };
+        }
+      ));
+
+      // Profile + Emergency ID (top level in the backup). Role is never
+      // restored from a file — roles are managed via the admins doc.
+      let profileRestored = false;
+      const fileProfile = importPreview.profile || null;
+      const fileEmergency = importPreview.emergencyProfile || null;
+      if ((fileProfile || fileEmergency) && targetUid) {
+        const cleanProfile: Record<string, any> = { ...(fileProfile || {}) };
+        delete cleanProfile.id;
+        delete cleanProfile.role;
+        if (fileEmergency) cleanProfile.emergencyProfile = fileEmergency;
+        try {
+          await setDoc(doc(db, 'users', targetUid), stripUndefined(cleanProfile), { merge: true });
+          profileRestored = true;
+        } catch (e) {
+          console.error('Profile restore failed:', e);
+          failedKinds.push('ပရိုဖိုင်');
+        }
+      }
+
+      // Phone-only data (localStorage) — a key suffixed with another user's
+      // uid is never restored into this account (it can only be in the file
+      // if the backup was made before the per-user keys existed, or was
+      // hand-edited). Legacy un-suffixed keys restore as-is: they belong to
+      // the person restoring their own backup.
+      let localRestored = 0;
+      let localSkipped = 0;
+      const localDataObj = importPreview.localData || {};
+      Object.entries(localDataObj).forEach(([key, value]) => {
+        const ownerUid = localKeyOwnerUid(key);
+        if (ownerUid !== null && ownerUid !== targetUid) { localSkipped++; return; }
+        try {
+          localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+          localRestored++;
+        } catch (e) {
+          console.warn('Could not restore local key', key, e);
+          localSkipped++;
+        }
       });
+
+      if (insertedCount === 0 && !profileRestored && localRestored === 0 && failedKinds.length > 0) {
+        setImportError(`မှတ်တမ်းများ သွင်းယူခြင်း မအောင်မြင်ပါ။ သွင်းယူလို့ မရခဲ့သော အမျိုးအစားများ: ${failedKinds.join(', ')}`);
+      } else {
+        const parts = [`မှတ်တမ်း အသစ် (${insertedCount}) ခု အောင်မြင်စွာ ပြန်လည်သွင်းယူပြီးပါပြီ! (ထပ်နေသော မှတ်တမ်း ${skippedCount} ခုကို ကျော်ခဲ့ပါသည်)`];
+        if (profileRestored) parts.push('ပရိုဖိုင် ပြန်လည်ရောက်ရှိပါပြီ။');
+        if (localRestored > 0) parts.push(`ဖုန်းထဲမှတ်တမ်း (${localRestored}) ခု ပြန်ရောက်ပါပြီ — မြင်ရဖို့ စာမျက်နှာကို ပြန်ဖွင့်ပေးပါ။`);
+        if (failedKinds.length > 0) parts.push(`သွင်းယူလို့ မရခဲ့သော အမျိုးအစားများ: ${failedKinds.join(', ')} (မအောင်မြင်သော အမျိုးအစားမှ မှတ်တမ်းများ ပြန်မရောက်ပါ — တစ်စိတ်တစ်ပိုင်းဟု ရေးထားမှသာ အဲဒီအပိုင်း ရောက်ပြီး ဖြစ်ပါတယ်)`);
+        setImportStatus({
+          success: failedKinds.length === 0,
+          message: parts.join(' '),
+          count: insertedCount
+        });
+      }
       setImportPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (refreshAdminData) refreshAdminData();
@@ -513,7 +971,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
                   <span>လုံခြုံစိတ်ချရသော ကိုယ်ပိုင်ဒေတာ ထိန်းသိမ်းမှု</span>
                 </p>
                 <p className="text-[11px] leading-relaxed text-slate-600">
-                  သင့် ကျန်းမာရေးမှတ်တမ်းများ (သွေးပေါင်ချိန်၊ သွေးချို၊ BMI၊ ဓာတ်ခွဲခန်း ဆေးစစ်ချက်များ၊ ဆေးဝါးများ၊ မိသားစုဝင်များ) အားလုံးကို JSON ဖိုင်အဖြစ် သို့မဟုတ် Excel ဖတ်ရှုနိုင်သော CSV (Unicode UTF-8 BOM) ဖိုင်များအဖြစ် ကူးယူသိမ်းဆည်းနိုင်ပါသည်။
+                  သင့် ကျန်းမာရေးမှတ်တမ်းများ (သွေးပေါင်ချိန်၊ သွေးချို၊ BMI၊ ဓာတ်ခွဲခန်း ဆေးစစ်ချက်များ၊ ဆေးဝါးများ၊ ဆေးသောက်မှတ်တမ်း၊ မိသားစုဝင်များ၊ ဆရာဝန် အကြံပြုချက်/မေးခွန်းများ)၊ ပရိုဖိုင်၊ Emergency ID နှင့် ဖုန်းထဲမှတ်တမ်းများ (သွား/မျက်စိ/နားအကြား၊ လေ့ကျင့်ခန်း၊ Checklist၊ Bookmark၊ သတိပေးချက်များ) အားလုံးကို JSON ဖိုင်အဖြစ် သိမ်းဆည်းနိုင်ပါသည်။ Admin က အသုံးပြုသူ တစ်ယောက်အတွက် ထုတ်ယူလျှင် ဖုန်းထဲမှတ်တမ်းများ မပါဝင်ပါ — ၎င်းတို့သည် ထိုအသုံးပြုသူ၏ ကိုယ်ပိုင်ဖုန်းထဲတွင်သာ ရှိပါသည်။
                 </p>
               </div>
 
@@ -549,14 +1007,18 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
 
                 <button
                   onClick={handleExportAllCSVs}
-                  className="w-full py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-between shadow-sm cursor-pointer transition-all"
+                  disabled={isExporting}
+                  className="w-full py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-between shadow-sm cursor-pointer transition-all disabled:opacity-50"
                 >
                   <div className="flex items-center gap-2.5">
                     <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                    <span>Excel / CSV ဇယားများအဖြစ် ဒေါင်းလုဒ်ဆွဲမည် (.csv - UTF-8)</span>
+                    <span>{isExporting ? 'CSV ဖိုင်များ ဒေါင်းလုဒ်ဆွဲနေသည်...' : 'Excel / CSV ဇယားများအဖြစ် ဒေါင်းလုဒ်ဆွဲမည် (.csv - UTF-8)'}</span>
                   </div>
                   <Download className="w-4 h-4" />
                 </button>
+                <p className="text-[11px] leading-relaxed text-slate-500 px-1">
+                  CSV မှာ သွေးပေါင်၊ သွေးချို၊ BMI၊ ဓာတ်ခွဲ၊ ဆေး၊ ကာကွယ်ဆေး၊ မိသားစုဝင်၊ ဆရာဝန် အကြံပြုချက်/မေးခွန်း၊ ဆေးသောက်မှတ်တမ်း၊ ပရိုဖိုင် (၁၁ မျိုး) ပါဝင်ပြီး — မှတ်တမ်းရှိတဲ့ အမျိုးအစားတွေပဲ ဒေါင်းလုဒ်ဆွဲပေးပါမယ် (ဖိုင်တစ်ခုချင်း ခြားပြီး ဆွဲပေးတာမို့ ခဏစောင့်ပါ)။ ဖုန်းထဲမှတ်တမ်းများ (သွား/မျက်စိ/နား၊ လေ့ကျင့်ခန်း၊ Checklist၊ Bookmark) ကတော့ JSON ဖိုင်နဲ့ပဲ ထုတ်လို့ရပါတယ်။
+                </p>
               </div>
             </div>
           ) : (
@@ -567,7 +1029,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
                   <span>အရင် Export လုပ်ထားသော JSON Backup ဖိုင်ကို ရွေးချယ်ပါ</span>
                 </p>
                 <p className="text-[11px] leading-relaxed text-slate-600">
-                  စနစ်သည် ဖိုင်ကို အလိုအလျောက် စစ်ဆေးပြီး ထပ်နေသော မှတ်တမ်းများကို ကျော်ကာ မှတ်တမ်းအသစ်များကိုသာ သင့်အကောင့်ထဲသို့ လုံခြုံစွာ သွင်းယူပေးမည် ဖြစ်ပါသည်။
+                  စနစ်သည် ဖိုင်ကို အလိုအလျောက် စစ်ဆေးပြီး ထပ်နေသော မှတ်တမ်းများကို ကျော်ကာ မှတ်တမ်းအသစ်များကိုသာ သင့်အကောင့်ထဲသို့ လုံခြုံစွာ သွင်းယူပေးမည် ဖြစ်ပါသည်။ ပရိုဖိုင်၊ Emergency ID နှင့် ဖုန်းထဲမှတ်တမ်းများလည်း ပြန်လည်ရောက်ရှိပါမည်။
                 </p>
               </div>
 
@@ -642,6 +1104,18 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
                     </div>
                     <div className="p-2 bg-white rounded-lg border border-slate-200">
                       မိသားစုဝင်: <strong>{importPreview.counts.familyMembers} ဦး</strong>
+                    </div>
+                    <div className="p-2 bg-white rounded-lg border border-slate-200">
+                      ဆရာဝန် အကြံပြုချက်: <strong>{importPreview.counts.doctorAdvices} ခု</strong>
+                    </div>
+                    <div className="p-2 bg-white rounded-lg border border-slate-200">
+                      ဆရာဝန် မေးခွန်း: <strong>{importPreview.counts.doctorQuestions} ခု</strong>
+                    </div>
+                    <div className="p-2 bg-white rounded-lg border border-slate-200">
+                      ဆေးသောက်မှတ်တမ်း: <strong>{importPreview.counts.medicationLogs} ခု</strong>
+                    </div>
+                    <div className="p-2 bg-white rounded-lg border border-slate-200">
+                      ဖုန်းထဲမှတ်တမ်း: <strong>{importPreview.counts.localData} ခု</strong>
                     </div>
                   </div>
 

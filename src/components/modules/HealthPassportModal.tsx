@@ -56,6 +56,14 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
   const patientName = currentPatient?.displayName || 'အသုံးပြုသူအမည် မသတ်မှတ်ရသေးပါ';
   const patientEmail = currentPatient?.email || '-';
 
+  // Emergency contact: read it from the saved emergencyProfile first
+  // (primaryContactPhone + name); fall back to the legacy emergencyContact
+  // field, which is only ever set from the admin EditPatientModal.
+  const emergencyProfile = currentPatient?.emergencyProfile;
+  const emergencyContactDisplay = emergencyProfile?.primaryContactPhone
+    ? `${emergencyProfile.primaryContactPhone}${emergencyProfile.primaryContactName ? ` (${emergencyProfile.primaryContactName})` : ''}`
+    : (currentPatient?.emergencyContact || 'မထည့်ရသေးပါ');
+
   // Helper to parse dates reliably
   const parseRecordDate = (r: any): Date => {
     const raw = r.date || r.timestamp || r.recordedAt || r.createdAt;
@@ -72,6 +80,31 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  // Lab records carry their date in testDate, not in date/timestamp.
+  const formatLabDate = (lab: any): string => {
+    if (lab?.testDate) {
+      const d = new Date(lab.testDate);
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleDateString('my-MM', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      return lab.testDate;
+    }
+    return formatRecordDate(lab);
+  };
+
+  // Does the latest lab have any of the legacy panel values this passport
+  // actually renders? (urine/inflammatory panels exist in the type but are
+  // not rendered here, so they do not count.)
+  const hasAnyLabPanelValue = (lab: any): boolean => {
+    if (!lab) return false;
+    const panels = [lab.cbc, lab.glucose, lab.liver, lab.renal, lab.lipid, lab.thyroid];
+    return panels.some((p) => p && Object.values(p).some((v) => v !== undefined && v !== null && v !== ''));
   };
 
   // Filter and sort patient specific data (Newest first)
@@ -296,7 +329,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">အရေးပေါ် ဆက်သွယ်ရန်</p>
               <p className="text-sm font-bold text-rose-700 flex items-center gap-1">
                 <PhoneCall className="w-3.5 h-3.5" />
-                {currentPatient?.emergencyContact || 'မထည့်ရသေးပါ'}
+                {emergencyContactDisplay}
               </p>
             </div>
 
@@ -793,7 +826,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                         <td className="p-2.5">{m.dosage}</td>
                         <td className="p-2.5">{m.frequency}</td>
                         <td className="p-2.5">{m.timing === 'before_meal' ? 'အစာမစားမီ' : 'အစာစားပြီး'}</td>
-                        <td className="p-2.5">{m.prescribingDoctor || 'အထွေထွေရောဂါကု ဆရာဝန်'}</td>
+                        <td className="p-2.5">{m.prescribingDoctor || 'မထည့်ရသေးပါ'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -811,6 +844,23 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
 
             {latestLab ? (
               <div className="bg-purple-50/50 border border-purple-200 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                {/* Current-format tests[] (the format labs are saved in now) */}
+                {latestLab.tests && latestLab.tests.length > 0 && (
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
+                      စစ်ဆေးချက် ရလဒ်များ (Lab Tests) — {formatLabDate(latestLab)}
+                    </p>
+                    <div className="space-y-0.5">
+                      {latestLab.tests.map((t: any) => (
+                        <p key={t.id}>
+                          {t.nameMm || t.nameEn || t.id}: <strong>{t.value} {t.unit || ''}</strong>
+                          {t.refRangeText ? ` (စံ: ${t.refRangeText})` : (t.refMin !== undefined && t.refMax !== undefined ? ` (စံ: ${t.refMin} - ${t.refMax} ${t.unit || ''})` : '')}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* CBC if available */}
                 {(latestLab.cbc?.hemoglobin !== undefined || latestLab.cbc?.wbc !== undefined || latestLab.cbc?.platelets !== undefined) && (
                   <div>
@@ -893,12 +943,67 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                     )}
                   </div>
                 )}
+                {(!latestLab.tests?.length && !hasAnyLabPanelValue(latestLab)) && (
+                  <p className="text-slate-500 italic sm:col-span-2 lg:col-span-3">စစ်ဆေးချက် အသေးစိတ် မရှိသေးပါ။</p>
+                )}
               </div>
             ) : (
               <p className="text-xs text-slate-500 italic p-3 bg-slate-50 rounded-xl">
                 ဓာတ်ခွဲခန်းစစ်ဆေးချက် အချက်အလက်များ ထည့်သွင်းထားခြင်း မရှိသေးပါ။
               </p>
             )}
+
+            {/* Lab History Table — uses the filtered lab list (was computed but never rendered) */}
+            <div className="mt-4 border border-slate-200 rounded-2xl overflow-hidden text-xs">
+              <div className="bg-purple-50 px-3.5 py-2 font-bold text-purple-950 flex items-center justify-between border-b border-purple-200">
+                <span className="flex items-center gap-1.5">
+                  <FlaskConical className="w-3.5 h-3.5 text-purple-600" />
+                  <span>ဓာတ်ခွဲခန်း စစ်ဆေးချက် သမိုင်းမှတ်တမ်း (Lab History - {displayedLabs.length} ခု)</span>
+                </span>
+              </div>
+              {displayedLabs.length === 0 ? (
+                <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း ဓာတ်ခွဲခန်း စစ်ဆေးချက် မှတ်တမ်း မရှိပါ။</p>
+              ) : (
+                <div className="max-h-60 overflow-y-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
+                      <tr>
+                        <th className="p-2.5">ရက်စွဲ</th>
+                        <th className="p-2.5">ဓာတ်ခွဲခန်း</th>
+                        <th className="p-2.5">စစ်ဆေးချက်</th>
+                        <th className="p-2.5">ရလဒ်</th>
+                        <th className="p-2.5">စံသတ်မှတ်ချက်</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
+                      {displayedLabs.flatMap((lab: any) => {
+                        const tests = lab.tests || [];
+                        if (tests.length === 0) {
+                          return (
+                            <tr key={lab.id}>
+                              <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatLabDate(lab)}</td>
+                              <td className="p-2.5">{lab.labName || '-'}</td>
+                              <td className="p-2.5 text-slate-500">—</td>
+                              <td className="p-2.5 text-slate-500">—</td>
+                              <td className="p-2.5 text-slate-500">—</td>
+                            </tr>
+                          );
+                        }
+                        return tests.map((t: any) => (
+                          <tr key={`${lab.id}-${t.id}`}>
+                            <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatLabDate(lab)}</td>
+                            <td className="p-2.5">{lab.labName || '-'}</td>
+                            <td className="p-2.5 font-bold text-slate-900">{t.nameMm || t.nameEn || t.id}</td>
+                            <td className="p-2.5 font-bold text-purple-700">{t.value} {t.unit || ''}</td>
+                            <td className="p-2.5 text-slate-600">{t.refRangeText || (t.refMin !== undefined && t.refMax !== undefined ? `${t.refMin} - ${t.refMax} ${t.unit || ''}` : '-')}</td>
+                          </tr>
+                        ));
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Doctor Advice & Q&A Summary */}

@@ -104,15 +104,20 @@ export const RECOMMENDED_VACCINES: RecommendedVaccine[] = [
 
 export const VaccinePassportModule: React.FC = () => {
   const { profile } = useAuth();
-  const { 
-    selectedPatient, 
-    vaccineRecords, 
-    addVaccineRecord, 
-    updateVaccineRecord, 
-    deleteVaccineRecord 
+  const {
+    selectedPatient,
+    vaccineRecords,
+    addVaccineRecord,
+    updateVaccineRecord,
+    deleteVaccineRecord
   } = useHealthData();
   const { showToast } = useToast();
   const currentPatient = selectedPatient || profile;
+
+  // Local (Asia/Rangoon) date (YYYY-MM-DD) — new Date().toISOString() is UTC,
+  // so a record entered early in the morning got yesterday's date (v2.4.11 F4).
+  const localDateStr = (d: Date): string =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
   // View tabs: 'records' for real user records, 'recommendations' for reference guide
   const [activeView, setActiveView] = useState<'records' | 'recommendations'>('records');
@@ -132,6 +137,11 @@ export const VaccinePassportModule: React.FC = () => {
   const [newCategory, setNewCategory] = useState<'adult' | 'child' | 'travel'>('adult');
   const [newDate, setNewDate] = useState('');
   const [newNextDate, setNewNextDate] = useState('');
+  // Whether this record is a vaccine already given or one planned for the
+  // future (v2.4.11 F16): the old form always prefilled today as the date,
+  // so every record was saved 'completed' and a scheduled vaccine could
+  // never be recorded.
+  const [newStatus, setNewStatus] = useState<'completed' | 'scheduled'>('completed');
   const [newAdministeredBy, setNewAdministeredBy] = useState('');
   const [newBatchNumber, setNewBatchNumber] = useState('');
   const [newNotes, setNewNotes] = useState('');
@@ -143,7 +153,8 @@ export const VaccinePassportModule: React.FC = () => {
     setNewDoseNumber(rec.doseNumber);
     setNewTotalDoses(rec.totalDoses);
     setNewCategory(rec.category);
-    setNewDate(new Date().toISOString().split('T')[0]);
+    setNewDate('');
+    setNewStatus('completed');
     setNewNextDate('');
     setNewAdministeredBy('');
     setNewBatchNumber('');
@@ -157,7 +168,8 @@ export const VaccinePassportModule: React.FC = () => {
     setNewDoseNumber(1);
     setNewTotalDoses(1);
     setNewCategory('adult');
-    setNewDate(new Date().toISOString().split('T')[0]);
+    setNewDate('');
+    setNewStatus('completed');
     setNewNextDate('');
     setNewAdministeredBy('');
     setNewBatchNumber('');
@@ -173,6 +185,7 @@ export const VaccinePassportModule: React.FC = () => {
     setStatusMessage(null);
 
     try {
+      const isScheduled = newStatus === 'scheduled';
       await addVaccineRecord({
         userId: currentPatient?.id || '',
         patientName: currentPatient?.displayName || 'အသုံးပြုသူ',
@@ -180,11 +193,14 @@ export const VaccinePassportModule: React.FC = () => {
         targetDisease: newTargetDisease.trim() || 'ကာကွယ်ဆေး',
         doseNumber: Number(newDoseNumber),
         totalDoses: Number(newTotalDoses),
-        dateAdministered: newDate || new Date().toISOString().split('T')[0],
-        nextDueDate: newNextDate || undefined,
+        // Completed: the date is when it was given (empty = not recorded,
+        // never invented as today). Scheduled: there is no administered
+        // date — the picked date is the planned date (nextDueDate).
+        dateAdministered: !isScheduled ? (newDate || undefined) : undefined,
+        nextDueDate: isScheduled ? (newDate || newNextDate || undefined) : (newNextDate || undefined),
         administeredBy: newAdministeredBy.trim() || undefined,
         batchNumber: newBatchNumber.trim() || undefined,
-        status: newDate ? 'completed' : 'scheduled',
+        status: newStatus,
         category: newCategory,
         notes: newNotes.trim() || undefined,
       });
@@ -208,8 +224,13 @@ export const VaccinePassportModule: React.FC = () => {
     try {
       await updateVaccineRecord(record.id, {
         status: nextStatus,
-        dateAdministered: nextStatus === 'completed' 
-          ? (record.dateAdministered || new Date().toISOString().split('T')[0]) 
+        // NOTE (v2.4.11 F17): toggling back to 'scheduled' should clear the
+        // administered date, but the context's sanitize strips undefined/null
+        // from the merge, so Firestore keeps the old date until the context
+        // is fixed to use deleteField(). The local list still shows it
+        // cleared; it returns after a reload. Flagged for the parent.
+        dateAdministered: nextStatus === 'completed'
+          ? (record.dateAdministered || localDateStr(new Date()))
           : undefined
       });
       showToast(nextStatus === 'completed' ? 'ကာကွယ်ဆေး ထိုးပြီးအဖြစ် မှတ်သားပြီးပါပြီ' : 'ကာကွယ်ဆေး မထိုးရသေးအဖြစ် ပြောင်းလဲပြီးပါပြီ', 'success');
@@ -726,8 +747,32 @@ export const VaccinePassportModule: React.FC = () => {
                 </select>
               </div>
               <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  အခြေအနေ
+                </label>
+                <div className="flex rounded-xl bg-slate-100 p-0.5 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setNewStatus('completed')}
+                    className={`flex-1 py-2 rounded-lg cursor-pointer ${newStatus === 'completed' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'}`}
+                  >
+                    ✅ ထိုးပြီးပြီ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewStatus('scheduled')}
+                    className={`flex-1 py-2 rounded-lg cursor-pointer ${newStatus === 'scheduled' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600'}`}
+                  >
+                    📅 ထိုးဖို့ စီစဉ်ထားသည်
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
                 <label htmlFor="vac-date" className="font-semibold text-slate-700 block mb-1">
-                  ထိုးနှံခဲ့သည့်ရက်
+                  {newStatus === 'scheduled' ? 'ထိုးဖို့ စီစဉ်ထားသည့်ရက်' : 'ထိုးနှံခဲ့သည့်ရက်'}
                 </label>
                 <input
                   id="vac-date"
@@ -736,20 +781,26 @@ export const VaccinePassportModule: React.FC = () => {
                   onChange={(e) => setNewDate(e.target.value)}
                   className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-teal-500 focus:outline-hidden bg-slate-50"
                 />
+                {newStatus === 'scheduled' && (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    အနာဂတ် ရက်စွဲ ရွေးလို့ရပါတယ် — ဒီရက်ကို နောက်တစ်ကြိမ် ထိုးရမည့်ရက်အဖြစ် သိမ်းပါမယ်။
+                  </p>
+                )}
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="vac-next-date" className="font-semibold text-slate-700 block mb-1">
-                နောက်တစ်ကြိမ် ထိုးရမည့်ရက် (ရှိပါက)
-              </label>
-              <input
-                id="vac-next-date"
-                type="date"
-                value={newNextDate}
-                onChange={(e) => setNewNextDate(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-teal-500 focus:outline-hidden bg-slate-50"
-              />
+              {newStatus === 'completed' && (
+                <div>
+                  <label htmlFor="vac-next-date" className="font-semibold text-slate-700 block mb-1">
+                    နောက်တစ်ကြိမ် ထိုးရမည့်ရက် (ရှိပါက)
+                  </label>
+                  <input
+                    id="vac-next-date"
+                    type="date"
+                    value={newNextDate}
+                    onChange={(e) => setNewNextDate(e.target.value)}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-teal-500 focus:outline-hidden bg-slate-50"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">

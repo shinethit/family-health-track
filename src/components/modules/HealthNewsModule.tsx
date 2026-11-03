@@ -4,7 +4,6 @@ import {
   Bookmark, 
   Share2, 
   Clock, 
-  Calendar, 
   CheckCircle2, 
   Sparkles,
   ChevronRight,
@@ -15,8 +14,20 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { HealthArticle } from '../../types/health';
+import { useAuth } from '../../context/AuthContext';
+import {
+  userKey,
+  readUserStored,
+  migrateLegacyKey,
+} from '../../lib/perUserStorage';
 
 export const HealthNewsModule: React.FC = () => {
+  const { profile, currentUser } = useAuth();
+  // Bookmarks belong to the signed-in user only: the key is suffixed with
+  // this uid (v2.4.11). While the profile is still loading the uid is ''
+  // and the legacy key is read.
+  const storageUid = profile?.id || currentUser?.uid || '';
+
   const [articles, setArticles] = useState<HealthArticle[]>([]);
   const [isLoadingArticles, setIsLoadingArticles] = useState(true);
 
@@ -34,10 +45,17 @@ export const HealthNewsModule: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeArticle, setActiveArticle] = useState<HealthArticle | null>(null);
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('bookmarked_articles');
+    const saved = readUserStored('bookmarked_articles', storageUid);
     return saved ? JSON.parse(saved) : [];
   });
   const [copiedNotification, setCopiedNotification] = useState(false);
+
+  // Migrate the legacy device-global bookmarks key to this user's suffixed
+  // key ONCE, so a later user on a shared phone never sees these bookmarks.
+  useEffect(() => {
+    if (!storageUid) return;
+    migrateLegacyKey('bookmarked_articles', storageUid);
+  }, [storageUid]);
 
   const toggleBookmark = (id: string) => {
     let updated: string[];
@@ -47,7 +65,7 @@ export const HealthNewsModule: React.FC = () => {
       updated = [...bookmarkedIds, id];
     }
     setBookmarkedIds(updated);
-    localStorage.setItem('bookmarked_articles', JSON.stringify(updated));
+    localStorage.setItem(userKey('bookmarked_articles', storageUid), JSON.stringify(updated));
   };
 
   const handleShare = (article: HealthArticle) => {
@@ -231,7 +249,7 @@ export const HealthNewsModule: React.FC = () => {
           <span>🌊 ရေဘေး အရေးပေါ် ကျန်းမာရေး လမ်းညွှန်များ ({floodArticles.length} ပုဒ် သီးသန့်)</span>
           {activeSection === 'flood' && (
             <span className="px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px]">
-              လက်ရှိ ရေဘေးကဏ္ဍ
+              ရေဘေး လမ်းညွှန်ကဏ္ဍ
             </span>
           )}
         </button>
@@ -264,11 +282,7 @@ export const HealthNewsModule: React.FC = () => {
           <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-sky-50 via-cyan-50 to-blue-50 border-2 border-sky-300 shadow-xs relative overflow-hidden">
             <div className="space-y-2 relative z-10">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-700 text-white text-xs font-bold shadow-xs">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                </span>
-                <span>🌊 လက်ရှိ ရေကြီးရေဘေး ကာလ အရေးပေါ် ကျန်းမာရေးနှင့် အသက်ကယ် လမ်းညွှန် (၈ ပုဒ် စုစည်းမှု)</span>
+                <span>🌊 ရေဘေး အရေးပေါ် ကျန်းမာရေး လမ်းညွှန် (၈ ပုဒ် စုစည်းမှု)</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug">
                 ရေဘေးကာလ အသက်ကယ် ဆောင်ရန်/ရှောင်ရန်နှင့် အရေးပေါ် ကျန်းမာရေး လမ်းညွှန်
@@ -277,7 +291,7 @@ export const HealthNewsModule: React.FC = () => {
                 • <strong>မကြီးမီ:</strong> အရေးပေါ်အိတ် (Go Bag)၊ သောက်ရေသန့်၊ နာတာရှည်ဆေးများ | • <strong>ကြီးနေစဉ်:</strong> လျှပ်စစ်မိန်းပိတ်ရန်၊ ရေစီးထဲမဆင်းရန်၊ မြွေသတိပြုရန် | • <strong>ရောဂါများ:</strong> ကြွက်ဖျား (Leptospirosis)၊ ကာလဝမ်း၊ မျက်စိနာ | • <strong>အရေးပေါ်:</strong> ရေနစ်သူ CPR၊ SOS အချက်ပြ၊ လှေစီးနင်းမှု | • <strong>ကြီးပြီး:</strong> ရေတွင်းဆေးခတ်၊ မှိုသတ်၊ ကိုယ်ဝန်ဆောင်/နာတာရှည် ရောဂါရှိသူ စောင့်ရှောက်မှု
               </p>
               <div className="pt-2 text-[11px] text-sky-800 font-semibold bg-white/70 p-2.5 rounded-xl border border-sky-200 inline-block">
-                ℹ️ ဤကဏ္ဍတွင် လက်ရှိ ရေကြီးရေလျှံမှုနှင့် သဘာဝဘေးအန္တရာယ် ကာကွယ်ရေး ဆောင်းပါး ၈ ပုဒ်သာ သီးသန့် ပါဝင်ပါသည်။ (အခြား သိုင်းရွိုက်၊ သွေးတိုး၊ ဆီးချို စသည့် ဆေးပညာဆောင်းပါးများကို အပေါ်ရှိ <strong>"အထွေထွေ ဆေးပညာ & ရောဂါများ ဗဟုသုတ"</strong> Tab တွင် ကြည့်ရှုနိုင်ပါသည်)
+                ℹ️ ဤကဏ္ဍတွင် ရေကြီးရေလျှံမှုနှင့် သဘာဝဘေးအန္တရာယ် ကာကွယ်ရေး လမ်းညွှန် ဆောင်းပါး ၈ ပုဒ်သာ သီးသန့် ပါဝင်ပါသည်။ (အခြား သိုင်းရွိုက်၊ သွေးတိုး၊ ဆီးချို စသည့် ဆေးပညာဆောင်းပါးများကို အပေါ်ရှိ <strong>"အထွေထွေ ဆေးပညာ & ရောဂါများ ဗဟုသုတ"</strong> Tab တွင် ကြည့်ရှုနိုင်ပါသည်) ဤဆောင်းပါးများသည် အထွေထွေ ဗဟုသုတအတွက်သာ ဖြစ်ပြီး၊ မိမိတစ်ဦးချင်းစီအတွက် ဆေးညွှန်းမဟုတ်ပါ။
               </div>
             </div>
           </div>
@@ -327,10 +341,13 @@ export const HealthNewsModule: React.FC = () => {
                   <span>ယုံကြည်စိတ်ချရသော ဆေးပညာ ဗဟုသုတများ (စုစုပေါင်း {generalArticles.length} ပုဒ်)</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">
-                  ကျန်းမာရေး သတင်း & ဆေးပညာ ဗဟုသုတများ
+                  ကျန်းမာရေး ဗဟုသုတ စာကြည့်တိုက်
                 </h2>
                 <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
                   ကာကွယ်ဆေးများ၊ သိုင်းရွိုက်၊ သွေးတိုး၊ ဆီးချို၊ နှလုံး၊ အသည်း၊ ကျောက်ကပ်၊ ကလေးနှင့် သက်ကြီးကျန်းမာရေးအတွက် အထူးကုဆရာဝန်ကြီးများ၏ လက်တွေ့ကျ လမ်းညွှန်ချက်များ
+                </p>
+                <p className="text-[11px] text-slate-500 mt-2 max-w-2xl leading-relaxed bg-white/70 border border-emerald-100 rounded-xl px-2.5 py-2">
+                  ℹ️ ဤဆောင်းပါးများသည် သတင်းမဟုတ်ပါ — App ထဲမှာ ထည့်သွင်းထားသော အထွေထွေ ကျန်းမာရေး ဗဟုသုတ စာစောင်များဖြစ်ပြီး အကြောင်းအရာ အသစ် အလိုအလျောက် တက်မလာပါ။ မိမိတစ်ဦးချင်းစီအတွက် ဆေးညွှန်းမဟုတ်ပါ — ရောဂါအခြေအနေအတွက် ဆရာဝန်နှင့် တိုက်ရိုက် ပြသပါ။
                 </p>
               </div>
 
@@ -532,10 +549,6 @@ export const HealthNewsModule: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase ${getCategoryBadgeColor(activeArticle.category)}`}>
                     {getCategoryLabel(activeArticle.category)}
-                  </span>
-                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    {activeArticle.publishedDate}
                   </span>
                   <span className="text-[11px] text-slate-400 flex items-center gap-1">
                     <Clock className="w-3 h-3 text-emerald-600" />

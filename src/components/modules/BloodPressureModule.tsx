@@ -1,10 +1,46 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Heart, Activity, AlertCircle, Info, Calendar, BarChart2, Table, TrendingUp, Utensils, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Heart, Activity, AlertCircle, Info, Calendar, BarChart2, Table, TrendingUp, Utensils } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { BloodPressureChart } from '../charts/HealthCharts';
 import { calculateBPCategory, parseDateToMs } from '../../lib/medicalCalculations';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+
+// Local (Asia/Rangoon) date-time for a datetime-local input —
+// new Date().toISOString() is UTC, so a record entered early in the morning
+// got yesterday's date (v2.4.11 F4).
+const localDateTimeStr = (d: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+// Labels for the measurement-time condition the user picks in the form.
+const MEASUREMENT_CONDITION_LABELS: Record<string, string> = {
+  morning: 'မနက်နိုးနိုးချင်း',
+  night: 'ညအိပ်ရာဝင်',
+  resting: 'နားနေချိန်',
+  after_exercise: 'လှုပ်ရှားပြီးစ',
+  stress: 'စိတ်ဖိစီးချိန်',
+};
+
+// What the history table's "တိုင်းတာချိန်" column shows. The context
+// overwrites the record's `condition` with the BP category (e.g. 'stage1'),
+// so a stored condition never matches the labels above and this column was
+// always blank. Prefer a stored measurement condition when one survived;
+// otherwise derive the time of day from the record's own date/time — real
+// data, never invented. (The real fix is one line in HealthDataContext:
+// stop overwriting data.condition with the category.)
+const measurementTimeLabel = (record: { condition?: string; date?: string; timestamp?: string }): string => {
+  const cond = record.condition ? MEASUREMENT_CONDITION_LABELS[record.condition] : undefined;
+  if (cond) return cond;
+  const dt = record.date || record.timestamp || '';
+  const m = dt.match(/T(\d{2}):(\d{2})/);
+  if (!m) return '-';
+  const h = Number(m[1]);
+  const period = h >= 4 && h < 10 ? 'မနက်' : h >= 10 && h < 16 ? 'နေ့လည်' : h >= 16 && h < 20 ? 'ညနေ' : 'ည';
+  return `${period} ${m[1]}:${m[2]}`;
+};
 
 export const BloodPressureModule: React.FC = () => {
   const { bpRecords, addBPRecord, deleteBPRecord, selectedPatient, selectedFamilyMember } = useHealthData();
@@ -12,14 +48,17 @@ export const BloodPressureModule: React.FC = () => {
   // back to false if it is not present yet so this module still renders.
   const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
   const { profile, isAdmin } = useAuth();
+  const { showToast } = useToast();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
-  const [systolic, setSystolic] = useState<number>(120);
-  const [diastolic, setDiastolic] = useState<number>(80);
-  const [pulse, setPulse] = useState<number>(72);
+  // No prefilled values: 120/80/72 invited fake-normal records (v2.4.11 F5).
+  // Inputs start empty; the user must enter their own real readings.
+  const [systolic, setSystolic] = useState<number | ''>('');
+  const [diastolic, setDiastolic] = useState<number | ''>('');
+  const [pulse, setPulse] = useState<number | ''>('');
   const [condition, setCondition] = useState<'resting' | 'morning' | 'night' | 'after_exercise' | 'stress'>('resting');
   const [dietRecord, setDietRecord] = useState<string>('');
-  const [date, setDate] = useState<string>(() => new Date().toISOString().substring(0, 16));
+  const [date, setDate] = useState<string>(() => localDateTimeStr(new Date()));
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -93,8 +132,10 @@ export const BloodPressureModule: React.FC = () => {
   const latestBP = sortedBP.length > 0 ? sortedBP[sortedBP.length - 1] : null;
   const latestEvaluation = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic, personAge, isPersonPregnant) : null;
 
-  // Real-time evaluation for the modal input
-  const currentPreview = calculateBPCategory(systolic, diastolic, personAge, isPersonPregnant);
+  // Real-time evaluation for the modal input — only once real values exist.
+  const currentPreview = systolic !== '' && diastolic !== ''
+    ? calculateBPCategory(systolic, diastolic, personAge, isPersonPregnant)
+    : null;
 
   // Averages (computed on filtered subset)
   const targetForAvg = filteredBP.length > 0 ? filteredBP : sortedBP;
@@ -108,6 +149,10 @@ export const BloodPressureModule: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+    if (systolic === '' || diastolic === '' || pulse === '') {
+      showToast('အပေါ်သွေး၊ အောက်သွေးနှင့် နှလုံးခုန်နှုန်း သုံးခုလုံး ထည့်ပေးပါ', 'error');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await addBPRecord({
@@ -124,8 +169,18 @@ export const BloodPressureModule: React.FC = () => {
         notes: notes.trim() || undefined,
       });
       setIsOpenAdd(false);
+      setSystolic('');
+      setDiastolic('');
+      setPulse('');
       setDietRecord('');
       setNotes('');
+      setDate(localDateTimeStr(new Date()));
+      showToast('သွေးပေါင်ချိန် မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+    } catch (err) {
+      // Save failed: keep the form open with all values intact so the user
+      // can retry (v2.4.11 F3 — saves used to fail silently).
+      console.warn('Error saving BP record:', err);
+      showToast('သွေးပေါင်ချိန် မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -383,6 +438,13 @@ export const BloodPressureModule: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayBP.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="py-8 px-4 text-center text-slate-400">
+                      မှတ်တမ်း မရှိသေးပါ — အထက်ပါ ခလုတ်ဖြင့် ပထမဆုံး သွေးပေါင်ချိန် ထည့်သွင်းနိုင်ပါသည်
+                    </td>
+                  </tr>
+                )}
                 {displayBP.map((record) => {
                   const evalInfo = calculateBPCategory(record.systolic, record.diastolic);
                   const diet = record.dietRecord || record.dietNotes || record.foodIntake;
@@ -416,12 +478,7 @@ export const BloodPressureModule: React.FC = () => {
                         )}
                       </td>
                       <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
-                        {record.condition === 'morning' && 'မနက်နိုးနိုးချင်း'}
-                        {record.condition === 'night' && 'ညအိပ်ရာဝင်'}
-                        {record.condition === 'resting' && 'နားနေချိန်'}
-                        {record.condition === 'after_exercise' && 'လှုပ်ရှားပြီးစ'}
-                        {record.condition === 'stress' && 'စိတ်ဖိစီးချိန်'}
-                        {!record.condition && '-'}
+                        {measurementTimeLabel(record)}
                       </td>
                       <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
                         {record.notes || '-'}
@@ -491,8 +548,9 @@ export const BloodPressureModule: React.FC = () => {
                     min="60"
                     max="260"
                     value={systolic}
-                    onChange={(e) => setSystolic(Number(e.target.value))}
+                    onChange={(e) => setSystolic(e.target.value === '' ? '' : Number(e.target.value))}
                     required
+                    placeholder="ဥပမာ- 120"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-base sm:text-lg font-bold focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
                   />
                   <span className="text-[11px] text-slate-400">စံနှုန်း: 120 အောက်</span>
@@ -507,8 +565,9 @@ export const BloodPressureModule: React.FC = () => {
                     min="40"
                     max="160"
                     value={diastolic}
-                    onChange={(e) => setDiastolic(Number(e.target.value))}
+                    onChange={(e) => setDiastolic(e.target.value === '' ? '' : Number(e.target.value))}
                     required
+                    placeholder="ဥပမာ- 80"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-base sm:text-lg font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   />
                   <span className="text-[11px] text-slate-400">စံနှုန်း: 80 အောက်</span>
@@ -526,8 +585,9 @@ export const BloodPressureModule: React.FC = () => {
                     min="30"
                     max="220"
                     value={pulse}
-                    onChange={(e) => setPulse(Number(e.target.value))}
+                    onChange={(e) => setPulse(e.target.value === '' ? '' : Number(e.target.value))}
                     required
+                    placeholder="ဥပမာ- 72"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-base font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   />
                   <span className="text-[11px] text-slate-400">စံနှုန်း: 60 - 100</span>
@@ -599,20 +659,28 @@ export const BloodPressureModule: React.FC = () => {
                 />
               </div>
 
-              {/* Real-time Category Preview */}
-              <div className={`p-3 rounded-xl border ${currentPreview.bgColor} ${currentPreview.borderColor}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    လက်ရှိထည့်သွင်းချက် အကဲဖြတ်မှု:
-                  </span>
-                  <span className={`text-xs font-bold ${currentPreview.color}`}>
-                    {currentPreview.labelMm}
-                  </span>
+              {/* Real-time Category Preview (only once real values exist) */}
+              {currentPreview ? (
+                <div className={`p-3 rounded-xl border ${currentPreview.bgColor} ${currentPreview.borderColor}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      လက်ရှိထည့်သွင်းချက် အကဲဖြတ်မှု:
+                    </span>
+                    <span className={`text-xs font-bold ${currentPreview.color}`}>
+                      {currentPreview.labelMm}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
+                    {currentPreview.advice}
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
-                  {currentPreview.advice}
-                </p>
-              </div>
+              ) : (
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    အပေါ်သွေးနှင့် အောက်သွေး ထည့်ပေးပါ — ထည့်ပြီးတာနဲ့ အကဲဖြတ်ချက် ပြပေးပါမယ်။
+                  </p>
+                </div>
+              )}
 
               {/* Notes */}
               <div>

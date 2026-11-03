@@ -24,6 +24,12 @@ import {
   Check
 } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
+import { useAuth } from '../../context/AuthContext';
+import {
+  userKey,
+  readUserStored,
+  migrateLegacyKey,
+} from '../../lib/perUserStorage';
 
 export interface DentalRecord {
   id: string;
@@ -64,22 +70,30 @@ export interface HearingRecord {
 }
 
 export const SpecialtyCareModule: React.FC = () => {
+  const { profile, currentUser } = useAuth();
+  // Dental/eye/hearing records belong to the signed-in user only: every
+  // fht_* key is suffixed with this uid (v2.4.11). While the profile is
+  // still loading the uid is '' and the legacy key is read.
+  const storageUid = profile?.id || currentUser?.uid || '';
+
+  // Read a phone-only value: this user's suffixed key first, then the
+  // legacy un-suffixed key (pre-migration data). `fallback` is used only
+  // when nothing was ever saved.
+  const loadStored = <T,>(base: string, fallback: T): T => {
+    try {
+      const saved = readUserStored(base, storageUid);
+      return saved ? (JSON.parse(saved) as T) : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<'dental' | 'eye' | 'ear'>('dental');
 
   // --- DENTAL STATE ---
   const [dentalRecords, setDentalRecords] = useState<DentalRecord[]>(() => {
-    const saved = localStorage.getItem('fht_dental_records');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: '1',
-        date: '2025-11-15',
-        treatmentType: 'Cleaning',
-        dentistName: 'ဒေါက်တာထွန်းထွန်း (သွားဆရာဝန်)',
-        clinicName: 'Grace Dental Clinic',
-        notes: '၆ လတစ်ကြိမ် သွားကျောက်ရှင်းခြင်း ပြုလုပ်ခဲ့သည်။ မေးရိုးအံသွား ပုံမှန်ရှိသည်။',
-        nextCheckupDate: '2026-05-15'
-      }
-    ];
+    // v2.4.11: no fabricated sample record — an empty list is honest.
+    return loadStored<DentalRecord[]>('fht_dental_records', []);
   });
   const [showAddDentalModal, setShowAddDentalModal] = useState(false);
   const [newDental, setNewDental] = useState<Partial<DentalRecord>>({
@@ -90,8 +104,7 @@ export const SpecialtyCareModule: React.FC = () => {
 
   // Tooth selector chart (32 teeth)
   const [selectedTeeth, setSelectedTeeth] = useState<Record<number, 'Healthy' | 'Cavity' | 'Filled' | 'Missing'>>(() => {
-    const saved = localStorage.getItem('fht_selected_teeth');
-    return saved ? JSON.parse(saved) : { 16: 'Filled', 26: 'Cavity' };
+    return loadStored<Record<number, 'Healthy' | 'Cavity' | 'Filled' | 'Missing'>>('fht_selected_teeth', {});
   });
   const [activeToothNum, setActiveToothNum] = useState<number | null>(null);
 
@@ -102,23 +115,8 @@ export const SpecialtyCareModule: React.FC = () => {
 
   // --- EYE STATE ---
   const [eyePrescriptions, setEyePrescriptions] = useState<EyePrescription[]>(() => {
-    const saved = localStorage.getItem('fht_eye_prescriptions');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: '1',
-        date: '2025-10-10',
-        odSphere: '-1.25',
-        odCylinder: '-0.50',
-        odAxis: '180',
-        osSphere: '-1.50',
-        osCylinder: '-0.25',
-        osAxis: '175',
-        pd: '63',
-        glassesType: 'Single Vision',
-        optometristName: 'ဒေါက်တာမြတ်နိုး (မျက်စိအထူးကု)',
-        notes: 'ကွန်ပျူတာကြည့်ချိန် Blue Light Filter မှန်ဘီလူး တပ်ရန် အကြံပြုထားသည်။'
-      }
-    ];
+    // v2.4.11: no fabricated sample prescription — an empty list is honest.
+    return loadStored<EyePrescription[]>('fht_eye_prescriptions', []);
   });
   const [showAddEyeModal, setShowAddEyeModal] = useState(false);
   const [newEye, setNewEye] = useState<Partial<EyePrescription>>({
@@ -160,37 +158,39 @@ export const SpecialtyCareModule: React.FC = () => {
 
   // --- EAR STATE ---
   const [hearingRecords, setHearingRecords] = useState<HearingRecord[]>(() => {
-    const saved = localStorage.getItem('fht_hearing_records');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: '1',
-        date: '2025-12-01',
-        leftEarStatus: 'Normal',
-        rightEarStatus: 'Normal',
-        tinnitusPresent: false,
-        notes: 'အကြားအာရုံ စစ်ဆေးမှု ပုံမှန်ရှိသည်။ နားကြပ်ကျယ်ကျယ် နားမထောင်ရန် သတိပေးထားသည်။'
-      }
-    ];
+    // v2.4.11: no fabricated sample record — an empty list is honest.
+    return loadStored<HearingRecord[]>('fht_hearing_records', []);
   });
   const [playingFrequency, setPlayingFrequency] = useState<number | null>(null);
   const [audioCtx, setAudioCtx] = useState<AudioContext | null>(null);
 
-  // Local storage save triggers
+  // Migrate legacy device-global fht_* keys to this user's suffixed keys
+  // ONCE (declared before the save effects below so migration runs first).
+  // After migration a later user on a shared phone never sees this data.
   useEffect(() => {
-    localStorage.setItem('fht_dental_records', JSON.stringify(dentalRecords));
-  }, [dentalRecords]);
+    if (!storageUid) return;
+    migrateLegacyKey('fht_dental_records', storageUid);
+    migrateLegacyKey('fht_selected_teeth', storageUid);
+    migrateLegacyKey('fht_eye_prescriptions', storageUid);
+    migrateLegacyKey('fht_hearing_records', storageUid);
+  }, [storageUid]);
+
+  // Local storage save triggers (per-user keys only)
+  useEffect(() => {
+    localStorage.setItem(userKey('fht_dental_records', storageUid), JSON.stringify(dentalRecords));
+  }, [dentalRecords, storageUid]);
 
   useEffect(() => {
-    localStorage.setItem('fht_selected_teeth', JSON.stringify(selectedTeeth));
-  }, [selectedTeeth]);
+    localStorage.setItem(userKey('fht_selected_teeth', storageUid), JSON.stringify(selectedTeeth));
+  }, [selectedTeeth, storageUid]);
 
   useEffect(() => {
-    localStorage.setItem('fht_eye_prescriptions', JSON.stringify(eyePrescriptions));
-  }, [eyePrescriptions]);
+    localStorage.setItem(userKey('fht_eye_prescriptions', storageUid), JSON.stringify(eyePrescriptions));
+  }, [eyePrescriptions, storageUid]);
 
   useEffect(() => {
-    localStorage.setItem('fht_hearing_records', JSON.stringify(hearingRecords));
-  }, [hearingRecords]);
+    localStorage.setItem(userKey('fht_hearing_records', storageUid), JSON.stringify(hearingRecords));
+  }, [hearingRecords, storageUid]);
 
   // Brushing timer logic
   useEffect(() => {

@@ -173,8 +173,24 @@ export const ChildCareModule: React.FC = () => {
 
   // Pediatric Fever Triage State
   const [childAgeMonths, setChildAgeMonths] = useState<number>(12);
-  const [feverTempF, setFeverTempF] = useState<number>(101);
+  // Temperature in the unit the user chose (default °C — Myanmar uses
+  // Celsius; the old tool was °F-only, so typing 38 meant 38°F, i.e. no
+  // fever at all, v2.4.11 10-B). Assessment thresholds stay in °F
+  // internally (100.4°F = 38.0°C, 102°F = 38.9°C, 104°F = 40.0°C).
+  const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
+  const [feverTemp, setFeverTemp] = useState<number>(38.3);
+  const feverTempF = tempUnit === 'C' ? (feverTemp * 9) / 5 + 32 : feverTemp;
   const [hasEmergencySymptoms, setHasEmergencySymptoms] = useState<{ [key: string]: boolean }>({});
+
+  // Switching units converts the entered value so nothing is lost.
+  const handleTempUnitChange = (unit: 'C' | 'F') => {
+    if (unit === tempUnit) return;
+    setFeverTemp((prev) => {
+      const converted = unit === 'F' ? (prev * 9) / 5 + 32 : ((prev - 32) * 5) / 9;
+      return Math.round(converted * 10) / 10;
+    });
+    setTempUnit(unit);
+  };
 
   const filteredTopics = CHILD_CARE_TOPICS.filter(t => {
     const matchCat = selectedCategory === 'all' || t.category === selectedCategory;
@@ -285,19 +301,42 @@ export const ChildCareModule: React.FC = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">တိုင်းတာရရှိသော အဖျားအပူချိန် (°F)</label>
+            <label className="text-xs font-bold text-slate-700">တိုင်းတာရရှိသော အဖျားအပူချိန်</label>
             <div className="flex items-center gap-2">
-              <input 
+              <div className="flex rounded-xl bg-slate-100 p-0.5 text-xs font-bold shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleTempUnitChange('C')}
+                  className={`px-2.5 py-2 rounded-lg cursor-pointer ${tempUnit === 'C' ? 'bg-sky-600 text-white shadow-xs' : 'text-slate-600'}`}
+                >
+                  °C
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTempUnitChange('F')}
+                  className={`px-2.5 py-2 rounded-lg cursor-pointer ${tempUnit === 'F' ? 'bg-sky-600 text-white shadow-xs' : 'text-slate-600'}`}
+                >
+                  °F
+                </button>
+              </div>
+              <input
                 type="number"
                 step="0.1"
-                min="97"
-                max="106"
-                value={feverTempF}
-                onChange={(e) => setFeverTempF(Number(e.target.value))}
+                min={tempUnit === 'C' ? '35' : '95'}
+                max={tempUnit === 'C' ? '42' : '108'}
+                value={feverTemp}
+                onChange={(e) => setFeverTemp(Number(e.target.value))}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
               />
-              <span className="text-xs font-bold text-slate-500 shrink-0">ဒီဂရီ ဖာရင်ဟိုက်</span>
+              <span className="text-xs font-bold text-slate-500 shrink-0">
+                {tempUnit === 'C' ? 'ဒီဂရီ စင်တီဂရိတ်' : 'ဒီဂရီ ဖာရင်ဟိုက်'}
+              </span>
             </div>
+            <p className="text-[11px] text-slate-400">
+              {tempUnit === 'C'
+                ? `≈ ${((feverTemp * 9) / 5 + 32).toFixed(1)}°F — အဖျားအဆင့် 38.0°C (100.4°F) နှင့်အထက်`
+                : `≈ ${(((feverTemp - 32) * 5) / 9).toFixed(1)}°C — အဖျားအဆင့် 100.4°F (38.0°C) နှင့်အထက်`}
+            </p>
           </div>
         </div>
 

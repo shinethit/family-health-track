@@ -17,6 +17,18 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // A record filed under a family member: the familyMembers doc with that
+    // id must belong to the requester (its userId is the requester's uid).
+    // This lets a user file and read records for their own family members
+    // (who have no login of their own) without letting anyone touch another
+    // user's family records. Short-circuits: get() only runs when the doc
+    // exists, and callers place this last so it is only evaluated when the
+    // owner/patientEmail alternatives already failed.
+    function isOwnFamilyMember(memberId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/familyMembers/$(memberId))
+        && get(/databases/$(database)/documents/familyMembers/$(memberId)).data.userId == request.auth.uid;
+    }
+
     // Admins are managed in-app (Admin Role Manager): an admin can promote
     // another user and remove another admin, but never themself. The very
     // first admin must still be created manually in the Firebase Console.
@@ -36,38 +48,38 @@ service cloud.firestore {
 
     // Query by Email or UserID is safely allowed
     match /vitals/{vitalId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /glucose/{gluId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /bmi/{bmiId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /labTests/{testId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /medications/{medId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /familyMembers/{memberId} {
@@ -78,17 +90,17 @@ service cloud.firestore {
     }
 
     match /medicationLogs/{logId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /vaccines/{vacId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /doctorAdvices/{adviceId} {
@@ -98,10 +110,24 @@ service cloud.firestore {
     }
 
     match /doctorQuestions/{questionId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email);
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
       allow update: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) && request.resource.data.userId == resource.data.userId && (!('doctorAnswer' in request.resource.data) || request.resource.data.doctorAnswer == resource.data.doctorAnswer));
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+    }
+
+    // v2.4.10: cross-user notifications (e.g. an admin answering a doctor
+    // question writes a 'qa_answered' doc here so it reaches the patient's
+    // own device — localStorage notifications cannot cross devices).
+    // Addressed by uid (userId) or by email (recipientEmail — used when the
+    // record belongs to a family member doc id, which is never a uid).
+    // Admins may create them and read them for support; only the recipient
+    // may mark or delete their own.
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.recipientEmail == request.auth.token.email) || isAdmin();
+      allow create: if isAdmin() || (isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.recipientEmail == request.auth.token.email));
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.recipientEmail == request.auth.token.email) || isAdmin();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.recipientEmail == request.auth.token.email) || isAdmin();
     }
 
     match /broadcastTickers/{tickerId} {

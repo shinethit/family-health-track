@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Heart, 
   Users, 
@@ -32,6 +32,12 @@ import {
   ListFilter
 } from 'lucide-react';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+import { useAuth } from '../../context/AuthContext';
+import {
+  userKey,
+  readUserStored,
+  migrateLegacyKey,
+} from '../../lib/perUserStorage';
 
 interface SpecialCareTopic {
   id: string;
@@ -263,12 +269,18 @@ const ACCESSIBILITY_CHECKLIST_ITEMS = [
 ];
 
 export const SpecialNeedsCareModule: React.FC = () => {
+  const { profile, currentUser } = useAuth();
+  // The accessibility checklist belongs to the signed-in user only: its
+  // key is suffixed with this uid (v2.4.11). While the profile is still
+  // loading the uid is '' and the legacy key is read.
+  const storageUid = profile?.id || currentUser?.uid || '';
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTopicId, setActiveTopicId] = useState<string>(SPECIAL_CARE_TOPICS[0].id);
   const [checklistState, setChecklistState] = useState<Record<string, boolean>>(() => {
     try {
-      const saved = localStorage.getItem('special_care_checklist');
+      const saved = readUserStored('special_care_checklist', storageUid);
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -276,6 +288,13 @@ export const SpecialNeedsCareModule: React.FC = () => {
   });
   const [showChecklistModal, setShowChecklistModal] = useState<boolean>(false);
   const detailContainerRef = useRef<HTMLDivElement>(null);
+
+  // Migrate the legacy device-global checklist key to this user's suffixed
+  // key ONCE, so a later user on a shared phone never sees this checklist.
+  useEffect(() => {
+    if (!storageUid) return;
+    migrateLegacyKey('special_care_checklist', storageUid);
+  }, [storageUid]);
 
   const selectTopic = (id: string) => {
     setActiveTopicId(id);
@@ -288,7 +307,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
     const updated = { ...checklistState, [id]: !checklistState[id] };
     setChecklistState(updated);
     try {
-      localStorage.setItem('special_care_checklist', JSON.stringify(updated));
+      localStorage.setItem(userKey('special_care_checklist', storageUid), JSON.stringify(updated));
     } catch (e) {
       console.error(e);
     }

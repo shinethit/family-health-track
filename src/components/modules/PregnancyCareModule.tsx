@@ -106,12 +106,10 @@ const TRIMESTER_DATA: TrimesterInfo[] = [
 export const PregnancyCareModule: React.FC = () => {
   const [selectedTrimester, setSelectedTrimester] = useState<number>(1);
   
-  // Interactive EDD Calculator State
-  const [lmpDate, setLmpDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 70); // 10 weeks ago default
-    return d.toISOString().split('T')[0];
-  });
+  // Interactive EDD Calculator State — no default LMP: a pre-filled date
+  // would show a due date and trimester for someone who may not be
+  // pregnant at all. The user picks a date; nothing is computed until then.
+  const [lmpDate, setLmpDate] = useState<string>('');
   const [eddResult, setEddResult] = useState<{
     eddFormatted: string;
     currentWeeks: number;
@@ -120,21 +118,17 @@ export const PregnancyCareModule: React.FC = () => {
     daysRemaining: number;
   } | null>(null);
 
-  // Interactive Fetal Kick Counter State
+  // Interactive Fetal Kick Counter State — the log starts empty: a
+  // hardcoded "this morning, 10 kicks" entry would present someone else's
+  // history as the user's own. Entries only appear once the user counts.
   const [kickCount, setKickCount] = useState<number>(0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
-  const [kickLogs, setKickLogs] = useState<Array<{ id: string; time: string; kicks: number; durationMinutes: number }>>([
-    { id: '1', time: 'ယနေ့ မနက် ၉:၀၀', kicks: 10, durationMinutes: 28 }
-  ]);
+  const [kickLogs, setKickLogs] = useState<Array<{ id: string; time: string; kicks: number; durationMinutes: number }>>([]);
 
-  // Hospital Bag Checklist State
-  const [checkedItems, setCheckedItems] = useState<{ [key: string]: boolean }>({
-    'doc1': true,
-    'doc2': true,
-    'mom1': true,
-    'baby1': true
-  });
+  // Hospital Bag Checklist State — nothing pre-ticked: the bag starts
+  // unpacked and the user ticks items as they actually pack them.
+  const [checkedItems, setCheckedItems] = useState<{ [key: string]: boolean }>({});
 
   // Calculate EDD based on Naegele's Rule: LMP + 280 days (40 weeks)
   useEffect(() => {
@@ -341,6 +335,12 @@ export const PregnancyCareModule: React.FC = () => {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500"
             />
           </div>
+
+          {!eddResult && (
+            <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+              နောက်ဆုံး ရာသီစတင်ရက် ရွေးပါ — ခန့်မှန်း မွေးဖွားမည့်ရက် တွက်ချက်ပေးပါမည်။
+            </p>
+          )}
 
           {eddResult && (
             <div className="bg-gradient-to-br from-teal-50 to-emerald-50/60 p-4 rounded-xl border border-teal-100 space-y-3">

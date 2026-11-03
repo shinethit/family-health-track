@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   HeartPulse, 
   Activity, 
@@ -12,28 +12,23 @@ import {
   Mail,
   User,
   Sparkles,
-  Calendar,
-  Scale,
-  Ruler,
   Newspaper,
   MessageSquareHeart,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const LoginScreen: React.FC = () => {
-  const { login, register, loginWithGoogle, resetPassword } = useAuth();
+  const { login, register, loginWithGoogle, resetPassword, verifyResetCode, confirmResetPassword } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
-  const [dob, setDob] = useState<string>('');
-  const [heightCm, setHeightCm] = useState<number | string>('');
-  const [weightKg, setWeightKg] = useState<number | string>('');
-  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
-  const [chronicConditions, setChronicConditions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -43,12 +38,71 @@ export const LoginScreen: React.FC = () => {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
+  const [resendNote, setResendNote] = useState(false);
 
-  const toggleCondition = (cond: string) => {
-    if (chronicConditions.includes(cond)) {
-      setChronicConditions(chronicConditions.filter(c => c !== cond));
-    } else {
-      setChronicConditions([...chronicConditions, cond]);
+  // In-app password reset (user clicked the reset link in their email):
+  // the link returns to this app with ?mode=resetPassword&oobCode=...
+  // (ActionCodeSettings, handleCodeInApp) instead of Firebase's English
+  // hosted page, so the new password is set here, in Burmese.
+  const [resetOobCode, setResetOobCode] = useState<string | null>(null);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCodeState, setResetCodeState] = useState<'checking' | 'valid' | 'invalid'>('checking');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetDone, setResetDone] = useState(false);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'resetPassword' && params.get('oobCode')) {
+        const code = params.get('oobCode') as string;
+        setResetOobCode(code);
+        verifyResetCode(code)
+          .then((accountEmail) => {
+            setResetEmail(accountEmail);
+            setResetCodeState('valid');
+          })
+          .catch(() => setResetCodeState('invalid'));
+      }
+    } catch {}
+    // Run once on mount — the link is only followed once, on a fresh load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const clearResetParams = () => {
+    try {
+      window.history.replaceState({}, '', window.location.pathname);
+    } catch {}
+    setResetOobCode(null);
+    setResetDone(false);
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setResetError(null);
+  };
+
+  const handleConfirmReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+    if (!resetOobCode) return;
+    if (newPassword.length < 6) {
+      setResetError('လျှို့ဝှက်နံပါတ် အသစ်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setResetError('စကားဝှက် အသစ် နှစ်ခု မတူညီပါ။ ပြန်ရိုက်ထည့်ပါ');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      await confirmResetPassword(resetOobCode, newPassword);
+      setResetDone(true);
+    } catch (err: any) {
+      setResetError(err.message || 'စကားဝှက် ပြန်သတ်မှတ်ခြင်း မအောင်မြင်ပါ။ လင့်ခ် သက်တမ်းကုန်သွားနိုင်ပါသည်။');
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -70,16 +124,7 @@ export const LoginScreen: React.FC = () => {
         if (password.length < 6) {
           throw new Error('စကားဝှက်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်');
         }
-        await register(
-          email, 
-          password, 
-          name, 
-          dob || undefined, 
-          gender, 
-          heightCm ? Number(heightCm) : undefined, 
-          weightKg ? Number(weightKg) : undefined, 
-          chronicConditions
-        );
+        await register(email, password, name);
       }
     } catch (err: any) {
       console.error(err);
@@ -127,6 +172,133 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
+
+  // Password-reset link followed from email: show the in-app reset form
+  // instead of the login screen.
+  if (resetOobCode) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center relative overflow-hidden p-4">
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 right-0 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 bg-slate-900/90 border border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">စကားဝှက် အသစ် သတ်မှတ်ရန်</h3>
+              {resetEmail && (
+                <p className="text-xs text-slate-400">အကောင့်: {resetEmail}</p>
+              )}
+            </div>
+          </div>
+
+          {resetCodeState === 'checking' && (
+            <div className="py-8 flex flex-col items-center gap-3 text-center">
+              <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-slate-400 font-semibold">လင့်ခ် စစ်ဆေးနေပါသည်...</p>
+            </div>
+          )}
+
+          {resetCodeState === 'invalid' && (
+            <div className="space-y-4 py-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-white">ဤလင့်ခ် အသုံးမပြုနိုင်တော့ပါ</p>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                လင့်ခ် သက်တမ်းကုန်သွားပြီ သို့မဟုတ် အသုံးပြုပြီးသား ဖြစ်နေပါသည်။ စကားဝှက် ပြန်လည်ရယူရန် တောင်းဆိုမှုကို ထပ်မံ ပြုလုပ်ပါ။
+              </p>
+              <button
+                onClick={() => {
+                  clearResetParams();
+                  setForgotEmail(resetEmail);
+                  setShowForgotPassword(true);
+                }}
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer"
+              >
+                လင့်ခ် အသစ် တောင်းမည်
+              </button>
+            </div>
+          )}
+
+          {resetCodeState === 'valid' && resetDone && (
+            <div className="space-y-4 py-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-white">စကားဝှက် အသစ် သတ်မှတ်ပြီးပါပြီ!</p>
+              <p className="text-xs text-slate-300">စကားဝှက် အသစ်ဖြင့် အကောင့်ဝင်နိုင်ပါပြီ။</p>
+              <button
+                onClick={clearResetParams}
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer"
+              >
+                အကောင့်ဝင်မည်
+              </button>
+            </div>
+          )}
+
+          {resetCodeState === 'valid' && !resetDone && (
+            <form onSubmit={handleConfirmReset} className="space-y-4">
+              {resetError && (
+                <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                  <span>{resetError}</span>
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-bold text-white mb-1.5">စကားဝှက် အသစ် *</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    placeholder="အနည်းဆုံး ၆ လုံး"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(v => !v)}
+                    aria-label={showNewPassword ? 'စကားဝှက် ဖျောက်မည်' : 'စကားဝှက် ပြကြည့်မည်'}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-white mb-1.5">စကားဝှက် အသစ် (ထပ်မံ အတည်ပြုပါ) *</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    placeholder="စကားဝှက် အသစ် ထပ်ရိုက်ပါ"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {resetLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span>စကားဝှက် အသစ် သတ်မှတ်မည်</span>
+                )}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between relative overflow-hidden selection:bg-emerald-500 selection:text-white">
@@ -223,100 +395,6 @@ export const LoginScreen: React.FC = () => {
                       />
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-white mb-1.5">
-                        မွေးသက္ကရာဇ် (DOB)
-                      </label>
-                      <div className="relative">
-                        <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                        <input
-                          type="date"
-                          value={dob}
-                          onChange={(e) => setDob(e.target.value)}
-                          className="w-full pl-10 pr-2 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-white mb-1.5">
-                        ကျား / မ (Gender)
-                      </label>
-                      <select
-                        value={gender}
-                        onChange={(e) => setGender(e.target.value as any)}
-                        className="w-full px-3 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                      >
-                        <option value="male">ကျား (Male)</option>
-                        <option value="female">မ (Female)</option>
-                        <option value="other">အခြား (Other)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-white mb-1.5">
-                        အရပ် (cm)
-                      </label>
-                      <div className="relative">
-                        <Ruler className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                        <input
-                          type="number"
-                          placeholder="168"
-                          value={heightCm}
-                          onChange={(e) => setHeightCm(e.target.value)}
-                          className="w-full pl-10 pr-2 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-white mb-1.5">
-                        ကိုယ်အလေးချိန် (kg)
-                      </label>
-                      <div className="relative">
-                        <Scale className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                        <input
-                          type="number"
-                          step="0.5"
-                          placeholder="65"
-                          value={weightKg}
-                          onChange={(e) => setWeightKg(e.target.value)}
-                          className="w-full pl-10 pr-2 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Chronic condition chips */}
-                  <div>
-                    <label className="block text-xs font-bold text-white mb-2">
-                      ရောဂါအခံများ (ရှိပါက ရွေးချယ်ပါ)
-                    </label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {['သွေးတိုး', 'ဆီးချို', 'အသည်းအဆီဖုံး', 'နှလုံး', 'ကျောက်ကပ်', 'ယူရစ်အက်စစ်'].map((cond) => {
-                        const isSelected = chronicConditions.includes(cond);
-                        return (
-                          <button
-                            type="button"
-                            key={cond}
-                            onClick={() => toggleCondition(cond)}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
-                              isSelected
-                                ? 'bg-emerald-500 text-white shadow-xs'
-                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                            }`}
-                          >
-                            {isSelected ? '✓ ' : '+ '}
-                            {cond}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </>
               )}
 
@@ -352,6 +430,7 @@ export const LoginScreen: React.FC = () => {
                         setForgotEmail(email);
                         setForgotSuccess(false);
                         setForgotError(null);
+                        setResendNote(false);
                       }}
                       className="text-[11px] font-semibold text-emerald-400 hover:underline cursor-pointer"
                     >
@@ -362,13 +441,21 @@ export const LoginScreen: React.FC = () => {
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
+                    className="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    aria-label={showPassword ? 'စကားဝှက် ဖျောက်မည်' : 'စကားဝှက် ပြကြည့်မည်'}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
                 {mode === 'register' && (
                   <p className="text-[11px] text-slate-400 mt-1">အနည်းဆုံး ၆ လုံး ထည့်သွင်းပါ</p>
@@ -418,9 +505,15 @@ export const LoginScreen: React.FC = () => {
                     if (e.code === 'auth/popup-closed-by-user') {
                       setError('Google ပြတင်းပေါက်ကို ပိတ်လိုက်သဖြင့် ဝင်ရောက်မှု ရပ်တန့်သွားပါသည်။ ပြန်ကြိုးစားပါ။');
                     } else if (e.code === 'auth/popup-blocked') {
-                      setError('Browser က Google ပြတင်းပေါက်ကို ပိတ်ထားပါသည်။ Popup ခွင့်ပြုပြီး ပြန်ကြိုးစားပါ။');
+                      // The popup was blocked, so AuthContext falls back to a
+                      // full-page redirect — the page is already navigating
+                      // away at this point, so this text only shows if the
+                      // redirect itself could not start.
+                      setError('Browser က Google ပြတင်းပေါက်ကို ပိတ်ထားပါသည်။ Google ဖြင့် ဆက်လက် ဝင်ရောက်ရန် စာမျက်နှာ ပြောင်းနေပါသည် — ခဏစောင့်ပါ။');
+                    } else if (e.code === 'auth/timeout') {
+                      setError(e.message || 'Google ဖြင့် ဝင်ရောက်ခြင်း ကြာမြင့်နေပါသည်။ VPN/အင်တာနက် စစ်ပြီး ပြန်ကြိုးစားပါ။');
                     } else if (e.code === 'auth/network-request-failed') {
-                      setError('အင်တာနက် ချိတ်ဆက်မှု မရပါ။ ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။');
+                      setError('အင်တာနက် ချိတ်ဆက်မှု မရပါ။ VPN/အင်တာနက် စစ်ပြီး ပြန်ကြိုးစားပါ။');
                     } else if (e.code === 'auth/account-exists-with-different-credential') {
                       setError('ဤအီးမေးလ်ဖြင့် အခြားနည်းလမ်းဖြင့် အကောင့်ဖွင့်ပြီးသား ဖြစ်နေပါသည်။ အီးမေးလ် + စကားဝှက်ဖြင့် ဝင်ကြည့်ပါ။');
                     } else {
@@ -538,12 +631,34 @@ export const LoginScreen: React.FC = () => {
                 <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <p className="text-sm font-bold text-white">အီးမေးလ် ပို့ပြီးပါပြီ!</p>
-                <p className="text-xs text-slate-300">
-                  ကျေးဇူးပြု၍ သင့်အီးမေးလ် (<strong>{forgotEmail}</strong>) ၏ Inbox သို့မဟုတ် Spam ထဲတွင် စစ်ဆေးပြီး Password အသစ် ပြောင်းလဲပါ။
+                <p className="text-sm font-bold text-white">တောင်းဆိုမှု လက်ခံရရှိပါပြီ</p>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  အကောင့်ရှိပါက စကားဝှက် ပြန်သတ်မှတ်ရန် လင့်ခ် အီးမေးလ် (<strong>{forgotEmail}</strong>) သို့ ပို့ပေးပါမည်။ အီးမေးလ် ရောက်မလာပါက Spam ကို စစ်ပါ။
                 </p>
+                {resendNote && (
+                  <p className="text-[11px] text-emerald-400 font-semibold">လင့်ခ် ထပ်မံ ပို့ပေးပြီးပါပြီ — Inbox နှင့် Spam ကို စစ်ဆေးပါ။</p>
+                )}
                 <button
-                  onClick={() => setShowForgotPassword(false)}
+                  type="button"
+                  disabled={forgotLoading}
+                  onClick={async () => {
+                    setForgotLoading(true);
+                    try {
+                      await resetPassword(forgotEmail);
+                      setResendNote(true);
+                    } catch (err: any) {
+                      setForgotError(err.message || 'လင့်ခ် ပြန်ပို့ခြင်း မအောင်မြင်ပါ။ ပြန်ကြိုးစားပါ။');
+                      setForgotSuccess(false);
+                    } finally {
+                      setForgotLoading(false);
+                    }
+                  }}
+                  className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer disabled:opacity-50"
+                >
+                  {forgotLoading ? 'ပို့နေပါသည်...' : 'လင့်ခ် ပြန်ပို့မည်'}
+                </button>
+                <button
+                  onClick={() => { setShowForgotPassword(false); setResendNote(false); }}
                   className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer"
                 >
                   အဆင်ပြေပါပြီ

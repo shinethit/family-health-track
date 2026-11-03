@@ -22,6 +22,23 @@ import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import { CustomReminder } from '../../types/health';
 
+// Myanmar weekday names (JS getDay(): 0 = Sunday). Used for the reminder
+// day picker (v2.4.11 10-F) and for showing which days a reminder fires.
+const WEEKDAYS_MM = ['တနင်္ဂနွေ', 'တနင်္လာ', 'အင်္ဂါ', 'ဗုဒ္ဓဟူး', 'ကြာသပတေး', 'သောကြာ', 'စနေ'];
+const WEEKDAYS_SHORT_MM = ['နွေ', 'လာ', 'ဂါ', 'ဟူး', 'ကြာ', 'သေ', 'နေ'];
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+const formatDaysMm = (days?: number[]): string => {
+  if (!days || days.length === 0 || days.length === 7) return 'နေ့တိုင်း';
+  return [...days].sort((a, b) => a - b).map(d => WEEKDAYS_MM[d]).join('၊ ');
+};
+const categoryLabelMm = (category: CustomReminder['category']): string =>
+  category === 'medication' ? 'ဆေးသောက်ရန်' :
+  category === 'bp' ? 'သွေးပေါင်ချိန်' :
+  category === 'glucose' ? 'ဆီးချိုစစ်ရန်' :
+  category === 'water' ? 'ရေသောက်ရန်' :
+  category === 'doctor' ? 'ဆရာဝန်နှင့် ပြသရန်' :
+  category === 'exercise' ? 'လေ့ကျင့်ခန်း' : 'အထွေထွေ';
+
 export const RemindersModule: React.FC = () => {
   const { profile, isAdmin } = useAuth();
   const {
@@ -50,6 +67,15 @@ export const RemindersModule: React.FC = () => {
   const [time, setTime] = useState('08:00');
   const [category, setCategory] = useState<CustomReminder['category']>('medication');
   const [notes, setNotes] = useState('');
+  // Days of the week this reminder fires on (v2.4.11 10-F): the old form
+  // always stored all 7 days with no way to pick. Default = every day.
+  const [selectedDays, setSelectedDays] = useState<number[]>(ALL_DAYS);
+
+  const toggleDay = (day: number) => {
+    setSelectedDays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort((a, b) => a - b)
+    );
+  };
 
   const handleAddReminder = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,13 +85,17 @@ export const RemindersModule: React.FC = () => {
       title: title.trim(),
       category,
       time,
-      daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+      // Nothing selected means "every day" — the ticker treats an empty
+      // daysOfWeek as all days, but storing all 7 explicitly keeps the
+      // stored data honest about what will happen.
+      daysOfWeek: selectedDays.length > 0 ? selectedDays : ALL_DAYS,
       isActive: true,
       notes: notes.trim() || undefined,
     });
 
     setTitle('');
     setNotes('');
+    setSelectedDays(ALL_DAYS);
     setShowAddReminderModal(false);
   };
 
@@ -222,10 +252,10 @@ export const RemindersModule: React.FC = () => {
                           {rem.time}
                         </span>
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                          {rem.category === 'medication' ? 'ဆေးသောက်ရန်' :
-                           rem.category === 'bp' ? 'သွေးပေါင်ချိန်' :
-                           rem.category === 'glucose' ? 'ဆီးချိုစစ်ရန်' :
-                           rem.category === 'water' ? 'ရေသောက်ရန်' : 'အထွေထွေ'}
+                          {categoryLabelMm(rem.category)}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          📅 {formatDaysMm(rem.daysOfWeek)}
                         </span>
                       </div>
                       <h3 className="text-sm font-extrabold text-slate-900 mt-2">
@@ -447,6 +477,35 @@ export const RemindersModule: React.FC = () => {
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono font-bold focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  သတိပေးမည့် ရက်များ (နေ့ရွေးပါ — မရွေးရင် နေ့တိုင်း)
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_DAYS.map(d => {
+                    const on = selectedDays.includes(d);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => toggleDay(d)}
+                        title={WEEKDAYS_MM[d]}
+                        className={`w-9 h-9 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                          on
+                            ? 'bg-amber-500 text-white border-amber-500'
+                            : 'bg-white text-slate-600 border-slate-300 hover:border-amber-400'
+                        }`}
+                      >
+                        {WEEKDAYS_SHORT_MM[d]}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  ရွေးထားသော ရက်: {formatDaysMm(selectedDays.length > 0 ? selectedDays : ALL_DAYS)}
+                </p>
               </div>
 
               <p className="text-[11px] text-slate-500 leading-relaxed flex items-start gap-1.5">

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, CheckCircle2, AlertCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useHealthData, isPatientOnly, resolveCleanName } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
-import { UserProfile } from '../../types/health';
+import { UserProfile, DoctorAnswer } from '../../types/health';
 import { EditPatientModal } from './EditPatientModal';
 import { DeletePatientModal } from './DeletePatientModal';
 import { AdminQuotaBanner } from './admin/AdminQuotaBanner';
@@ -56,6 +56,8 @@ export const AdminPatientPortal: React.FC = () => {
     medicationLogs,
     doctorAdvices,
     addDoctorAdvice,
+    answerDoctorQuestion,
+    closeDoctorQuestion,
     addPatient,
     updatePatient,
     deletePatient,
@@ -213,7 +215,7 @@ export const AdminPatientPortal: React.FC = () => {
     email?: string;
     phone?: string;
     age?: number;
-    gender: 'male' | 'female' | 'other';
+    gender?: 'male' | 'female' | 'other';
     chronicConditions: string[];
     heightCm?: number;
     weightKg?: number;
@@ -267,6 +269,49 @@ export const AdminPatientPortal: React.FC = () => {
     if (!selectedPatientId) return;
     await addDoctorAdvice(selectedPatientId, advice, diet);
   };
+
+  const handleAnswerQuestion = async (questionId: string, answer: DoctorAnswer) => {
+    try {
+      await answerDoctorQuestion(questionId, answer);
+      setActionAlert({
+        type: 'success',
+        message: 'မေးခွန်းအဖြေကို အသုံးပြုသူထံ ပေးပို့ပြီးပါပြီ။',
+      });
+      setTimeout(() => setActionAlert(null), 4000);
+    } catch (err: any) {
+      setActionAlert({
+        type: 'error',
+        message: 'အဖြေပေးပို့ခြင်း မအောင်မြင်ပါ: ' + (err?.message || ''),
+      });
+      setTimeout(() => setActionAlert(null), 5000);
+      throw err;
+    }
+  };
+
+  const handleCloseQuestion = async (questionId: string) => {
+    try {
+      await closeDoctorQuestion(questionId);
+      setActionAlert({
+        type: 'success',
+        message: 'မေးခွန်းကို ပိတ်သိမ်းပြီးပါပြီ။',
+      });
+      setTimeout(() => setActionAlert(null), 4000);
+    } catch (err: any) {
+      setActionAlert({
+        type: 'error',
+        message: 'မေးခွန်း ပိတ်သိမ်းခြင်း မအောင်မြင်ပါ: ' + (err?.message || ''),
+      });
+      setTimeout(() => setActionAlert(null), 5000);
+      throw err;
+    }
+  };
+
+  // All pending doctor questions across every user (v2.4.11, audit 5.5):
+  // the old admin alert only ever surfaced the first pending question.
+  // Newest first; only shown on the user list (not while viewing a detail).
+  const pendingQuestions = [...doctorQuestions]
+    .filter((q) => q.status === 'pending')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <div className="space-y-6">
@@ -355,10 +400,49 @@ export const AdminPatientPortal: React.FC = () => {
           onEditPatient={setEditingPatient}
           onDeletePatient={setDeletingPatient}
           onSendAdvice={handleSendAdvice}
+          onAnswerQuestion={handleAnswerQuestion}
+          onCloseQuestion={handleCloseQuestion}
           getResolvedName={getResolvedName}
         />
       ) : (
         <>
+          {/* Pending doctor questions — ALL of them, not just the first one */}
+          {pendingQuestions.length > 0 && (
+            <div className="mb-4 p-4 rounded-3xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 space-y-2">
+              <p className="text-xs font-bold text-amber-800 dark:text-amber-200">
+                ❓ ဖြေကြားရန် စောင့်ဆိုင်းနေသော မေးခွန်းများ ({pendingQuestions.length} ခု)
+              </p>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {pendingQuestions.map((q) => {
+                  const owner = patientsList.find((p) => p.id === q.userId);
+                  return (
+                    <div
+                      key={q.id}
+                      className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-amber-100 dark:border-amber-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{q.title}</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          {q.patientName || 'အသုံးပြုသူ'}
+                          {q.urgency === 'urgent' ? ' • 🔴 အရေးကြီး' : q.urgency === 'moderate' ? ' • 🟡 အလယ်အလတ်' : ''}
+                          {q.createdAt ? ` • ${new Date(q.createdAt).toLocaleDateString('my-MM')}` : ''}
+                        </p>
+                      </div>
+                      {owner && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPatientId(q.userId)}
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer shrink-0"
+                        >
+                          ကြည့်ပြီး ဖြေမည်
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {/* Compare bar — shows once at least one user is selected */}
           {compareIds.length > 0 && (
             <div className="mb-4 p-4 rounded-3xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

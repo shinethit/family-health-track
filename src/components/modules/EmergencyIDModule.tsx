@@ -45,10 +45,41 @@ const buildEmergencyData = (patient: UserProfile | null | undefined): EmergencyP
   };
 };
 
+// Format a stored DOB (ISO date) for the printed card; never invent one.
+const formatDobForCard = (dob?: string): string => {
+  if (!dob) return 'မထည့်ရသေးပါ';
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return dob;
+  return d.toLocaleDateString('my-MM', { year: 'numeric', month: 'short', day: 'numeric' });
+};
+
 export const EmergencyIDModule: React.FC = () => {
-  const { currentUser, profile } = useAuth();
+  const { currentUser, profile, updateProfile } = useAuth();
   const { selectedPatient, updatePatient } = useHealthData();
   const currentPatient = selectedPatient || profile;
+
+  // Same chronic-condition chips as the sign-up / profile-setup form, so
+  // the emergency card uses the same words everywhere.
+  const CHRONIC_CONDITIONS = ['သွေးတိုး', 'ဆီးချို', 'အသည်းအဆီဖုံး', 'နှလုံး', 'ကျောက်ကပ်', 'ယူရစ်အက်စစ်'];
+  const toggleCondition = (cond: string) => {
+    const current = emergencyData.chronicConditions || [];
+    setEmergencyData({
+      ...emergencyData,
+      chronicConditions: current.includes(cond)
+        ? current.filter(c => c !== cond)
+        : [...current, cond],
+    });
+  };
+  const [customCondition, setCustomCondition] = useState('');
+  const addCustomCondition = () => {
+    const value = customCondition.trim();
+    if (!value) return;
+    const current = emergencyData.chronicConditions || [];
+    if (!current.includes(value)) {
+      setEmergencyData({ ...emergencyData, chronicConditions: [...current, value] });
+    }
+    setCustomCondition('');
+  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -93,6 +124,14 @@ export const EmergencyIDModule: React.FC = () => {
       };
       // updatePatient() already shows a success/error toast itself.
       await updatePatient(targetId, { emergencyProfile: toSave });
+      // updatePatient() writes Firestore + the admin-only patientsList, but
+      // never the signed-in user's own AuthContext profile — without this,
+      // the card goes blank/old on remount until the next login. Refresh the
+      // profile too when the target is the signed-in user themself.
+      // Both writes are merge setDocs of the same emergencyProfile value.
+      if (targetId === currentUser?.uid) {
+        await updateProfile({ emergencyProfile: toSave }, { silent: true });
+      }
       setEmergencyData(toSave);
       setIsEditing(false);
     } catch (err) {
@@ -191,11 +230,32 @@ export const EmergencyIDModule: React.FC = () => {
             </div>
 
             <div>
+              <label className="font-semibold text-slate-700 block mb-1">မွေးသက္ကရာဇ်</label>
+              <input
+                type="date"
+                value={emergencyData.dateOfBirth || ''}
+                onChange={(e) => setEmergencyData({ ...emergencyData, dateOfBirth: e.target.value })}
+                className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
               <label className="font-semibold text-slate-700 block mb-1">အဓိက အရေးပေါ် ဆက်သွယ်ရန် (အမည်နှင့် တော်စပ်ပုံ)</label>
               <input
                 type="text"
                 value={emergencyData.primaryContactName}
                 onChange={(e) => setEmergencyData({ ...emergencyData, primaryContactName: e.target.value })}
+                className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">အဓိက ဆက်သွယ်သူနှင့် တော်စပ်ပုံ (ဥပမာ- ဇနီး/ခင်ပွန်း၊ သား/သမီး၊ မိဘ)</label>
+              <input
+                type="text"
+                value={emergencyData.primaryContactRelation || ''}
+                onChange={(e) => setEmergencyData({ ...emergencyData, primaryContactRelation: e.target.value })}
+                placeholder="ဥပမာ- ဇနီး"
                 className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none"
               />
             </div>
@@ -268,6 +328,68 @@ export const EmergencyIDModule: React.FC = () => {
                 onChange={(e) => setEmergencyData({ ...emergencyData, secondaryContactPhone: e.target.value })}
                 className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none font-bold"
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="font-semibold text-slate-700 block mb-2">နာတာရှည် ရောဂါများ (ရှိပါက ရွေးချယ်ပါ)</label>
+              <div className="flex flex-wrap gap-1.5">
+                {CHRONIC_CONDITIONS.map((cond) => {
+                  const isSelected = (emergencyData.chronicConditions || []).includes(cond);
+                  return (
+                    <button
+                      type="button"
+                      key={cond}
+                      onClick={() => toggleCondition(cond)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                      }`}
+                    >
+                      {isSelected ? '✓ ' : '+ '}
+                      {cond}
+                    </button>
+                  );
+                })}
+                {/* Conditions not in the list above (e.g. from the profile)
+                    stay editable: shown as removable chips, never silently
+                    kept or dropped. */}
+                {(emergencyData.chronicConditions || [])
+                  .filter(c => !CHRONIC_CONDITIONS.includes(c))
+                  .map((cond) => (
+                    <button
+                      type="button"
+                      key={cond}
+                      onClick={() => toggleCondition(cond)}
+                      title="ဖယ်ရှားမည်"
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer bg-rose-600 text-white shadow-xs"
+                    >
+                      ✓ {cond} ✕
+                    </button>
+                  ))}
+              </div>
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  value={customCondition}
+                  onChange={(e) => setCustomCondition(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addCustomCondition();
+                    }
+                  }}
+                  placeholder="အခြား ရောဂါအမည် ရိုက်ထည့်ပါ (ဥပမာ- ပန်းနာရင်ကျပ်)"
+                  className="flex-1 p-2 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={addCustomCondition}
+                  className="px-3 py-2 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 cursor-pointer"
+                >
+                  ထည့်မည်
+                </button>
+              </div>
             </div>
           </div>
 
@@ -367,10 +489,42 @@ export const EmergencyIDModule: React.FC = () => {
                       className="inline-flex items-center gap-2 mt-0.5 px-3 py-1.5 bg-yellow-400 text-slate-950 rounded-xl font-black text-sm hover:bg-yellow-300 transition-colors shadow-xs"
                     >
                       <PhoneCall className="w-4 h-4" />
-                      <span>{emergencyData.primaryContactPhone} ({emergencyData.primaryContactName || 'မထည့်ရသေးပါ'})</span>
+                      <span>{emergencyData.primaryContactPhone} ({emergencyData.primaryContactName || 'မထည့်ရသေးပါ'}{emergencyData.primaryContactRelation ? ` — ${emergencyData.primaryContactRelation}` : ''})</span>
                     </a>
                   ) : (
                     <p className="font-bold text-white mt-0.5">မထည့်ရသေးပါ</p>
+                  )}
+                </div>
+
+                {/* Extra fields that must also reach paper, not just the screen */}
+                <div className="pt-2 border-t border-white/20 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[11px] text-rose-200 font-bold shrink-0">မွေးသက္ကရာဇ်:</span>
+                    <span className="font-bold text-white text-right">{formatDobForCard(emergencyData.dateOfBirth)}</span>
+                  </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[11px] text-rose-200 font-bold shrink-0">နာတာရှည် ရောဂါများ:</span>
+                    <span className="font-bold text-white text-right">{emergencyData.chronicConditions.length > 0 ? emergencyData.chronicConditions.join(', ') : 'မထည့်ရသေးပါ'}</span>
+                  </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[11px] text-rose-200 font-bold shrink-0">ပြသနေသော ဆရာဝန်:</span>
+                    <span className="font-bold text-white text-right">
+                      {emergencyData.attendingDoctorName || 'မထည့်ရသေးပါ'}
+                      {emergencyData.attendingDoctorPhone ? ` (${emergencyData.attendingDoctorPhone})` : ''}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[11px] text-rose-200 font-bold shrink-0">ဒုတိယ ဆက်သွယ်ရန်:</span>
+                    <span className="font-bold text-white text-right">
+                      {emergencyData.secondaryContactName || 'မထည့်ရသေးပါ'}
+                      {emergencyData.secondaryContactPhone ? ` (${emergencyData.secondaryContactPhone})` : ''}
+                    </span>
+                  </div>
+                  {emergencyData.specialInstructions && (
+                    <div>
+                      <span className="text-[11px] text-rose-200 font-bold">အထူး ညွှန်ကြားချက်:</span>
+                      <p className="font-bold text-white leading-snug">"{emergencyData.specialInstructions}"</p>
+                    </div>
                   )}
                 </div>
 
@@ -400,6 +554,9 @@ export const EmergencyIDModule: React.FC = () => {
                   <div>
                     <p className="text-[11px] font-bold text-rose-800">အဓိက အရေးပေါ် ဆက်သွယ်ရန်</p>
                     <p className="font-extrabold text-slate-900 mt-0.5">{emergencyData.primaryContactName || 'မထည့်ရသေးပါ'}</p>
+                    {emergencyData.primaryContactRelation && (
+                      <p className="text-[11px] text-slate-500">{emergencyData.primaryContactRelation}</p>
+                    )}
                     <p className="text-rose-700 font-bold mt-1">{emergencyData.primaryContactPhone || 'မထည့်ရသေးပါ'}</p>
                   </div>
                   {emergencyData.primaryContactPhone && (

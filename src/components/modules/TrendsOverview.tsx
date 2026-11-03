@@ -160,6 +160,12 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
     });
   }
 
+  // "No data" must never be presented as "healthy": with zero records
+  // there is nothing to assess. The banner badge below shows the honest
+  // no-data state instead of '🟢 ပုံမှန်ကောင်းမွန်' in that case.
+  const hasAnyHealthData =
+    bpRecords.length + glucoseRecords.length + bmiRecords.length + labRecords.length > 0;
+
   // While the first Firestore snapshot is still on its way, show a loading
   // state instead of the empty-data messages and charts — otherwise a slow
   // connection looks like all records have vanished.
@@ -200,8 +206,15 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             <div className="px-4 py-2 bg-white/10 rounded-2xl backdrop-blur-xs text-center border border-white/20">
               <span className="text-[11px] text-emerald-100 block font-medium">ကျန်းမာရေးအဆင့်</span>
               <span className="text-base font-bold">
-                {alerts.length === 0 ? '🟢 ပုံမှန်ကောင်းမွန်' : alerts.some(a => a.type === 'danger') ? '🔴 ဂရုပြုစောင့်ကြည့်' : '🟡 အလယ်အလတ်'}
+                {!hasAnyHealthData
+                  ? '📋 မှတ်တမ်း မရှိသေးပါ'
+                  : alerts.length === 0 ? '🟢 ပုံမှန်ကောင်းမွန်' : alerts.some(a => a.type === 'danger') ? '🔴 ဂရုပြုစောင့်ကြည့်' : '🟡 အလယ်အလတ်'}
               </span>
+              {!hasAnyHealthData && (
+                <span className="text-[11px] text-emerald-100 block font-normal mt-0.5">
+                  မှတ်တမ်းထည့်ပြီးမှ ကျန်းမာရေး အခြေအနေ ပြပေးပါမယ်
+                </span>
+              )}
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { 
   Activity, 
   AlertTriangle,
@@ -26,7 +26,8 @@ import {
   ChevronDown,
   HeartPulse,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { HealthDataProvider, useHealthData } from './context/HealthDataContext';
@@ -78,11 +79,12 @@ import { BroadcastMarqueeBanner } from './components/layout/BroadcastMarqueeBann
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 import { FamilyMembersBar } from './components/family/FamilyMembersBar';
 import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
+import { ProfileSetupModal } from './components/modules/ProfileSetupModal';
 
 const MainContent: React.FC = () => {
-  const { currentUser, profile, isAdmin, logout, loading } = useAuth();
-  const { selectedPatient, setSelectedPatientId, doctorQuestions, broadcastTickers } = useHealthData();
-  const { unreadCount } = useNotifications();
+  const { currentUser, profile, isAdmin, logout, loading, authAttempting } = useAuth();
+  const { selectedPatient, setSelectedPatientId, doctorQuestions, allDoctorQuestions, broadcastTickers, bpRecords, glucoseRecords, bmiRecords, labRecords, medications, dataLoading } = useHealthData();
+  const { unreadCount, notifications } = useNotifications();
   const [activeTab, setActiveTab] = useState<
     'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'home_testing_guide' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'special_needs' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
   >(isAdmin ? 'admin' : 'trends');
@@ -96,13 +98,22 @@ const MainContent: React.FC = () => {
   const [isDataBackupOpen, setIsDataBackupOpen] = useState(false);
   const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isProfileSetupOpen, setIsProfileSetupOpen] = useState(false);
   const [showVersionUpdateModal, setShowVersionUpdateModal] = useState(false);
   const [versionUpdatePendingReload, setVersionUpdatePendingReload] = useState(false);
   const [latestAppVersion, setLatestAppVersion] = useState(CURRENT_SYSTEM_VERSION);
   const [versionToast, setVersionToast] = useState<{ message: string; type: 'checking' | 'success' | 'updated' | 'error' } | null>(null);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
 
-  const pendingQuestionsCount = doctorQuestions.filter(q => q.status === 'pending').length;
+  // Q&A badge: the context's doctorQuestions list is filtered to the
+  // selected patient, so counting it undercounted while an admin had a
+  // user selected. Admins now count ALL pending questions; a normal user
+  // sees their own pending questions plus any unread Q&A-answer
+  // notifications (v2.4.10 cross-device 'qa_answered') waiting for them.
+  const unreadQaAnsweredCount = notifications.filter(n => n.type === 'qa_answered' && !n.read).length;
+  const qaBadgeCount = isAdmin
+    ? allDoctorQuestions.filter(q => q.status === 'pending').length
+    : doctorQuestions.filter(q => q.status === 'pending').length + unreadQaAnsweredCount;
 
   // The broadcast banner only renders when an active ticker exists — the
   // spacer / sticky offset below must match, or a dead white gap appears.
@@ -120,6 +131,72 @@ const MainContent: React.FC = () => {
     setBroadcastDismissed(false);
   }, [activeBroadcastKey]);
   const showBroadcast = hasActiveBroadcast && !broadcastDismissed;
+
+  // Ask once for missing profile basics after login — never mandatory:
+  // the modal can always be skipped. A real SAVE stops the reminders for
+  // good; a SKIP only postpones them — remind again on the next login, at
+  // most twice, then stop nagging. Previously ANY close (including skip)
+  // set the seen flag, so a first-time Google user who skipped once was
+  // never reminded again and their profile stayed mostly empty.
+  const profileSetupSavedRef = useRef(false);
+  const markProfileSetupSeen = () => {
+    if (!currentUser) return;
+    try {
+      localStorage.setItem(`profile_setup_seen_${currentUser.uid}`, '1');
+    } catch {}
+  };
+  const handleProfileSetupSaved = () => {
+    profileSetupSavedRef.current = true;
+    markProfileSetupSeen();
+  };
+  const closeProfileSetup = () => {
+    setIsProfileSetupOpen(false);
+    if (profileSetupSavedRef.current) {
+      // The close came right after a save — nothing more to do.
+      profileSetupSavedRef.current = false;
+      return;
+    }
+    if (!currentUser) return;
+    try {
+      const key = `profile_setup_skips_${currentUser.uid}`;
+      const skips = Number(localStorage.getItem(key) || '0') + 1;
+      localStorage.setItem(key, String(skips));
+      if (skips >= 2) markProfileSetupSeen();
+    } catch {}
+  };
+  useEffect(() => {
+    if (loading || !currentUser || !profile) return;
+    try {
+      if (localStorage.getItem(`profile_setup_seen_${currentUser.uid}`)) return;
+      if (Number(localStorage.getItem(`profile_setup_skips_${currentUser.uid}`) || '0') >= 2) {
+        localStorage.setItem(`profile_setup_seen_${currentUser.uid}`, '1');
+        return;
+      }
+    } catch {}
+    const missingBasics = !profile.dateOfBirth && !profile.heightCm && !profile.weightKg;
+    if (missingBasics) setIsProfileSetupOpen(true);
+  }, [loading, currentUser, profile]);
+
+  // First-run welcome: a brand-new user (no records at all yet) gets a
+  // short 3-step checklist on the Trends tab. Dismissing it once sets the
+  // flag so it never shows again; it never blocks the app.
+  const hasAnyRecord =
+    bpRecords.length + glucoseRecords.length + bmiRecords.length + labRecords.length + medications.length > 0;
+  const [showFirstRunWelcome, setShowFirstRunWelcome] = useState(false);
+  useEffect(() => {
+    if (loading || dataLoading || !currentUser || isAdmin) return;
+    if (hasAnyRecord) return;
+    try {
+      if (localStorage.getItem(`first_run_seen_${currentUser.uid}`)) return;
+    } catch {}
+    setShowFirstRunWelcome(true);
+  }, [loading, dataLoading, currentUser, isAdmin, hasAnyRecord]);
+  const dismissFirstRunWelcome = () => {
+    setShowFirstRunWelcome(false);
+    try {
+      if (currentUser) localStorage.setItem(`first_run_seen_${currentUser.uid}`, '1');
+    } catch {}
+  };
 
   // Group Categories for Clean Navigation
   const moduleCategories = [
@@ -174,7 +251,7 @@ const MainContent: React.FC = () => {
         { id: 'specialty', label: 'သွား/မျက်စိ/နား', icon: Smile, activeColor: 'bg-teal-700 text-white' },
         { id: 'derma', label: 'အရေပြား/အလှအပ', icon: Sparkles, activeColor: 'bg-rose-600 text-white' },
         { id: 'diet', label: 'အာဟာရလမ်းညွှန်', icon: Utensils, activeColor: 'bg-emerald-700 text-white' },
-        { id: 'doctor_qa', label: isAdmin ? 'ဆရာဝန် Q&A' : 'ဆရာဝန်နှင့် တိုင်ပင်ရန်', icon: MessageSquareHeart, activeColor: 'bg-indigo-600 text-white', badge: pendingQuestionsCount },
+        { id: 'doctor_qa', label: isAdmin ? 'ဆရာဝန် Q&A' : 'ဆရာဝန်နှင့် တိုင်ပင်ရန်', icon: MessageSquareHeart, activeColor: 'bg-indigo-600 text-white', badge: qaBadgeCount },
       ]
     },
     {
@@ -323,8 +400,12 @@ const MainContent: React.FC = () => {
 
   
 
-  // Loading state
-  if (loading) {
+  // Loading state: full-screen spinner ONLY for the initial app boot.
+  // During a login / register / Google attempt the login form must stay
+  // visible (it shows its own inline button spinner) so the user can see
+  // what is happening and retry — previously the form vanished behind
+  // this spinner for the whole attempt.
+  if (loading && !authAttempting) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center text-slate-800">
         <div className="flex flex-col items-center gap-3">
@@ -386,6 +467,7 @@ const MainContent: React.FC = () => {
         onOpenDataBackup={() => setIsDataBackupOpen(true)}
         onOpenDeleteAccount={() => setIsDeleteAccountOpen(true)}
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+        onOpenProfileEdit={() => setIsProfileSetupOpen(true)}
         onManualCheckVersion={() => handleCheckVersion(true)}
         setActiveTab={(tab) => setActiveTab(tab as any)}
         setCategoryGroup={setSelectedCategoryGroup}
@@ -473,6 +555,45 @@ const MainContent: React.FC = () => {
       </div>
       {/* Main Content Area - Pure White Clean Layout */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* First-run welcome — 3-step checklist for a brand-new user with
+            no records yet. Small and dismissible; never blocks the app. */}
+        {showFirstRunWelcome && activeTab === 'trends' && (
+          <div className="mb-4 p-4 rounded-3xl bg-emerald-50 border border-emerald-200 shadow-xs">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-extrabold text-emerald-900">🎉 Family Health Track မှ ကြိုဆိုပါသည်!</h3>
+                <p className="text-xs text-emerald-800 mt-1">စတင်ရန် အဆင့် ၃ ခု — တစ်ခုချင်း နှိပ်ပြီး လုပ်လို့ရပါတယ်။</p>
+              </div>
+              <button
+                onClick={dismissFirstRunWelcome}
+                aria-label="ပိတ်မည်"
+                className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-100 cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                onClick={() => setIsProfileSetupOpen(true)}
+                className="px-3 py-2.5 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs font-bold text-left hover:bg-emerald-100/60 cursor-pointer"
+              >
+                ① ကိုယ်ရေးအချက်အလက် ဖြည့်ပါ
+              </button>
+              <button
+                onClick={() => setActiveTab('bp')}
+                className="px-3 py-2.5 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs font-bold text-left hover:bg-emerald-100/60 cursor-pointer"
+              >
+                ② ပထမဆုံး သွေးပေါင်ချိန် ထည့်ပါ
+              </button>
+              <button
+                onClick={() => setActiveTab('medications')}
+                className="px-3 py-2.5 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs font-bold text-left hover:bg-emerald-100/60 cursor-pointer"
+              >
+                ③ ဆေး ထည့်ပါ
+              </button>
+            </div>
+          </div>
+        )}
         {/* Family member switcher — only on the record tabs it applies to.
             (Admins see the full user directory instead; the bar hides itself.) */}
         {['bp', 'sugar', 'bmi', 'labs', 'medications'].includes(activeTab) && <FamilyMembersBar />}
@@ -577,7 +698,17 @@ const MainContent: React.FC = () => {
             onClose={() => setIsChangePasswordOpen(false)}
           />
         )}
-        {showVersionUpdateModal && (
+        {isProfileSetupOpen && (
+          <ProfileSetupModal
+            isOpen={isProfileSetupOpen}
+            onClose={closeProfileSetup}
+            onSaved={handleProfileSetupSaved}
+          />
+        )}
+        {/* Order: the profile-setup modal goes FIRST. The version-update
+            modal waits until it is closed, so the two never compete on
+            first load. */}
+        {showVersionUpdateModal && !isProfileSetupOpen && (
           <VersionUpdateModal
             latestAppVersion={latestAppVersion}
             pendingReload={versionUpdatePendingReload}

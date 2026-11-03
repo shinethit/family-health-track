@@ -235,6 +235,10 @@ export interface Medication {
   prescribedFor: string;
   startDate: string;
   endDate?: string;
+  // Optional clock time (HH:MM, local) at which this medication should be
+  // taken — used by the 1-minute reminder ticker (v2.4.10). When empty, the
+  // app only reminds once when it is opened, without claiming a dose time.
+  doseTime?: string;
   status: 'active' | 'completed' | 'paused';
   notes?: string;
   prescribingDoctor?: string;

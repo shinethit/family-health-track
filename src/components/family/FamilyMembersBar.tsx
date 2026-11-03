@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Users, UserPlus, Heart, Activity, Check, Trash2, X, Plus } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { FamilyMember } from '../../types/health';
 
 export const FamilyMembersBar: React.FC = () => {
@@ -16,16 +17,33 @@ export const FamilyMembersBar: React.FC = () => {
     glucoseRecords,
     medications
   } = useHealthData();
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile } = useAuth();
+  const { showToast } = useToast();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // No prefilled fake person (v2.4.11 F19): the old form opened with a
+  // made-up mother — relationship 'အမေ', age 50, O+, hypertension — so
+  // saving without touching anything filed a person who does not exist.
+  // Everything starts empty; age and gender are required, so the admin
+  // must enter real values instead of the form inventing them.
   const [name, setName] = useState('');
-  const [relationship, setRelationship] = useState('အမေ (Mother)');
-  const [age, setAge] = useState<number>(50);
-  const [gender, setGender] = useState<'male' | 'female' | 'other'>('female');
-  const [bloodType, setBloodType] = useState('O+');
-  const [conditions, setConditions] = useState<string[]>(['သွေးတိုး (Hypertension)']);
+  const [relationship, setRelationship] = useState('');
+  const [age, setAge] = useState<number | ''>('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
+  const [bloodType, setBloodType] = useState('');
+  const [conditions, setConditions] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
+
+  const resetAddForm = () => {
+    setName('');
+    setRelationship('');
+    setAge('');
+    setGender('');
+    setBloodType('');
+    setConditions([]);
+    setNotes('');
+  };
 
   if (isAdmin) {
     return null; // Admin has the full patient directory
@@ -39,23 +57,41 @@ export const FamilyMembersBar: React.FC = () => {
     }
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  // v2.4.11 F18: the save was fire-and-forget — a failed save looked
+  // successful and the member silently never appeared. Now the save is
+  // awaited: success toasts and clears the WHOLE form (F19 — the old code
+  // cleared only name/notes, so the fake defaults leaked into the next
+  // add); failure toasts, keeps the entered values, and leaves the modal
+  // open so the admin can retry.
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || age === '' || !gender) return;
+    setIsSubmitting(true);
+    try {
+      await addFamilyMember({
+        name: name.trim(),
+        relationship: relationship.trim(),
+        age,
+        gender,
+        bloodType: bloodType || undefined,
+        chronicConditions: conditions,
+        notes: notes.trim() || undefined,
+      });
+      showToast('မိသားစုဝင်အသစ် ထည့်သွင်းပြီးပါပြီ', 'success');
+      resetAddForm();
+      setIsOpenAdd(false);
+    } catch (err) {
+      console.warn('Error adding family member:', err);
+      showToast('မိသားစုဝင် ထည့်သွင်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-    addFamilyMember({
-      name,
-      relationship,
-      age,
-      gender,
-      bloodType,
-      chronicConditions: conditions,
-      notes,
-    });
-
-    setIsOpenAdd(false);
-    setName('');
-    setNotes('');
+  // v2.4.11 F22: deleting a family member was one tap with no confirmation.
+  const handleDeleteMember = (member: FamilyMember) => {
+    if (!window.confirm(`'${member.name}' ကို မိသားစုဝင်စာရင်းမှ ဖျက်မလား?`)) return;
+    deleteFamilyMember(member.id);
   };
 
   return (
@@ -109,8 +145,86 @@ export const FamilyMembersBar: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
+          {/* ကိုယ်တိုင် — view only the signed-in user's own records */}
+          <div
+            onClick={() => setSelectedFamilyMemberId('self')}
+            className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between ${
+              (selectedFamilyMemberId ?? 'self') === 'self'
+                ? 'bg-white dark:bg-slate-800 border-emerald-500 shadow-md ring-2 ring-emerald-500/20'
+                : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 hover:border-emerald-300'
+            }`}
+          >
+            <div>
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold bg-teal-600">
+                    {profile?.displayName?.charAt(0) || 'က'}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                      {profile?.displayName || 'ကိုယ်တိုင်'}
+                    </h4>
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                      ကိုယ်တိုင် (မိမိ)
+                    </span>
+                  </div>
+                </div>
+                {(selectedFamilyMemberId ?? 'self') === 'self' && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1">
+                <span>မိမိ၏ မှတ်တမ်းများသာ</span>
+              </div>
+            </div>
+            {(selectedFamilyMemberId ?? 'self') === 'self' && (
+              <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span>✓ လက်ရှိရွေးချယ်ထားသည်</span>
+              </div>
+            )}
+          </div>
+
+          {/* အားလုံး — pooled view: self + every family member */}
+          <div
+            onClick={() => setSelectedFamilyMemberId('all')}
+            className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between ${
+              selectedFamilyMemberId === 'all'
+                ? 'bg-white dark:bg-slate-800 border-emerald-500 shadow-md ring-2 ring-emerald-500/20'
+                : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 hover:border-emerald-300'
+            }`}
+          >
+            <div>
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold bg-indigo-600">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                      အားလုံး
+                    </h4>
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                      အားလုံး ကြည့်မည်
+                    </span>
+                  </div>
+                </div>
+                {selectedFamilyMemberId === 'all' && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1">
+                <span>ကိုယ်တိုင် + မိသားစုဝင် {familyMembers.length} ဦး</span>
+              </div>
+            </div>
+            {selectedFamilyMemberId === 'all' && (
+              <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span>✓ လက်ရှိရွေးချယ်ထားသည်</span>
+              </div>
+            )}
+          </div>
+
           {familyMembers.map((member) => {
-            const isSelected = (selectedFamilyMember?.id || familyMembers[0]?.id) === member.id;
+            const isSelected = selectedFamilyMember?.id === member.id;
             return (
               <div
                 key={member.id}
@@ -147,9 +261,9 @@ export const FamilyMembersBar: React.FC = () => {
                   <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1">
                     <span>{member.age} နှစ်</span>
                     <span>•</span>
-                    <span>{member.gender === 'female' ? 'အမျိုးသမီး' : 'အမျိုးသား'}</span>
+                    <span>{member.gender === 'female' ? 'အမျိုးသမီး' : member.gender === 'male' ? 'အမျိုးသား' : member.gender === 'other' ? 'အခြား' : ''}</span>
                     <span>•</span>
-                    <span>{member.bloodType || 'B+'}</span>
+                    <span>{member.bloodType || '—'}</span>
                   </div>
 
                   {/* Chronic conditions tags */}
@@ -169,7 +283,7 @@ export const FamilyMembersBar: React.FC = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteFamilyMember(member.id);
+                          handleDeleteMember(member);
                         }}
                         className="text-slate-400 hover:text-rose-500 p-0.5"
                         title="မိသားစုဝင် ဖျက်မည်"
@@ -241,6 +355,7 @@ export const FamilyMembersBar: React.FC = () => {
                     onChange={(e) => setBloodType(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   >
+                    <option value="">မရွေးပါ</option>
                     <option value="A+">A+</option>
                     <option value="B+">B+</option>
                     <option value="O+">O+</option>
@@ -256,27 +371,31 @@ export const FamilyMembersBar: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    အသက် (Age)
+                    အသက် (Age) *
                   </label>
                   <input
                     type="number"
+                    required
                     min="1"
                     max="120"
+                    placeholder="ဥပမာ- ၅၀"
                     value={age}
-                    onChange={(e) => setAge(Number(e.target.value))}
+                    onChange={(e) => setAge(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    ကျား / မ (Gender)
+                    ကျား / မ (Gender) *
                   </label>
                   <select
+                    required
                     value={gender}
                     onChange={(e: any) => setGender(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   >
+                    <option value="">ရွေးပါ</option>
                     <option value="female">အမျိုးသမီး (Female)</option>
                     <option value="male">အမျိုးသား (Male)</option>
                     <option value="other">အခြား</option>
@@ -338,9 +457,10 @@ export const FamilyMembersBar: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
-                  မိသားစုဝင် ထည့်သွင်းမည်
+                  {isSubmitting ? 'ထည့်သွင်းနေသည်...' : 'မိသားစုဝင် ထည့်သွင်းမည်'}
                 </button>
               </div>
             </form>

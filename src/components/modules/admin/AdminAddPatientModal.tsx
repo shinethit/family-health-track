@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus, Heart, Sparkles } from 'lucide-react';
+import { UserPlus, Heart, Sparkles, AlertCircle } from 'lucide-react';
 import { Modal } from '../../common/Modal';
 
 interface AdminAddPatientModalProps {
@@ -10,7 +10,7 @@ interface AdminAddPatientModalProps {
     email?: string;
     phone?: string;
     age?: number;
-    gender: 'male' | 'female' | 'other';
+    gender?: 'male' | 'female' | 'other';
     chronicConditions: string[];
     heightCm?: number;
     weightKg?: number;
@@ -27,14 +27,28 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [age, setAge] = useState<number | string>('');
-  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
   const [conditions, setConditions] = useState<string[]>([]);
   const [height, setHeight] = useState<number | string>('');
   const [weight, setWeight] = useState<number | string>('');
   const [bloodType, setBloodType] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const resetForm = () => {
+    setName('');
+    setEmail('');
+    setPhone('');
+    setAge('');
+    setGender('');
+    setConditions([]);
+    setHeight('');
+    setWeight('');
+    setBloodType('');
+    setSaveError(null);
+  };
 
   const toggleCondition = (cond: string) => {
     setConditions(prev => 
@@ -46,19 +60,29 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
     e.preventDefault();
     if (!name.trim()) return;
     setIsSubmitting(true);
+    setSaveError(null);
     try {
+      // Wait for the real save result: only close (and clear the form)
+      // after onSave actually succeeds. On failure the modal stays open
+      // with the entered values intact so the admin can retry.
       await onSave({
         displayName: name.trim(),
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
         age: age === '' ? undefined : Number(age),
-        gender,
+        gender: gender || undefined,
         chronicConditions: conditions,
         heightCm: height === '' ? undefined : Number(height),
         weightKg: weight === '' ? undefined : Number(weight),
         bloodType: bloodType || undefined,
       });
+      resetForm();
       onClose();
+    } catch (err) {
+      // The save failed: do NOT close, do NOT clear the form. The error
+      // toast is shown by the caller; this inline message makes the
+      // failure unmissable inside the modal itself.
+      setSaveError('သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။');
     } finally {
       setIsSubmitting(false);
     }
@@ -70,7 +94,7 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
         <UserPlus className="w-4 h-4" />
       </div>
       <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">
-        အသုံးပြုသူအသစ် ထည့်သွင်းခြင်း (Add Patient)
+        အသုံးပြုသူအသစ် ထည့်သွင်းခြင်း
       </h3>
     </div>
   );
@@ -83,6 +107,9 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
       title={modalTitle}
     >
       <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-3.5">
+        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs leading-relaxed">
+          ဤအသုံးပြုသူအတွက် အကောင့်ဖွင့်ပေးခြင်း မဟုတ်ပါ — မှတ်တမ်းသာ ထည့်ပေးခြင်းဖြစ်ပြီး၊ သူကိုယ်တိုင် App ထဲ ဝင်လို့မရပါ။ App သုံးချင်ရင် သူကိုယ်တိုင် Sign Up လုပ်ရပါမယ်။
+        </div>
         <div>
           <label htmlFor="add-patient-name" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
             အသုံးပြုသူ အမည် *
@@ -152,6 +179,7 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
               onChange={(e: any) => setGender(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
             >
+              <option value="">မရွေးပါ</option>
               <option value="male">ကျား (Male)</option>
               <option value="female">မ (Female)</option>
               <option value="other">အခြား (Other)</option>
@@ -233,6 +261,13 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
             })}
           </div>
         </div>
+
+        {saveError && (
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="leading-relaxed">{saveError}</span>
+          </div>
+        )}
 
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
           <button

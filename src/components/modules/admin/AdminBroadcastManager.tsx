@@ -141,7 +141,11 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => onDeleteTicker(t.id)}
+                  onClick={() => {
+                    if (window.confirm(`"${t.message}" သတင်းလွှာကို ဖျက်မှာသေချာပါသလား?`)) {
+                      onDeleteTicker(t.id);
+                    }
+                  }}
                   className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                   title="ဖျက်မည်"
                   aria-label="သတင်းလွှာ ဖျက်မည်"

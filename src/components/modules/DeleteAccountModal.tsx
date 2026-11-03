@@ -27,11 +27,43 @@ import { auth, db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../common/Modal';
 import { USER_DATA_COLLECTIONS, COLLECTION_NAMES_MM } from '../../constants/collections';
+import { isLegacyLocalKey } from '../../lib/perUserStorage';
 
 interface DeleteAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Remove only the deleting user's own localStorage keys (v2.4.11 8-L).
+// Per-user keys are suffixed _<uid>. Legacy un-suffixed phone-only keys
+// are migrated to the current user's suffixed keys when the owning module
+// first loads after v2.4.11, so by delete time they should normally be
+// gone — but any leftovers (e.g. physio dates from days the module was
+// never opened since the update) are removed here too, via
+// isLegacyLocalKey. Everything else — the app version marker, other users'
+// suffixed keys — stays.
+const removeOwnLocalKeys = (uid: string) => {
+  const legacyKeys = [
+    'family_health_profile',
+  ];
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k) keys.push(k);
+    }
+    keys.forEach(k => {
+      // Own suffixed keys, the cached profile (it holds this user's
+      // profile), and any leftover legacy un-suffixed phone-only keys
+      // (including dated physio_completed_<date> keys).
+      if (k.endsWith(`_${uid}`) || legacyKeys.includes(k) || isLegacyLocalKey(k)) {
+        localStorage.removeItem(k);
+      }
+    });
+  } catch (e) {
+    console.warn('Could not clean up local keys:', e);
+  }
+};
 
 export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, onClose }) => {
   const { currentUser, logout } = useAuth();
@@ -77,14 +109,57 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
         const mmName = COLLECTION_NAMES_MM[colName] || colName;
         setProgressText(`${mmName} ဖျက်သိမ်းနေပါသည်...`);
         try {
-          const q = query(collection(db, colName), where('userId', '==', currentUser.uid));
-          const snap = await getDocs(q);
-          const deletes = snap.docs.map(d => deleteDoc(doc(db, colName, d.id)));
+          // Delete by userId AND by patientEmail (v2.4.11 8-I): records
+          // filed under a family member's doc id carry the owner's email
+          // as patientEmail, not the owner's uid — the old userId-only
+          // query left all of them behind. Dedupe by doc id: a record can
+          // match both queries.
+          const idsToDelete = new Set<string>();
+          const qByUid = query(collection(db, colName), where('userId', '==', currentUser.uid));
+          const snapByUid = await getDocs(qByUid);
+          snapByUid.docs.forEach(d => idsToDelete.add(d.id));
+          if (currentUser.email) {
+            const qByEmail = query(collection(db, colName), where('patientEmail', '==', currentUser.email));
+            const snapByEmail = await getDocs(qByEmail);
+            snapByEmail.docs.forEach(d => idsToDelete.add(d.id));
+          }
+          const deletes = [...idsToDelete].map(id => deleteDoc(doc(db, colName, id)));
           await Promise.all(deletes);
         } catch (e: any) {
           console.error(`Error deleting ${colName}:`, e);
           failedCollections.push(mmName);
         }
+      }
+
+      // 2b. Cross-user notifications addressed to this user (the
+      // 'notifications' collection from v2.4.10, e.g. Q&A answers) — by
+      // uid and by email, same dual-key reason as above.
+      setProgressText('သတိပေးချက် မှတ်တမ်းများ ဖျက်သိမ်းနေပါသည်...');
+      try {
+        const notiIds = new Set<string>();
+        const qNotiUid = query(collection(db, 'notifications'), where('userId', '==', currentUser.uid));
+        (await getDocs(qNotiUid)).docs.forEach(d => notiIds.add(d.id));
+        if (currentUser.email) {
+          const qNotiEmail = query(collection(db, 'notifications'), where('recipientEmail', '==', currentUser.email));
+          (await getDocs(qNotiEmail)).docs.forEach(d => notiIds.add(d.id));
+        }
+        await Promise.all([...notiIds].map(id => deleteDoc(doc(db, 'notifications', id))));
+      } catch (e: any) {
+        console.error('Error deleting notifications:', e);
+        failedCollections.push('သတိပေးချက် မှတ်တမ်းများ');
+      }
+
+      // 2c. The /admins/{uid} doc, if this user is an admin (v2.4.11 8-I).
+      // Best-effort only: the Firestore rules forbid deleting your OWN
+      // admin doc (isAdmin() && uid != adminId), so this will usually be
+      // denied — that must NOT abort the account deletion. The leftover
+      // doc is harmless (it only grants admin rights to a deleted uid)
+      // and another admin can remove it from the Admin panel.
+      setProgressText('Admin အခန်းကဏ္ဍ ဖျက်သိမ်းနေပါသည်...');
+      try {
+        await deleteDoc(doc(db, 'admins', currentUser.uid));
+      } catch (e: any) {
+        console.warn('Could not delete own admins doc (rules forbid self-delete):', e);
       }
 
       // Stop and abort if any collection failed to delete completely
@@ -107,8 +182,19 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
       setProgressText('Firebase အကောင့် အပြီးတိုင် ဖျက်သိမ်းနေပါသည်...');
       await deleteUser(currentUser);
 
-      // 5. Clear all localStorage
-      localStorage.clear();
+      // 5. Remove ONLY this user's own local data (v2.4.11 8-L). The old
+      // localStorage.clear() wiped EVERYONE's data on a shared phone,
+      // because the phone-only keys were device-global. Keys are now
+      // per-user (suffixed _<uid>), so this removes exactly the deleting
+      // user's keys: anything ending _<uid>, the cached profile (it holds
+      // this user's profile), and any leftover legacy un-suffixed keys
+      // (modules migrate those to the current user's suffixed keys on
+      // first load after v2.4.11; leftovers are e.g. physio dates from
+      // days the module was never opened since the update).
+      // The version marker and any other user's keys are left untouched.
+      // Broadcast tickers are admin-shared content, not this user's data,
+      // so they are deliberately NOT deleted here.
+      removeOwnLocalKeys(currentUser.uid);
 
       setStep('done');
       setTimeout(async () => {

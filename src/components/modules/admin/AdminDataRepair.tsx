@@ -13,6 +13,13 @@ interface RepairResult {
   fixed: number;
   alreadyOk: number;
   errors: string[];
+  // v2.4.11 (audit 7.6): docs that cannot be fixed at all — e.g. the owner
+  // user cannot be found, so there is no correct email to write. These must
+  // NOT be counted in alreadyOk. Populated by repairPatientEmails once the
+  // context returns it; until then this stays undefined and the section
+  // below is hidden.
+  unfixable?: number;
+  unfixableReasons?: string[];
 }
 
 export const AdminDataRepair: React.FC = () => {
@@ -116,6 +123,25 @@ export const AdminDataRepair: React.FC = () => {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+          {result.unfixable !== undefined && result.unfixable > 0 && (
+            <div className="pt-2 border-t border-rose-100">
+              <div className="text-[11px] font-bold text-rose-700 mb-1">
+                ပြင်၍မရသော မှတ်တမ်း ({result.unfixable.toLocaleString()} ခု):
+              </div>
+              <p className="text-[11px] text-rose-600">
+                ပိုင်ရှင် အသုံးပြုသူ ရှာမတွေ့သောကြောင့် မှန်ကန်သော အီးမေးလ် ဖြည့်ပေး၍မရပါ — မှတ်တမ်းကို လက်ဖြင့် စစ်ဆေးရန် လိုအပ်ပါသည်။ ဤမှတ်တမ်းများကို "အဆင်ပြေပြီးသား" အဖြစ် မရေတွက်ထားပါ။
+              </p>
+              {result.unfixableReasons && result.unfixableReasons.length > 0 && (
+                <ul className="space-y-1 max-h-40 overflow-y-auto mt-1">
+                  {result.unfixableReasons.slice(0, 10).map((e, i) => (
+                    <li key={i} className="text-[11px] text-rose-700 bg-white px-2.5 py-1.5 rounded-lg border border-rose-100 break-words">
+                      {e}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </div>

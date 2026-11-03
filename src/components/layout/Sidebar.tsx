@@ -20,7 +20,8 @@ import {
   Droplets,
   Scale,
   HelpCircle,
-  Lock
+  Lock,
+  User
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
@@ -40,6 +41,7 @@ interface SidebarProps {
   onOpenDataBackup?: () => void;
   onOpenDeleteAccount?: () => void;
   onOpenChangePassword?: () => void;
+  onOpenProfileEdit?: () => void;
   onManualCheckVersion?: () => void;
   setActiveTab: (tab: string) => void;
   setCategoryGroup: (group: string) => void;
@@ -56,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenDataBackup,
   onOpenDeleteAccount,
   onOpenChangePassword,
+  onOpenProfileEdit,
   onManualCheckVersion,
   setActiveTab,
   setCategoryGroup
@@ -203,6 +206,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             
             <div className="border-t border-slate-100 my-2 pt-2">
                 <MenuItem icon={HelpCircle} label="အသုံးပြုနည်း" onClick={() => { onOpenUserGuide(); onClose(); }} />
+                {onOpenProfileEdit && (
+                  <MenuItem icon={User} label="ကိုယ်ရေးအချက်အလက် ပြင်ဆင်မည်" onClick={() => { onOpenProfileEdit(); onClose(); }} />
+                )}
                 {isPasswordUser && onOpenChangePassword && (
                   <MenuItem icon={Lock} label="စကားဝှက် ပြောင်းမည်" onClick={() => { onOpenChangePassword(); onClose(); }} />
                 )}
@@ -256,7 +262,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Footer */}
           <div className="p-4 border-t border-slate-100 space-y-2">
             <PWAInstallButton className="w-full justify-center" />
-            <button onClick={logout} className="w-full flex items-center gap-3 p-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold cursor-pointer">
+            <button onClick={() => { if (window.confirm('အကောင့်ထွက်မှာ သေချာပါသလား?')) logout(); }} className="w-full flex items-center gap-3 p-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold cursor-pointer">
               <LogOut className="w-5 h-5" />
               အကောင့်ထွက်မည်
             </button>

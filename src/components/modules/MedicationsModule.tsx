@@ -1,9 +1,43 @@
 import React, { useState, useMemo } from 'react';
-import { Pill, Plus, Trash2, CheckCircle2, Clock, AlertCircle, Calendar, Sparkles, X, Check } from 'lucide-react';
+import { Pill, Plus, Trash2, Clock, Sparkles, X, Check } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { Medication } from '../../types/health';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+
+// Local (Asia/Rangoon) date (YYYY-MM-DD) — new Date().toISOString() is UTC,
+// so a record entered early in the morning got yesterday's date (v2.4.11 F4).
+const localDateStr = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const toLatinDigits = (s: string): string =>
+  s.replace(/[၀-၉]/g, (d) => String('၀၁၂၃၄၅၆၇၈၉'.indexOf(d)));
+
+// Dose slots for a medication: one checkbox per expected dose per day,
+// parsed the same way AdminPatientDetail computes doses/day (v2.4.11 6.4).
+// e.g. 'မနက် (၁) ကြိမ် + ည (၁) ကြိမ်' → ['မနက်', 'ည'];
+// 'တရက် (၃) ကြိမ်' → ['တရက် ၁', 'တရက် ၂', 'တရက် ၃'].
+// PRN (လိုအပ်သည့်အခါ) meds have no daily schedule, so they keep one slot.
+const doseSlots = (med: Medication): { doseIndex: number; label: string }[] => {
+  if (/လိုအပ်သည့်အခါ|PRN/i.test(med.frequency || '')) {
+    return [{ doseIndex: 0, label: 'လိုအပ်သည့်အခါ' }];
+  }
+  const segments = (med.frequency || '').split('+').map(s => s.trim()).filter(Boolean);
+  const slots: { doseIndex: number; label: string }[] = [];
+  segments.forEach(seg => {
+    const m = seg.match(/([၀-၉0-9]+)\s*\)?\s*ကြိမ်/);
+    const count = m ? parseInt(toLatinDigits(m[1]), 10) || 1 : 1;
+    const prefix = seg.replace(/\(?\s*[၀-၉0-9]+\s*\)?\s*ကြိမ်.*$/, '').trim();
+    for (let i = 0; i < count; i++) {
+      slots.push({
+        doseIndex: slots.length,
+        label: count === 1 ? (prefix || `ကြိမ် ${slots.length + 1}`) : `${prefix || 'ကြိမ်'} ${i + 1}`,
+      });
+    }
+  });
+  return slots.length > 0 ? slots : [{ doseIndex: 0, label: 'ကြိမ် ၁' }];
+};
 
 export const MedicationsModule: React.FC = () => {
   const { 
@@ -20,6 +54,7 @@ export const MedicationsModule: React.FC = () => {
   // back to false if it is not present yet so this module still renders.
   const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
   const { profile } = useAuth();
+  const { showToast } = useToast();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused' | 'completed'>('active');
@@ -27,7 +62,7 @@ export const MedicationsModule: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllMeds, setShowAllMeds] = useState(false);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = localDateStr(new Date());
 
   // Frequency Options
   const FREQUENCY_OPTIONS = [
@@ -43,27 +78,40 @@ export const MedicationsModule: React.FC = () => {
     'လိုအပ်သည့်အခါ (PRN / As needed)',
   ];
 
-  // Form states
+  // Form states — no prefilled values: dosage '5 mg', duration '30' and
+  // condition 'သွေးတိုး' invited fake-normal records (v2.4.11 F5).
   const [tradeName, setTradeName] = useState('');
   const [chemicalNamesInput, setChemicalNamesInput] = useState('');
   const [chemicalNames, setChemicalNames] = useState<string[]>([]);
-  const [chemValidationError, setChemValidationError] = useState('');
-  const [dosage, setDosage] = useState('5 mg');
+  const [dosage, setDosage] = useState('');
   const [selectedFreqOption, setSelectedFreqOption] = useState<string>('မနက် (၁) ကြိမ်');
   const [customFrequency, setCustomFrequency] = useState('');
   const [frequency, setFrequency] = useState('မနက် (၁) ကြိမ်');
   const [timing, setTiming] = useState<'before_meal' | 'after_meal' | 'with_meal' | 'bedtime' | 'anytime'>('after_meal');
-  const [durationDays, setDurationDays] = useState<string>('30'); // ဆေးသောက်ရမည့်ရက်ပေါင်း
-  const [prescribedFor, setPrescribedFor] = useState('သွေးတိုးရောဂါ (Hypertension)');
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [durationDays, setDurationDays] = useState<string>(''); // ဆေးသောက်ရမည့်ရက်ပေါင်း (မဖြည့်လည်းရသည်)
+  const [prescribedFor, setPrescribedFor] = useState('');
+  const [startDate, setStartDate] = useState(() => localDateStr(new Date()));
+  // v2.4.10: optional dose clock-time (HH:MM) for dose-time reminders, and
+  // optional end date after which no reminders fire. Both may stay empty.
+  const [doseTime, setDoseTime] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [prescribingDoctor, setPrescribingDoctor] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const toggleCheckToday = (medId: string, medName?: string) => {
-    const isCurrentlyTaken = medicationLogs.some(l => l.medicationId === medId && l.date === todayStr && l.taken);
-    toggleMedicationDoseTaken(medId, todayStr, !isCurrentlyTaken, 0, medName);
+  // Toggle one dose slot for today (v2.4.11 6.4): a twice-daily med has two
+  // checkboxes (one per doseIndex), so it can reach 100%, not just 50%.
+  const toggleDoseSlot = (medId: string, doseIndex: number, medName?: string) => {
+    const isCurrentlyTaken = medicationLogs.some(
+      l => l.medicationId === medId && l.date === todayStr && (l.doseIndex ?? 0) === doseIndex && l.taken
+    );
+    toggleMedicationDoseTaken(medId, todayStr, !isCurrentlyTaken, doseIndex, medName);
   };
+
+  const isDoseTaken = (medId: string, doseIndex: number) =>
+    medicationLogs.some(
+      l => l.medicationId === medId && l.date === todayStr && (l.doseIndex ?? 0) === doseIndex && l.taken
+    );
 
   const handleAddChemicalName = (e: React.KeyboardEvent | React.MouseEvent) => {
     if (('key' in e && e.key === 'Enter') || e.type === 'click') {
@@ -71,7 +119,6 @@ export const MedicationsModule: React.FC = () => {
       if (chemicalNamesInput.trim() && !chemicalNames.includes(chemicalNamesInput.trim())) {
         setChemicalNames([...chemicalNames, chemicalNamesInput.trim()]);
         setChemicalNamesInput('');
-        setChemValidationError('');
       }
     }
   };
@@ -104,8 +151,17 @@ export const MedicationsModule: React.FC = () => {
   }, [searchedMeds, showAllMeds]);
 
   const activeMeds = medications.filter(m => m.status === 'active');
-  const activeCount = activeMeds.length;
-  const takenCount = activeMeds.filter(m => medicationLogs.some(l => l.medicationId === m.id && l.date === todayStr && l.taken)).length;
+  // Today's adherence counts expected DOSES, not meds (v2.4.11 6.4): a
+  // twice-daily med contributes 2 slots, so it can reach 100%. PRN
+  // (လိုအပ်သည့်အခါ) meds have no daily schedule and count for neither side.
+  const isPrnMedication = (m: Medication): boolean =>
+    /လိုအပ်သည့်အခါ|PRN/i.test(m.frequency || '');
+  const scheduledActiveMeds = activeMeds.filter((m) => !isPrnMedication(m));
+  const todaySlots = scheduledActiveMeds.flatMap((m) =>
+    doseSlots(m).map((slot) => ({ med: m, slot }))
+  );
+  const activeCount = todaySlots.length;
+  const takenCount = todaySlots.filter(({ med, slot }) => isDoseTaken(med.id, slot.doseIndex)).length;
   const adherencePercent = activeCount > 0 ? Math.round((takenCount / activeCount) * 100) : 0;
 
   // Preset drug templates
@@ -127,22 +183,17 @@ export const MedicationsModule: React.FC = () => {
     setCustomFrequency('');
     setTiming(p.timing);
     setPrescribedFor(p.for);
-    setChemValidationError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile || !tradeName.trim()) return;
 
-    // Validate Chemical Name is strictly provided (မထည့်မဖြစ် ထည့်ခိုင်းခြင်း)
+    // Chemical Name is OPTIONAL (v2.4.11): a user who only knows the brand
+    // name must still be able to save. Include it when given, omit it when not.
     const finalChems = [...chemicalNames];
     if (chemicalNamesInput.trim() && !finalChems.includes(chemicalNamesInput.trim())) {
       finalChems.push(chemicalNamesInput.trim());
-    }
-
-    if (finalChems.length === 0) {
-      setChemValidationError('⚠️ Chemical Name (ဆေးအမည် အစစ် / ပါဝင်ဓာတုပစ္စည်း) ကို မထည့်မဖြစ် ထည့်သွင်းပေးပါရန် (ဥပမာ- Paracetamol, Amlodipine)');
-      return;
     }
 
     setIsSubmitting(true);
@@ -150,29 +201,56 @@ export const MedicationsModule: React.FC = () => {
       ? (customFrequency.trim() || 'မနက် (၁) ကြိမ်') 
       : selectedFreqOption;
 
+    // Duration is not a stored field on the medication (v2.4.11 F13), so it
+    // is optional and, when given, is written into the notes text — the label
+    // says so. Nothing is silently required or silently merged.
+    const durationText = durationDays.trim();
+    const notesText = notes.trim();
+    const combinedNotes = durationText
+      ? `သောက်ရမည့်ရက်: ${durationText} ရက်${notesText ? ' | ' + notesText : ''}`
+      : (notesText || undefined);
+
     try {
       await addMedication({
         userId: selectedPatient ? selectedPatient.id : (selectedFamilyMember ? selectedFamilyMember.id : profile.id),
         name: tradeName,
-        genericName: finalChems.join(', '),
+        genericName: finalChems.length > 0 ? finalChems.join(', ') : undefined,
         dosage,
         frequency: effectiveFrequency,
         timing,
         prescribedFor,
         startDate,
+        doseTime: doseTime || undefined,
+        endDate: endDate || undefined,
         status: 'active',
         prescribingDoctor,
-        notes: `သောက်ရမည့်ရက်: ${durationDays} ရက် | ${notes}`,
+        notes: combinedNotes,
       });
       setIsOpenAdd(false);
+      // Clear ALL form fields after a successful save (v2.4.11 F14) — the
+      // old code left dosage, duration, prescribedFor, startDate, doctor
+      // and timing behind, leaking them into the next add.
       setTradeName('');
       setChemicalNames([]);
       setChemicalNamesInput('');
-      setChemValidationError('');
+      setDosage('');
+      setDurationDays('');
+      setPrescribedFor('');
+      setStartDate(localDateStr(new Date()));
+      setPrescribingDoctor('');
+      setTiming('after_meal');
       setNotes('');
+      setDoseTime('');
+      setEndDate('');
       setSelectedFreqOption('မနက် (၁) ကြိမ်');
       setCustomFrequency('');
       setFrequency('မနက် (၁) ကြိမ်');
+      showToast('ဆေးမှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+    } catch (err) {
+      // Save failed: keep the form open with all values intact so the user
+      // can retry (v2.4.11 F3 — saves used to fail silently).
+      console.warn('Error saving medication:', err);
+      showToast('ဆေးမှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -233,7 +311,7 @@ export const MedicationsModule: React.FC = () => {
           
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300">
-              ယနေ့ ဆေးသောက်ပြီးမှု: {takenCount}/{activeCount} မျိုး ({adherencePercent}%)
+              ယနေ့ ဆေးသောက်ပြီးမှု: {takenCount}/{activeCount} ကြိမ် ({adherencePercent}%)
             </span>
           </div>
         </div>
@@ -248,19 +326,19 @@ export const MedicationsModule: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {activeMeds.map((med) => {
-            const isTaken = medicationLogs.some(l => l.medicationId === med.id && l.date === todayStr && l.taken);
+            const slots = doseSlots(med);
+            const allTaken = slots.every(s => isDoseTaken(med.id, s.doseIndex));
             return (
               <div
                 key={med.id}
-                onClick={() => toggleCheckToday(med.id, med.name)}
-                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between select-none ${
-                  isTaken
+                className={`p-3.5 rounded-2xl border transition-all ${
+                  allTaken
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 shadow-xs'
                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-sky-300'
                 }`}
               >
                 <div>
-                  <h4 className={`text-xs font-bold ${isTaken ? 'line-through text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                  <h4 className={`text-xs font-bold ${allTaken ? 'line-through text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                     {med.name}
                   </h4>
                   <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
@@ -270,10 +348,30 @@ export const MedicationsModule: React.FC = () => {
                   </div>
                 </div>
 
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
-                  isTaken ? 'bg-emerald-600 text-white shadow-xs' : 'border border-slate-300 dark:border-slate-600 text-transparent hover:border-sky-500'
-                }`}>
-                  <CheckCircle2 className="w-4 h-4" />
+                {/* One checkbox per expected dose today (v2.4.11 6.4) */}
+                <div className="flex flex-wrap gap-1.5 mt-2.5">
+                  {slots.map((slot) => {
+                    const taken = isDoseTaken(med.id, slot.doseIndex);
+                    return (
+                      <button
+                        key={slot.doseIndex}
+                        type="button"
+                        onClick={() => toggleDoseSlot(med.id, slot.doseIndex, med.name)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                          taken
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-sky-400'
+                        }`}
+                      >
+                        <span className={`w-4 h-4 rounded flex items-center justify-center ${
+                          taken ? 'bg-white/25 text-white' : 'border border-slate-400 dark:border-slate-500 text-transparent'
+                        }`}>
+                          <Check className="w-3 h-3" />
+                        </span>
+                        {slot.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -409,9 +507,18 @@ export const MedicationsModule: React.FC = () => {
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
                     <span className="text-slate-400 text-[11px] block">စတင်သောက်သည့်ရက်</span>
                     <span className="font-mono text-slate-800 dark:text-slate-200">
-                      {med.startDate}
+                      {med.startDate}{med.endDate ? ` → ${med.endDate}` : ''}
                     </span>
                   </div>
+
+                  {med.doseTime && (
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                      <span className="text-slate-400 text-[11px] block">သောက်ရမည့်အချိန်</span>
+                      <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                        {med.doseTime}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Notes & Doctor */}
@@ -501,14 +608,15 @@ export const MedicationsModule: React.FC = () => {
                 />
               </div>
 
-              {/* Chemical Names (Multiple Input Tags) - Mandatory */}
+              {/* Chemical Names (Multiple Input Tags) — optional: brand name
+                  alone is enough to save (v2.4.11). */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Chemical Name (ဆေးအမည် အစစ် / Active Ingredient) *
+                    Chemical Name (ဆေးအမည် အစစ် / Active Ingredient)
                   </label>
-                  <span className="text-[11px] text-rose-500 font-bold">
-                    မထည့်မဖြစ် လိုအပ်သည်
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    မဖြည့်လည်းရသည်
                   </span>
                 </div>
                 <div className="flex gap-2 mb-2">
@@ -518,14 +626,9 @@ export const MedicationsModule: React.FC = () => {
                     value={chemicalNamesInput}
                     onChange={(e) => {
                       setChemicalNamesInput(e.target.value);
-                      if (chemValidationError) setChemValidationError('');
                     }}
                     onKeyDown={handleAddChemicalName}
-                    className={`flex-1 px-3.5 py-2.5 rounded-xl border text-slate-900 dark:text-white text-xs ${
-                      chemValidationError 
-                        ? 'border-rose-400 bg-rose-50/40 dark:bg-rose-950/20' 
-                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
-                    }`}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border text-slate-900 dark:text-white text-xs border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                   />
                   <button
                     type="button"
@@ -536,12 +639,9 @@ export const MedicationsModule: React.FC = () => {
                   </button>
                 </div>
 
-                {chemValidationError && (
-                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold mb-2 flex items-center gap-1.5 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
-                    <span>{chemValidationError}</span>
-                  </p>
-                )}
+                <p className="text-[11px] text-slate-400 mb-2">
+                  Brand အမည်ပဲ သိရင်လည်း သိမ်းလို့ရပါတယ် — Chemical Name သိရင် ထည့်ပေးပါ။
+                </p>
 
                 {chemicalNames.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60">
@@ -575,16 +675,18 @@ export const MedicationsModule: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    ဘယ်နှစ်ရက်သောက်ရန် (Duration) *
+                    ဘယ်နှစ်ရက်သောက်ရန် (Duration)
                   </label>
                   <input
                     type="text"
-                    required
                     placeholder="ဥပမာ- 30 ရက် (သို့) တစ်လစာ"
                     value={durationDays}
                     onChange={(e) => setDurationDays(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    မဖြည့်လည်းရသည် — ဖြည့်ထားရင် မှတ်ချက်ထဲ ထည့်သိမ်းပါမယ်။
+                  </p>
                 </div>
               </div>
 
@@ -643,6 +745,39 @@ export const MedicationsModule: React.FC = () => {
                     <option value="bedtime">ညအိပ်ရာဝင်</option>
                     <option value="anytime">အချိန်မရွေး</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Dose Time & End Date (both optional) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    သောက်ရမည့်အချိန် (မဖြည့်လည်းရသည်)
+                  </label>
+                  <input
+                    type="time"
+                    value={doseTime}
+                    onChange={(e) => setDoseTime(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    အချိန်ထည့်ထားရင် အဲဒီအချိန်ရောက်မှ သတိပေးမယ်။ မထည့်ထားရင် App ဖွင့်ချိန်မှ သတိပေးမယ်။
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    သောက်ပြီးဆုံးမည့်ရက် (မဖြည့်လည်းရသည်)
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    ဒီရက်ကျော်ရင် သတိပေးချက် မထွက်တော့ပါ။
+                  </p>
                 </div>
               </div>
 

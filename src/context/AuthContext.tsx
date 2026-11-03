@@ -11,6 +11,8 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
   setPersistence,
   browserLocalPersistence
 } from 'firebase/auth';
@@ -37,7 +39,10 @@ export const getAuthErrorMessage = (error: any): string => {
   switch (code) {
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
-      return 'အီးမေးလ် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။';
+      // Firebase returns 'auth/invalid-credential' for BOTH a wrong password
+      // and an unregistered email, so this one message must cover both:
+      // it tells an unregistered user where to sign up.
+      return 'အီးမေးလ် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။ စကားဝှက် မှန်ကန်စွာ ရိုက်ထည့်ပါ (အကောင့်မရှိသေးပါက "အကောင့်သစ်ဖွင့်ရန်" တွင် ဖွင့်နိုင်ပါသည်)';
     case 'auth/user-not-found':
       return 'ဤအီးမေးလ်ဖြင့် အကောင့်ဖွင့်ထားခြင်း မရှိသေးပါ။';
     case 'auth/email-already-in-use':
@@ -54,9 +59,23 @@ export const getAuthErrorMessage = (error: any): string => {
       return 'ဤဝက်ဘ်ဆိုဒ်လိပ်စာကို Firebase မှ ခွင့်မပြုထားပါ။ Firebase Console > Authentication > Settings > Authorized domains တွင် သင့် App လိပ်စာ (localhost) ကို ထည့်သွင်းပေးပါ။';
     case 'auth/popup-closed-by-user':
       return 'Google ဖြင့် အကောင့်ဝင်ရောက်မှုကို ပယ်ဖျက်လိုက်ပါသည်။';
+    case 'auth/invalid-action-code':
+    case 'auth/expired-action-code':
+      // Password-reset (or other action) link that is expired or already used.
+      return 'ဤလင့်ခ် သက်တမ်းကုန်သွားပြီ သို့မဟုတ် အသုံးပြုပြီးသား ဖြစ်နေပါသည်။ စကားဝှက် ပြန်လည်ရယူရန် တောင်းဆိုမှုကို ထပ်မံ ပြုလုပ်ပါ။';
     default:
       return error?.message || 'အကောင့်စစ်ဆေးမှု မအောင်မြင်ပါ။ ကျေးဇူးပြု၍ ပြန်လည်ကြိုးစားပါ။';
   }
+};
+
+// Re-throw an auth error keeping the Firebase error code attached, so
+// callers (LoginScreen) can branch on err.code for specific messages.
+// `new Error(message)` alone drops .code, which made every specific
+// login / Google / forgot-password message in LoginScreen dead code.
+const throwAuthError = (err: any): never => {
+  const e: any = new Error(getAuthErrorMessage(err));
+  if (err?.code) e.code = err.code;
+  throw e;
 };
 
 interface AuthContextType {
@@ -64,6 +83,10 @@ interface AuthContextType {
   profile: UserProfile | null;
   isAdmin: boolean;
   loading: boolean;
+  // True while a login / register / Google attempt is running. App uses it
+  // to keep the login form visible during an attempt (inline spinner on
+  // the button) instead of replacing the whole screen with a spinner.
+  authAttempting: boolean;
   login: (email: string, pass: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   register: (
@@ -77,9 +100,13 @@ interface AuthContextType {
     chronicConditions?: string[]
   ) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
+  updateProfile: (data: Partial<UserProfile>, options?: { silent?: boolean }) => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  // In-app password reset (reset link returns to the app itself, not the
+  // Firebase hosted page): validate the oobCode, then set the new password.
+  verifyResetCode: (oobCode: string) => Promise<string>;
+  confirmResetPassword: (oobCode: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -100,6 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [authAttempting, setAuthAttempting] = useState<boolean>(false);
 
   // Check admin status strictly by querying the /admins/{uid} collection in Firestore
   const verifyIsAdmin = async (uid: string): Promise<boolean> => {
@@ -126,10 +154,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('Redirect login successful:', result.user.email);
         }
       } catch (error: any) {
+        // Surface redirect errors to the user — previously only
+        // auth/unauthorized-domain got a toast and everything else was
+        // console.error only, so a failed redirect looked like nothing
+        // happened at all.
         console.error('Redirect login error:', error);
-        if (error.code === 'auth/unauthorized-domain') {
-          showToast('ဤဝက်ဘ်ဆိုဒ်လိပ်စာကို Firebase မှ ခွင့်မပြုထားပါ။ Authorized domains တွင် ထည့်ပေးပါ။', 'error');
-        }
+        showToast(getAuthErrorMessage(error), 'error');
       } finally {
         if (isRedirectPending) {
           sessionStorage.removeItem('auth_redirect_pending');
@@ -194,12 +224,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localStorage.setItem('family_health_profile', JSON.stringify(fallbackProfile));
           }
           if (isMounted) setLoading(false);
+          if (isMounted) setAuthAttempting(false);
         } else {
           // Only set to null if we are truly logged out.
           setCurrentUser(null);
           setProfile(null);
           setIsAdmin(false);
           if (isMounted) setLoading(false);
+          if (isMounted) setAuthAttempting(false);
         }
       });
     };
@@ -212,15 +244,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []); const loginWithGoogle = async () => {
     setLoading(true);
+    setAuthAttempting(true);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
+    // Safety net: if the popup succeeds but auth state never arrives
+    // (e.g. the Firestore profile fetch hangs), stop spinning after 10s
+    // so the user is not stuck on the full-screen spinner forever.
+    // onAuthStateChanged also clears loading on the normal path.
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+      setAuthAttempting(false);
+    }, 10000);
+
     try {
-      await setPersistence(auth, browserLocalPersistence);
-      await signInWithPopup(auth, provider);
+      const popupFlow = (async () => {
+        await setPersistence(auth, browserLocalPersistence);
+        await signInWithPopup(auth, provider);
+      })();
+      // Race the popup against a 30s timeout: a hung popup (e.g. a VPN
+      // blocking accounts.google.com) must not leave the app on the
+      // full-screen spinner with no way to retry.
+      const popupTimeout = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          const e: any = new Error('Google ဖြင့် ဝင်ရောက်ခြင်း ကြာမြင့်နေပါသည်။ VPN/အင်တာနက် စစ်ပြီး ပြန်ကြိုးစားပါ။');
+          e.code = 'auth/timeout';
+          reject(e);
+        }, 30000);
+      });
+      await Promise.race([popupFlow, popupTimeout]);
+      // Popup resolved: sign-in succeeded. Loading is cleared by
+      // onAuthStateChanged once the profile is ready (or by the
+      // safety timer above if that never arrives).
     } catch (err: any) {
+      clearTimeout(safetyTimer);
       if (err.code === 'auth/popup-closed-by-user') {
         setLoading(false);
+        setAuthAttempting(false);
       }
       console.error('Google Popup Sign-in failed:', err);
       
@@ -230,7 +290,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         err.code === 'auth/cancelled-popup-request'
       ) {
         try {
-          console.log('Popup blocked or unsupported. Falling back to redirect...');
+          // Tell the user BEFORE navigating away: the popup was blocked,
+          // so the page will continue with Google sign-in via redirect.
+          // Previously this fallback happened silently and the whole page
+          // just vanished with no explanation.
+          showToast('Browser က Google ပြတင်းပေါက်ကို ပိတ်ထားပါသည်။ Google ဖြင့် ဆက်လက် ဝင်ရောက်ရန် စာမျက်နှာ ပြောင်းနေပါသည် — ခဏစောင့်ပါ။', 'info');
           sessionStorage.setItem('auth_redirect_pending', 'true');
           await signInWithRedirect(auth, provider);
           return; 
@@ -238,18 +302,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Google Redirect Sign-in failed:', redirectErr);
           sessionStorage.removeItem('auth_redirect_pending');
           setLoading(false);
-          throw new Error(getAuthErrorMessage(redirectErr));
+          setAuthAttempting(false);
+          throwAuthError(redirectErr);
         }
       }
       if (err.code !== 'auth/popup-closed-by-user') {
         setLoading(false);
+        setAuthAttempting(false);
       }
-      throw new Error(getAuthErrorMessage(err));
+      throwAuthError(err);
     }
   };
 
   const login = async (email: string, pass: string) => {
     setLoading(true);
+    setAuthAttempting(true);
     const cleanEmail = email.trim();
 
     try {
@@ -299,9 +366,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      throw new Error(getAuthErrorMessage(err));
+      throwAuthError(err);
     } finally {
       setLoading(false);
+      setAuthAttempting(false);
     }
   };
 
@@ -316,6 +384,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     chronicConditions?: string[]
   ) => {
     setLoading(true);
+    setAuthAttempting(true);
     const cleanEmail = email.trim();
 
     try {
@@ -341,7 +410,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: isUserAdmin ? 'admin' : 'patient',
         dateOfBirth: dob || undefined,
         age: calculatedAge,
-        gender: gender || 'male',
+        gender: gender || undefined,
         heightCm: numH,
         weightKg: numW,
         bmi: calculatedBMI,
@@ -356,9 +425,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await setDoc(doc(db, 'users', res.user.uid), sanitizeForFirestore(newProf), { merge: true });
     } catch (err: any) {
       console.error('Registration error:', err);
-      throw new Error(getAuthErrorMessage(err));
+      throwAuthError(err);
     } finally {
       setLoading(false);
+      setAuthAttempting(false);
     }
   };
 
@@ -402,7 +472,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     keysToRemove.forEach(key => localStorage.removeItem(key));
   };
 
-  const updateProfile = async (data: Partial<UserProfile>) => {
+  const updateProfile = async (data: Partial<UserProfile>, options?: { silent?: boolean }) => {
     if (!currentUser || !profile) return;
 
     // Prevent client-side role elevation to admin
@@ -438,7 +508,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       await setDoc(doc(db, 'users', currentUser.uid), sanitizeForFirestore(updated), { merge: true });
-      showToast('ပရိုဖိုင် အချက်အလက်များကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ', 'success');
+      // v2.4.11: silent refresh (e.g. Emergency ID save already toasts via
+      // updatePatient) — without this the user saw two stacked success
+      // toasts for one save. Errors still toast and throw.
+      if (!options?.silent) {
+        showToast('ပရိုဖိုင် အချက်အလက်များကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ', 'success');
+      }
     } catch (e) {
       console.warn('Update profile error:', e);
       showToast('ပရိုဖိုင် ပြင်ဆင်ရာတွင် ချို့ယွင်းချက် ဖြစ်ပေါ်ခဲ့ပါသည်', 'error');
@@ -456,7 +531,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await fbUpdatePassword(auth.currentUser, newPassword);
     } catch (err: any) {
-      throw new Error(getAuthErrorMessage(err));
+      throwAuthError(err);
     }
   };
 
@@ -465,9 +540,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('ကျေးဇူးပြု၍ သင့်အီးမေးလ်လိပ်စာကို ထည့်သွင်းပါ။');
     }
     try {
-      await sendPasswordResetEmail(auth, email.trim());
+      // ActionCodeSettings with handleCodeInApp: the reset link returns to
+      // this app itself (mode=resetPassword&oobCode=...), so the user sets
+      // the new password in a Burmese in-app form instead of Firebase's
+      // default English hosted handler page. The live origin must be in
+      // Firebase Console > Authentication > Settings > Authorized domains.
+      await sendPasswordResetEmail(auth, email.trim(), {
+        url: 'https://family-health-track.pages.dev/',
+        handleCodeInApp: true,
+      });
     } catch (err: any) {
-      throw new Error(getAuthErrorMessage(err));
+      throwAuthError(err);
+    }
+  };
+
+  // Validate a password-reset oobCode from the email link and return the
+  // account email it belongs to. Throws (invalid/expired action code) when
+  // the link is stale or already used.
+  const verifyResetCode = async (oobCode: string): Promise<string> => {
+    try {
+      return await verifyPasswordResetCode(auth, oobCode);
+    } catch (err: any) {
+      throwAuthError(err);
+      throw err; // unreachable — throwAuthError always throws
+    }
+  };
+
+  const confirmResetPassword = async (oobCode: string, newPassword: string) => {
+    if (newPassword.length < 6) {
+      throw new Error('လျှို့ဝှက်နံပါတ် အသစ်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်။');
+    }
+    try {
+      await confirmPasswordReset(auth, oobCode, newPassword);
+    } catch (err: any) {
+      throwAuthError(err);
     }
   };
 
@@ -477,6 +583,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       profile,
       isAdmin,
       loading,
+      authAttempting,
       login,
       loginWithGoogle,
       register,
@@ -484,6 +591,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateProfile,
       changePassword,
       resetPassword,
+      verifyResetCode,
+      confirmResetPassword,
     }}>
       {children}
     </AuthContext.Provider>

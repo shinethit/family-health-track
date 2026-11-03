@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
+import { useToast } from '../../context/ToastContext';
 import { BMIWeightChart } from '../charts/HealthCharts';
 import { 
   calculateAge, 
@@ -33,12 +34,18 @@ import {
 } from '../../lib/medicalCalculations';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
+// Local (Asia/Rangoon) date (YYYY-MM-DD) — new Date().toISOString() is UTC,
+// so a record entered early in the morning got yesterday's date (v2.4.11 F4).
+const localDateStr = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export const BMIModule: React.FC = () => {
   const { profile, updateProfile } = useAuth();
-  const { bmiRecords, addBMIRecord, deleteBMIRecord, selectedPatient } = useHealthData();
+  const { bmiRecords, addBMIRecord, deleteBMIRecord, selectedPatient, selectedFamilyMember } = useHealthData();
   // dataLoading is added by the context work in the same v2.4.8 batch; fall
   // back to false if it is not present yet so this module still renders.
   const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
+  const { showToast } = useToast();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   const [isOpenEditProfile, setIsOpenEditProfile] = useState(false);
@@ -98,7 +105,9 @@ export const BMIModule: React.FC = () => {
   const [weightLbInput, setWeightLbInput] = useState<string>('');
 
   const [waistInput, setWaistInput] = useState<string>(() => profile?.waistCm ? String(profile.waistCm) : '');
-  const [recordDate, setRecordDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  // Local (Asia/Rangoon) date — new Date().toISOString() is UTC, so a record
+  // entered early in the morning got yesterday's date (v2.4.11 F4).
+  const [recordDate, setRecordDate] = useState<string>(() => localDateStr(new Date()));
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -130,17 +139,55 @@ export const BMIModule: React.FC = () => {
 
   const liveModalBMI = calculateBMI(resolvedWeightKg, resolvedHeightCm, activeAgeYears ?? undefined);
 
+  // Switching units must NOT discard what the user already typed (v2.4.11
+  // F10): convert the current value into the other unit's fields instead.
+  const switchHeightUnit = (unit: 'cm' | 'ft') => {
+    if (unit === heightUnit) return;
+    if (unit === 'ft') {
+      const cm = Number(heightCmInput);
+      if (cm > 0) {
+        const converted = cmToFtIn(cm);
+        setHeightFeetInput(String(converted.feet));
+        setHeightInchesInput(String(Math.round(converted.inches * 10) / 10));
+      }
+    } else {
+      const cm = ftInToCm(Number(heightFeetInput) || 0, Number(heightInchesInput) || 0);
+      if (cm > 0) setHeightCmInput(String(Math.round(cm * 10) / 10));
+    }
+    setHeightUnit(unit);
+  };
+
+  const switchWeightUnit = (unit: 'kg' | 'lb') => {
+    if (unit === weightUnit) return;
+    if (unit === 'lb') {
+      const kg = Number(weightKgInput);
+      if (kg > 0) setWeightLbInput(String(Math.round(kgToLb(kg) * 10) / 10));
+    } else {
+      const lb = Number(weightLbInput);
+      if (lb > 0) setWeightKgInput(String(Math.round(lbToKg(lb) * 10) / 10));
+    }
+    setWeightUnit(unit);
+  };
+
   // Handle Save BMI Record
   const handleSubmitRecord = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resolvedHeightCm || !resolvedWeightKg) return;
+    // Missing height/weight used to return silently with no message
+    // (v2.4.11 F10) — tell the user instead.
+    if (!resolvedHeightCm || !resolvedWeightKg) {
+      showToast('အရပ်နှင့် ကိုယ်အလေးချိန် နှစ်ခုလုံး ထည့်ပေးပါ', 'error');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const calculated = calculateBMI(resolvedWeightKg, resolvedHeightCm, activeAgeYears ?? undefined);
       // No fabricated fallback: if BMI cannot be computed from the entered
       // height/weight, do not save a made-up 22 / 'normal' record.
-      if (!calculated) return;
+      if (!calculated) {
+        showToast('BMI တွက်ချက်၍ မရပါ — အရပ်နှင့် ကိုယ်အလေးချိန် မှန်ကန်စွာ ထည့်ပေးပါ', 'error');
+        return;
+      }
       await addBMIRecord({
         userId: selectedPatient ? selectedPatient.id : (profile?.id || 'guest-user'),
         userName: selectedPatient ? selectedPatient.displayName : (profile?.displayName || 'အသုံးပြုသူ'),
@@ -153,8 +200,12 @@ export const BMIModule: React.FC = () => {
         notes: notes.trim() || undefined,
       });
 
-      // Also update user's profile with latest height & weight if current user
-      if (!selectedPatient) {
+      // Also update the profile with latest height & weight — but ONLY when
+      // the record is for the signed-in user themself. When a family member
+      // is selected, writing their height/weight onto the user's own profile
+      // would corrupt it (the BMI record itself is already filed under the
+      // family member by addBMIRecord).
+      if (!selectedPatient && !selectedFamilyMember) {
         await updateProfile({
           heightCm: resolvedHeightCm,
           weightKg: resolvedWeightKg,
@@ -165,6 +216,12 @@ export const BMIModule: React.FC = () => {
 
       setIsOpenAdd(false);
       setNotes('');
+      showToast('BMI မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+    } catch (err) {
+      // Save failed: keep the form open with all values intact so the user
+      // can retry (v2.4.11 F3 — saves used to fail silently).
+      console.warn('Error saving BMI record:', err);
+      showToast('BMI မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -756,14 +813,14 @@ export const BMIModule: React.FC = () => {
                   <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-[11px] font-bold">
                     <button
                       type="button"
-                      onClick={() => setHeightUnit('cm')}
+                      onClick={() => switchHeightUnit('cm')}
                       className={`px-2 py-0.5 rounded-md cursor-pointer ${heightUnit === 'cm' ? 'bg-white dark:bg-slate-700 text-teal-600 shadow-2xs' : 'text-slate-500'}`}
                     >
                       cm (စင်တီ)
                     </button>
                     <button
                       type="button"
-                      onClick={() => setHeightUnit('ft')}
+                      onClick={() => switchHeightUnit('ft')}
                       className={`px-2 py-0.5 rounded-md cursor-pointer ${heightUnit === 'ft' ? 'bg-white dark:bg-slate-700 text-teal-600 shadow-2xs' : 'text-slate-500'}`}
                     >
                       ft / in (ပေ/လက်မ)
@@ -776,6 +833,7 @@ export const BMIModule: React.FC = () => {
                     <input
                       type="number"
                       step="0.5"
+                      min="1"
                       required
                       value={heightCmInput}
                       onChange={(e) => setHeightCmInput(e.target.value)}
@@ -826,14 +884,14 @@ export const BMIModule: React.FC = () => {
                   <div className="flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-[11px] font-bold">
                     <button
                       type="button"
-                      onClick={() => setWeightUnit('kg')}
+                      onClick={() => switchWeightUnit('kg')}
                       className={`px-2 py-0.5 rounded-md cursor-pointer ${weightUnit === 'kg' ? 'bg-white dark:bg-slate-700 text-teal-600 shadow-2xs' : 'text-slate-500'}`}
                     >
                       kg (ကီလို)
                     </button>
                     <button
                       type="button"
-                      onClick={() => setWeightUnit('lb')}
+                      onClick={() => switchWeightUnit('lb')}
                       className={`px-2 py-0.5 rounded-md cursor-pointer ${weightUnit === 'lb' ? 'bg-white dark:bg-slate-700 text-teal-600 shadow-2xs' : 'text-slate-500'}`}
                     >
                       lb (ပေါင်)
@@ -846,6 +904,7 @@ export const BMIModule: React.FC = () => {
                     <input
                       type="number"
                       step="0.1"
+                      min="1"
                       required
                       value={weightKgInput}
                       onChange={(e) => setWeightKgInput(e.target.value)}
@@ -859,6 +918,7 @@ export const BMIModule: React.FC = () => {
                     <input
                       type="number"
                       step="0.5"
+                      min="1"
                       required
                       value={weightLbInput}
                       onChange={(e) => setWeightLbInput(e.target.value)}
@@ -879,6 +939,7 @@ export const BMIModule: React.FC = () => {
                   <input
                     type="number"
                     step="0.5"
+                    min="1"
                     value={waistInput}
                     onChange={(e) => setWaistInput(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"

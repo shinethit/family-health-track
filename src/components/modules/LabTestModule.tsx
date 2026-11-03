@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   FlaskConical, 
   Plus, 
@@ -25,8 +25,14 @@ import {
 } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { LabTestRecord, RecordedLabItem } from '../../types/health';
 import { evaluateCustomLabValue, evaluateThyroidFunction } from '../../lib/medicalCalculations';
+
+// Local (Asia/Rangoon) date (YYYY-MM-DD) — new Date().toISOString() is UTC,
+// so a record entered early in the morning got yesterday's date (v2.4.11 F4).
+const localDateStr = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export type LabCategory = 'all' | 'cbc' | 'glucose' | 'liver' | 'renal' | 'lipid' | 'thyroid' | 'urine' | 'inflammatory';
 
@@ -654,6 +660,7 @@ export const LabTestModule: React.FC = () => {
   // back to false if it is not present yet so this module still renders.
   const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
   const { profile } = useAuth();
+  const { showToast } = useToast();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   // Default to the newest record by testDate, matching the history list
@@ -686,7 +693,7 @@ export const LabTestModule: React.FC = () => {
   const displayLabs = showAllHistory ? searchedLabs : searchedLabs.slice(0, 20);
 
   // Form base states - CLEAN SLATE (No prefilled numbers)
-  const [testDate, setTestDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [testDate, setTestDate] = useState<string>(() => localDateStr(new Date()));
   const [labName, setLabName] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [doctorReview, setDoctorReview] = useState<string>('');
@@ -708,11 +715,35 @@ export const LabTestModule: React.FC = () => {
     setLabName('');
     setNotes('');
     setDoctorReview('');
-    setTestDate(new Date().toISOString().split('T')[0]);
+    setTestDate(localDateStr(new Date()));
     setTestValues({});
     setCustomRefRanges({});
     setSearchQuery('');
   };
+
+  // Fingerprint of the record just saved, so the detail panel can follow it
+  // (v2.4.11 F11). addLabRecord returns no id, so when the record list
+  // updates we match by date + lab + test count + first test.
+  const [pendingSelectFingerprint, setPendingSelectFingerprint] = useState<{
+    testDate: string;
+    labName: string;
+    testCount: number;
+    firstTestKey: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!pendingSelectFingerprint) return;
+    const found = labRecords.find((l) =>
+      l.testDate === pendingSelectFingerprint.testDate &&
+      l.labName === pendingSelectFingerprint.labName &&
+      (l.tests?.length || 0) === pendingSelectFingerprint.testCount &&
+      (l.tests && l.tests.length > 0 ? `${l.tests[0].id}:${l.tests[0].value}` : '') === pendingSelectFingerprint.firstTestKey
+    );
+    if (found) {
+      setSelectedRecordId(found.id);
+      setPendingSelectFingerprint(null);
+    }
+  }, [labRecords, pendingSelectFingerprint]);
 
   // Toggle edit reference range for a test
   const toggleEditRef = (testId: string) => {
@@ -1033,6 +1064,16 @@ export const LabTestModule: React.FC = () => {
       };
       const hasInfl = Object.values(inflObj).some(v => v !== undefined);
 
+      // Remember the record just entered so the detail panel follows it
+      // (v2.4.11 F11) — addLabRecord returns no id, so we match by content
+      // once the record list updates.
+      setPendingSelectFingerprint({
+        testDate,
+        labName: labName.trim() || 'ဆေးဓာတ်ခွဲခန်း',
+        testCount: recordedTests.length,
+        firstTestKey: recordedTests.length > 0 ? `${recordedTests[0].id}:${recordedTests[0].value}` : '',
+      });
+
       await addLabRecord({
         userId: selectedPatient ? selectedPatient.id : (selectedFamilyMember ? selectedFamilyMember.id : profile.id),
         userName: selectedPatient ? selectedPatient.displayName : (selectedFamilyMember ? selectedFamilyMember.name : profile.displayName),
@@ -1053,6 +1094,12 @@ export const LabTestModule: React.FC = () => {
 
       resetForm();
       setIsOpenAdd(false);
+      showToast('Lab စစ်ဆေးချက် မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+    } catch (err) {
+      // Save failed: keep the form open with all values intact so the user
+      // can retry (v2.4.11 F3 — saves used to fail silently).
+      console.warn('Error saving lab record:', err);
+      showToast('Lab စစ်ဆေးချက် သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
     } finally {
       setIsSubmitting(false);
     }

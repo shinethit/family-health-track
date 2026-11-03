@@ -26,8 +26,50 @@ import {
 import { PHYSIO_EXERCISES, PhysioExercise } from '../../data/physioExercises';
 import { HealthArticle } from '../../types/health';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+import { useAuth } from '../../context/AuthContext';
+import {
+  userKey,
+  readUserStored,
+  migrateLegacyKeysMatching,
+} from '../../lib/perUserStorage';
+
+// Real streak: consecutive days (ending today, or yesterday if nothing has
+// been done yet today) with at least one completed exercise, read from the
+// per-user per-day keys physio_completed_<date>_<uid> (falling back to the
+// legacy un-suffixed physio_completed_<date> keys until the on-load
+// migration moves them). Never a made-up number — no code ever wrote a
+// stored streak count, so a stored default would be fiction.
+const computePhysioStreak = (uid?: string | null): number => {
+  try {
+    let streak = 0;
+    const d = new Date();
+    const dayKey = (date: Date) => `physio_completed_${date.toISOString().split('T')[0]}`;
+    const hasCompleted = (date: Date): boolean => {
+      try {
+        const raw = readUserStored(dayKey(date), uid);
+        return raw ? (JSON.parse(raw) as string[]).length > 0 : false;
+      } catch {
+        return false;
+      }
+    };
+    if (!hasCompleted(d)) d.setDate(d.getDate() - 1);
+    while (hasCompleted(d)) {
+      streak += 1;
+      d.setDate(d.getDate() - 1);
+    }
+    return streak;
+  } catch {
+    return 0;
+  }
+};
 
 export const PhysiotherapyModule: React.FC = () => {
+  const { profile, currentUser } = useAuth();
+  // Phone-only physio progress belongs to the signed-in user only: every
+  // physio_completed_<date> key is suffixed with this uid (v2.4.11). While
+  // the profile is still loading the uid is '' and the legacy key is read.
+  const storageUid = profile?.id || currentUser?.uid || '';
+
   const [activeTab, setActiveTab] = useState<'exercises' | 'body_map' | 'runner' | 'articles'>('exercises');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -43,21 +85,32 @@ export const PhysiotherapyModule: React.FC = () => {
   const [completedTodayIds, setCompletedTodayIds] = useState<string[]>(() => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const saved = localStorage.getItem(`physio_completed_${today}`);
+      const saved = readUserStored(`physio_completed_${today}`, storageUid);
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
       return [];
     }
   });
 
-  const [streakCount, setStreakCount] = useState<number>(() => {
+  const [streakCount, setStreakCount] = useState<number>(() => computePhysioStreak(storageUid));
+
+  // Migrate legacy device-global physio keys to this user's suffixed keys
+  // ONCE, then reload today's progress + streak from the migrated keys.
+  // Runs when the signed-in user is known (also re-runs if the profile
+  // arrives late) so a later user on a shared phone never sees this data.
+  // Declared before the save effects below so migration runs first.
+  useEffect(() => {
+    if (!storageUid) return;
+    migrateLegacyKeysMatching(/^physio_completed_\d{4}-\d{2}-\d{2}$/, storageUid);
     try {
-      const saved = localStorage.getItem('physio_streak_count');
-      return saved ? parseInt(saved, 10) : 3;
-    } catch (e) {
-      return 3;
+      const today = new Date().toISOString().split('T')[0];
+      const saved = localStorage.getItem(userKey(`physio_completed_${today}`, storageUid));
+      setCompletedTodayIds(saved ? JSON.parse(saved) : []);
+    } catch {
+      setCompletedTodayIds([]);
     }
-  });
+    setStreakCount(computePhysioStreak(storageUid));
+  }, [storageUid]);
 
   // Selected Article Modal
   const [selectedArticle, setSelectedArticle] = useState<HealthArticle | null>(null);
@@ -127,13 +180,14 @@ export const PhysiotherapyModule: React.FC = () => {
     setActiveTab('runner');
   };
 
-  // Mark Exercise as Completed Today
+  // Mark Exercise as Completed Today (stored under this user's key only)
   const handleMarkCompleted = (id: string) => {
     const today = new Date().toISOString().split('T')[0];
     if (!completedTodayIds.includes(id)) {
       const updated = [...completedTodayIds, id];
       setCompletedTodayIds(updated);
-      localStorage.setItem(`physio_completed_${today}`, JSON.stringify(updated));
+      localStorage.setItem(userKey(`physio_completed_${today}`, storageUid), JSON.stringify(updated));
+      setStreakCount(computePhysioStreak(storageUid));
     }
   };
 

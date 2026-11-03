@@ -9,7 +9,8 @@ import {
   doc, 
   setDoc,
   updateDoc, 
-  getDocs 
+  getDocs,
+  deleteField 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth, sanitizeForFirestore } from './AuthContext';
@@ -254,7 +255,7 @@ interface HealthDataContextType {
   dataLoading: boolean;
   refreshAdminData: () => Promise<void>;
   // One-time repair: backfill patientEmail on existing records (admin only)
-  repairPatientEmails: () => Promise<{ checked: number; fixed: number; alreadyOk: number; errors: string[] }>;
+  repairPatientEmails: () => Promise<{ checked: number; fixed: number; alreadyOk: number; unfixable: number; unfixableReasons: string[]; errors: string[] }>;
   // Admin role management (admin only)
   promoteToAdmin: (userId: string) => Promise<void>;
   revokeAdmin: (adminId: string) => Promise<void>;
@@ -266,6 +267,9 @@ interface HealthDataContextType {
   
   // Family Members Management
   familyMembers: FamilyMember[];
+  // Family view selection: 'self' (default — the signed-in user's own
+  // records only), 'all' (self + every family member, pooled) or one family
+  // member's doc id (only that member's records). null behaves like 'self'.
   selectedFamilyMemberId: string | null;
   setSelectedFamilyMemberId: (id: string | null) => void;
   selectedFamilyMember: FamilyMember | null;
@@ -274,7 +278,7 @@ interface HealthDataContextType {
 
   // Medication Intake Logs & Adherence
   medicationLogs: MedicationLog[];
-  toggleMedicationDoseTaken: (medicationId: string, dateStr: string, taken: boolean, doseIndex?: number, medName?: string) => Promise<void>;
+  toggleMedicationDoseTaken: (medicationId: string, dateStr: string, taken: boolean, doseIndex?: number, medName?: string) => Promise<boolean>;
 
   // Selected Patient for Admin view
   selectedPatientId: string | null;
@@ -517,9 +521,13 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         'familyMembers',
         (items) => {
           setFamilyMembers(items);
-          if (items.length > 0 && !selectedFamilyMemberId) {
-            setSelectedFamilyMemberId(items[0].id);
-          }
+          // Default the family view to 'self' (the signed-in user's own
+          // records only) the first time members load — never auto-select
+          // the first member, or the user could never view only their own
+          // records again. Functional update: this listener closure is stale
+          // (the effect only re-runs on currentUser/isAdmin), so read the
+          // current value instead of the captured one.
+          setSelectedFamilyMemberId(prev => prev ?? 'self');
         },
         'FamilyMembers snapshot:',
         'မိသားစုဝင် မှတ်တမ်းများ ချိတ်ဆက်ရယူရာတွင် ချို့ယွင်းချက် ရှိနေပါသည်',
@@ -547,9 +555,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         snapshot.forEach(docSnap => {
           items.push({ ...(docSnap.data() as BroadcastTicker), id: docSnap.id });
         });
-        if (items.length > 0) {
-          setBroadcastTickers(items);
-        }
+        // Always set — even when empty. The old `if (items.length > 0)`
+        // guard meant deleting the LAST ticker left a ghost banner behind,
+        // because the listener never cleared the list.
+        setBroadcastTickers(items);
       }, (e) => console.warn('BroadcastTickers snapshot:', e));
 
       // One-time migration of legacy localStorage family members into Firestore
@@ -706,14 +715,18 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // makes them invisible to the patient's listeners. This walks every
   // user-data collection and sets patientEmail from the owning user's profile
   // (or the family member holder's email) wherever it differs. Docs whose
-  // owner cannot be resolved are left untouched and counted as alreadyOk.
-  const repairPatientEmails = async (): Promise<{ checked: number; fixed: number; alreadyOk: number; errors: string[] }> => {
+  // owner cannot be resolved are left untouched and counted as `unfixable`
+  // (v2.4.11 7.6 — they were wrongly counted in alreadyOk, so the UI could
+  // never tell them apart); the reasons list names each such doc.
+  const repairPatientEmails = async (): Promise<{ checked: number; fixed: number; alreadyOk: number; unfixable: number; unfixableReasons: string[]; errors: string[] }> => {
     if (!isAdmin) {
       throw new Error('စီမံခန့်ခွဲသူသာလျှင် ဤပြင်ဆင်မှုကို လုပ်ဆောင်နိုင်ပါသည်');
     }
     let checked = 0;
     let fixed = 0;
     let alreadyOk = 0;
+    let unfixable = 0;
+    const unfixableReasons: string[] = [];
     const errors: string[] = [];
 
     const usersById = new Map<string, string>();
@@ -734,7 +747,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       });
     } catch (e) {
       errors.push(`users/familyMembers စာရင်း ရယူရာတွင် ချို့ယွင်းချက်: ${e instanceof Error ? e.message : String(e)}`);
-      return { checked, fixed, alreadyOk, errors };
+      return { checked, fixed, alreadyOk, unfixable, unfixableReasons, errors };
     }
 
     for (const colName of USER_DATA_COLLECTIONS) {
@@ -747,7 +760,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             (data.userId && usersById.get(data.userId)) ||
             (data.userId && famById.get(data.userId)) ||
             null;
-          if (!correctEmail || data.patientEmail === correctEmail) {
+          // No owner found at all: nothing correct to write, so this doc
+          // can never be fixed by this repair — count it separately with
+          // a reason, never as "already OK".
+          if (!correctEmail) {
+            unfixable++;
+            if (unfixableReasons.length < 10) unfixableReasons.push(`${colName}/${docSnap.id}: ပိုင်ရှင် ရှာမတွေ့ပါ`);
+            continue;
+          }
+          if (data.patientEmail === correctEmail) {
             alreadyOk++;
             continue;
           }
@@ -764,7 +785,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     }
 
-    return { checked, fixed, alreadyOk, errors };
+    return { checked, fixed, alreadyOk, unfixable, unfixableReasons, errors };
   };
 
   const totalUsers = patientsList.length;
@@ -802,14 +823,38 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     ? (selectedPatientId || null)
     : (currentUser?.uid || null);
 
+  // The family member currently selected in the FamilyMembersBar, if any.
+  // selectedFamilyMemberId is 'self' (default: the signed-in user's own
+  // records only), 'all' (self + every family member, pooled) or one family
+  // member's doc id. There is deliberately NO fallback to the first member:
+  // once any member exists, the user must still be able to view only their
+  // own records. (Defined here, before visibleUserIds/resolveTarget use it.)
+  const selectedFamilyMember = selectedFamilyMemberId
+    ? familyMembers.find(f => f.id === selectedFamilyMemberId) || null
+    : null;
+
   // Records in the current view belong to the target user or to a family
   // member filed under that user (a family member doc belongs to a patient
   // when its userId === that patient's id). Matched on userId only — the old
   // filter also matched patientEmail === the SIGNED-IN user's email, which
   // mixed the admin's own records into a selected patient's view.
-  const visibleUserIds: string[] = currentTargetUserId
-    ? [currentTargetUserId, ...familyMembers.filter(f => (f as any).userId === currentTargetUserId).map(f => f.id)]
+  // Which ids are visible follows the family view selection (non-admin):
+  // 'self'/unset shows only the signed-in user's records, 'all' pools self
+  // + every family member, and a selected member shows only that member.
+  // Admins do not use the family view: their target is the selected patient
+  // plus that patient's family members.
+  const familyIdsOfTarget: string[] = currentTargetUserId
+    ? familyMembers.filter(f => (f as any).userId === currentTargetUserId).map(f => f.id)
     : [];
+  const visibleUserIds: string[] = !currentTargetUserId
+    ? []
+    : isAdmin
+      ? [currentTargetUserId, ...familyIdsOfTarget]
+      : selectedFamilyMemberId === 'all'
+        ? [currentTargetUserId, ...familyIdsOfTarget]
+        : selectedFamilyMember
+          ? [selectedFamilyMember.id]
+          : [currentTargetUserId];
   const inVisibleScope = (userId?: string): boolean => !!userId && visibleUserIds.includes(userId);
 
   // Filtered views
@@ -855,16 +900,28 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Resolve the patient a new record belongs to: when an admin has a patient
   // selected, records are filed under THAT patient (userId + patientEmail +
-  // patientName all from the selected patient's profile); otherwise they
-  // belong to the signed-in user. patientEmail must come from the TARGET
-  // patient — using the writer's own profile email here is what made
-  // admin-entered records invisible to the patient.
+  // patientName all from the selected patient's profile); when a family
+  // member is selected (non-admin), records are filed under THAT family
+  // member's doc id; otherwise they belong to the signed-in user.
+  // patientEmail must come from the TARGET patient — using the writer's own
+  // profile email here is what made admin-entered records invisible to the
+  // patient. Family members have no login/email of their own, so a family
+  // member's record is stamped with the OWNER's email: that is what lets the
+  // owner's merged listener (userId OR patientEmail) find the record again
+  // afterwards, since a family doc id can never match a userId query.
   const resolveTarget = (): { uid: string; email: string; name: string } => {
     if (isAdmin && selectedPatientId) {
       return {
         uid: selectedPatientId,
         email: selectedPatient?.email || '',
         name: selectedPatient?.displayName || 'အသုံးပြုသူ',
+      };
+    }
+    if (!isAdmin && selectedFamilyMember) {
+      return {
+        uid: selectedFamilyMember.id,
+        email: profile?.email || currentUser?.email || '',
+        name: selectedFamilyMember.name,
       };
     }
     return {
@@ -892,11 +949,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    setPatientsList(prev => [newPatient, ...prev]);
-    setSelectedPatientId(newId);
-
     try {
       await setDoc(doc(db, 'users', newId), sanitizeForFirestore(newPatient));
+      // Only show the new user (and open their detail view) once the save
+      // has actually succeeded. Inserting optimistically before the write
+      // left a phantom user in the list when the save failed (e.g. rules
+      // deny) and dropped the admin into the detail view of a user that
+      // does not exist in Firestore.
+      setPatientsList(prev => [newPatient, ...prev]);
+      setSelectedPatientId(newId);
       showToast('အသုံးပြုသူမှတ်တမ်း အသစ်ကို အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ', 'success');
     } catch (e) {
       console.warn('Error saving patient to firestore:', e);
@@ -1035,7 +1096,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       patientName: data.patientName || target.name,
       patientEmail: target.email,
       category,
-      condition: category,
+      // v2.4.11 (k): keep the module's measurement condition (e.g. morning /
+      // resting) — the old `condition: category` overwrote it with the BP
+      // classification, so the တိုင်းတာချိန် column was always the category.
+      condition: data.condition || category,
       createdAt: new Date().toISOString(),
     };
 
@@ -1194,7 +1258,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const updateVaccineRecord = async (id: string, updates: Partial<VaccinationRecord>) => {
     setAllVaccines(prev => prev.map(v => (v.id === id ? { ...v, ...updates } : v)));
     try {
-      await setDoc(doc(db, 'vaccines', id), sanitizeForFirestore(updates), { merge: true });
+      // v2.4.11 (F17): a field passed as `undefined` means "clear it" (e.g.
+      // toggling a vaccine back to 'scheduled' clears dateAdministered).
+      // sanitizeForFirestore strips undefined, so the old merge silently
+      // kept the stale value in Firestore. Re-add those keys as
+      // deleteField() AFTER sanitizing, so the clear actually lands.
+      const payload: Record<string, any> = sanitizeForFirestore(updates);
+      Object.keys(updates).forEach(k => {
+        if ((updates as Record<string, any>)[k] === undefined) payload[k] = deleteField();
+      });
+      await setDoc(doc(db, 'vaccines', id), payload, { merge: true });
     } catch (e) {
       console.warn('Error updating vaccine record in firestore:', e);
       showToast('ကာကွယ်ဆေး မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
@@ -1226,7 +1299,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       userId: patientId,
       patientName: targetPatient?.displayName || 'အသုံးပြုသူ',
       patientEmail: targetPatient?.email || '',
-      doctorEmail: profile?.email || currentUser?.email || 'admin@healthtrack.com',
+      // No invented fallback email: if the admin has no email on file,
+      // the field stays empty (v2.4.11 — the old fallback was a made-up
+      // address that could never receive anything).
+      doctorEmail: profile?.email || currentUser?.email || '',
       doctorName: profile?.displayName || 'ဆရာဝန် (Admin)',
       advice: adviceText,
       dietRecommendation: diet,
@@ -1345,6 +1421,32 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       showToast('မေးခွန်း အဖြေပေးပို့ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
+
+    // v2.4.10 (audit 10): notify the patient that their question was
+    // answered. The answer was visible in the Q&A module but no notification
+    // ever arrived, so the user never knew. This must be a Firestore doc —
+    // localStorage notifications live only on the admin's own device and
+    // can never reach the patient. A failure here must never break the
+    // answer itself, so it is best-effort only.
+    try {
+      const q = allQuestions.find(x => x.id === questionId);
+      if (q) {
+        await addDoc(collection(db, 'notifications'), sanitizeForFirestore({
+          userId: q.userId,
+          recipientEmail: q.patientEmail,
+          type: 'qa_answered',
+          title: '✅ ဆရာဝန်က သင့်မေးခွန်းကို ဖြေကြားပြီးပါပြီ',
+          message: q.title || q.questionDetails || '',
+          timestamp: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          read: false,
+          priority: 'normal',
+          data: { questionId, userId: q.userId },
+        }));
+      }
+    } catch (e) {
+      console.warn('Error sending answer notification:', e);
+    }
   };
 
   const closeDoctorQuestion = async (questionId: string) => {
@@ -1414,14 +1516,19 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const selectedFamilyMember = familyMembers.find(f => f.id === selectedFamilyMemberId) || (familyMembers.length > 0 ? familyMembers[0] : null);
-
   const addFamilyMember = async (member: Omit<FamilyMember, 'id'>) => {
     if (!currentUser) return;
+    // A new family member belongs to the OWNER — the admin's selected patient
+    // when one is selected, otherwise the signed-in user. Never to the
+    // currently selected family member: members do not own members.
+    const ownerUid = (isAdmin && selectedPatientId) ? selectedPatientId : currentUser.uid;
+    const ownerEmail = (isAdmin && selectedPatientId)
+      ? (selectedPatient?.email || '')
+      : (profile?.email || currentUser.email || '');
     const newMember = {
       ...member,
-      userId: currentUser.uid,
-      patientEmail: profile?.email || currentUser.email || '',
+      userId: ownerUid,
+      patientEmail: ownerEmail,
       avatarColor: member.gender === 'female' ? 'bg-rose-600' : 'bg-emerald-600',
     };
 
@@ -1436,7 +1543,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const prevSelected = selectedFamilyMemberId;
     setFamilyMembers(prev.filter(f => f.id !== id));
     if (selectedFamilyMemberId === id) {
-      setSelectedFamilyMemberId(familyMembers[0]?.id || null);
+      // Back to viewing the user's own records — not another member.
+      setSelectedFamilyMemberId('self');
     }
     try {
       await deleteDoc(doc(db, 'familyMembers', id));
@@ -1449,26 +1557,37 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  // Returns true when the dose write actually reached Firestore, false
+  // when it failed. Callers that confirm the dose to the user (e.g. the
+  // notification "သောက်ပြီးပါပြီ" button) must check the return value —
+  // the old version swallowed Firestore errors and always looked
+  // successful, so a failed write was falsely shown as taken. The
+  // optimistic UI update is rolled back on failure.
   const toggleMedicationDoseTaken = async (
     medicationId: string, 
     dateStr: string, 
     taken: boolean, 
     doseIndex: number = 0,
     medName?: string
-  ) => {
-    if (!currentUser) return;
+  ): Promise<boolean> => {
+    if (!currentUser) return false;
     const target = resolveTarget();
     const existingLog = allMedLogs.find(l => l.medicationId === medicationId && l.date === dateStr && (l.doseIndex ?? 0) === doseIndex && l.userId === target.uid);
 
     if (existingLog) {
+      const prevTaken = existingLog.taken;
+      const prevTakenAt = existingLog.takenAt;
       setAllMedLogs(prev => prev.map(l => l.id === existingLog.id ? { ...l, taken, takenAt: taken ? new Date().toISOString() : undefined } : l));
       try {
         await updateDoc(doc(db, 'medicationLogs', existingLog.id), {
           taken,
           takenAt: taken ? new Date().toISOString() : null,
         });
+        return true;
       } catch (err) {
         console.warn('Error updating med log:', err);
+        setAllMedLogs(prev => prev.map(l => l.id === existingLog.id ? { ...l, taken: prevTaken, takenAt: prevTakenAt } : l));
+        return false;
       }
     } else {
       const newLog: Omit<MedicationLog, 'id'> & { patientEmail: string } = {
@@ -1485,8 +1604,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       try {
         const docRef = await addDoc(collection(db, 'medicationLogs'), sanitizeForFirestore(newLog));
         setAllMedLogs(prev => [{ ...newLog, id: docRef.id }, ...prev]);
+        return true;
       } catch (err) {
         console.warn('Error adding med log:', err);
+        return false;
       }
     }
   };

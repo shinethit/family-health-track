@@ -23,6 +23,15 @@ import { useAuth } from '../../context/AuthContext';
 import { CustomReminder } from '../../types/health';
 import { Modal } from '../common/Modal';
 
+// Myanmar weekday names (JS getDay(): 0 = Sunday). Day picker (v2.4.11 10-F).
+const WEEKDAYS_MM = ['တနင်္ဂနွေ', 'တနင်္လာ', 'အင်္ဂါ', 'ဗုဒ္ဓဟူး', 'ကြာသပတေး', 'သောကြာ', 'စနေ'];
+const WEEKDAYS_SHORT_MM = ['နွေ', 'လာ', 'ဂါ', 'ဟူး', 'ကြာ', 'သေ', 'နေ'];
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+const formatDaysMm = (days?: number[]): string => {
+  if (!days || days.length === 0 || days.length === 7) return 'နေ့တိုင်း';
+  return [...days].sort((a, b) => a - b).map(d => WEEKDAYS_MM[d]).join('၊ ');
+};
+
 interface NotificationCenterModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -57,6 +66,14 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const [newTime, setNewTime] = useState('08:00');
   const [newCategory, setNewCategory] = useState<CustomReminder['category']>('medication');
   const [newNotes, setNewNotes] = useState('');
+  // Days of the week this reminder fires on (v2.4.11 10-F). Default = every day.
+  const [newDays, setNewDays] = useState<number[]>(ALL_DAYS);
+
+  const toggleNewDay = (day: number) => {
+    setNewDays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort((a, b) => a - b)
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -68,13 +85,14 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
       title: newTitle.trim(),
       category: newCategory,
       time: newTime,
-      daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+      daysOfWeek: newDays.length > 0 ? newDays : ALL_DAYS,
       isActive: true,
       notes: newNotes.trim() || undefined,
     });
 
     setNewTitle('');
     setNewNotes('');
+    setNewDays(ALL_DAYS);
     setShowAddReminderModal(false);
   };
 
@@ -274,6 +292,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                       {rem.category === 'medication' ? <Pill className="w-5 h-5" /> :
                        rem.category === 'bp' ? <Activity className="w-5 h-5" /> :
                        rem.category === 'water' ? <Droplets className="w-5 h-5" /> :
+                       rem.category === 'doctor' ? <Calendar className="w-5 h-5" /> :
                        <Clock className="w-5 h-5" />}
                     </div>
                     <div>
@@ -281,6 +300,9 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                         <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">{rem.title}</h4>
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
                           {rem.time}
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          📅 {formatDaysMm(rem.daysOfWeek)}
                         </span>
                       </div>
                       {rem.notes && (
@@ -320,7 +342,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   ဆေးသောက်ချိန် သို့မဟုတ် ကျန်းမာရေးတိုင်းတာချိန် ရောက်ရှိပါက ဤနေရာတွင် အသိပေးပါမည်
                 </p>
                 <button
-                  onClick={() => sendManualNotification('💊 အစမ်းသတိပေးချက်', 'အစာစားပြီး သွေးတိုးဆေး ၁ လုံး သောက်ရန် အချိန်ရောက်ပါပြီ', 'medication', 'high')}
+                  onClick={() => sendManualNotification('🔔 စမ်းသပ် သတိပေးချက်', 'သတိပေးချက် စနစ် အလုပ်လုပ်ပါသည်။', 'custom_reminder', 'normal')}
                   className="mt-4 px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold cursor-pointer hover:bg-emerald-100"
                 >
                   🔔 နမူနာ Noti တစ်ခု စမ်းသပ်ကြည့်မည်
@@ -486,6 +508,39 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   />
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  သတိပေးမည့် ရက်များ (မရွေးရင် နေ့တိုင်း)
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_DAYS.map(d => {
+                    const on = newDays.includes(d);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => toggleNewDay(d)}
+                        title={WEEKDAYS_MM[d]}
+                        className={`w-9 h-9 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                          on
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                        }`}
+                      >
+                        {WEEKDAYS_SHORT_MM[d]}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  ရွေးထားသော ရက်: {formatDaysMm(newDays.length > 0 ? newDays : ALL_DAYS)}
+                </p>
+              </div>
+
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-xl px-3 py-2">
+                အက်ပ် ဖွင့်ထားချိန်မှသာ သတိပေးမည် — အက်ပ် ပိတ်ထားလျှင် သတိပေးချက် တက်မလာပါ။
+              </p>
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button

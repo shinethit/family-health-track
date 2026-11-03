@@ -46,6 +46,7 @@ export const DoctorQnAModule: React.FC = () => {
     addDoctorQuestion, 
     answerDoctorQuestion, 
     deleteDoctorQuestion,
+    closeDoctorQuestion,
     bpRecords,
     glucoseRecords,
     medications
@@ -98,6 +99,7 @@ export const DoctorQnAModule: React.FC = () => {
       setTitle('');
       setQuestionDetails('');
       setDuration('');
+      setUrgency('routine');
       setSuccessMessage('မေးခွန်းကို ဆရာဝန်ထံ အောင်မြင်စွာ ပေးပို့ပြီးပါပြီ။ ဆရာဝန်မှ မကြာမီ ပြန်လည်ဖြေကြားပေးပါမည်။');
       setActiveTab('my_questions');
       setTimeout(() => setSuccessMessage(null), 5000);
@@ -116,7 +118,11 @@ export const DoctorQnAModule: React.FC = () => {
       .filter(Boolean);
 
     await answerDoctorQuestion(qId, {
-      answeredBy: profile?.displayName || 'Admin (ရှိုင်းသစ်)',
+      // Attribute the answer to the admin who actually wrote it — never
+      // the patient's name, and never an invented doctor name. When the
+      // signed-in admin has no display name, fall back to the honest
+      // role label 'Admin', not a personal name.
+      answeredBy: profile?.displayName?.trim() || 'Admin',
       answerText: answerText.trim(),
       recommendations: recs.length > 0 ? recs : ['ဆရာဝန် ညွှန်ကြားချက်အတိုင်း ဆေးကို ဆက်လက်သောက်သုံးပါ'],
       suggestedAction: suggestedAction.trim() || undefined,
@@ -257,6 +263,12 @@ export const DoctorQnAModule: React.FC = () => {
                             </span>
                           )}
 
+                          {q.urgency === 'moderate' && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              အလယ်အလတ်
+                            </span>
+                          )}
+
                           <span className="text-[11px] text-slate-500 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {new Date(q.createdAt).toLocaleDateString('my-MM', {
@@ -277,7 +289,11 @@ export const DoctorQnAModule: React.FC = () => {
                       </div>
 
                       <button
-                        onClick={() => deleteDoctorQuestion(q.id)}
+                        onClick={() => {
+                          if (window.confirm('ဤမေးခွန်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
+                            deleteDoctorQuestion(q.id);
+                          }
+                        }}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                         title="ဖျက်မည်"
                       >
@@ -361,6 +377,21 @@ export const DoctorQnAModule: React.FC = () => {
                             <strong>နောက်ထပ်လုပ်ဆောင်ရန်:</strong> {q.doctorAnswer.suggestedAction}
                           </div>
                         )}
+
+                        {/* Close / mark resolved — visible to the asker and the admin */}
+                        <div className="flex justify-end pt-1">
+                          <button
+                            onClick={() => {
+                              if (window.confirm('ဤမေးခွန်းကို ပိတ်သိမ်းမှာသေချာပါသလား? အဖြေရပြီးဖြစ်ကြောင်း မှတ်သားပါမည်။')) {
+                                closeDoctorQuestion(q.id);
+                              }
+                            }}
+                            className="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>မေးခွန်း ပိတ်သိမ်းမည်</span>
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -493,6 +524,38 @@ export const DoctorQnAModule: React.FC = () => {
                   onChange={(e) => setDuration(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                 />
+              </div>
+            </div>
+
+            {/* Urgency — without this control every question was filed as
+                'routine' and the 'အရေးကြီး' badge could never appear. */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                အရေးကြီးမှု
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { value: 'routine', label: 'ပုံမှန်' },
+                  { value: 'moderate', label: 'အလယ်အလတ်' },
+                  { value: 'urgent', label: 'အရေးကြီး' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setUrgency(opt.value)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+                      urgency === opt.value
+                        ? opt.value === 'urgent'
+                          ? 'bg-rose-600 text-white border-rose-600'
+                          : opt.value === 'moderate'
+                            ? 'bg-amber-500 text-white border-amber-500'
+                            : 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 

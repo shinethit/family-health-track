@@ -2,10 +2,19 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Droplets, AlertCircle, Info, Calendar, Utensils, BarChart2, Table, TrendingUp } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { BloodSugarChart } from '../charts/HealthCharts';
 import { calculateGlucoseStatus, parseDateToMs } from '../../lib/medicalCalculations';
 import { BloodSugarType } from '../../types/health';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+
+// Local (Asia/Rangoon) date-time for a datetime-local input —
+// new Date().toISOString() is UTC, so a record entered early in the morning
+// got yesterday's date (v2.4.11 F4).
+const localDateTimeStr = (d: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 export const BloodSugarModule: React.FC = () => {
   const { glucoseRecords, addGlucoseRecord, deleteGlucoseRecord, selectedPatient, selectedFamilyMember } = useHealthData();
@@ -13,13 +22,16 @@ export const BloodSugarModule: React.FC = () => {
   // back to false if it is not present yet so this module still renders.
   const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
   const { profile } = useAuth();
+  const { showToast } = useToast();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
-  const [value, setValue] = useState<number>(110);
+  // No prefilled value: 110 invited fake-normal records (v2.4.11 F5).
+  // The input starts empty; the user must enter their own real reading.
+  const [value, setValue] = useState<number | ''>('');
   const [type, setType] = useState<BloodSugarType>('fasting');
   const [mealInfo, setMealInfo] = useState<string>('မနက်အစာမစားမီ ၈ နာရီအစာငတ်');
   const [dietRecord, setDietRecord] = useState<string>('');
-  const [date, setDate] = useState<string>(() => new Date().toISOString().substring(0, 16));
+  const [date, setDate] = useState<string>(() => localDateTimeStr(new Date()));
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -101,22 +113,20 @@ export const BloodSugarModule: React.FC = () => {
     ? Math.round(fastingRecords.reduce((acc, c) => acc + (c.value || c.glucoseValue || 0), 0) / fastingRecords.length)
     : 0;
 
-  // Real-time evaluation in modal
-  const currentPreview = calculateGlucoseStatus(value, type);
+  // Real-time evaluation in modal — only once a real value exists.
+  const currentPreview = value !== '' ? calculateGlucoseStatus(value, type) : null;
 
   const handleTypeChange = (newType: BloodSugarType) => {
     setType(newType);
+    // Switching the test type must NOT wipe the value the user already
+    // typed (v2.4.11 F8). Only the per-type description changes.
     if (newType === 'fasting') {
-      setValue(105);
       setMealInfo('မနက်အစာမစားမီ ၈ နာရီအစာငတ်');
     } else if (newType === 'post_prandial') {
-      setValue(145);
       setMealInfo('နေ့လယ်စာစားပြီး ၂ နာရီ');
     } else if (newType === 'hba1c') {
-      setValue(6.5);
       setMealInfo('ဓာတ်ခွဲခန်း ၃ လပတ်စစ်ဆေးချက်');
     } else {
-      setValue(130);
       setMealInfo('နေ့လယ်ပိုင်း အချိန်မရွေးစစ်ဆေးခြင်း');
     }
   };
@@ -124,6 +134,10 @@ export const BloodSugarModule: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+    if (value === '' || Number(value) <= 0) {
+      showToast('သွေးတွင်းသကြားဓာတ် တန်ဖိုး ထည့်ပေးပါ', 'error');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await addGlucoseRecord({
@@ -139,8 +153,16 @@ export const BloodSugarModule: React.FC = () => {
         notes: notes.trim() || undefined,
       });
       setIsOpenAdd(false);
+      setValue('');
       setDietRecord('');
       setNotes('');
+      setDate(localDateTimeStr(new Date()));
+      showToast('သကြားဓာတ် မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+    } catch (err) {
+      // Save failed: keep the form open with all values intact so the user
+      // can retry (v2.4.11 F3 — saves used to fail silently).
+      console.warn('Error saving glucose record:', err);
+      showToast('သကြားဓာတ် မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -394,6 +416,13 @@ export const BloodSugarModule: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {displayGlucose.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-8 px-4 text-center text-slate-400">
+                      မှတ်တမ်း မရှိသေးပါ — အထက်ပါ ခလုတ်ဖြင့် ပထမဆုံး သကြားဓာတ် ထည့်သွင်းနိုင်ပါသည်
+                    </td>
+                  </tr>
+                )}
                 {displayGlucose.map((record) => {
                   const rVal = record.value ?? record.glucoseValue ?? null;
                   const rType = record.type || record.timing || 'fasting';
@@ -538,8 +567,9 @@ export const BloodSugarModule: React.FC = () => {
                     min={type === 'hba1c' ? '3' : '20'}
                     max={type === 'hba1c' ? '20' : '600'}
                     value={value}
-                    onChange={(e) => setValue(Number(e.target.value))}
+                    onChange={(e) => setValue(e.target.value === '' ? '' : Number(e.target.value))}
                     required
+                    placeholder={type === 'hba1c' ? 'ဥပမာ- 5.7' : 'ဥပမာ- 110'}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-xl font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                   <span className="absolute right-3.5 top-3 text-xs text-slate-400 font-medium">
@@ -618,20 +648,28 @@ export const BloodSugarModule: React.FC = () => {
                 </div>
               </div>
 
-              {/* Status Preview */}
-              <div className={`p-3 rounded-xl border ${currentPreview.bgColor} ${currentPreview.borderColor}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    အကဲဖြတ်ချက်:
-                  </span>
-                  <span className={`text-xs font-bold ${currentPreview.color}`}>
-                    {currentPreview.labelMm}
-                  </span>
+              {/* Status Preview (only once a real value exists) */}
+              {currentPreview ? (
+                <div className={`p-3 rounded-xl border ${currentPreview.bgColor} ${currentPreview.borderColor}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      အကဲဖြတ်ချက်:
+                    </span>
+                    <span className={`text-xs font-bold ${currentPreview.color}`}>
+                      {currentPreview.labelMm}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
+                    {currentPreview.advice}
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
-                  {currentPreview.advice}
-                </p>
-              </div>
+              ) : (
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    သကြားဓာတ် တန်ဖိုး ထည့်ပေးပါ — ထည့်ပြီးတာနဲ့ အကဲဖြတ်ချက် ပြပေးပါမယ်။
+                  </p>
+                </div>
+              )}
 
               {/* Notes */}
               <div>
