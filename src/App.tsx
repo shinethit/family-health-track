@@ -83,6 +83,7 @@ const SpecialNeedsCareModule = lazy(() => import('./components/modules/SpecialNe
 import { BroadcastMarqueeBanner } from './components/layout/BroadcastMarqueeBanner';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 import { FamilyMembersBar } from './components/family/FamilyMembersBar';
+import { ViewingAsIndicator } from './components/family/ViewingAsIndicator';
 import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 import { ProfileSetupModal } from './components/modules/ProfileSetupModal';
 
@@ -91,7 +92,7 @@ const MainContent: React.FC = () => {
   const { selectedPatient, setSelectedPatientId, doctorQuestions, allDoctorQuestions, broadcastTickers, bpRecords, glucoseRecords, bmiRecords, labRecords, medications, doctorAdvices, dataLoading } = useHealthData();
   const { unreadCount, notifications } = useNotifications();
   const [activeTab, setActiveTab] = useState<
-    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'home_testing_guide' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'special_needs' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
+    'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'home_testing_guide' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'special_needs' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin' | 'family'
   >(isAdmin ? 'admin' : 'trends');
   const [selectedCategoryGroup, setSelectedCategoryGroup] = useState<string>('records');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -244,6 +245,18 @@ const MainContent: React.FC = () => {
         { id: 'reminders', label: 'သတိပေးချက်များ', icon: BellRing, activeColor: 'bg-amber-500 text-white', badge: unreadCount },
       ]
     },
+    // v2.4.18: family members live in their OWN tab now (non-admins
+    // only — admins have the full user directory instead). The tab reuses
+    // the whole FamilyMembersBar as its page, so no CRUD logic moved.
+    ...(!isAdmin ? [{
+      id: 'family',
+      nameMm: '👨‍👩‍👧 မိသားစုဝင်များ',
+      badgeColor: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+      activeColor: 'bg-emerald-600 text-white shadow-xs',
+      tabs: [
+        { id: 'family', label: 'မိသားစုဝင်များ', icon: Users, activeColor: 'bg-emerald-600 text-white' }
+      ]
+    }] : []),
     {
       id: 'family_care',
       nameMm: '🤝 အထူး ဂရုစိုက်ပေးရန် လိုသူများ',
@@ -681,9 +694,15 @@ const MainContent: React.FC = () => {
             </div>
           </div>
         )}
-        {/* Family member switcher — only on the record tabs it applies to.
-            (Admins see the full user directory instead; the bar hides itself.) */}
-        {['bp', 'sugar', 'bmi', 'labs', 'medications', 'trends', 'vaccine'].includes(activeTab) && <FamilyMembersBar />}
+        {/* v2.4.18: the big family bar no longer sits on top of record
+            tabs. Record tabs keep only the compact "ကြည့်နေသည်: …"
+            indicator (it hides itself for admins and for users with no
+            family members yet). The full FamilyMembersBar is now its own
+            'family' tab, non-admins only. */}
+        {['bp', 'sugar', 'bmi', 'labs', 'medications', 'trends', 'vaccine'].includes(activeTab) && (
+          <ViewingAsIndicator onOpenFamily={() => setActiveTab('family')} />
+        )}
+        {activeTab === 'family' && !isAdmin && <FamilyMembersBar />}
         <Suspense fallback={<div className="flex items-center justify-center py-16 text-slate-500 font-medium text-sm">ဖွင့်နေသည်...</div>}>
           {activeTab === 'admin' && isAdmin && <AdminPatientPortal />}
           {activeTab === 'doctor_qa' && <DoctorQnAModule />}

@@ -76,6 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isPasswordUser = currentUser?.providerData?.some((p) => p.providerId === 'password') ?? false;
   const {
     selectedPatient, selectedFamilyMember, selectedFamilyMemberId,
+    familyMembers,
     ownBPRecords, ownGlucoseRecords, ownBMIRecords,
     allBPRecords, allGlucoseRecords, allBMIRecords,
     dataLoading,
@@ -371,6 +372,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <div className="border-t border-slate-100 my-2 pt-2">
                 <p className="px-3 pb-1 text-[10px] font-extrabold tracking-wide text-slate-400">ကျန်းမာရေး အပိုင်းများ</p>
+                {/* v2.4.18: family members are their OWN section now
+                    (non-admins only — admins have the full user directory).
+                    Badge shows the member count; MenuItem hides a 0 badge. */}
+                {!isAdmin && (
+                  <MenuItem icon={Users} label="မိသားစုဝင်များ" badge={familyMembers.length} onClick={() => { setActiveTab('family'); setCategoryGroup('family'); onClose(); }} />
+                )}
                 <MenuItem icon={Activity} label="ကျန်းမာရေး မှတ်တမ်းများ" onClick={() => { setActiveTab('trends'); setCategoryGroup('records'); onClose(); }} />
                 <MenuItem icon={BookOpen} label="သိမှတ်ဖွယ်ရာများ" onClick={() => { setActiveTab('home_testing_guide'); setCategoryGroup('knowledge'); onClose(); }} />
                 <MenuItem icon={Users} label="အထူး ဂရုစိုက်ပေးရန် လိုသူများ" onClick={() => { setActiveTab('special_needs'); setCategoryGroup('family_care'); onClose(); }} />

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Printer, 
+  FileDown,
   FileText, 
   Heart, 
   Activity, 
@@ -27,7 +28,13 @@ import { useHealthData } from '../../context/HealthDataContext';
 import { BloodPressureChart, BloodSugarChart, BMIWeightChart } from '../charts/HealthCharts';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 import { Modal } from '../common/Modal';
+import { useToast } from '../../context/ToastContext';
 import { formatDateLabel } from '../../lib/medicalCalculations';
+import {
+  buildPdfFilename,
+  exportElementToPdf,
+  isStandalonePwa,
+} from '../../lib/pdfExport';
 
 interface HealthPassportModalProps {
   isOpen: boolean;
@@ -53,9 +60,25 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
   const [displayMode, setDisplayMode] = useState<'both' | 'graph' | 'table'>('both');
   // G-H2: printing must show EVERYTHING — all rows and both sections —
   // regardless of the on-screen toggles. printMode is set before
-  // window.print() runs (button path) and by the browser's beforeprint
-  // event (Ctrl+P / menu path), and cleared on afterprint.
+  // window.print() runs (desktop button path) or before a PDF capture,
+  // and by the browser's beforeprint event (Ctrl+P / menu path), and
+  // cleared on afterprint. printMode is "render full content" ONLY — it
+  // no longer auto-fires window.print(): the old effect did that, which
+  // meant every printMode trigger (including beforeprint) re-entered
+  // window.print(), and on a phone PWA that call silently does nothing.
   const [printMode, setPrintMode] = useState(false);
+  // v2.4.18: the PDF download is the PRIMARY output on every device —
+  // window.print() does nothing in an installed PWA. While a PDF is
+  // being built the button is disabled so a double-tap cannot start
+  // a second capture.
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  // Desktop Print is hidden in standalone PWA mode, where window.print()
+  // cannot work at all — showing it there would be a dead button. The
+  // PDF button is primary on all devices instead.
+  const [isStandalone] = useState(() => isStandalonePwa());
+  const { showToast } = useToast();
+  // Ctrl+P / browser-menu printing still works on desktop: beforeprint
+  // renders the full view, afterprint clears it again.
   useEffect(() => {
     const onBeforePrint = () => setPrintMode(true);
     const onAfterPrint = () => setPrintMode(false);
@@ -66,11 +89,6 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
       window.removeEventListener('afterprint', onAfterPrint);
     };
   }, []);
-  useEffect(() => {
-    if (!printMode) return;
-    window.print();
-    setPrintMode(false);
-  }, [printMode]);
 
   if (!isOpen) return null;
 
@@ -307,10 +325,57 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
   const displayedLabs = getFilteredRecords(patientLabs, parseLabDate);
   const displayedVaccines = getFilteredRecords(patientVaccines);
 
+  // v2.4.18: desktop-only Print. window.print() is called only after the
+  // full (printMode) view has rendered, and printMode is cleared once the
+  // print dialog closes (window.print() blocks until then on desktop).
+  // This button is never rendered in standalone PWA mode (see header),
+  // where window.print() silently does nothing.
   const handlePrint = () => {
-    // G-H2: set printMode first — the effect renders the full,
-    // toggle-independent view and only then calls window.print().
     setPrintMode(true);
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        window.print();
+        setPrintMode(false);
+      }, 150);
+    });
+  };
+
+  // v2.4.18: the PRIMARY output — a real PDF file. Sets printMode so the
+  // capture holds ALL sections and rows (G-H2), waits for the full
+  // content to render, captures #printable-health-passport at its full
+  // scroll height (not the visible slice of the scroll container), then
+  // shares (mobile share sheet) or downloads it. Honest toasts only:
+  // success names the file, any failure says so, a dismissed share
+  // sheet is neither.
+  const handleDownloadPdf = async () => {
+    if (isGeneratingPdf) return;
+    const element = document.getElementById('printable-health-passport');
+    if (!element) {
+      showToast('PDF ထုတ်ရန် အကြောင်းအရာ မတွေ့ပါ — ပြန်ကြိုးစားပါ။', 'error');
+      return;
+    }
+    const filename = buildPdfFilename('health-passport', patientName);
+    setIsGeneratingPdf(true);
+    // Expand every scroll container for the capture: the print stylesheet
+    // only does this under @media print, which a screen capture ignores.
+    element.classList.add('pdf-capture');
+    setPrintMode(true);
+    try {
+      const result = await exportElementToPdf(element, { filename });
+      if (result.outcome === 'cancelled') return;
+      showToast(
+        result.outcome === 'shared'
+          ? `PDF ဖိုင် (${result.filename}) ထုတ်ပြီးပါပြီ — မျှဝေရန် ရွေးချယ်နိုင်ပါသည်။`
+          : `PDF ဖိုင် (${result.filename}) ဒေါင်းလုဒ်ဆွဲပြီးပါပြီ။`,
+        'success',
+      );
+    } catch {
+      showToast('PDF ထုတ်ယူခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+    } finally {
+      element.classList.remove('pdf-capture');
+      setPrintMode(false);
+      setIsGeneratingPdf(false);
+    }
   };
 
   const printDate = formatDateLabel(Date.now()).date || new Date().toISOString().split('T')[0];
@@ -364,6 +429,22 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             page-break-after: auto;
           }
         }
+        /* v2.4.18: screen-capture rules for the PDF export. The print
+           stylesheet above only applies under @media print, but the PDF
+           capture renders on screen — so the same unsetting (full height,
+           no inner scrollers, no on-screen toggles, static table headers)
+           is applied while the .pdf-capture class is on the element. */
+        .pdf-capture, .pdf-capture .max-h-60, .pdf-capture .overflow-y-auto {
+          max-height: none !important;
+          overflow: visible !important;
+          height: auto !important;
+        }
+        .pdf-capture .no-print {
+          display: none !important;
+        }
+        .pdf-capture thead {
+          position: static !important;
+        }
       `}</style>
 
       <div className="flex flex-col h-full overflow-hidden">
@@ -380,14 +461,30 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
           </div>
 
           <div className="flex items-center gap-2">
+            {/* v2.4.18: PDF is the PRIMARY button on every device — it
+                produces a real file, which window.print() cannot do in a
+                phone PWA. Desktop Print stays only where it can work. */}
             <button
               type="button"
-              onClick={handlePrint}
-              className="px-4 py-2 bg-white text-emerald-800 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+              onClick={handleDownloadPdf}
+              disabled={isGeneratingPdf}
+              className="px-4 py-2 bg-white text-emerald-800 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-60"
             >
-              <Printer className="w-4 h-4" />
-              <span>Print / Save PDF</span>
+              <FileDown className="w-4 h-4" />
+              <span>{isGeneratingPdf ? 'PDF ထုတ်နေသည်…' : 'PDF ထုတ်မည်'}</span>
             </button>
+
+            {!isStandalone && (
+              <button
+                type="button"
+                onClick={handlePrint}
+                title="ကွန်ပျူတာပေါ်တွင် Print ထုတ်ရန်"
+                className="px-4 py-2 bg-white/10 text-white hover:bg-white/20 rounded-xl text-xs font-bold transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print (ကွန်ပျူတာ)</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -1272,13 +1369,16 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             >
               ပိတ်မည် ✕
             </button>
-            <button
-              onClick={handlePrint}
-              className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Print / PDF ထုတ်မည်</span>
-            </button>
+            {!isStandalone && (
+              <button
+                onClick={handlePrint}
+                title="ကွန်ပျူတာပေါ်တွင် Print ထုတ်ရန်"
+                className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print (ကွန်ပျူတာ)</span>
+              </button>
+            )}
           </div>
         </div>
 

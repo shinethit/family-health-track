@@ -5,6 +5,7 @@ import {
   Heart, 
   AlertTriangle, 
   Printer, 
+  FileDown,
   User, 
   Building2, 
   Stethoscope, 
@@ -15,8 +16,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
+import { useToast } from '../../context/ToastContext';
 import { EmergencyProfile, FamilyMember, UserProfile } from '../../types/health';
 import { formatDateLabel } from '../../lib/medicalCalculations';
+import {
+  buildPdfFilename,
+  exportElementToPdf,
+  isStandalonePwa,
+} from '../../lib/pdfExport';
 
 // The fields an emergency card is built from — a signed-in user / patient
 // profile, or a family member (name instead of displayName, no DOB /
@@ -247,8 +254,50 @@ export const EmergencyIDModule: React.FC = () => {
     }
   };
 
+  // v2.4.18: PDF is the PRIMARY output — window.print() silently does
+  // nothing in an installed PWA, which is how most users run this app.
+  // Desktop Print is hidden in standalone mode, where it cannot work.
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isStandalone] = useState(() => isStandalonePwa());
+  const { showToast } = useToast();
+
+  // Desktop-only Print. Never called from the phone PWA (button hidden).
   const handlePrintCard = () => {
     window.print();
+  };
+
+  // v2.4.18: capture #printable-emergency-card (the whole card — name,
+  // blood type, allergies, contacts, doctor, hospital) as a single-page
+  // A4 PDF, then share (mobile share sheet) or download it. Honest
+  // toasts only; a dismissed share sheet is not an error.
+  const handleDownloadPdf = async () => {
+    if (isGeneratingPdf) return;
+    const element = document.getElementById('printable-emergency-card');
+    if (!element) {
+      showToast('PDF ထုတ်ရန် ကတ်ပြား မတွေ့ပါ — ပြန်ကြိုးစားပါ။', 'error');
+      return;
+    }
+    const filename = buildPdfFilename(
+      'emergency-id',
+      emergencyData.patientName || viewedPerson?.displayName || '',
+    );
+    setIsGeneratingPdf(true);
+    element.classList.add('pdf-capture');
+    try {
+      const result = await exportElementToPdf(element, { filename });
+      if (result.outcome === 'cancelled') return;
+      showToast(
+        result.outcome === 'shared'
+          ? `PDF ဖိုင် (${result.filename}) ထုတ်ပြီးပါပြီ — မျှဝေရန် ရွေးချယ်နိုင်ပါသည်။`
+          : `PDF ဖိုင် (${result.filename}) ဒေါင်းလုဒ်ဆွဲပြီးပါပြီ။`,
+        'success',
+      );
+    } catch {
+      showToast('PDF ထုတ်ယူခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+    } finally {
+      element.classList.remove('pdf-capture');
+      setIsGeneratingPdf(false);
+    }
   };
 
   return (
@@ -300,13 +349,28 @@ export const EmergencyIDModule: React.FC = () => {
             <span>{isEditing ? 'မလုပ်တော့ပါ' : 'ပြင်ဆင်မည်'}</span>
           </button>
 
+          {/* v2.4.18: PDF is the PRIMARY button on every device — it
+              produces a real file, which window.print() cannot do in a
+              phone PWA. Desktop Print stays only where it can work. */}
           <button
-            onClick={handlePrintCard}
-            className="px-4 py-2.5 bg-white text-rose-900 hover:bg-rose-50 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+            onClick={handleDownloadPdf}
+            disabled={isGeneratingPdf}
+            className="px-4 py-2.5 bg-white text-rose-900 hover:bg-rose-50 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-60"
           >
-            <Printer className="w-4 h-4 text-rose-700" />
-            <span>ကတ်ပြား Print ထုတ်မည်</span>
+            <FileDown className="w-4 h-4 text-rose-700" />
+            <span>{isGeneratingPdf ? 'PDF ထုတ်နေသည်…' : 'PDF ထုတ်မည်'}</span>
           </button>
+
+          {!isStandalone && (
+            <button
+              onClick={handlePrintCard}
+              title="ကွန်ပျူတာပေါ်တွင် Print ထုတ်ရန်"
+              className="px-4 py-2.5 bg-white/10 text-white hover:bg-white/20 rounded-xl text-xs font-bold transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Print (ကွန်ပျူတာ)</span>
+            </button>
+          )}
         </div>
       </div>
 
