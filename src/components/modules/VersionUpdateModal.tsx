@@ -2,13 +2,13 @@ import React from 'react';
 import { Sparkles } from 'lucide-react';
 import { VERSION_HISTORY_DATA } from './VersionHistoryModal';
 import { Modal } from '../common/Modal';
-import { clearVersionUpdatePromptShown } from '../../lib/versionCheck';
 
 interface VersionUpdateModalProps {
   // The version of the deploy being offered — null when the prompt is for
-  // a pending reload whose version string is NOT known (v2.4.16, H-H1):
-  // the served bundle's version cannot be derived from its hash, so the
-  // modal must not invent one or show the OLD version's highlights as
+  // a pending reload whose version string could NOT be read from the
+  // served bundle (v2.4.16, H-H1; v2.4.20 extracts it from the served
+  // bundle, so null now only means the extraction failed). The modal
+  // must not invent a version or show the OLD version's highlights as
   // "what's new".
   latestAppVersion: string | null;
   onClose: () => void;
@@ -24,8 +24,13 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
   onOpenFullHistory,
   pendingReload = false,
 }) => {
+  // v2.4.20: when the offered version is NOT in this (old) bundle's
+  // history — i.e. it is a genuinely newer deploy — there are NO
+  // highlights to show, only the honest note below. The old
+  // `|| VERSION_HISTORY_DATA[0]` fallback showed the OLD version's
+  // highlights as "what's new", the exact H-H1 lie v2.4.16 fixed.
   const currentVersionInfo = latestAppVersion
-    ? VERSION_HISTORY_DATA.find(v => v.version === latestAppVersion) || VERSION_HISTORY_DATA[0]
+    ? VERSION_HISTORY_DATA.find(v => v.version === latestAppVersion) ?? null
     : null;
 
   return (
@@ -106,10 +111,12 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
             type="button"
             onClick={() => {
               if (pendingReload) {
-                // v2.4.16 (H-H2): forget the "already shown" marker before
-                // reloading, so a reload that still serves the stale bundle
-                // can prompt again instead of going silent.
-                clearVersionUpdatePromptShown();
+                // v2.4.20: reload WITHOUT clearing the "already shown"
+                // marker (the v2.4.16 H-H2 clear was the repeat-prompt
+                // bug — a reload that still serves the stale bundle must
+                // NOT prompt again for the same deploy; the localStorage
+                // guard remembers it). A newer deploy with a different
+                // hash still prompts once.
                 window.location.reload();
               } else {
                 onClose();

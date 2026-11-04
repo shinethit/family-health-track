@@ -1,1 +1,1 @@
-export const CURRENT_SYSTEM_VERSION = 'v2.4.19';
+export const CURRENT_SYSTEM_VERSION = 'v2.4.20';

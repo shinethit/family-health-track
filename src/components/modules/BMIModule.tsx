@@ -946,6 +946,13 @@ export const BMIModule: React.FC = () => {
               <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
                 သင်၏ အရပ်နှင့် ကိုယ်အလေးချိန်ကို နေ့စဉ် သို့မဟုတ် အပတ်စဉ် မှတ်သားခြင်းဖြင့် သွေးတိုးနှင့် ဆီးချိုရောဂါ ကာကွယ်မှု တိုးတက်စေနိုင်ပါသည်
               </p>
+              {/* v2.4.20: point at the value Card 2 already shows, so the
+                  empty list is not read as "no BMI at all". */}
+              {!searchQuery.trim() && currentBMIResult && !latestBMI && (
+                <p className="text-xs text-teal-700 dark:text-teal-300 font-bold mt-2 max-w-sm mx-auto">
+                  လက်ရှိ BMI {currentBMIResult.bmi} kg/m² ကို အပေါ်က ကတ်မှာ Profile အရ ပြထားပါသည် — ဒီနေရာမှာ တိုင်းတာမှု မှတ်တမ်းတွေပဲ ပြပါသည်။
+                </p>
+              )}
               <button
                 onClick={openAdd}
                 className="btn-teal mt-4 px-4 py-2.5 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"

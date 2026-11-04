@@ -737,11 +737,21 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
           </div>
 
           {/* BMI & Body Weight Trend Chart */}
-          {filteredBMI.length > 0 && (
+          {filteredBMI.length > 0 ? (
             <div>
               <BMIWeightChart records={filteredBMI} />
             </div>
-          )}
+          ) : cardBmi?.source === 'profile' ? (
+            // v2.4.20: a trend chart needs real measurements, so no fake
+            // points — but the section must not vanish silently while
+            // the card above shows a BMI. Say so honestly, with the value.
+            <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
+              <p className="text-sm font-bold text-slate-900 dark:text-white">BMI တိုင်းတာမှု မှတ်တမ်း မရှိသေးပါ</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                လက်ရှိ BMI {cardBmi.eval.bmi} kg/m² ({cardBmi.eval.labelMm}) ကို Profile အရ တွက်ချက်ထားပါသည် — မှတ်တမ်း ထည့်လိုက်မှ Trend Graph ပြပေးပါမယ်။
+              </p>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -920,7 +930,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
           </div>
 
           {/* BMI Log Table */}
-          {filteredBMI.length > 0 && (
+          {filteredBMI.length > 0 ? (
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
               <div className="p-4 bg-teal-50/60 dark:bg-teal-950/40 border-b border-teal-100 dark:border-teal-900 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -979,7 +989,21 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                 </table>
               </div>
             </div>
-          )}
+          ) : cardBmi?.source === 'profile' ? (
+            // v2.4.20: same honesty as the chart above — no fake rows, but
+            // the table must not vanish silently while the card shows a BMI.
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div className="p-4 bg-teal-50/60 dark:bg-teal-950/40 border-b border-teal-100 dark:border-teal-900 flex items-center gap-2">
+                <Scale className="w-4 h-4 text-teal-600" />
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                  ကိုယ်အလေးချိန်နှင့် BMI သမိုင်းမှတ်တမ်း
+                </h4>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 p-4">
+                BMI တိုင်းတာမှု မှတ်တမ်း မရှိသေးပါ — လက်ရှိ BMI {cardBmi.eval.bmi} kg/m² ({cardBmi.eval.labelMm}) ကို Profile အရ တွက်ချက်ထားပါသည်။
+              </p>
+            </div>
+          ) : null}
         </div>
       )}
 

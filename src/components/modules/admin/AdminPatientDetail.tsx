@@ -555,6 +555,11 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
     : (patient.weightKg && patient.heightCm)
       ? calculateBMI(patient.weightKg, patient.heightCm, resolvedAge ?? undefined)
       : null;
+  // v2.4.20: whether the badge/section BMI came from a measurement
+  // record (same branch condition as patientBMI above) — the section
+  // summary labels a profile-derived value "Profile အရ" instead of
+  // showing a measurement date for it.
+  const patientBMIFromRecord = !!(latestPatientBMI?.heightCm && latestPatientBMI?.weightKg);
 
   // --- Single-record delete (v2.4.16, C-H3): Modal confirm, then the
   // context delete. The confirm Modal lives at the bottom of the render.
@@ -1674,6 +1679,27 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             <Scale className="w-4 h-4 text-indigo-500" />
             <span>BMI မှတ်တမ်း (နောက်ဆုံး ၅ ခု)</span>
           </h3>
+          {/* v2.4.20: the CURRENT BMI at the top of the section — the same
+              value the header badge shows. A patient with profile
+              height/weight but no BMI records used to see only
+              "မရှိသေးပါ" here and conclude BMI never shows. Record wins;
+              profile-derived is labelled "Profile အရ" and never carries
+              a measurement date. */}
+          {patientBMI && (
+            <div className="mb-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs flex items-center justify-between gap-2">
+              <span className="font-extrabold text-slate-900 dark:text-white text-sm">
+                လက်ရှိ BMI: {patientBMI.bmi} kg/m²
+                <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full font-bold border ${patientBMI.bgColor} ${patientBMI.color} ${patientBMI.borderColor}`}>
+                  {patientBMI.labelMm}
+                </span>
+              </span>
+              <span className="text-slate-400 shrink-0">
+                {patientBMIFromRecord
+                  ? showRecordDateTime(latestPatientBMI!.date || latestPatientBMI!.timestamp || latestPatientBMI!.createdAt)
+                  : 'Profile အရ တွက်ချက်ထားသည်'}
+              </span>
+            </div>
+          )}
           {latestBMIHistory.length > 0 ? (
             <div className="space-y-2">
               {latestBMIHistory.map((b) => (
@@ -1714,7 +1740,11 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400 py-3">BMI မှတ်တမ်း မရှိသေးပါ</p>
+            <p className="text-xs text-slate-400 py-3">
+              {patientBMI
+                ? 'BMI တိုင်းတာမှု မှတ်တမ်း မရှိသေးပါ — လက်ရှိ BMI ကို အပေါ်မှာ Profile အရ တွက်ချက်ပြထားပါသည်။'
+                : 'BMI မှတ်တမ်း မရှိသေးပါ'}
+            </p>
           )}
         </div>
       </div>

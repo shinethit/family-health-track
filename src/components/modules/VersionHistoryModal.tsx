@@ -58,12 +58,41 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.19',
+    version: 'v2.4.20',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
     isLatest: true,
+    title: '🔄 [NEW] Version Update ပြတာ သေချာမယ် + BMI မှတ်တမ်း အခန်းမှာ လက်ရှိ BMI ပြမယ်',
+    badge: 'Latest Release (v2.4.20)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🔄 Version Update — ဗားရှင်းနံပါတ် ပါမယ်၊ တစ်ခါပဲ ပြမယ်',
+        icon: Sparkles,
+        items: [
+          'ဗားရှင်းအသစ် ရောက်ရင် နံပါတ် (ဥပမာ v2.4.20) ကို ပြမယ် — \"ဘာမှ သေချာမပါဘူး\" ဆိုတာ မရှိတော့ဘူး',
+          'Update prompt က deploy တစ်ခုကို တစ်ခါပဲ ပြမယ် — ပြန်ဖွင့်လည်း၊ အက်ပ်ပိတ်ပြီး ပြန်ဖွင့်လည်း ထပ်မပြဘူး (ဗားရှင်းအသစ် ထပ်ရောက်မှသာ ပြန်ပြမယ်)',
+          'ဗားရှင်းနံပါတ် ဖတ်မရရင် နံပါတ်အတု မပြဘူး — အမှန်အတိုင်း \"ဗားရှင်းအသစ် ရောက်ရှိနေပါသည်\" လို့ပဲ ပြမယ်'
+        ]
+      },
+      {
+        title: '⚖️ BMI — မှတ်တမ်း အခန်းမှာပါ လက်ရှိ BMI ပြမယ်',
+        icon: Gauge,
+        items: [
+          'Admin ရဲ့ လူနာအသေးစိတ် စာမျက်နှာ BMI မှတ်တမ်း အခန်းမှာ လက်ရှိ BMI ကို အပေါ်ဆုံးမှာ ပြမယ် — မှတ်တမ်း မရှိလည်း Profile အရ (ဥပမာ 32.9) ပေါ်မယ်',
+          'v2.4.19 မှာ ခေါင်းစီး badge ပဲ ပြင်မိပြီး ဒီ အခန်း ကျန်ခဲ့တာ — အခု ပြင်ပေးထားတယ်',
+          'Trends ရဲ့ BMI Graph / ဇယား နေရာမှာလည်း မှတ်တမ်း မရှိရင် လက်ရှိ BMI ကို Profile အရ ပြမယ် — အချက်အလက် အတု မပါဘူး'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.4.19',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: false,
     title: '⚖️ [NEW] BMI — မှတ်တမ်းမရှိလည်း Profile အရ ပြမယ်',
-    badge: 'Latest Release (v2.4.19)',
+    badge: 'Previous Release (v2.4.19)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {

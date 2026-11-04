@@ -38,6 +38,7 @@ import { LoginScreen } from './components/auth/LoginScreen';
 import { CURRENT_SYSTEM_VERSION } from './constants/version';
 import { db } from './lib/firebase';
 import {
+  extractServedVersion,
   markVersionUpdatePromptShown,
   readShownVersionUpdateHash,
   shouldShowVersionUpdatePrompt,
@@ -398,12 +399,11 @@ const MainContent: React.FC = () => {
 
       if (servedHash !== loadedHash) {
         // A newer deploy is live on the server — this page is stale.
-        // v2.4.16 (H-H1): the served deploy's version STRING is not
-        // available from the bundle hash alone, so the pending-reload
-        // prompt must NOT name a version or show highlights — the old
-        // code passed CURRENT_SYSTEM_VERSION (the LOADED bundle's
-        // version), so a v2.4.15 user was told to "get v2.4.15" and shown
-        // v2.4.15's highlights as "what's new". null = unknown.
+        // v2.4.20: the served deploy's version STRING is read from the
+        // served bundle itself (extractServedVersion) instead of being
+        // left unknown (v2.4.16, H-H1). When it cannot be extracted the
+        // prompt keeps the honest "version unknown" text — never invent
+        // a number, and never show the OLD version's highlights.
         setLatestAppVersion(null);
         setVersionUpdatePendingReload(true);
         // v2.4.16 — the AUTO prompt appears at most once per deploy.
@@ -419,13 +419,31 @@ const MainContent: React.FC = () => {
             alreadyShownHash: readShownVersionUpdateHash(),
           })
         ) {
+          // Fetch the served bundle (only when an update was actually
+          // detected) and read its version BEFORE showing the prompt, so
+          // the modal can name the new version instead of saying nothing
+          // definite. A failure here is not fatal — the prompt still
+          // shows with the honest unknown-version text.
+          let servedVersion: string | null = null;
+          try {
+            const bundleRes = await fetch(`/assets/index-${servedHash}.js?_v=${Date.now()}`, {
+              cache: 'no-store',
+              signal: AbortSignal.timeout(10000),
+            });
+            if (bundleRes.ok) servedVersion = extractServedVersion(await bundleRes.text());
+          } catch {
+            servedVersion = null;
+          }
+          if (servedVersion) setLatestAppVersion(servedVersion);
           markVersionUpdatePromptShown(servedHash);
           setShowVersionUpdateModal(true);
           // v2.4.16 (E-L7): the modal waits for the profile-setup modal,
           // and so must the toast — otherwise the toast pops over it.
           if (!isProfileSetupOpenRef.current) {
             showVersionToast({
-              message: '🔄 ဗားရှင်းအသစ် ရောက်ရှိနေပါသည် — စာမျက်နှာကို ပြန်ဖွင့်ပြီး (Reload) အသစ်ရယူပါ။',
+              message: servedVersion
+                ? `🔄 ဗားရှင်းအသစ် ${servedVersion} ရပါပြီ — စာမျက်နှာကို ပြန်ဖွင့်ပြီး (Reload) အသစ်ရယူပါ။`
+                : '🔄 ဗားရှင်းအသစ် ရောက်ရှိနေပါသည် — စာမျက်နှာကို ပြန်ဖွင့်ပြီး (Reload) အသစ်ရယူပါ။',
               type: 'updated',
             });
           }
