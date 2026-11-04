@@ -70,10 +70,16 @@ export const BloodSugarModule: React.FC = () => {
   };
 
   // Open the form prefilled with an existing record for editing.
+  // v2.4.17: legacy stored types 'post_prandial'/'postprandial' map to
+  // 'post_meal_2h'; a missing/unknown type falls back to 'fasting'.
+  // Stored data is NOT rewritten here — the record is saved with the
+  // new type only on the next save.
   const startEdit = (record: typeof glucoseRecords[number]) => {
     setEditingId(record.id);
     setValue(record.value ?? record.glucoseValue ?? '');
-    setType(record.type || record.timing || 'fasting');
+    const rawType = record.type || record.timing || 'fasting';
+    const knownTypes: BloodSugarType[] = ['fasting', 'before_meal', 'post_meal_2h', 'random', 'bedtime', 'hba1c'];
+    setType(rawType === 'post_prandial' || rawType === 'postprandial' ? 'post_meal_2h' : knownTypes.includes(rawType) ? rawType : 'fasting');
     setMealInfo(record.mealInfo || '');
     setDietRecord(record.dietRecord || record.dietNotes || record.foodIntake || '');
     setDate(toDateTimeLocal(record.date || record.timestamp));
@@ -198,8 +204,14 @@ export const BloodSugarModule: React.FC = () => {
     // typed (v2.4.11 F8). Only the per-type description changes.
     if (newType === 'fasting') {
       setMealInfo('မနက်အစာမစားမီ ၈ နာရီအစာငတ်');
-    } else if (newType === 'post_prandial') {
-      setMealInfo('နေ့လယ်စာစားပြီး ၂ နာရီ');
+    } else if (newType === 'before_meal') {
+      setMealInfo('အစာမစားမီ');
+    } else if (newType === 'post_meal_2h') {
+      setMealInfo('အစာစားပြီး ၂ နာရီ');
+    } else if (newType === 'random') {
+      setMealInfo('အချိန်မရွေးစစ်ဆေးခြင်း');
+    } else if (newType === 'bedtime') {
+      setMealInfo('ညအိပ်ရာဝင်');
     } else if (newType === 'hba1c') {
       setMealInfo('ဓာတ်ခွဲခန်း ၃ လပတ်စစ်ဆေးချက်');
     } else {
@@ -656,11 +668,13 @@ export const BloodSugarModule: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   စစ်ဆေးသည့် အမျိုးအစား (Test Type) *
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
-                    { id: 'fasting', label: 'အစာမစားမီ' },
-                    { id: 'post_prandial', label: 'အစာစားပြီး' },
-                    { id: 'random', label: 'အချိန်မရွေး' },
+                    { id: 'fasting', label: 'FBS (မနက်အစာမစားမီ)' },
+                    { id: 'before_meal', label: 'အစာမစားမီ' },
+                    { id: 'post_meal_2h', label: 'အစာစားပြီး ၂ နာရီ' },
+                    { id: 'random', label: 'အချိန်မရွေး (RBS)' },
+                    { id: 'bedtime', label: 'အိပ်ရာဝင်' },
                     { id: 'hba1c', label: 'HbA1c (၃လ)' },
                   ].map((t) => (
                     <button
@@ -702,8 +716,10 @@ export const BloodSugarModule: React.FC = () => {
                 </div>
                 <span className="text-[11px] text-slate-400 mt-1 block">
                   {type === 'fasting' && 'ပုံမှန်: 70 - 99 mg/dL'}
-                  {type === 'post_prandial' && 'ပုံမှန်: 140 mg/dL အောက်'}
+                  {type === 'before_meal' && 'ပုံမှန်: 140 mg/dL အောက်'}
+                  {type === 'post_meal_2h' && 'ပုံမှန်: 140 mg/dL အောက်'}
                   {type === 'random' && 'ပုံမှန်: 140 mg/dL အောက်'}
+                  {type === 'bedtime' && 'ပုံမှန်: 140 mg/dL အောက်'}
                   {type === 'hba1c' && 'ပုံမှန်: 5.7% အောက်'}
                 </span>
               </div>

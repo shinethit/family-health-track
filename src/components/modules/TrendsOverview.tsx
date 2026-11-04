@@ -30,6 +30,12 @@ import {
   parseDateToMs,
   formatDateLabel
 } from '../../lib/medicalCalculations';
+import {
+  GLUCOSE_SERIES_META,
+  normalizeGlucoseType,
+  BP_CONDITION_META,
+  normalizeBPCondition
+} from '../../lib/chartSeries';
 
 interface TrendsOverviewProps {
   onNavigateTab?: (tab: string) => void;
@@ -117,6 +123,20 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
   const displayDate = (d?: string | null): string => (d ? formatDateLabel(d).date : 'ရက်စွဲ မရှိပါ');
   const recordDateTime = (r: { date?: string; timestamp?: string }): { date: string; time: string } =>
     (r.date || r.timestamp) ? formatDateLabel(r.date || r.timestamp) : { date: 'ရက်စွဲ မရှိပါ', time: '' };
+
+  // v2.4.17: latest cards + tables show WHEN + under WHAT condition the
+  // reading was taken — a morning BP and a night BP (or a fasting vs
+  // post-meal glucose) are not comparable without that label. A legacy
+  // record whose condition holds an old BP category (e.g. 'stage1') or
+  // nothing at all shows 'အခြေအနေ မသိပါ' — never invent a condition.
+  const bpConditionLabel = (condition?: string | null): string =>
+    BP_CONDITION_META[normalizeBPCondition(condition)].labelMm;
+  const glucoseSeriesLabel = (type?: string | null): string =>
+    GLUCOSE_SERIES_META[normalizeGlucoseType(type)].labelMm;
+  const dateTimeLabel = (r: { date?: string; timestamp?: string }): string => {
+    const dt = recordDateTime(r);
+    return dt.time ? `${dt.date} · ${dt.time}` : dt.date;
+  };
 
   // Plain-language status words (same pattern as the Sidebar): the medical
   // category is kept in parentheses, but the words a user reads first are
@@ -527,7 +547,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
           )}
           <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">
-            📅 {latestBP ? displayDate(latestBP.date || latestBP.timestamp) : 'ရက်စွဲ မရှိပါ'}
+            📅 {latestBP ? `${dateTimeLabel(latestBP)} · ${bpConditionLabel(latestBP.condition)}` : 'ရက်စွဲ မရှိပါ'}
           </span>
         </div>
 
@@ -551,7 +571,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
           )}
           <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">
-            📅 {latestGlucose ? displayDate(latestGlucose.date || latestGlucose.timestamp) : 'ရက်စွဲ မရှိပါ'}
+            📅 {latestGlucose ? `${dateTimeLabel(latestGlucose)} · ${glucoseSeriesLabel(latestGlucose.type || latestGlucose.timing)}` : 'ရက်စွဲ မရှိပါ'}
           </span>
         </div>
 
@@ -739,6 +759,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                       <th className="py-2.5 px-4 font-semibold">အောက်သွေး (DIA)</th>
                       <th className="py-2.5 px-4 font-semibold">နှလုံးခုန် (Pulse)</th>
                       <th className="py-2.5 px-4 font-semibold">အခြေအနေ</th>
+                      <th className="py-2.5 px-4 font-semibold">တိုင်းချိန် အခြေအနေ</th>
                       <th className="py-2.5 px-4 font-semibold">စားသုံးခဲ့သော အစားအသောက်</th>
                       <th className="py-2.5 px-4 font-semibold">မှတ်ချက်</th>
                     </tr>
@@ -766,6 +787,9 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                             <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${evalB.bgColor} ${evalB.color} ${evalB.borderColor}`}>
                               {statusWithLabel(plainBPStatus(evalB.category), evalB.labelMm, evalB.category === 'normal', evalB.isPediatric)}
                             </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-slate-700 dark:text-slate-300">
+                            {bpConditionLabel(r.condition)}
                           </td>
                           <td className="py-2.5 px-4 text-slate-800 dark:text-slate-200">
                             {diet ? (
@@ -836,11 +860,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                             {val ?? '—'} <span className="text-[11px] text-slate-400 font-normal">{type === 'hba1c' ? '%' : 'mg/dL'}</span>
                           </td>
                           <td className="py-2.5 px-4 text-slate-700 dark:text-slate-300">
-                            {type === 'fasting' && 'အစာမစားမီ (Fasting)'}
-                            {type === 'post_prandial' && 'အစာစားပြီး ၂ နာရီ (PP)'}
-                            {type === 'random' && 'အချိန်မရွေး (Random)'}
-                            {type === 'hba1c' && '၃ လပတ် (HbA1c)'}
-                            {!['fasting', 'post_prandial', 'random', 'hba1c'].includes(type) && type}
+                            {GLUCOSE_SERIES_META[normalizeGlucoseType(type)].labelMm}
                           </td>
                           <td className="py-2.5 px-4">
                             {evalG ? (

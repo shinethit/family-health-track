@@ -28,6 +28,7 @@ import { useHealthData } from '../../context/HealthDataContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
 import { calculateBPCategory, calculateGlucoseStatus, calculateBMI, parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
+import { GLUCOSE_SERIES_META, normalizeGlucoseType, BP_CONDITION_META, normalizeBPCondition } from '../../lib/chartSeries';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
 import { Modal } from '../common/Modal';
 
@@ -206,6 +207,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const d = r.date || r.timestamp;
     return d ? formatDateLabel(d).date : 'ရက်စွဲ မရှိပါ';
   };
+  // v2.4.17: summary rows show WHEN + under WHAT condition the latest
+  // reading was taken (same labels as Trends). A legacy condition holding
+  // an old BP category shows 'အခြေအနေ မသိပါ' — never invent one.
+  const recordDateTime = (r: { date?: string; timestamp?: string }): { date: string; time: string } => {
+    const d = r.date || r.timestamp;
+    return d ? formatDateLabel(d) : { date: 'ရက်စွဲ မရှိပါ', time: '' };
+  };
+  const dateTimeLabel = (r: { date?: string; timestamp?: string }): string => {
+    const dt = recordDateTime(r);
+    return dt.time ? `${dt.date} · ${dt.time}` : dt.date;
+  };
+  const bpConditionLabel = (condition?: string | null): string =>
+    BP_CONDITION_META[normalizeBPCondition(condition)].labelMm;
+  const glucoseSeriesLabel = (type?: string | null): string =>
+    GLUCOSE_SERIES_META[normalizeGlucoseType(type)].labelMm;
 
   // Open one metric's module for the SAME person the card shows: the
   // person selection (patient / family member / self) is already set in
@@ -285,7 +301,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                        <span className={`block text-[11px] font-bold mt-0.5 pl-3.5 ${bpEval.color}`}>
                          {statusWithLabel(plainBPStatus(bpEval.category), bpEval.labelMm, bpEval.category === 'normal', bpEval.isPediatric)}
                        </span>
-                       <span className="block text-[10px] text-slate-400 font-semibold pl-3.5">တိုင်းတာတဲ့နေ့: {recordDate(latestBP)}</span>
+                       <span className="block text-[10px] text-slate-400 font-semibold pl-3.5">တိုင်းတာတဲ့နေ့: {dateTimeLabel(latestBP)} · {bpConditionLabel(latestBP.condition)}</span>
                      </button>
                    )}
 
@@ -298,7 +314,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                              gluEval?.status === 'pre_diabetic' ? 'bg-amber-500' :
                              gluEval?.status === 'low' ? 'bg-blue-500' : 'bg-rose-500'
                            }`} />
-                           <span>သွေးချို: {latestGluValue ?? '—'} mg/dL</span>
+                           <span>သွေးချို: {latestGluValue ?? '—'} {normalizeGlucoseType(latestGlu.type || latestGlu.timing) === 'hba1c' ? '%' : 'mg/dL'}</span>
                          </span>
                          <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                        </span>
@@ -309,7 +325,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                        ) : (
                          <span className="block text-[11px] font-bold mt-0.5 pl-3.5 text-slate-400">—</span>
                        )}
-                       <span className="block text-[10px] text-slate-400 font-semibold pl-3.5">တိုင်းတာတဲ့နေ့: {recordDate(latestGlu)}</span>
+                       <span className="block text-[10px] text-slate-400 font-semibold pl-3.5">တိုင်းတာတဲ့နေ့: {dateTimeLabel(latestGlu)} · {glucoseSeriesLabel(latestGlu.type || latestGlu.timing)}</span>
                      </button>
                    )}
 

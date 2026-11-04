@@ -20,8 +20,8 @@ describe('version history latest entry', () => {
   it('the latest entry is the first entry and matches the current version', () => {
     const latest = VERSION_HISTORY_DATA.filter((v) => v.isLatest);
     expect(latest[0]).toBe(VERSION_HISTORY_DATA[0]);
-    expect(latest[0].version).toBe('v2.4.16');
-    expect(latest[0].badge).toContain('v2.4.16');
+    expect(latest[0].version).toBe('v2.4.17');
+    expect(latest[0].badge).toContain('v2.4.17');
   });
 
   it('no other entry claims to be latest', () => {

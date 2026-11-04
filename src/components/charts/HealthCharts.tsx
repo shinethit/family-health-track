@@ -2,6 +2,64 @@ import React, { useState } from 'react';
 import { BloodPressureRecord, BloodSugarRecord, BMIRecord } from '../../types/health';
 import { Activity, Droplets, Scale } from 'lucide-react';
 import { parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
+import {
+  GLUCOSE_SERIES_META,
+  BP_CONDITION_META,
+  normalizeGlucoseType,
+  normalizeBPCondition,
+  timeScaleX,
+  chartTimeTicks,
+  type GlucoseSeriesKey,
+  type BPConditionKey,
+} from '../../lib/chartSeries';
+
+/** Epoch ms for a record, trying date, then timestamp, then createdAt. */
+const recordMs = (r: { date?: string; timestamp?: string; createdAt?: string }) =>
+  parseDateToMs(r.date || r.timestamp || r.createdAt);
+
+/** Per-condition normal-standard text, matching calculateGlucoseStatus. */
+const GLUCOSE_STANDARD_TEXT: Record<GlucoseSeriesKey, string> = {
+  fasting: 'FBS 70–99',
+  before_meal: 'အစာမစားမီ 70–140',
+  post_meal_2h: 'အစာစားပြီး ၂ နာရီ <140',
+  random: 'အချိန်မရွေး <140',
+  bedtime: 'အိပ်ရာဝင် <140',
+  hba1c: 'HbA1c <5.7%',
+  unknown: 'အခြေအနေ မသိပါ',
+};
+
+/** Canonical series order for buttons / lines / legend. */
+const GLUCOSE_SERIES_ORDER: GlucoseSeriesKey[] = [
+  'fasting',
+  'before_meal',
+  'post_meal_2h',
+  'random',
+  'bedtime',
+  'hba1c',
+  'unknown',
+];
+
+/** Short button labels for BP conditions (meta labelMm is the long form). */
+const BP_BUTTON_LABEL: Record<BPConditionKey, string> = {
+  morning: 'မနက်',
+  night: 'ည',
+  resting: 'နားနေ',
+  after_exercise: 'လှုပ်ရှား',
+  stress: 'စိတ်ဖိစီး',
+  unknown: 'မသိပါ',
+};
+
+const BP_CONDITION_ORDER: BPConditionKey[] = [
+  'morning',
+  'night',
+  'resting',
+  'after_exercise',
+  'stress',
+  'unknown',
+];
+
+const buildPath = (pts: { x: number; y: number }[]) =>
+  pts.reduce((acc, p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`), '');
 
 interface BloodPressureChartProps {
   records: BloodPressureRecord[];
@@ -10,6 +68,7 @@ interface BloodPressureChartProps {
 
 export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records, className = '' }) => {
   const [hoveredPoint, setHoveredPoint] = useState<BloodPressureRecord | null>(null);
+  const [filterCond, setFilterCond] = useState<'all' | BPConditionKey>('all');
 
   if (!records || records.length === 0) {
     return (
@@ -22,12 +81,16 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
     );
   }
 
+  const condOf = (r: BloodPressureRecord) => normalizeBPCondition(r.condition);
+
+  // Conditions actually present, in canonical order ('unknown' has no button).
+  const presentConds = BP_CONDITION_ORDER.filter((k) => records.some((r) => condOf(r) === k));
+  const buttonConds = presentConds.filter((k) => k !== 'unknown');
+
   // Explicitly sort records chronologically ascending (oldest on left, newest/latest on right)
-  const sortedRecords = [...records].sort((a, b) => {
-    const timeA = parseDateToMs(a.date || a.timestamp || a.createdAt);
-    const timeB = parseDateToMs(b.date || b.timestamp || b.createdAt);
-    return timeA - timeB;
-  });
+  const sortedRecords = [...records].sort((a, b) => recordMs(a) - recordMs(b));
+  const visibleRecords =
+    filterCond === 'all' ? sortedRecords : sortedRecords.filter((r) => condOf(r) === filterCond);
 
   // Dimensions & Coordinates
   const width = 640;
@@ -44,37 +107,28 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
     return padding.top + chartH - ((clamped - minY) / (maxY - minY)) * chartH;
   };
 
-  const getX = (idx: number, total: number) => {
-    if (total <= 1) return padding.left + chartW / 2;
-    return padding.left + (idx / (total - 1)) * chartW;
-  };
+  // Time-based X axis (real timestamps, not record index).
+  const times = visibleRecords.map(recordMs);
+  const tMin = times.length ? Math.min(...times) : 0;
+  const tMax = times.length ? Math.max(...times) : 0;
+  const getX = (ms: number) => timeScaleX(ms, tMin, tMax, chartW, padding.left);
+  const xTicks = chartTimeTicks(tMin, tMax, 5);
 
-  const systolicPoints = sortedRecords.map((r, i) => ({
-    x: getX(i, sortedRecords.length),
-    y: getY(r.systolic || 120),
-    record: r,
-  }));
+  const isSingle = filterCond !== 'all';
+  const showValueLabels = isSingle;
+  const showPulse = isSingle;
 
-  const diastolicPoints = sortedRecords.map((r, i) => ({
-    x: getX(i, sortedRecords.length),
-    y: getY(r.diastolic || 80),
-    record: r,
-  }));
+  // Group visible records by condition (already time-sorted).
+  const condGroups = new Map<BPConditionKey, BloodPressureRecord[]>();
+  visibleRecords.forEach((r) => {
+    const k = condOf(r);
+    const arr = condGroups.get(k) ?? [];
+    arr.push(r);
+    condGroups.set(k, arr);
+  });
 
-  const pulsePoints = sortedRecords.map((r, i) => ({
-    x: getX(i, sortedRecords.length),
-    y: getY(r.pulse || r.pulseRate || 75),
-    record: r,
-  }));
-
-  const systolicPath = systolicPoints.reduce((acc, p, i) => 
-    i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
-
-  const diastolicPath = diastolicPoints.reduce((acc, p, i) => 
-    i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
-
-  const pulsePath = pulsePoints.reduce((acc, p, i) => 
-    i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
+  const pointsFor = (rs: BloodPressureRecord[], pick: (r: BloodPressureRecord) => number) =>
+    rs.map((r) => ({ x: getX(recordMs(r)), y: getY(pick(r)) }));
 
   // Normal range guidelines: Systolic 120, Diastolic 80
   const ySys120 = getY(120);
@@ -93,21 +147,38 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
           </p>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-            <span className="text-slate-600 dark:text-slate-400">အပေါ်သွေး (SYS)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-            <span className="text-slate-600 dark:text-slate-400">အောက်သွေး (DIA)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span className="text-slate-600 dark:text-slate-400">နှလုံးခုန် (Pulse)</span>
-          </div>
+        {/* Condition filter buttons — only conditions present in the records */}
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
+          <button
+            onClick={() => setFilterCond('all')}
+            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${filterCond === 'all' ? 'bg-white dark:bg-slate-700 shadow-xs font-medium text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}
+          >
+            အားလုံး
+          </button>
+          {buttonConds.map((k) => (
+            <button
+              key={k}
+              onClick={() => setFilterCond(k)}
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${filterCond === k ? 'bg-white dark:bg-slate-700 shadow-xs font-medium' : 'text-slate-600 dark:text-slate-400'}`}
+              style={filterCond === k ? { color: BP_CONDITION_META[k].color } : undefined}
+            >
+              {BP_BUTTON_LABEL[k]}
+            </button>
+          ))}
         </div>
+      </div>
+
+      {/* Legend: condition colours (dynamic) + line-style key */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3 text-xs">
+        {presentConds.map((k) => (
+          <div key={k} className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: BP_CONDITION_META[k].color }} />
+            <span className="text-slate-600 dark:text-slate-400">{BP_CONDITION_META[k].labelMm}</span>
+          </div>
+        ))}
+        <span className="text-slate-400 dark:text-slate-500">
+          အပေါ်သွေး (SYS) အစိုင်း · အောက်သွေး (DIA) အစက်ချ · နှလုံးခုန် (Pulse) အစက်အစက်
+        </span>
       </div>
 
       <div className="w-full overflow-hidden">
@@ -170,46 +241,57 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
             သွေးတိုးအဆင့် (≥140)
           </text>
 
-          {/* Diastolic Line (Blue) */}
-          <path
-            d={diastolicPath}
-            fill="none"
-            stroke="#3b82f6"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          {/* Per-condition SYS (solid) + DIA (dashed) lines. 'unknown' = dots only. */}
+          {[...condGroups.entries()].map(([cond, rs]) => {
+            if (cond === 'unknown') return null;
+            const color = BP_CONDITION_META[cond].color;
+            const sysPath = buildPath(pointsFor(rs, (r) => r.systolic || 120));
+            const diaPath = buildPath(pointsFor(rs, (r) => r.diastolic || 80));
+            return (
+              <g key={cond}>
+                <path
+                  d={diaPath}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth="2.5"
+                  strokeDasharray="5 3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d={sysPath}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </g>
+            );
+          })}
 
-          {/* Pulse Line (Amber dashed) */}
-          <path
-            d={pulsePath}
-            fill="none"
-            stroke="#f59e0b"
-            strokeWidth="1.5"
-            strokeDasharray="4 3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity="0.75"
-          />
-
-          {/* Systolic Line (Rose) */}
-          <path
-            d={systolicPath}
-            fill="none"
-            stroke="#f43f5e"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          {/* Pulse line — single-condition view only (in 'all' view it would be noise) */}
+          {showPulse && (
+            <path
+              d={buildPath(pointsFor(visibleRecords, (r) => r.pulse || r.pulseRate || 75))}
+              fill="none"
+              stroke="#94a3b8"
+              strokeWidth="1.5"
+              strokeDasharray="2 3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity="0.75"
+            />
+          )}
 
           {/* Data Points and Value Labels */}
-          {sortedRecords.map((r, i) => {
-            const x = getX(i, sortedRecords.length);
+          {visibleRecords.map((r, i) => {
+            const x = getX(recordMs(r));
             const ySys = getY(r.systolic || 120);
             const yDia = getY(r.diastolic || 80);
             const yPls = getY(r.pulse || r.pulseRate || 75);
             const isHovered = hoveredPoint?.id === r.id;
-            const dateObj = formatDateLabel(r.date || r.timestamp || r.createdAt);
+            const color = BP_CONDITION_META[condOf(r)].color;
 
             return (
               <g key={r.id || i} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(r)} onMouseLeave={() => setHoveredPoint(null)}>
@@ -227,75 +309,79 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
                   />
                 )}
 
-                {/* Systolic Value Label above dot */}
-                <text
-                  x={x}
-                  y={ySys - 8}
-                  textAnchor="middle"
-                  className="text-[10px] font-extrabold fill-rose-600 dark:fill-rose-400 font-mono"
-                >
-                  {r.systolic}
-                </text>
+                {/* Systolic Value Label above dot — single-condition view only */}
+                {showValueLabels && (
+                  <text
+                    x={x}
+                    y={ySys - 8}
+                    textAnchor="middle"
+                    className="text-[10px] font-extrabold font-mono"
+                    fill={color}
+                  >
+                    {r.systolic}
+                  </text>
+                )}
 
-                {/* Systolic dot */}
+                {/* Systolic dot (filled, condition colour) */}
                 <circle
                   cx={x}
                   cy={ySys}
                   r={isHovered ? 5.5 : 4}
-                  className="fill-rose-500 stroke-white dark:stroke-slate-900 transition-all"
+                  fill={color}
+                  className="stroke-white dark:stroke-slate-900 transition-all"
                   strokeWidth="2"
                 />
 
-                {/* Diastolic dot */}
+                {/* Diastolic dot (hollow, condition colour) */}
                 <circle
                   cx={x}
                   cy={yDia}
                   r={isHovered ? 5.5 : 4}
-                  className="fill-blue-500 stroke-white dark:stroke-slate-900 transition-all"
+                  fill="white"
+                  stroke={color}
+                  className="dark:fill-slate-900 transition-all"
                   strokeWidth="2"
                 />
 
-                {/* Diastolic Value Label below dot */}
-                <text
-                  x={x}
-                  y={yDia + 14}
-                  textAnchor="middle"
-                  className="text-[10px] font-extrabold fill-blue-600 dark:fill-blue-400 font-mono"
-                >
-                  {r.diastolic}
-                </text>
-
-                {/* Pulse dot */}
-                <circle
-                  cx={x}
-                  cy={yPls}
-                  r={isHovered ? 4 : 3}
-                  className="fill-amber-500 stroke-white dark:stroke-slate-900 transition-all"
-                  strokeWidth="1.5"
-                />
-
-                {/* X axis Date label (DD-MM-YYYY) */}
-                <text
-                  x={x}
-                  y={height - padding.bottom + 16}
-                  textAnchor="middle"
-                  className="text-[9.5px] fill-slate-700 dark:fill-slate-300 font-bold font-mono"
-                >
-                  {dateObj.date}
-                </text>
-                {dateObj.time && (
+                {/* Diastolic Value Label below dot — single-condition view only */}
+                {showValueLabels && (
                   <text
                     x={x}
-                    y={height - padding.bottom + 27}
+                    y={yDia + 14}
                     textAnchor="middle"
-                    className="text-[8px] fill-slate-400 font-mono"
+                    className="text-[10px] font-extrabold font-mono"
+                    fill={color}
                   >
-                    {dateObj.time}
+                    {r.diastolic}
                   </text>
+                )}
+
+                {/* Pulse dot — single-condition view only */}
+                {showPulse && (
+                  <circle
+                    cx={x}
+                    cy={yPls}
+                    r={isHovered ? 4 : 3}
+                    className="fill-slate-400 stroke-white dark:stroke-slate-900 transition-all"
+                    strokeWidth="1.5"
+                  />
                 )}
               </g>
             );
           })}
+
+          {/* X axis time ticks (max 5) — no per-point date labels */}
+          {xTicks.map((t) => (
+            <text
+              key={t}
+              x={getX(t)}
+              y={height - padding.bottom + 16}
+              textAnchor="middle"
+              className="text-[9.5px] fill-slate-700 dark:fill-slate-300 font-bold font-mono"
+            >
+              {formatDateLabel(t).date}
+            </text>
+          ))}
         </svg>
       </div>
 
@@ -306,6 +392,9 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
             <span className="font-semibold text-slate-800 dark:text-slate-200">
               ရက်စွဲ: {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).date} {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).time}
             </span>
+            <span className="text-slate-500 dark:text-slate-400 ml-2">
+              ({BP_CONDITION_META[condOf(hoveredPoint)].labelMm})
+            </span>
             {hoveredPoint.notes && (
               <span className="text-slate-500 dark:text-slate-400 ml-2">
                 ({hoveredPoint.notes})
@@ -313,13 +402,13 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
             )}
           </div>
           <div className="flex items-center gap-4 font-mono">
-            <span className="text-rose-600 dark:text-rose-400 font-bold">
+            <span className="font-bold" style={{ color: BP_CONDITION_META[condOf(hoveredPoint)].color }}>
               SYS: {hoveredPoint.systolic} mmHg
             </span>
-            <span className="text-blue-600 dark:text-blue-400 font-bold">
+            <span className="font-bold" style={{ color: BP_CONDITION_META[condOf(hoveredPoint)].color }}>
               DIA: {hoveredPoint.diastolic} mmHg
             </span>
-            <span className="text-amber-600 dark:text-amber-400 font-bold">
+            <span className="text-slate-500 dark:text-slate-400 font-bold">
               Pulse: {hoveredPoint.pulse || hoveredPoint.pulseRate || '-'} bpm
             </span>
           </div>
@@ -336,7 +425,7 @@ interface BloodSugarChartProps {
 
 export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, className = '' }) => {
   const [hoveredPoint, setHoveredPoint] = useState<BloodSugarRecord | null>(null);
-  const [filterType, setFilterType] = useState<string>('all');
+  const [filterType, setFilterType] = useState<'all' | GlucoseSeriesKey>('all');
 
   if (!records || records.length === 0) {
     return (
@@ -349,25 +438,31 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
     );
   }
 
-  // Filter and sort chronologically ascending
+  const seriesOf = (r: BloodSugarRecord) => normalizeGlucoseType(r.type || r.timing);
+
+  // Series actually present (with a value), in canonical order.
+  const presentSeries = GLUCOSE_SERIES_ORDER.filter((k) =>
+    records.some((r) => (r.value ?? r.glucoseValue) != null && seriesOf(r) === k),
+  );
+  // Filter buttons: 'all' + every present series except 'unknown'.
+  const buttonSeries = presentSeries.filter((k) => k !== 'unknown');
+
+  // Filter and sort chronologically ascending.
+  // 'all' view is mg/dL only — HbA1c (%) never lands on the mg/dL chart.
   const filtered = records
-    .filter(r => {
+    .filter((r) => {
       // Skip records with no glucose value — never plot a fabricated 100.
       if ((r.value ?? r.glucoseValue) == null) return false;
-      const t = r.type || r.timing;
-      if (filterType === 'all') return true;
-      if (filterType === 'fasting') return t === 'fasting';
-      if (filterType === 'post_prandial') return t === 'post_meal_2h' || t === 'post_prandial' || t === 'postprandial';
-      if (filterType === 'hba1c') return t === 'hba1c';
-      return true;
+      const s = seriesOf(r);
+      if (filterType === 'all') return s !== 'hba1c';
+      return s === filterType;
     })
-    .sort((a, b) => {
-      const timeA = parseDateToMs(a.date || a.timestamp || a.createdAt);
-      const timeB = parseDateToMs(b.date || b.timestamp || b.createdAt);
-      return timeA - timeB;
-    });
+    .sort((a, b) => recordMs(a) - recordMs(b));
 
   const isHbA1c = filterType === 'hba1c';
+  const isSingle = filterType !== 'all';
+  const activeKey: GlucoseSeriesKey | null = filterType === 'all' ? null : filterType;
+  const activeMeta = activeKey ? GLUCOSE_SERIES_META[activeKey] : null;
 
   const width = 640;
   const height = 270;
@@ -383,26 +478,43 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
     return padding.top + chartH - ((clamped - minY) / (maxY - minY)) * chartH;
   };
 
-  const getX = (idx: number, total: number) => {
-    if (total <= 1) return padding.left + chartW / 2;
-    return padding.left + (idx / (total - 1)) * chartW;
-  };
+  // Time-based X axis (real timestamps, not record index).
+  const times = filtered.map(recordMs);
+  const tMin = times.length ? Math.min(...times) : 0;
+  const tMax = times.length ? Math.max(...times) : 0;
+  const getX = (ms: number) => timeScaleX(ms, tMin, tMax, chartW, padding.left);
+  const xTicks = chartTimeTicks(tMin, tMax, 5);
 
-  const points = filtered.map((r, i) => ({
-    x: getX(i, filtered.length),
-    y: getY((r.value ?? r.glucoseValue)!),
-    record: r,
-  }));
+  // Group visible points by series (already time-sorted).
+  const seriesPoints = new Map<GlucoseSeriesKey, { x: number; y: number }[]>();
+  filtered.forEach((r) => {
+    const k = seriesOf(r);
+    const arr = seriesPoints.get(k) ?? [];
+    arr.push({ x: getX(recordMs(r)), y: getY((r.value ?? r.glucoseValue)!) });
+    seriesPoints.set(k, arr);
+  });
 
-  const linePath = points.reduce((acc, p, i) => 
-    i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
-
-  // Normal guidelines
-  const normalLow = isHbA1c ? 4.0 : 70;
-  const normalHigh = isHbA1c ? 5.7 : 100;
-  const yNormalLow = getY(normalLow);
-  const yNormalHigh = getY(normalHigh);
+  // Normal band — single-condition view only (bands differ per condition,
+  // so 'all' view has none). Matches calculateGlucoseStatus ranges.
+  const bandLow = activeMeta?.bandLow ?? null;
+  const bandHigh = activeMeta?.bandHigh ?? null;
+  const yNormalLow = bandLow != null ? getY(bandLow) : 0;
+  const yNormalHigh = bandHigh != null ? getY(bandHigh) : 0;
   const yHighLine = getY(isHbA1c ? 6.5 : 140);
+
+  // Caption: per-condition standards.
+  const caption = isHbA1c
+    ? 'စံနှုန်း: ပုံမှန် < 5.7% / ဆီးချို ≥ 6.5%'
+    : isSingle && activeMeta && activeKey
+      ? `စံနှုန်း: ${GLUCOSE_STANDARD_TEXT[activeKey]} mg/dL (ပုံမှန်)`
+      : (() => {
+          const parts = presentSeries
+            .filter((k) => k !== 'hba1c' && k !== 'unknown')
+            .map((k) => GLUCOSE_STANDARD_TEXT[k]);
+          return parts.length
+            ? `စံနှုန်း: ${parts.join(' · ')} mg/dL`
+            : 'စံနှုန်း: အခြေအနေအလိုက် ကွာခြားပါသည်';
+        })();
 
   return (
     <div className="relative bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -411,192 +523,204 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
           <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
             သွေးတွင်းသကြားဓာတ် ပြောင်းလဲမှု Trend (Blood Glucose)
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {isHbA1c ? 'စံနှုန်း: ပုံမှန် < 5.7% / ဆီးချို ≥ 6.5%' : 'စံနှုန်း: အစာမစားမီ 70 - 99 mg/dL / အစာစားပြီး < 140 mg/dL'}
-          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{caption}</p>
         </div>
 
-        {/* Filter buttons */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
+        {/* Filter buttons — only series present in the records (plus အားလုံး) */}
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
           <button
             onClick={() => setFilterType('all')}
             className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${filterType === 'all' ? 'bg-white dark:bg-slate-700 shadow-xs font-medium text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}
           >
             အားလုံး
           </button>
-          <button
-            onClick={() => setFilterType('fasting')}
-            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${filterType === 'fasting' ? 'bg-white dark:bg-slate-700 shadow-xs font-medium text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}
-          >
-            အစာမစားမီ
-          </button>
-          <button
-            onClick={() => setFilterType('post_prandial')}
-            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${filterType === 'post_prandial' ? 'bg-white dark:bg-slate-700 shadow-xs font-medium text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}
-          >
-            အစာစားပြီး
-          </button>
-          <button
-            onClick={() => setFilterType('hba1c')}
-            className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${filterType === 'hba1c' ? 'bg-white dark:bg-slate-700 shadow-xs font-medium text-purple-600 dark:text-purple-400' : 'text-slate-600 dark:text-slate-400'}`}
-          >
-            HbA1c (၃လပတ်)
-          </button>
+          {buttonSeries.map((k) => (
+            <button
+              key={k}
+              onClick={() => setFilterType(k)}
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${filterType === k ? 'bg-white dark:bg-slate-700 shadow-xs font-medium' : 'text-slate-600 dark:text-slate-400'}`}
+              style={filterType === k ? { color: GLUCOSE_SERIES_META[k].color } : undefined}
+            >
+              {GLUCOSE_SERIES_META[k].shortLabelMm}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="w-full overflow-hidden">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto max-w-full select-none">
-          {/* Normal Target Range Box */}
-          <rect
-            x={padding.left}
-            y={yNormalHigh}
-            width={chartW}
-            height={Math.abs(yNormalLow - yNormalHigh)}
-            fill="currentColor"
-            className="text-emerald-500/10 dark:text-emerald-500/15"
-          />
+      {filtered.length === 0 ? (
+        <div className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-center">
+          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+            ဤအခြေအနေအတွက် မှတ်တမ်းမရှိပါ။
+          </p>
+        </div>
+      ) : (
+        <div className="w-full overflow-hidden">
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto max-w-full select-none">
+            {/* Normal Target Range Box — single-condition view only */}
+            {bandLow != null && bandHigh != null && (
+              <rect
+                x={padding.left}
+                y={yNormalHigh}
+                width={chartW}
+                height={Math.abs(yNormalLow - yNormalHigh)}
+                fill="currentColor"
+                className="text-emerald-500/10 dark:text-emerald-500/15"
+              />
+            )}
 
-          {/* Grid lines */}
-          {(isHbA1c ? [5, 6, 7, 8, 9, 10, 12] : [70, 100, 140, 180, 220, 260]).map((val) => {
-            const y = getY(val);
-            const isTarget = isHbA1c ? val === 6 : (val === 100 || val === 140);
-            return (
-              <g key={val}>
-                <line
-                  x1={padding.left}
-                  y1={y}
-                  x2={width - padding.right}
-                  y2={y}
-                  stroke="currentColor"
-                  strokeDasharray={isTarget ? '4 2' : '2 4'}
-                  className={isTarget ? 'text-emerald-400/60 dark:text-emerald-500/40' : 'text-slate-200 dark:text-slate-800'}
-                  strokeWidth={isTarget ? 1.2 : 0.8}
-                />
-                <text
-                  x={padding.left - 8}
-                  y={y + 3}
-                  textAnchor="end"
-                  className="text-[10px] fill-slate-400 dark:fill-slate-500 font-mono"
-                >
-                  {val}{isHbA1c ? '%' : ''}
-                </text>
-              </g>
-            );
-          })}
-
-          {/* High threshold line */}
-          <line
-            x1={padding.left}
-            y1={yHighLine}
-            x2={width - padding.right}
-            y2={yHighLine}
-            stroke="#ef4444"
-            strokeDasharray="3 3"
-            strokeWidth="0.9"
-            opacity="0.6"
-          />
-          <text
-            x={width - padding.right - 4}
-            y={yHighLine - 4}
-            textAnchor="end"
-            className="text-[9px] fill-rose-500 font-medium"
-          >
-            {isHbA1c ? 'ဆီးချိုစံချိန် (≥6.5%)' : 'မြင့်မားသောအဆင့် (≥140)'}
-          </text>
-
-          {/* Line Path */}
-          <path
-            d={linePath}
-            fill="none"
-            stroke={isHbA1c ? '#8b5cf6' : '#10b981'}
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Points and Value Labels */}
-          {filtered.map((r, i) => {
-            const x = getX(i, filtered.length);
-            const val = (r.value ?? r.glucoseValue)!;
-            const y = getY(val);
-            const isHovered = hoveredPoint?.id === r.id;
-            const dateObj = formatDateLabel(r.date || r.timestamp || r.createdAt);
-            const tType = r.type || r.timing;
-
-            let dotColor = '#10b981'; // normal
-            if (r.status === 'pre_diabetic') dotColor = '#f59e0b';
-            if (r.status === 'high' || r.status === 'critical' || r.status === 'diabetic' || r.status === 'high_danger') dotColor = '#ef4444';
-            if (r.status === 'low') dotColor = '#3b82f6';
-            if (tType === 'hba1c') dotColor = '#8b5cf6';
-
-            return (
-              <g key={r.id || i} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(r)} onMouseLeave={() => setHoveredPoint(null)}>
-                {isHovered && (
+            {/* Grid lines */}
+            {(isHbA1c ? [5, 6, 7, 8, 9, 10, 12] : [70, 100, 140, 180, 220, 260]).map((val) => {
+              const y = getY(val);
+              const isTarget = isHbA1c ? val === 6 : (val === 100 || val === 140);
+              return (
+                <g key={val}>
                   <line
-                    x1={x}
-                    y1={padding.top}
-                    x2={x}
-                    y2={height - padding.bottom}
+                    x1={padding.left}
+                    y1={y}
+                    x2={width - padding.right}
+                    y2={y}
                     stroke="currentColor"
-                    strokeWidth="1.2"
-                    strokeDasharray="3 3"
-                    className="text-slate-400 dark:text-slate-600"
+                    strokeDasharray={isTarget ? '4 2' : '2 4'}
+                    className={isTarget ? 'text-emerald-400/60 dark:text-emerald-500/40' : 'text-slate-200 dark:text-slate-800'}
+                    strokeWidth={isTarget ? 1.2 : 0.8}
                   />
-                )}
+                  <text
+                    x={padding.left - 8}
+                    y={y + 3}
+                    textAnchor="end"
+                    className="text-[10px] fill-slate-400 dark:fill-slate-500 font-mono"
+                  >
+                    {val}{isHbA1c ? '%' : ''}
+                  </text>
+                </g>
+              );
+            })}
 
-                {/* Sugar Value Label above dot */}
-                <text
-                  x={x}
-                  y={y - 8}
-                  textAnchor="middle"
-                  className="text-[10px] font-extrabold fill-emerald-600 dark:fill-emerald-400 font-mono"
-                >
-                  {val}
-                </text>
+            {/* High threshold line */}
+            <line
+              x1={padding.left}
+              y1={yHighLine}
+              x2={width - padding.right}
+              y2={yHighLine}
+              stroke="#ef4444"
+              strokeDasharray="3 3"
+              strokeWidth="0.9"
+              opacity="0.6"
+            />
+            <text
+              x={width - padding.right - 4}
+              y={yHighLine - 4}
+              textAnchor="end"
+              className="text-[9px] fill-rose-500 font-medium"
+            >
+              {isHbA1c ? 'ဆီးချိုစံချိန် (≥6.5%)' : 'မြင့်မားသောအဆင့် (≥140)'}
+            </text>
 
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={isHovered ? 6 : 4.5}
-                  fill={dotColor}
-                  className="stroke-white dark:stroke-slate-900 transition-all"
-                  strokeWidth="2"
+            {/* One coloured line per series present. 'unknown' = dots only. */}
+            {[...seriesPoints.entries()].map(([key, pts]) => {
+              if (key === 'unknown') return null;
+              return (
+                <path
+                  key={key}
+                  d={buildPath(pts)}
+                  fill="none"
+                  stroke={GLUCOSE_SERIES_META[key].color}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
+              );
+            })}
 
-                {/* X axis Date label (DD-MM-YYYY) */}
-                <text
-                  x={x}
-                  y={height - padding.bottom + 16}
-                  textAnchor="middle"
-                  className="text-[9.5px] fill-slate-700 dark:fill-slate-300 font-bold font-mono"
-                >
-                  {dateObj.date}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
+            {/* Points — dot colour = series colour (status-colour coding dropped:
+                it conflicted with series colours). Value labels in single views only. */}
+            {filtered.map((r, i) => {
+              const x = getX(recordMs(r));
+              const val = (r.value ?? r.glucoseValue)!;
+              const y = getY(val);
+              const isHovered = hoveredPoint?.id === r.id;
+              const seriesKey = seriesOf(r);
+              const color = GLUCOSE_SERIES_META[seriesKey].color;
+
+              return (
+                <g key={r.id || i} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(r)} onMouseLeave={() => setHoveredPoint(null)}>
+                  {isHovered && (
+                    <line
+                      x1={x}
+                      y1={padding.top}
+                      x2={x}
+                      y2={height - padding.bottom}
+                      stroke="currentColor"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
+                      className="text-slate-400 dark:text-slate-600"
+                    />
+                  )}
+
+                  {/* Sugar Value Label above dot — single-condition view only */}
+                  {isSingle && (
+                    <text
+                      x={x}
+                      y={y - 8}
+                      textAnchor="middle"
+                      className="text-[10px] font-extrabold font-mono"
+                      fill={color}
+                    >
+                      {val}
+                    </text>
+                  )}
+
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={isHovered ? 6 : 4.5}
+                    fill={color}
+                    className="stroke-white dark:stroke-slate-900 transition-all"
+                    strokeWidth="2"
+                  />
+                </g>
+              );
+            })}
+
+            {/* X axis time ticks (max 5) — no per-point date labels */}
+            {xTicks.map((t) => (
+              <text
+                key={t}
+                x={getX(t)}
+                y={height - padding.bottom + 16}
+                textAnchor="middle"
+                className="text-[9.5px] fill-slate-700 dark:fill-slate-300 font-bold font-mono"
+              >
+                {formatDateLabel(t).date}
+              </text>
+            ))}
+          </svg>
+        </div>
+      )}
 
       {hoveredPoint && (
         <div className="mt-2.5 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div>
             <span className="font-semibold text-slate-800 dark:text-slate-200">
-              ရက်စွဲ: {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).date}
+              ရက်စွဲ: {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).date} {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).time}
+            </span>
+            <span className="text-slate-500 dark:text-slate-400 ml-2">
+              ({GLUCOSE_SERIES_META[seriesOf(hoveredPoint)].labelMm})
             </span>
             {hoveredPoint.mealInfo && (
               <span className="text-slate-500 dark:text-slate-400 ml-2">
                 ({hoveredPoint.mealInfo})
               </span>
             )}
+            {hoveredPoint.notes && (
+              <span className="text-slate-500 dark:text-slate-400 ml-2">
+                ({hoveredPoint.notes})
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3 font-mono">
             <span className="font-bold text-slate-900 dark:text-white">
-              {hoveredPoint.value || hoveredPoint.glucoseValue} {(hoveredPoint.type || hoveredPoint.timing) === 'hba1c' ? '%' : 'mg/dL'}
-            </span>
-            <span className="text-slate-400">
-              ({hoveredPoint.type || hoveredPoint.timing})
+              {hoveredPoint.value || hoveredPoint.glucoseValue} {seriesOf(hoveredPoint) === 'hba1c' ? '%' : 'mg/dL'}
             </span>
           </div>
         </div>
@@ -625,11 +749,7 @@ export const BMIWeightChart: React.FC<BMIWeightChartProps> = ({ records, classNa
   }
 
   // Sort chronologically ascending
-  const sortedRecords = [...records].sort((a, b) => {
-    const timeA = parseDateToMs(a.date || a.timestamp || a.createdAt);
-    const timeB = parseDateToMs(b.date || b.timestamp || b.createdAt);
-    return timeA - timeB;
-  });
+  const sortedRecords = [...records].sort((a, b) => recordMs(a) - recordMs(b));
 
   const width = 640;
   const height = 270;
@@ -648,19 +768,20 @@ export const BMIWeightChart: React.FC<BMIWeightChartProps> = ({ records, classNa
     return padding.top + chartH - ((clamped - minY) / (maxY - minY)) * chartH;
   };
 
-  const getX = (idx: number, total: number) => {
-    if (total <= 1) return padding.left + chartW / 2;
-    return padding.left + (idx / (total - 1)) * chartW;
-  };
+  // Time-based X axis (real timestamps, not record index).
+  const times = sortedRecords.map(recordMs);
+  const tMin = times.length ? Math.min(...times) : 0;
+  const tMax = times.length ? Math.max(...times) : 0;
+  const getX = (ms: number) => timeScaleX(ms, tMin, tMax, chartW, padding.left);
+  const xTicks = chartTimeTicks(tMin, tMax, 5);
 
-  const weightPoints = sortedRecords.map((r, i) => ({
-    x: getX(i, sortedRecords.length),
+  const weightPoints = sortedRecords.map((r) => ({
+    x: getX(recordMs(r)),
     y: getY(r.weightKg || 60),
     record: r,
   }));
 
-  const weightPath = weightPoints.reduce((acc, p, i) => 
-    i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
+  const weightPath = buildPath(weightPoints);
 
   return (
     <div className="relative bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -675,7 +796,7 @@ export const BMIWeightChart: React.FC<BMIWeightChartProps> = ({ records, classNa
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-3 text-xs">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-teal-500" />
             <span className="text-slate-600 dark:text-slate-400">ကိုယ်အလေးချိန် (kg)</span>
@@ -728,10 +849,9 @@ export const BMIWeightChart: React.FC<BMIWeightChartProps> = ({ records, classNa
 
           {/* Points & Value Labels */}
           {sortedRecords.map((r, i) => {
-            const x = getX(i, sortedRecords.length);
+            const x = getX(recordMs(r));
             const y = getY(r.weightKg || 60);
             const isHovered = hoveredPoint?.id === r.id;
-            const dateObj = formatDateLabel(r.date || r.timestamp || r.createdAt);
 
             return (
               <g key={r.id || i} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(r)} onMouseLeave={() => setHoveredPoint(null)}>
@@ -765,19 +885,22 @@ export const BMIWeightChart: React.FC<BMIWeightChartProps> = ({ records, classNa
                   className="fill-teal-600 stroke-white dark:stroke-slate-900 transition-all"
                   strokeWidth="2"
                 />
-
-                {/* X axis Date label (DD-MM-YYYY) */}
-                <text
-                  x={x}
-                  y={height - padding.bottom + 16}
-                  textAnchor="middle"
-                  className="text-[9.5px] fill-slate-700 dark:fill-slate-300 font-bold font-mono"
-                >
-                  {dateObj.date}
-                </text>
               </g>
             );
           })}
+
+          {/* X axis time ticks (max 5) — no per-point date labels */}
+          {xTicks.map((t) => (
+            <text
+              key={t}
+              x={getX(t)}
+              y={height - padding.bottom + 16}
+              textAnchor="middle"
+              className="text-[9.5px] fill-slate-700 dark:fill-slate-300 font-bold font-mono"
+            >
+              {formatDateLabel(t).date}
+            </text>
+          ))}
         </svg>
       </div>
 
@@ -785,7 +908,7 @@ export const BMIWeightChart: React.FC<BMIWeightChartProps> = ({ records, classNa
         <div className="mt-2.5 p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div>
             <span className="font-semibold text-slate-800 dark:text-slate-200">
-              ရက်စွဲ: {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).date}
+              ရက်စွဲ: {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).date} {formatDateLabel(hoveredPoint.date || hoveredPoint.timestamp || hoveredPoint.createdAt).time}
             </span>
             <span className="text-slate-500 dark:text-slate-400 ml-2">
               အရပ်: {hoveredPoint.heightCm} cm
@@ -804,4 +927,3 @@ export const BMIWeightChart: React.FC<BMIWeightChartProps> = ({ records, classNa
     </div>
   );
 };
-

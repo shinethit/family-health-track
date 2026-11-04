@@ -352,7 +352,13 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   };
   const startEditSugar = (r: BloodSugarRecord) => {
     setGluValue(String(r.glucoseValue ?? r.value ?? ''));
-    setGluType(r.type || r.timing || 'fasting');
+    // v2.4.17: legacy stored types 'post_prandial'/'postprandial' map to
+    // 'post_meal_2h'; a missing/unknown type falls back to 'fasting'.
+    // Stored data is NOT rewritten here — the new type is saved only on
+    // the next save.
+    const rawGluType = r.type || r.timing || 'fasting';
+    const knownGluTypes = ['fasting', 'before_meal', 'post_meal_2h', 'random', 'bedtime', 'hba1c'];
+    setGluType(rawGluType === 'post_prandial' || rawGluType === 'postprandial' ? 'post_meal_2h' : knownGluTypes.includes(rawGluType) ? rawGluType : 'fasting');
     setGluMealInfo(r.mealInfo || '');
     setGluDiet(r.dietRecord || r.dietNotes || r.foodIntake || '');
     setGluNotes(r.notes || '');
@@ -1096,11 +1102,12 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
           <form onSubmit={(e) => { e.preventDefault(); submitRecord('sugar'); }} className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <input type="number" required placeholder="သွေးချို (mg/dL) *" value={gluValue} onChange={(e) => setGluValue(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <select value={gluType} onChange={(e) => setGluType(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold">
-              <option value="fasting">အစာမစားမီ (Fasting)</option>
+              <option value="fasting">FBS (မနက်အစာမစားမီ)</option>
               <option value="before_meal">အစာမစားမီ</option>
               <option value="post_meal_2h">အစာစားပြီး ၂ နာရီ</option>
-              <option value="random">အချိန်မရွေး (Random)</option>
-              <option value="bedtime">ညအိပ်ရာဝင်</option>
+              <option value="random">အချိန်မရွေး (RBS)</option>
+              <option value="bedtime">အိပ်ရာဝင်</option>
+              <option value="hba1c">HbA1c (၃လ)</option>
             </select>
             <input type="datetime-local" required value={gluDate} onChange={(e) => setGluDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="text" placeholder="အစာအကြောင်း (ဥပမာ- မနက်အစာမစားမီ ၈ နာရီအစာငတ်)" value={gluMealInfo} onChange={(e) => setGluMealInfo(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
