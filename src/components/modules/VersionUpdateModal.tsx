@@ -3,6 +3,8 @@ import { Sparkles } from 'lucide-react';
 import { VERSION_HISTORY_DATA } from './VersionHistoryModal';
 import { Modal } from '../common/Modal';
 
+import type { ServedVersionHighlights } from '../../lib/versionCheck';
+
 interface VersionUpdateModalProps {
   // The version of the deploy being offered — null when the prompt is for
   // a pending reload whose version string could NOT be read from the
@@ -11,6 +13,12 @@ interface VersionUpdateModalProps {
   // must not invent a version or show the OLD version's highlights as
   // "what's new".
   latestAppVersion: string | null;
+  // v2.4.21: the served version's change summary (title + up to 4
+  // bullets) extracted from the served bundle itself. Shown IN the modal
+  // so the user sees WHAT was fixed without opening Version History.
+  // Null when it could not be extracted — the modal then falls back to
+  // the honest note. Never the OLD version's highlights.
+  servedHighlights?: ServedVersionHighlights | null;
   onClose: () => void;
   onOpenFullHistory: () => void;
   // True when a newer deploy was detected while this (old) bundle is still
@@ -20,6 +28,7 @@ interface VersionUpdateModalProps {
 
 export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
   latestAppVersion,
+  servedHighlights = null,
   onClose,
   onOpenFullHistory,
   pendingReload = false,
@@ -60,12 +69,31 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
           )}
         </p>
 
-        {/* Dynamic highlights directly from the active version — only when
-            the version is actually known (v2.4.16, H-H1). For a pending
-            reload with an unknown version, showing the OLD version's
-            highlights as "what's new" would be a lie, so only a short note
-            is shown instead. */}
-        {currentVersionInfo ? (
+        {/* What was fixed, IN the modal (v2.4.21). Priority:
+            1. the SERVED version's summary, extracted from its own bundle
+               — this is what the user asked for ("at least a summary of
+               what was fixed, like the other apps");
+            2. this bundle's own history entry — only when the offered
+               version IS in this bundle's history (the post-upgrade case);
+            3. the honest note — never the OLD version's highlights as the
+               new version's (v2.4.16, H-H1; v2.4.20 ?? null rule). */}
+        {servedHighlights ? (
+          <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs text-slate-700 dark:text-slate-300 max-h-64 overflow-y-auto">
+            <div className="font-bold flex items-center gap-1.5 text-teal-700 dark:text-teal-300 text-xs">
+              <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping shrink-0" />
+              <span>{servedHighlights.title}</span>
+            </div>
+
+            <ul className="space-y-1 text-[11px] text-slate-600 dark:text-slate-400 pl-2 pt-2 border-t border-slate-200/80 dark:border-slate-700">
+              {servedHighlights.items.slice(0, 4).map((item, idx) => (
+                <li key={idx} className="leading-relaxed flex items-start gap-1.5">
+                  <span className="text-teal-500 shrink-0 font-bold">›</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : currentVersionInfo ? (
           <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs text-slate-700 dark:text-slate-300 max-h-64 overflow-y-auto">
             <div className="font-bold flex items-center gap-1.5 text-teal-700 dark:text-teal-300 text-xs">
               <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping shrink-0" />

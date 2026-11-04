@@ -83,6 +83,146 @@ export function extractServedVersion(bundleText: string): string | null {
   return m ? `v${m[1]}` : null;
 }
 
+/** The served version's change summary, as extracted from its bundle. */
+export interface ServedVersionHighlights {
+  /** The entry title, e.g. '🔄 [NEW] Version Update ပြတာ သေချာမယ် + …'. */
+  title: string;
+  /** Up to 4 summary bullets, in history order. */
+  items: string[];
+}
+
+/**
+ * Extract the VersionHistoryModal chunk filename (e.g.
+ * 'VersionHistoryModal-ZZJ-1ZPO.js') from the served index bundle's JS
+ * text (v2.4.21). The index bundle references the lazy chunk by filename
+ * (verified against the real built bundle — it appears twice). Returns
+ * null when not found — the caller then shows the version without a
+ * summary, never an invented one.
+ */
+export function extractHistoryChunkFile(indexBundleText: string): string | null {
+  try {
+    const m = indexBundleText.match(/VersionHistoryModal-[A-Za-z0-9_-]+\.js/);
+    return m ? m[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read one backtick-quoted string starting at `at` (which must point at
+ * the opening backtick). The minifier emits history strings as template
+ * literals, so escapes are \` \\ and \${ (plus \n \r \t for safety).
+ * Returns the unescaped value and the index just past the closing
+ * backtick, or null when the string is unterminated / malformed.
+ */
+function readBacktickString(text: string, at: number): { value: string; end: number } | null {
+  if (text[at] !== '`') return null;
+  let out = '';
+  let i = at + 1;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === '\\' && i + 1 < text.length) {
+      const next = text[i + 1];
+      if (next === '`') out += '`';
+      else if (next === '\\') out += '\\';
+      else if (next === '$') out += '$';
+      else if (next === 'n') out += '\n';
+      else if (next === 'r') out += '\r';
+      else if (next === 't') out += '\t';
+      else out += next;
+      i += 2;
+      continue;
+    }
+    if (ch === '`') return { value: out, end: i + 1 };
+    out += ch;
+    i++;
+  }
+  return null;
+}
+
+/**
+ * Parse the backtick-quoted strings of an `items:[...]` array starting
+ * just after the opening bracket. Stops at the array's closing `]` (a
+ * `]` inside a string does not end it). Returns the items and the index
+ * just past the closing `]`, or null when malformed.
+ */
+function readItemsArray(text: string, afterOpen: number): { items: string[]; end: number } | null {
+  const items: string[] = [];
+  let i = afterOpen;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === ' ' || ch === '\n' || ch === '\r' || ch === '\t' || ch === ',') {
+      i++;
+      continue;
+    }
+    if (ch === ']') return { items, end: i + 1 };
+    if (ch === '`') {
+      const str = readBacktickString(text, i);
+      if (!str) return null;
+      items.push(str.value);
+      i = str.end;
+      continue;
+    }
+    return null;
+  }
+  return null;
+}
+
+/**
+ * Extract the served version's change summary from the served
+ * VersionHistoryModal chunk's JS text (v2.4.21).
+ *
+ * Real minified shape (verified against the built bundle):
+ *   version:`v2.4.20`,type:`minor`,...,title:`🔄 [NEW] ...`,
+ *   badge:`...`,highlights:[{title:`...`,icon:<component>,
+ *   items:[`...`,`...`,`...`]},{title:`...`,icon:<component>,items:[...]}]
+ *
+ * Returns { title, items } with at most 4 items (first group's items,
+ * then the next group's when the first has fewer), or null when the
+ * version's entry, its title, or any items cannot be found. Never
+ * throws, never invents content — the caller falls back to the honest
+ * "details in Version History after reload" note.
+ */
+export function extractServedHighlights(
+  chunkText: string,
+  version: string,
+): ServedVersionHighlights | null {
+  try {
+    const marker = `version:\`${version}\``;
+    const start = chunkText.indexOf(marker);
+    if (start < 0) return null;
+    // The entry ends where the next entry begins (`,version:`) — slicing
+    // here bounds every search below to THIS version's entry, so an older
+    // version's title/items can never leak in as the new version's.
+    const nextEntry = chunkText.indexOf(',version:`', start + marker.length);
+    const entry = nextEntry < 0 ? chunkText.slice(start) : chunkText.slice(start, nextEntry);
+
+    const titleAt = entry.indexOf('title:`');
+    if (titleAt < 0) return null;
+    const title = readBacktickString(entry, titleAt + 'title:'.length);
+    if (!title || !title.value) return null;
+
+    const highlightsAt = entry.indexOf('highlights:[');
+    if (highlightsAt < 0) return null;
+    const items: string[] = [];
+    let searchFrom = highlightsAt + 'highlights:['.length;
+    while (items.length < 4) {
+      const itemsAt = entry.indexOf('items:[', searchFrom);
+      if (itemsAt < 0) break;
+      const parsed = readItemsArray(entry, itemsAt + 'items:['.length);
+      if (!parsed) return null;
+      for (const item of parsed.items) {
+        if (items.length < 4) items.push(item);
+      }
+      searchFrom = parsed.end;
+    }
+    if (items.length === 0) return null;
+    return { title: title.value, items };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Pure decision: should the update prompt (modal + toast) be shown?
  * - Manual checks always show their result.

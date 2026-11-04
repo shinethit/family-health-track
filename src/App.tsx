@@ -38,10 +38,13 @@ import { LoginScreen } from './components/auth/LoginScreen';
 import { CURRENT_SYSTEM_VERSION } from './constants/version';
 import { db } from './lib/firebase';
 import {
+  extractHistoryChunkFile,
+  extractServedHighlights,
   extractServedVersion,
   markVersionUpdatePromptShown,
   readShownVersionUpdateHash,
   shouldShowVersionUpdatePrompt,
+  type ServedVersionHighlights,
 } from './lib/versionCheck';
 
 // Lazy-loaded Modals
@@ -127,6 +130,12 @@ const MainContent: React.FC = () => {
   const [showVersionUpdateModal, setShowVersionUpdateModal] = useState(false);
   const [versionUpdatePendingReload, setVersionUpdatePendingReload] = useState(false);
   const [latestAppVersion, setLatestAppVersion] = useState<string | null>(CURRENT_SYSTEM_VERSION);
+  // v2.4.21: the served version's change summary (title + up to 4 bullets)
+  // extracted from the served bundle, so the update modal can show WHAT
+  // was fixed instead of only saying "go look in Version History". Null
+  // unless a pending-reload check actually extracted one — never the OLD
+  // version's highlights.
+  const [servedHighlights, setServedHighlights] = useState<ServedVersionHighlights | null>(null);
   const [versionToast, setVersionToast] = useState<{ message: string; type: 'checking' | 'success' | 'updated' | 'error' } | null>(null);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
 
@@ -374,6 +383,9 @@ const MainContent: React.FC = () => {
           localStorage.setItem('myanmar_health_app_version', CURRENT_SYSTEM_VERSION);
           setVersionUpdatePendingReload(false);
           setLatestAppVersion(CURRENT_SYSTEM_VERSION);
+          // This bundle IS the new version, so its own history entry is
+          // the source of truth — no served summary to carry over.
+          setServedHighlights(null);
           setShowVersionUpdateModal(true);
           showVersionToast({
             message: `🔄 စနစ်ဗားရှင်းသစ် ${CURRENT_SYSTEM_VERSION} သို့ အောင်မြင်စွာ အဆင့်မြှင့်လိုက်ပါပြီ!`,
@@ -424,17 +436,46 @@ const MainContent: React.FC = () => {
           // the modal can name the new version instead of saying nothing
           // definite. A failure here is not fatal — the prompt still
           // shows with the honest unknown-version text.
+          // v2.4.21: from the same bundle text, also read the
+          // VersionHistoryModal chunk filename and fetch that chunk, so
+          // the modal can show the new version's change summary (title +
+          // up to 4 bullets) — the user asked for the summary IN the
+          // modal, like the other apps, instead of "go look in Version
+          // History". Any failure at any step leaves highlights null and
+          // the modal falls back to the honest note — never invent one.
           let servedVersion: string | null = null;
+          let highlights: ServedVersionHighlights | null = null;
           try {
             const bundleRes = await fetch(`/assets/index-${servedHash}.js?_v=${Date.now()}`, {
               cache: 'no-store',
               signal: AbortSignal.timeout(10000),
             });
-            if (bundleRes.ok) servedVersion = extractServedVersion(await bundleRes.text());
+            if (bundleRes.ok) {
+              const bundleText = await bundleRes.text();
+              servedVersion = extractServedVersion(bundleText);
+              if (servedVersion) {
+                const chunkFile = extractHistoryChunkFile(bundleText);
+                if (chunkFile) {
+                  try {
+                    const chunkRes = await fetch(`/assets/${chunkFile}?_v=${Date.now()}`, {
+                      cache: 'no-store',
+                      signal: AbortSignal.timeout(10000),
+                    });
+                    if (chunkRes.ok) {
+                      highlights = extractServedHighlights(await chunkRes.text(), servedVersion);
+                    }
+                  } catch {
+                    highlights = null;
+                  }
+                }
+              }
+            }
           } catch {
             servedVersion = null;
+            highlights = null;
           }
           if (servedVersion) setLatestAppVersion(servedVersion);
+          setServedHighlights(highlights);
           markVersionUpdatePromptShown(servedHash);
           setShowVersionUpdateModal(true);
           // v2.4.16 (E-L7): the modal waits for the profile-setup modal,
@@ -451,8 +492,9 @@ const MainContent: React.FC = () => {
       } else {
         // v2.4.16 (H-H9): up-to-date means no reload is pending any more —
         // clear the flag so a stale prompt can never linger after a
-        // successful reload.
+        // successful reload. A stale served summary must not linger either.
         setVersionUpdatePendingReload(false);
+        setServedHighlights(null);
         if (isManual) {
           showVersionToast({
             message: `✅ သင်သည် နောက်ဆုံးပေါ် စနစ်ဗားရှင်း ${CURRENT_SYSTEM_VERSION} ကို အသုံးပြုနေပါသည်!`,
@@ -836,6 +878,7 @@ const MainContent: React.FC = () => {
         {showVersionUpdateModal && !isProfileSetupOpen && (
           <VersionUpdateModal
             latestAppVersion={latestAppVersion}
+            servedHighlights={servedHighlights}
             pendingReload={versionUpdatePendingReload}
             onClose={() => setShowVersionUpdateModal(false)}
             onOpenFullHistory={() => {

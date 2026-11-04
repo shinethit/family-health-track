@@ -58,12 +58,33 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.20',
+    version: 'v2.4.21',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
     isLatest: true,
+    title: '🎉 [NEW] Version Update modal မှာ ပြင်ထားတာ အကျဉ်းချုပ် ပြမယ်',
+    badge: 'Latest Release (v2.4.21)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🎉 Version Update — ဘာပြင်ထားလဲ modal ထဲမှာ ပြမယ်',
+        icon: Sparkles,
+        items: [
+          'ဗားရှင်းအသစ် ရောက်ရင် နံပါတ်နဲ့တကွ ပြင်ထားတာ အကျဉ်းချုပ် (၄ ချက်အထိ) ကို modal ထဲမှာ တခါတည်း ပြမယ် — Version History သွားကြည့်စရာ မလိုတော့ဘူး',
+          'v2.4.20 မှာ နံပါတ်ပဲ ပြပြီး အကျဉ်းချုပ် ကျန်ခဲ့တာ — အခု ပြင်ပေးထားတယ်',
+          'ဗားရှင်းအသစ်ရဲ့ အကျဉ်းချုပ် ဖတ်မရရင် အတုမပြဘူး — အမှန်အတိုင်း \"ပြန်ဖွင့်ပြီးမှ Version History မှာ ကြည့်နိုင်ပါသည်\" လို့ပဲ ပြမယ်',
+          'Update prompt တစ်ခါပဲ ပြတာ (v2.4.20) နဲ့ BMI မှတ်တမ်း အခန်းမှာ လက်ရှိ BMI ပြတာ (v2.4.20) တို့လည်း ဒီ version မှာ ပါဝင်တယ်'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.4.20',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: false,
     title: '🔄 [NEW] Version Update ပြတာ သေချာမယ် + BMI မှတ်တမ်း အခန်းမှာ လက်ရှိ BMI ပြမယ်',
-    badge: 'Latest Release (v2.4.20)',
+    badge: 'Previous Release (v2.4.20)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
