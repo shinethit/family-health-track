@@ -96,7 +96,7 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
   const parsedWeight = Number(weightKg);
   const parsedHeight = Number(heightCm);
   const liveBMI = (parsedWeight > 0 && parsedHeight > 0)
-    ? calculateBMI(parsedWeight, parsedHeight)
+    ? calculateBMI(parsedWeight, parsedHeight, age ? Number(age) : undefined)
     : null;
 
   const toggleCondition = (cond: string) => {

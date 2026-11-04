@@ -30,6 +30,7 @@ import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 import { Modal } from '../common/Modal';
 import { useToast } from '../../context/ToastContext';
 import { formatDateLabel } from '../../lib/medicalCalculations';
+import { resolveBMIDisplay } from '../../lib/bmiDisplay';
 import {
   buildPdfFilename,
   exportElementToPdf,
@@ -246,6 +247,22 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
   const latestBP = patientBP[0];
   const latestSugar = patientSugar[0];
   const latestBMI = patientBMI[0];
+
+  // v2.4.19: the passport BMI summary falls back to the person's profile
+  // height/weight when they have no BMI record — a record always wins.
+  // The fallback is labelled "Profile အရ" and never carries a measurement
+  // date. A family member carries no height/weight, so a member view has
+  // no profile fallback (never borrow the owner's profile).
+  const passportBmiProfileWeightKg = isFamilyMemberView ? undefined : (selectedPatient?.weightKg ?? profile?.weightKg);
+  const passportBmiProfileHeightCm = isFamilyMemberView ? undefined : (selectedPatient?.heightCm ?? profile?.heightCm);
+  const passportBmi = resolveBMIDisplay({
+    record: latestBMI ?? null,
+    profileWeightKg: passportBmiProfileWeightKg ?? null,
+    profileHeightCm: passportBmiProfileHeightCm ?? null,
+    age: patientAge ?? null,
+  });
+  const passportBmiWeightKg = passportBmi?.record?.weightKg ?? passportBmiProfileWeightKg;
+  const passportBmiHeightCm = passportBmi?.record?.heightCm ?? passportBmiProfileHeightCm;
   const latestLab = patientLabs[0];
 
   // Time boundaries for 1 Month, 3 Months, 6 Months
@@ -633,16 +650,16 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
                 <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
                   <span>ကိုယ်အလေးချိန် & BMI</span>
-                  <span className="text-[11px] text-slate-400">{latestBMI ? formatRecordDate(latestBMI) : '-'}</span>
+                  <span className="text-[11px] text-slate-400">{passportBmi?.record ? formatRecordDate(passportBmi.record) : '-'}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-black text-teal-600">
-                    {latestBMI ? latestBMI.bmi.toFixed(1) : '--'}
+                    {passportBmi ? passportBmi.eval.bmi.toFixed(1) : '--'}
                   </span>
                   <span className="text-xs text-slate-500 font-semibold">kg/m²</span>
                 </div>
                 <p className="text-[11px] text-slate-600 mt-2 font-medium">
-                  {latestBMI ? `အလေးချိန်: ${latestBMI.weightKg} kg | အရပ်: ${latestBMI.heightCm} cm` : 'မှတ်တမ်းမရှိသေးပါ'}
+                  {passportBmi ? `အလေးချိန်: ${passportBmiWeightKg} kg | အရပ်: ${passportBmiHeightCm} cm${passportBmi.source === 'profile' ? ' (Profile အရ)' : ''}` : 'မှတ်တမ်းမရှိသေး'}
                 </p>
               </div>
             </div>

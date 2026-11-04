@@ -126,7 +126,7 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
             const resolvedAge = ageObj ? ageObj.years : (p.age || null);
             const missing = getMissingFields(p);
             const cleanName = getResolvedName(p);
-            const bmi = (p.weightKg && p.heightCm) ? calculateBMI(p.weightKg, p.heightCm) : null;
+            const bmi = (p.weightKg && p.heightCm) ? calculateBMI(p.weightKg, p.heightCm, resolvedAge ?? undefined) : null;
 
             return (
               <div 

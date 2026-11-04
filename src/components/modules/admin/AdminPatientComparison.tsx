@@ -138,7 +138,9 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
       return { text: `${s.latestBMI.bmi}`, label: null, fromRecord: true };
     }
     if (s.patient.weightKg && s.patient.heightCm) {
-      const calc = calculateBMI(s.patient.weightKg, s.patient.heightCm);
+      // v2.4.19: profile fallback (labelled "Profile အရ" in the render),
+      // with the age passed so the paediatric guard applies.
+      const calc = calculateBMI(s.patient.weightKg, s.patient.heightCm, s.patient.age ?? undefined);
       if (!calc) return { text: 'မရှိသေးပါ', label: null, fromRecord: false };
       return { text: `${calc.bmi}`, label: calc.labelMm, fromRecord: false };
     }
@@ -321,6 +323,11 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
                               {s.latestBMI && (
                                 <div className="text-[11px] text-slate-400 mt-1">
                                   မှတ်တမ်းမှ BMI • {fmtDate(s.latestBMI.date || s.latestBMI.timestamp || s.latestBMI.createdAt)}
+                                </div>
+                              )}
+                              {!b.fromRecord && b.text !== 'မရှိသေးပါ' && (
+                                <div className="text-[11px] text-slate-400 mt-1">
+                                  Profile အရ တွက်ချက်ထားသည်
                                 </div>
                               )}
                             </div>

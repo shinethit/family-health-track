@@ -547,10 +547,13 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   // latest BMI record first, same pattern as TrendsOverview / BMIModule.
   // Before this, the badge simply vanished for such a patient.
   const latestPatientBMI = latestBMIHistory[0] || null;
+  // v2.4.19: record wins; profile height/weight is the fallback (labelled
+  // "Profile အရ" on the badge, never with a fake date). Pass the age so
+  // the paediatric guard applies instead of adult cut-offs.
   const patientBMI = (latestPatientBMI?.heightCm && latestPatientBMI?.weightKg)
-    ? calculateBMI(latestPatientBMI.weightKg, latestPatientBMI.heightCm)
+    ? calculateBMI(latestPatientBMI.weightKg, latestPatientBMI.heightCm, latestPatientBMI.ageYears ?? resolvedAge ?? undefined)
     : (patient.weightKg && patient.heightCm)
-      ? calculateBMI(patient.weightKg, patient.heightCm)
+      ? calculateBMI(patient.weightKg, patient.heightCm, resolvedAge ?? undefined)
       : null;
 
   // --- Single-record delete (v2.4.16, C-H3): Modal confirm, then the
@@ -938,6 +941,8 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                   {/* D-L3: the badge shows WHEN the BMI was measured — a
                       value without its date cannot be trusted. */}
                   {latestPatientBMI?.date ? ` • ${latestPatientBMI.date.slice(0, 10)}` : ''}
+                  {/* v2.4.19: profile-derived BMI is labelled as such. */}
+                  {!latestPatientBMI && ' • Profile အရ'}
                 </span>
               )}
             </div>

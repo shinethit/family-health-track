@@ -30,6 +30,7 @@ import {
   parseDateToMs,
   formatDateLabel
 } from '../../lib/medicalCalculations';
+import { resolveBMIDisplay } from '../../lib/bmiDisplay';
 import {
   GLUCOSE_SERIES_META,
   normalizeGlucoseType,
@@ -279,6 +280,26 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
     ? calculateBMI(latestBMIRecord.weightKg, latestBMIRecord.heightCm, latestBMIRecord.ageYears ?? activeAgeYears ?? undefined)
     : null;
 
+  // v2.4.19: the BMI CARD falls back to the viewed person's profile
+  // height/weight when they have no BMI record — a record always wins.
+  // The fallback is honest: the card labels it "Profile အရ" and never
+  // shows a measurement date for it. A family member carries no
+  // height/weight, so a member view has no profile fallback — the
+  // owner's profile is never borrowed for someone else. Alerts and the
+  // health badge keep using the record-only bmiEval above (never alert
+  // on a derived value).
+  const cardBmiProfile = selectedFamilyMember
+    ? { weightKg: undefined as number | undefined, heightCm: undefined as number | undefined }
+    : selectedPatient
+      ? { weightKg: selectedPatient.weightKg, heightCm: selectedPatient.heightCm }
+      : { weightKg: profile?.weightKg, heightCm: profile?.heightCm };
+  const cardBmi = resolveBMIDisplay({
+    record: latestBMIRecord,
+    profileWeightKg: cardBmiProfile.weightKg ?? null,
+    profileHeightCm: cardBmiProfile.heightCm ?? null,
+    age: activeAgeYears,
+  });
+
   // Active critical alerts
   const alerts: { title: string; desc: string; type: 'warning' | 'danger' | 'info' }[] = [];
 
@@ -513,17 +534,22 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             <Scale className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-xl font-extrabold font-mono text-slate-900 mt-1">
-            {bmiEval ? bmiEval.bmi : '--'} <span className="text-xs text-slate-500 font-sans">kg/m²</span>
+            {cardBmi ? cardBmi.eval.bmi : '--'} <span className="text-xs text-slate-500 font-sans">kg/m²</span>
           </div>
-          {bmiEval ? (
-            <span className={`text-[11px] font-bold mt-1 inline-block truncate ${bmiEval.color}`}>
-              {statusWithLabel(plainBMIStatus(bmiEval.category), bmiEval.labelMm, bmiEval.category === 'normal', bmiEval.isPediatric)}
-            </span>
+          {cardBmi ? (
+            <>
+              <span className={`text-[11px] font-bold mt-1 inline-block truncate ${cardBmi.eval.color}`}>
+                {statusWithLabel(plainBMIStatus(cardBmi.eval.category), cardBmi.eval.labelMm, cardBmi.eval.category === 'normal', cardBmi.eval.isPediatric)}
+              </span>
+              {cardBmi.source === 'profile' && (
+                <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">Profile အရ တွက်ချက်ထားသည်</span>
+              )}
+            </>
           ) : (
             <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
           )}
           <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">
-            📅 {latestBMIRecord ? displayDate(latestBMIRecord.date || latestBMIRecord.timestamp) : 'ရက်စွဲ မရှိပါ'}
+            📅 {cardBmi?.record ? displayDate(cardBmi.record.date || cardBmi.record.timestamp) : 'ရက်စွဲ မရှိပါ'}
           </span>
         </div>
 

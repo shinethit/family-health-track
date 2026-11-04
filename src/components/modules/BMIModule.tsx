@@ -165,9 +165,18 @@ export const BMIModule: React.FC = () => {
   const activeAgeResult = calculateAge(activeDOB);
   const activeAgeYears = activeAgeResult ? activeAgeResult.years : (selectedPatient?.age || selectedFamilyMember?.age || profile?.age || null);
 
-  const activeHeight = latestBMI?.heightCm || selectedPatient?.heightCm || profile?.heightCm || null;
-  const activeWeight = latestBMI?.weightKg || selectedPatient?.weightKg || profile?.weightKg || null;
-  const activeWaist = latestBMI?.waistCm || selectedPatient?.waistCm || profile?.waistCm || null;
+  // v2.4.19: a family member carries no height/weight on their record —
+  // in member view the profile fallback must NOT borrow the signed-in
+  // user's (owner's) measurements. The member's BMI comes from their own
+  // BMI records only; otherwise the card would show the owner's BMI
+  // under the member's name.
+  const isMemberView = !!selectedFamilyMember;
+  const profileHeight = isMemberView ? undefined : (selectedPatient?.heightCm || profile?.heightCm);
+  const profileWeight = isMemberView ? undefined : (selectedPatient?.weightKg || profile?.weightKg);
+  const profileWaist = isMemberView ? undefined : (selectedPatient?.waistCm || profile?.waistCm);
+  const activeHeight = latestBMI?.heightCm || profileHeight || null;
+  const activeWeight = latestBMI?.weightKg || profileWeight || null;
+  const activeWaist = latestBMI?.waistCm || profileWaist || null;
 
   const currentBMIResult = (activeWeight && activeHeight) ? calculateBMI(activeWeight, activeHeight, activeAgeYears ?? undefined) : null;
   const waistRisk = activeWaist ? calculateWaistRisk(activeWaist, (selectedPatient?.gender || selectedFamilyMember?.gender || profile?.gender || 'male')) : null;
@@ -595,6 +604,15 @@ export const BMIModule: React.FC = () => {
             <p className={`text-xs font-bold mt-1 ${currentBMIResult?.color || 'text-slate-500'}`}>
               {currentBMIResult ? currentBMIResult.labelMm : 'မှတ်တမ်း မရှိသေးပါ'}
             </p>
+
+            {/* v2.4.19: a profile-derived BMI is labelled as such — never
+                presented as a measurement. The date line below only shows
+                when a real record exists, so no fake date is ever shown. */}
+            {currentBMIResult && !latestBMI && (
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                Profile အရ တွက်ချက်ထားသည်
+              </p>
+            )}
 
             {/* D-H5: a "Latest" value with no date and no owner cannot be
                 trusted — show when it was measured and whose it is. */}

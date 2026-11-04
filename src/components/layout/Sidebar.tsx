@@ -27,7 +27,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
-import { calculateBPCategory, calculateGlucoseStatus, calculateBMI, parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
+import { calculateBPCategory, calculateGlucoseStatus, parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
+import { resolveBMIDisplay } from '../../lib/bmiDisplay';
 import { GLUCOSE_SERIES_META, normalizeGlucoseType, BP_CONDITION_META, normalizeBPCondition } from '../../lib/chartSeries';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
 import { Modal } from '../common/Modal';
@@ -156,7 +157,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // No fabricated fallback: a record with no glucose value has no status.
   const latestGluValue = latestGlu?.glucoseValue ?? latestGlu?.value ?? null;
   const gluEval = latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestGlu.timing || latestGlu.type || 'fasting', targetAge ?? undefined) : null;
-  const bmiEval = latestBMI ? calculateBMI(latestBMI.weightKg, latestBMI.heightCm, targetAge) : null;
+  // v2.4.19: the summary BMI falls back to the summary person's profile
+  // height/weight when they have no BMI record — a record always wins.
+  // A family member carries no height/weight, so a member view has no
+  // profile fallback (never borrow the owner's profile). The resolved
+  // value is labelled "Profile အရ" and never carries a measurement date.
+  const bmiProfile = isMemberView
+    ? { weightKg: undefined as number | undefined, heightCm: undefined as number | undefined }
+    : isPatientView
+      ? { weightKg: selectedPatient!.weightKg, heightCm: selectedPatient!.heightCm }
+      : { weightKg: profile?.weightKg, heightCm: profile?.heightCm };
+  const bmiResolved = resolveBMIDisplay({
+    record: latestBMI,
+    profileWeightKg: bmiProfile.weightKg ?? null,
+    profileHeightCm: bmiProfile.heightCm ?? null,
+    age: targetAge,
+  });
+  const bmiEval = bmiResolved?.eval ?? null;
 
   const hasAnyRecords = Boolean(latestBP || latestGlu || latestBMI);
 
@@ -330,7 +347,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                      </button>
                    )}
 
-                   {latestBMI && bmiEval && (
+                   {bmiResolved && bmiEval && (
                      <button onClick={() => openMetricTab('bmi')} className="w-full text-left p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors">
                        <span className="flex items-center justify-between text-[11px]">
                          <span className="flex items-center gap-1.5 text-slate-700 font-bold">
@@ -339,14 +356,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                              bmiEval.category === 'underweight' ? 'bg-blue-500' :
                              bmiEval.category === 'overweight' ? 'bg-amber-500' : 'bg-rose-500'
                            }`} />
-                           <span>BMI: {latestBMI.bmi}</span>
+                           <span>BMI: {bmiResolved.record ? bmiResolved.record.bmi : bmiResolved.eval.bmi}</span>
                          </span>
                          <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                        </span>
                        <span className={`block text-[11px] font-bold mt-0.5 pl-3.5 ${bmiEval.color}`}>
                          {statusWithLabel(plainBMIStatus(bmiEval.category), bmiEval.labelMm, bmiEval.category === 'normal', bmiEval.isPediatric)}
                        </span>
-                       <span className="block text-[10px] text-slate-400 font-semibold pl-3.5">တိုင်းတာတဲ့နေ့: {recordDate(latestBMI)}</span>
+                       {bmiResolved.record ? (
+                         <span className="block text-[10px] text-slate-400 font-semibold pl-3.5">တိုင်းတာတဲ့နေ့: {recordDate(bmiResolved.record)}</span>
+                       ) : (
+                         <span className="block text-[10px] text-slate-400 font-semibold pl-3.5">Profile အရ တွက်ချက်ထားသည်</span>
+                       )}
                      </button>
                    )}
                  </div>

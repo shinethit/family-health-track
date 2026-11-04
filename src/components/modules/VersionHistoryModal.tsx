@@ -58,12 +58,41 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.18',
+    version: 'v2.4.19',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
     isLatest: true,
+    title: '⚖️ [NEW] BMI — မှတ်တမ်းမရှိလည်း Profile အရ ပြမယ်',
+    badge: 'Latest Release (v2.4.19)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '⚖️ BMI — Profile အရ တွက်ချက်ပြခြင်း',
+        icon: Gauge,
+        items: [
+          'အရပ်/ကိုယ်အလေးချိန် ထည့်ထားပြီး BMI မှတ်တမ်း မရှိသေးရင် Trends / Sidebar / Passport မှာ BMI ပေါ်လာမယ် — "Profile အရ တွက်ချက်ထားသည်" လို့ အမှန်အတိုင်း ပြမယ်',
+          'BMI မှတ်တမ်း ရှိရင် မှတ်တမ်းကပဲ အမြဲ အနိုင်ရမယ် — ရက်စွဲနဲ့တကွ ပြမယ်',
+          'Profile အရ BMI မှာ တိုင်းတာတဲ့ ရက်စွဲ အတု လုံးဝ မပါဘူး — ရက်စွဲနေရာမှာ "ရက်စွဲ မရှိပါ" လို့ပဲ ပြမယ်',
+          'v2.4.14 မှာ ပါခဲ့တဲ့ Profile အရ BMI ပြခြင်းကို v2.4.16 စစ်ဆေးမှုမှာ ဖြုတ်မိခဲ့တာ — အခု အမှန်အတိုင်း တံဆိပ်ကပ်ပြီး ပြန်ထည့်ပေးထားတယ်'
+        ]
+      },
+      {
+        title: '👨‍👩‍👧 မိသားစုဝင် BMI — ကိုယ့်ဟာကိုယ် သီးသန့်',
+        icon: Users,
+        items: [
+          'မိသားစုဝင် ကြည့်နေချိန် ကိုယ့်ရဲ့ (အကောင့်ပိုင်ရှင်) အရပ်/အလေးချိန်ကို မှားယူပြီး BMI ပြတာ ပြင်ပြီး — မိသားစုဝင်မှာ ကိုယ့်မှတ်တမ်းသာ ပြမယ်',
+          'Admin ရဲ့ လူနာစာရင်း/နှိုင်းယှဉ်ဇယားမှာလည်း Profile အရ BMI ကို "Profile အရ" လို့ တံဆိပ်ကပ်ပြမယ်'
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v2.4.18',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: false,
     title: '📄 [NEW] PDF အစစ်အမှန် ထုတ်ယူနိုင်ပြီ + မိသားစုဝင်များ သီးသန့်',
-    badge: 'Latest Release (v2.4.18)',
+    badge: 'Previous Release (v2.4.18)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
