@@ -178,14 +178,19 @@ export const ChildCareModule: React.FC = () => {
   // fever at all, v2.4.11 10-B). Assessment thresholds stay in °F
   // internally (100.4°F = 38.0°C, 102°F = 38.9°C, 104°F = 40.0°C).
   const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
-  const [feverTemp, setFeverTemp] = useState<number>(38.3);
-  const feverTempF = tempUnit === 'C' ? (feverTemp * 9) / 5 + 32 : feverTemp;
+  // B-M9: the fever input starts EMPTY — no prefilled 38.3 °C and no
+  // verdict until the user actually enters a measured temperature. A
+  // "Moderate Fever" verdict before any measurement is a fabricated
+  // diagnosis.
+  const [feverTemp, setFeverTemp] = useState<number | ''>('');
+  const feverTempF = feverTemp === '' ? NaN : tempUnit === 'C' ? (feverTemp * 9) / 5 + 32 : feverTemp;
   const [hasEmergencySymptoms, setHasEmergencySymptoms] = useState<{ [key: string]: boolean }>({});
 
   // Switching units converts the entered value so nothing is lost.
   const handleTempUnitChange = (unit: 'C' | 'F') => {
     if (unit === tempUnit) return;
     setFeverTemp((prev) => {
+      if (prev === '') return '';
       const converted = unit === 'F' ? (prev * 9) / 5 + 32 : ((prev - 32) * 5) / 9;
       return Math.round(converted * 10) / 10;
     });
@@ -239,7 +244,8 @@ export const ChildCareModule: React.FC = () => {
     };
   };
 
-  const feverAssessment = getFeverAssessment();
+  // No verdict until a temperature has been entered (B-M9).
+  const feverAssessment = feverTemp === '' ? null : getFeverAssessment();
 
   return (
     <div className="space-y-6">
@@ -325,7 +331,8 @@ export const ChildCareModule: React.FC = () => {
                 min={tempUnit === 'C' ? '35' : '95'}
                 max={tempUnit === 'C' ? '42' : '108'}
                 value={feverTemp}
-                onChange={(e) => setFeverTemp(Number(e.target.value))}
+                onChange={(e) => setFeverTemp(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder={tempUnit === 'C' ? 'ဥပမာ- 38.5' : 'ဥပမာ- 101.3'}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
               />
               <span className="text-xs font-bold text-slate-500 shrink-0">
@@ -333,9 +340,11 @@ export const ChildCareModule: React.FC = () => {
               </span>
             </div>
             <p className="text-[11px] text-slate-400">
-              {tempUnit === 'C'
-                ? `≈ ${((feverTemp * 9) / 5 + 32).toFixed(1)}°F — အဖျားအဆင့် 38.0°C (100.4°F) နှင့်အထက်`
-                : `≈ ${(((feverTemp - 32) * 5) / 9).toFixed(1)}°C — အဖျားအဆင့် 100.4°F (38.0°C) နှင့်အထက်`}
+              {feverTemp === ''
+                ? 'သာမိုမီတာဖြင့် တိုင်းတာရရှိသော အပူချိန်ကို ထည့်ပေးပါ — အပူချိန် မထည့်ရသေးပါက အကဲဖြတ်ချက် မပြပါ။'
+                : tempUnit === 'C'
+                  ? `≈ ${((feverTemp * 9) / 5 + 32).toFixed(1)}°F — အဖျားအဆင့် 38.0°C (100.4°F) နှင့်အထက်`
+                  : `≈ ${(((feverTemp - 32) * 5) / 9).toFixed(1)}°C — အဖျားအဆင့် 100.4°F (38.0°C) နှင့်အထက်`}
             </p>
           </div>
         </div>
@@ -363,7 +372,14 @@ export const ChildCareModule: React.FC = () => {
           </div>
         </div>
 
-        {/* Result Assessment Card */}
+        {/* Result Assessment Card — shown only after a temperature is entered */}
+        {!feverAssessment ? (
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-600">
+            <p className="text-xs leading-relaxed">
+              အထက်တွင် တိုင်းတာရရှိသော အပူချိန်ကို ထည့်ပေးပါ — ထည့်ပြီးတာနဲ့ အဖျားအဆင့် အကဲဖြတ်ချက် ပြပေးပါမယ်။
+            </p>
+          </div>
+        ) : (
         <div className={`p-4 rounded-xl border space-y-1.5 ${
           feverAssessment.level === 'critical'
             ? 'bg-red-50 border-red-200 text-red-950'
@@ -381,6 +397,7 @@ export const ChildCareModule: React.FC = () => {
           </div>
           <p className="text-xs leading-relaxed">{feverAssessment.advice}</p>
         </div>
+        )}
       </div>
 
       {/* Interactive Tool 2: Weaning & Feeding Guide by Age */}

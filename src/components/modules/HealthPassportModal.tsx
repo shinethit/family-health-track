@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Printer, 
@@ -27,6 +27,7 @@ import { useHealthData } from '../../context/HealthDataContext';
 import { BloodPressureChart, BloodSugarChart, BMIWeightChart } from '../charts/HealthCharts';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 import { Modal } from '../common/Modal';
+import { formatDateLabel } from '../../lib/medicalCalculations';
 
 interface HealthPassportModalProps {
   isOpen: boolean;
@@ -37,24 +38,84 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
   const { profile, isAdmin } = useAuth();
   const { 
     selectedPatient, 
+    selectedFamilyMember,
     bpRecords, 
     glucoseRecords, 
     bmiRecords, 
     labRecords, 
     medications, 
+    vaccineRecords,
     doctorAdvices,
     doctorQuestions
   } = useHealthData();
 
   const [historyTimeframe, setHistoryTimeframe] = useState<'all' | '1m' | '3m' | '6m'>('all');
   const [displayMode, setDisplayMode] = useState<'both' | 'graph' | 'table'>('both');
+  // G-H2: printing must show EVERYTHING — all rows and both sections —
+  // regardless of the on-screen toggles. printMode is set before
+  // window.print() runs (button path) and by the browser's beforeprint
+  // event (Ctrl+P / menu path), and cleared on afterprint.
+  const [printMode, setPrintMode] = useState(false);
+  useEffect(() => {
+    const onBeforePrint = () => setPrintMode(true);
+    const onAfterPrint = () => setPrintMode(false);
+    window.addEventListener('beforeprint', onBeforePrint);
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', onBeforePrint);
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+  }, []);
+  useEffect(() => {
+    if (!printMode) return;
+    window.print();
+    setPrintMode(false);
+  }, [printMode]);
 
   if (!isOpen) return null;
 
+  // D-H2: the passport must follow the selected FAMILY MEMBER, not just
+  // the selected patient / signed-in user. The old code used
+  // selectedPatient || profile and then required r.userId === that id, so
+  // with a member selected the passport showed the OWNER's identity with
+  // an empty history (member records carry the member doc id as userId).
+  // A member has no login/email/DOB of their own: email shows '-', DOB
+  // comes only from their emergency profile when one was saved, and age
+  // from the member record.
+  const isFamilyMemberView = !isAdmin && !!selectedFamilyMember;
+  const memberAsPatient = isFamilyMemberView && selectedFamilyMember ? {
+    id: selectedFamilyMember.id,
+    displayName: selectedFamilyMember.name,
+    email: '',
+    dateOfBirth: selectedFamilyMember.emergencyProfile?.dateOfBirth,
+    age: selectedFamilyMember.age,
+    bloodType: selectedFamilyMember.bloodType,
+    chronicConditions: selectedFamilyMember.chronicConditions,
+    allergies: selectedFamilyMember.emergencyProfile?.allergies,
+    emergencyProfile: selectedFamilyMember.emergencyProfile,
+    emergencyContact: '',
+  } : null;
   // Determine active patient data
-  const currentPatient = selectedPatient || profile;
+  const currentPatient = memberAsPatient || selectedPatient || profile;
   const patientName = currentPatient?.displayName || 'အသုံးပြုသူအမည် မသတ်မှတ်ရသေးပါ';
   const patientEmail = currentPatient?.email || '-';
+
+  // G-H4: DOB / age in the header. Age is the stored age when present,
+  // otherwise computed from a real DOB — never invented.
+  const calcAgeFromDob = (dob?: string): number | null => {
+    if (!dob) return null;
+    const d = new Date(dob);
+    if (Number.isNaN(d.getTime())) return null;
+    const nowD = new Date();
+    let a = nowD.getFullYear() - d.getFullYear();
+    const m = nowD.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && nowD.getDate() < d.getDate())) a--;
+    return a >= 0 ? a : null;
+  };
+  const patientAge = currentPatient?.age ?? calcAgeFromDob(currentPatient?.dateOfBirth);
+  const patientDobLabel = currentPatient?.dateOfBirth
+    ? (formatDateLabel(currentPatient.dateOfBirth).date || currentPatient.dateOfBirth)
+    : 'မထည့်ရသေးပါ';
 
   // Emergency contact: read it from the saved emergencyProfile first
   // (primaryContactPhone + name); fall back to the legacy emergencyContact
@@ -64,22 +125,56 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
     ? `${emergencyProfile.primaryContactPhone}${emergencyProfile.primaryContactName ? ` (${emergencyProfile.primaryContactName})` : ''}`
     : (currentPatient?.emergencyContact || 'မထည့်ရသေးပါ');
 
+  // G-H5: blood type / conditions / allergies fall back to the Emergency
+  // Profile when the profile itself lacks them — the emergency card is
+  // often the only place they were entered. The source is labelled so a
+  // reader knows where the value came from.
+  const bloodTypeValue = currentPatient?.bloodType || emergencyProfile?.bloodType || '';
+  const bloodTypeSource: 'profile' | 'emergency' | null = currentPatient?.bloodType
+    ? 'profile'
+    : (emergencyProfile?.bloodType ? 'emergency' : null);
+  const conditionsValue = (currentPatient?.chronicConditions && currentPatient.chronicConditions.length > 0)
+    ? currentPatient.chronicConditions
+    : (emergencyProfile?.chronicConditions || []);
+  const conditionsSource: 'profile' | 'emergency' | null = (currentPatient?.chronicConditions && currentPatient.chronicConditions.length > 0)
+    ? 'profile'
+    : ((emergencyProfile?.chronicConditions && emergencyProfile.chronicConditions.length > 0) ? 'emergency' : null);
+  const allergiesValue = (currentPatient?.allergies && currentPatient.allergies.length > 0)
+    ? currentPatient.allergies
+    : (emergencyProfile?.allergies || []);
+  const allergiesSource: 'profile' | 'emergency' | null = (currentPatient?.allergies && currentPatient.allergies.length > 0)
+    ? 'profile'
+    : ((emergencyProfile?.allergies && emergencyProfile.allergies.length > 0) ? 'emergency' : null);
+  const epSourceNote = '(Emergency ID ကတ်မှ)';
+
   // Helper to parse dates reliably
   const parseRecordDate = (r: any): Date => {
-    const raw = r.date || r.timestamp || r.recordedAt || r.createdAt;
+    const raw = r.date || r.timestamp || r.dateAdministered || r.recordedAt || r.createdAt;
     if (!raw) return new Date(0);
     const d = new Date(raw);
     return isNaN(d.getTime()) ? new Date(0) : d;
   };
 
+  // D-M3 / D-M4: never substitute createdAt for a measurement date, and
+  // never toLocaleDateString('my-MM') (missing on the user's phone).
+  // No date at all → 'ရက်စွဲ မရှိပါ', never a fabricated one.
   const formatRecordDate = (r: any): string => {
+    const raw = r.date || r.timestamp || r.dateAdministered || r.recordedAt || r.createdAt;
+    if (!raw) return 'ရက်စွဲ မရှိပါ';
     const d = parseRecordDate(r);
-    if (d.getTime() === 0) return r.date || '-';
-    return d.toLocaleDateString('my-MM', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    if (d.getTime() === 0) return String(raw);
+    return formatDateLabel(raw).date || 'ရက်စွဲ မရှိပါ';
+  };
+
+  // G-H3: a lab's date is its TEST date, not when the record was created.
+  // The old code sorted/filtered labs by createdAt (parseRecordDate never
+  // looked at testDate), so the "latest" lab and the timeframe filters
+  // were wrong whenever a lab was entered late.
+  const parseLabDate = (lab: any): Date => {
+    const raw = lab?.testDate || lab?.recordedAt || lab?.createdAt;
+    if (!raw) return new Date(0);
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? new Date(0) : d;
   };
 
   // Lab records carry their date in testDate, not in date/timestamp.
@@ -87,11 +182,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
     if (lab?.testDate) {
       const d = new Date(lab.testDate);
       if (!Number.isNaN(d.getTime())) {
-        return d.toLocaleDateString('my-MM', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        });
+        return formatDateLabel(lab.testDate).date || lab.testDate;
       }
       return lab.testDate;
     }
@@ -103,7 +194,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
   // not rendered here, so they do not count.)
   const hasAnyLabPanelValue = (lab: any): boolean => {
     if (!lab) return false;
-    const panels = [lab.cbc, lab.glucose, lab.liver, lab.renal, lab.lipid, lab.thyroid];
+    const panels = [lab.cbc, lab.glucose, lab.liver, lab.renal, lab.lipid, lab.thyroid, lab.urine, lab.inflammatory];
     return panels.some((p) => p && Object.values(p).some((v) => v !== undefined && v !== null && v !== ''));
   };
 
@@ -122,9 +213,14 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
 
   const patientLabs = [...labRecords]
     .filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id)
-    .sort((a, b) => parseRecordDate(b).getTime() - parseRecordDate(a).getTime());
+    // G-H3: sorted by TEST date, not creation date.
+    .sort((a, b) => parseLabDate(b).getTime() - parseLabDate(a).getTime());
 
   const patientMeds = medications.filter((r: any) => (!currentPatient?.id || r.userId === currentPatient.id) && r.status === 'active');
+  // G-H4: vaccines were entirely absent from the passport.
+  const patientVaccines = [...vaccineRecords]
+    .filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id)
+    .sort((a, b) => parseRecordDate(b).getTime() - parseRecordDate(a).getTime());
   const patientAdvices = doctorAdvices.filter((r: any) => !currentPatient?.id || r.userId === currentPatient.id);
   const patientQuestions = doctorQuestions.filter((r: any) => (!currentPatient?.id || r.userId === currentPatient.id) && r.status === 'answered');
 
@@ -193,28 +289,31 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
   const bmiStats3m = calcBMIAvg(bmi3m);
   const bmiStats6m = calcBMIAvg(bmi6m);
 
-  // Filtered tables by selected timeframe
-  const getFilteredRecords = (records: any[]) => {
-    if (historyTimeframe === '1m') return records.filter(r => parseRecordDate(r) >= oneMonthAgo);
-    if (historyTimeframe === '3m') return records.filter(r => parseRecordDate(r) >= threeMonthsAgo);
-    if (historyTimeframe === '6m') return records.filter(r => parseRecordDate(r) >= sixMonthsAgo);
+  // Filtered tables by selected timeframe — G-H2: when printing, the
+  // timeframe filter is ignored so the printout always holds everything.
+  // Labs are filtered by TEST date (G-H3), not creation date.
+  const effectiveTimeframe = printMode ? 'all' : historyTimeframe;
+  const effectiveDisplayMode = printMode ? 'both' : displayMode;
+  const getFilteredRecords = (records: any[], dateOf: (r: any) => Date = parseRecordDate) => {
+    if (effectiveTimeframe === '1m') return records.filter(r => dateOf(r) >= oneMonthAgo);
+    if (effectiveTimeframe === '3m') return records.filter(r => dateOf(r) >= threeMonthsAgo);
+    if (effectiveTimeframe === '6m') return records.filter(r => dateOf(r) >= sixMonthsAgo);
     return records;
   };
 
   const displayedBP = getFilteredRecords(patientBP);
   const displayedSugar = getFilteredRecords(patientSugar);
   const displayedBMI = getFilteredRecords(patientBMI);
-  const displayedLabs = getFilteredRecords(patientLabs);
+  const displayedLabs = getFilteredRecords(patientLabs, parseLabDate);
+  const displayedVaccines = getFilteredRecords(patientVaccines);
 
   const handlePrint = () => {
-    window.print();
+    // G-H2: set printMode first — the effect renders the full,
+    // toggle-independent view and only then calls window.print().
+    setPrintMode(true);
   };
 
-  const printDate = new Date().toLocaleDateString('my-MM', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const printDate = formatDateLabel(Date.now()).date || new Date().toISOString().split('T')[0];
 
   return (
     <Modal
@@ -242,6 +341,17 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             color: black !important;
             box-shadow: none !important;
             border: none !important;
+            /* G-H2: the on-screen scroll containers must not cut the
+               printout off — unset their height/overflow for print. */
+            overflow: visible !important;
+            max-height: none !important;
+          }
+          #printable-health-passport .max-h-60 {
+            max-height: none !important;
+            overflow: visible !important;
+          }
+          #printable-health-passport .overflow-y-auto {
+            overflow: visible !important;
           }
           .no-print {
             display: none !important;
@@ -318,6 +428,9 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             <div>
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">အသုံးပြုသူ / အသုံးပြုသူအမည်</p>
               <p className="text-base font-extrabold text-slate-900">{patientName}</p>
+              {isFamilyMemberView && (
+                <p className="text-[11px] text-emerald-700 font-semibold">မိသားစုဝင် (ရွေးချယ်ထားသူ)</p>
+              )}
             </div>
 
             <div>
@@ -333,26 +446,42 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               </p>
             </div>
 
+            {/* G-H4: DOB / age were missing from the passport header. */}
+            <div>
+              <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">မွေးသက္ကရာဇ်</p>
+              <p className="text-sm font-bold text-slate-800">{patientDobLabel}</p>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">အသက်</p>
+              <p className="text-sm font-bold text-slate-800">{patientAge !== null && patientAge !== undefined ? `${patientAge} နှစ်` : 'မထည့်ရသေးပါ'}</p>
+            </div>
+
             <div>
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">သွေးအမျိုးအစား</p>
-              <p className="text-sm font-bold text-slate-800">{currentPatient?.bloodType || 'မသတ်မှတ်ရသေးပါ'}</p>
+              <p className="text-sm font-bold text-slate-800">
+                {bloodTypeValue || 'မထည့်ရသေးပါ'}
+                {bloodTypeSource === 'emergency' && <span className="block text-[11px] font-semibold text-slate-500">{epSourceNote}</span>}
+              </p>
             </div>
 
             <div>
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">နာတာရှည် ရောဂါများ</p>
               <p className="text-sm font-semibold text-slate-800">
-                {currentPatient?.chronicConditions && currentPatient.chronicConditions.length > 0
-                  ? currentPatient.chronicConditions.join(', ')
+                {conditionsValue.length > 0
+                  ? conditionsValue.join(', ')
                   : 'မရှိပါ / မထည့်ရသေးပါ'}
+                {conditionsSource === 'emergency' && <span className="block text-[11px] font-semibold text-slate-500">{epSourceNote}</span>}
               </p>
             </div>
 
             <div>
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">ဓာတ်မတည့်သည်များ (Allergies)</p>
               <p className="text-sm font-bold text-amber-700">
-                {currentPatient?.allergies && currentPatient.allergies.length > 0
-                  ? currentPatient.allergies.join(', ')
+                {allergiesValue.length > 0
+                  ? allergiesValue.join(', ')
                   : 'မရှိပါ / မထည့်ရသေးပါ'}
+                {allergiesSource === 'emergency' && <span className="block text-[11px] font-semibold text-slate-500">{epSourceNote}</span>}
               </p>
             </div>
           </div>
@@ -379,7 +508,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                 </div>
                 <p className="text-[11px] text-slate-600 mt-2 font-medium">
                   {latestBP 
-                    ? (latestBP.pulseRate || latestBP.pulse ? `နှလုံးခုန်နှုန်း: ${latestBP.pulseRate || latestBP.pulse} bpm` : 'သွေးပေါင်အခြေအနေ ပုံမှန်')
+                    ? (latestBP.pulseRate || latestBP.pulse ? `နှလုံးခုန်နှုန်း: ${latestBP.pulseRate || latestBP.pulse} bpm` : (latestBP.category ? `အဆင့်: ${latestBP.category}` : 'နှလုံးခုန်နှုန်း မထည့်ရသေးပါ'))
                     : 'မှတ်တမ်းမရှိသေးပါ'}
                 </p>
               </div>
@@ -398,7 +527,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                 </div>
                 <p className="text-[11px] text-slate-600 mt-2 font-medium">
                   {latestSugar 
-                    ? (latestSugar.hba1c ? `HbA1c: ${latestSugar.hba1c}%` : latestSugar.timing === 'fasting' ? 'မနက်စာမစားမီ စစ်ဆေးချက်' : 'သွေးသကြားဓာတ် အဆင့်')
+                    ? (latestSugar.hba1c ? `HbA1c: ${latestSugar.hba1c}%` : latestSugar.status ? `အဆင့်: ${latestSugar.status}` : latestSugar.timing === 'fasting' ? 'မနက်စာမစားမီ စစ်ဆေးချက်' : 'အဆင့် မထည့်ရသေးပါ')
                     : 'မှတ်တမ်းမရှိသေးပါ'}
                 </p>
               </div>
@@ -601,7 +730,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             </div>
 
             {/* Visual Trend Graphs (Rendered when displayMode === 'both' or 'graph', and in print) */}
-            {(displayMode === 'both' || displayMode === 'graph') && (
+            {(effectiveDisplayMode === 'both' || effectiveDisplayMode === 'graph') && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                   <BarChart2 className="w-4 h-4 text-emerald-600" />
@@ -631,9 +760,9 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             )}
 
             {/* Detailed Data Table Logs (Rendered when displayMode === 'both' or 'table', and in print) */}
-            {(displayMode === 'both' || displayMode === 'table') && (
+            {(effectiveDisplayMode === 'both' || effectiveDisplayMode === 'table') && (
               <div className="space-y-4">
-                {(displayMode === 'both') && (
+                {(effectiveDisplayMode === 'both') && (
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200 mt-2">
                     <Table className="w-4 h-4 text-emerald-600" />
                     <span>ရက်စွဲအလိုက် အသေးစိတ် စစ်ဆေးတိုင်းတာချက် ဇယားများ (Data Table Logs):</span>
@@ -652,8 +781,8 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                   {displayedBP.length === 0 ? (
                     <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း သွေးပေါင်ချိန် မှတ်တမ်း မရှိပါ။</p>
                   ) : (
-                    <div className="max-h-60 overflow-y-auto">
-                      <table className="w-full text-left border-collapse">
+                    <div className="max-h-60 overflow-y-auto overflow-x-auto">
+                      <table className="w-full min-w-[560px] text-left border-collapse">
                         <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
                           <tr>
                             <th className="p-2.5">ရက်စွဲ</th>
@@ -664,7 +793,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
-                          {displayedBP.slice(0, 15).map((r: any) => {
+                          {displayedBP.map((r: any) => {
                             const diet = r.dietRecord || r.dietNotes || r.foodIntake;
                             return (
                               <tr key={r.id}>
@@ -705,8 +834,8 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                   {displayedSugar.length === 0 ? (
                     <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း သွေးချို မှတ်တမ်း မရှိပါ။</p>
                   ) : (
-                    <div className="max-h-60 overflow-y-auto">
-                      <table className="w-full text-left border-collapse">
+                    <div className="max-h-60 overflow-y-auto overflow-x-auto">
+                      <table className="w-full min-w-[560px] text-left border-collapse">
                         <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
                           <tr>
                             <th className="p-2.5">ရက်စွဲ</th>
@@ -717,7 +846,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
-                          {displayedSugar.slice(0, 15).map((r: any) => {
+                          {displayedSugar.map((r: any) => {
                             const diet = r.dietRecord || r.dietNotes || r.foodIntake;
                             return (
                               <tr key={r.id}>
@@ -726,11 +855,11 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                                 <td className="p-2.5">
                                   {r.timing === 'fasting' ? 'မနက်စာမစားမီ (Fasting)' : 
                                    r.timing === 'post_meal_2h' || r.timing === 'post_prandial' ? 'အစာစားပြီး ၂ နာရီ' : 
-                                   r.timing === 'random' ? 'ကျပန်းစစ်ဆေးမှု' : (r.timing || 'ပုံမှန်')}
+                                   r.timing === 'random' ? 'ကျပန်းစစ်ဆေးမှု' : (r.timing || 'မထည့်ရသေးပါ')}
                                 </td>
                                 <td className="p-2.5">
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                    {r.status || 'ပုံမှန်'}
+                                    {r.status || 'မထည့်ရသေးပါ'}
                                   </span>
                                 </td>
                                 <td className="p-2.5 text-slate-700 text-[11px] max-w-[200px]">
@@ -762,8 +891,8 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                   {displayedBMI.length === 0 ? (
                     <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း ကိုယ်အလေးချိန် မှတ်တမ်း မရှိပါ။</p>
                   ) : (
-                    <div className="max-h-60 overflow-y-auto">
-                      <table className="w-full text-left border-collapse">
+                    <div className="max-h-60 overflow-y-auto overflow-x-auto">
+                      <table className="w-full min-w-[560px] text-left border-collapse">
                         <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
                           <tr>
                             <th className="p-2.5">ရက်စွဲ</th>
@@ -774,7 +903,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-800 bg-white">
-                          {displayedBMI.slice(0, 10).map((r: any) => (
+                          {displayedBMI.map((r: any) => (
                             <tr key={r.id}>
                               <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">{formatRecordDate(r)}</td>
                               <td className="p-2.5 font-bold text-slate-900">{r.weightKg} kg</td>
@@ -782,7 +911,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                               <td className="p-2.5 font-bold text-teal-600">{r.bmi.toFixed(1)}</td>
                               <td className="p-2.5">
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
-                                  {r.category === 'normal' ? 'ပုံမှန်' : r.category === 'overweight' ? 'အဝလွန်' : (r.category || 'ပုံမှန်')}
+                                  {r.category === 'normal' ? 'ပုံမှန်' : r.category === 'overweight' ? 'အဝလွန်' : (r.category || 'မထည့်ရသေးပါ')}
                                 </span>
                               </td>
                             </tr>
@@ -808,8 +937,8 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                 လက်ရှိ သောက်သုံးနေသော ဆေးဝါးမှတ်တမ်း ထည့်သွင်းထားခြင်း မရှိသေးပါ။
               </p>
             ) : (
-              <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs">
-                <table className="w-full text-left border-collapse">
+              <div className="border border-slate-200 rounded-2xl overflow-x-auto text-xs">
+                <table className="w-full min-w-[560px] text-left border-collapse">
                   <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                     <tr>
                       <th className="p-2.5">ဆေးအမည်</th>
@@ -817,6 +946,9 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                       <th className="p-2.5">သောက်သုံးရန် သက်မှတ်ချက်</th>
                       <th className="p-2.5">အချိန်</th>
                       <th className="p-2.5">ညွှန်ကြားသူ ဆရာဝန်</th>
+                      {/* G-M4: a medication row without a date cannot be
+                          placed in time — show the start date, or say so. */}
+                      <th className="p-2.5">စတင်သည့်ရက်စွဲ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 font-medium text-slate-800">
@@ -827,6 +959,9 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                         <td className="p-2.5">{m.frequency}</td>
                         <td className="p-2.5">{m.timing === 'before_meal' ? 'အစာမစားမီ' : 'အစာစားပြီး'}</td>
                         <td className="p-2.5">{m.prescribingDoctor || 'မထည့်ရသေးပါ'}</td>
+                        <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">
+                          {m.startDate ? (formatDateLabel(m.startDate).date || m.startDate) : 'ရက်စွဲ မရှိပါ'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -943,6 +1078,35 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                     )}
                   </div>
                 )}
+
+                {/* G-M3: Urine routine — existed in the type but was never
+                    rendered in the passport. */}
+                {(latestLab.urine?.protein !== undefined || latestLab.urine?.glucose !== undefined || latestLab.urine?.pusCells !== undefined || latestLab.urine?.rbc !== undefined || latestLab.urine?.epithelial !== undefined || latestLab.urine?.microalbumin !== undefined) && (
+                  <div>
+                    <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
+                      ဆီးစစ်ဆေးချက် (Urine Routine)
+                    </p>
+                    {latestLab.urine?.protein !== undefined && <p>Protein: <strong>{latestLab.urine.protein}</strong> (Ref: Negative)</p>}
+                    {latestLab.urine?.glucose !== undefined && <p>Glucose: <strong>{latestLab.urine.glucose}</strong> (Ref: Negative)</p>}
+                    {latestLab.urine?.pusCells !== undefined && <p>Pus Cells: <strong>{latestLab.urine.pusCells} /HPF</strong> (Ref: 0 - 5)</p>}
+                    {latestLab.urine?.rbc !== undefined && <p>RBC: <strong>{latestLab.urine.rbc} /HPF</strong> (Ref: 0 - 2)</p>}
+                    {latestLab.urine?.epithelial !== undefined && <p>Epithelial Cells: <strong>{latestLab.urine.epithelial} /HPF</strong> (Ref: 0 - 5)</p>}
+                    {latestLab.urine?.microalbumin !== undefined && <p>Microalbumin: <strong>{latestLab.urine.microalbumin} mg/g Cr</strong> (Ref: &lt; 30)</p>}
+                  </div>
+                )}
+
+                {/* G-M3: Inflammatory markers & vitamins — same, never rendered. */}
+                {(latestLab.inflammatory?.crp !== undefined || latestLab.inflammatory?.ferritin !== undefined || latestLab.inflammatory?.vitaminD !== undefined || latestLab.inflammatory?.vitaminB12 !== undefined) && (
+                  <div>
+                    <p className="font-bold text-purple-900 border-b border-purple-200 pb-1 mb-1">
+                      ရောင်ရမ်းမှုနှင့် ဗီတာမင် (Inflammatory & Vitamins)
+                    </p>
+                    {latestLab.inflammatory?.crp !== undefined && <p>CRP: <strong>{latestLab.inflammatory.crp} mg/L</strong> (Ref: &lt; 5.0)</p>}
+                    {latestLab.inflammatory?.ferritin !== undefined && <p>Ferritin: <strong>{latestLab.inflammatory.ferritin} ng/mL</strong> (Ref: 20 - 250)</p>}
+                    {latestLab.inflammatory?.vitaminD !== undefined && <p>Vitamin D: <strong>{latestLab.inflammatory.vitaminD} ng/mL</strong> (Ref: 30 - 100)</p>}
+                    {latestLab.inflammatory?.vitaminB12 !== undefined && <p>Vitamin B12: <strong>{latestLab.inflammatory.vitaminB12} pg/mL</strong> (Ref: 200 - 900)</p>}
+                  </div>
+                )}
                 {(!latestLab.tests?.length && !hasAnyLabPanelValue(latestLab)) && (
                   <p className="text-slate-500 italic sm:col-span-2 lg:col-span-3">စစ်ဆေးချက် အသေးစိတ် မရှိသေးပါ။</p>
                 )}
@@ -964,8 +1128,8 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               {displayedLabs.length === 0 ? (
                 <p className="p-3 text-slate-500 italic bg-white">ဤကာလအတွင်း ဓာတ်ခွဲခန်း စစ်ဆေးချက် မှတ်တမ်း မရှိပါ။</p>
               ) : (
-                <div className="max-h-60 overflow-y-auto">
-                  <table className="w-full text-left border-collapse">
+                <div className="max-h-60 overflow-y-auto overflow-x-auto">
+                  <table className="w-full min-w-[560px] text-left border-collapse">
                     <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0">
                       <tr>
                         <th className="p-2.5">ရက်စွဲ</th>
@@ -1019,7 +1183,9 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
                   <div key={a.id} className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
                     <div className="flex items-center justify-between font-bold text-indigo-950 mb-1">
                       <span>ဆရာဝန်: {a.doctorName}</span>
-                      <span>{a.date}</span>
+                      {/* G-M4: advice rows carry a date — formatted, or
+                          'ရက်စွဲ မရှိပါ' when none was saved (D-M3). */}
+                      <span>{a.date ? (formatDateLabel(a.date).date || a.date) : 'ရက်စွဲ မရှိပါ'}</span>
                     </div>
                     <p className="text-slate-800">{a.advice}</p>
                   </div>
@@ -1027,16 +1193,64 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
 
                 {patientQuestions.map((q) => (
                   <div key={q.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                    <p className="font-bold text-slate-900 mb-1">မေးခွန်း: {q.title}</p>
+                    <div className="flex items-center justify-between font-bold text-slate-900 mb-1">
+                      <span>မေးခွန်း: {q.title}</span>
+                      <span className="text-[11px] text-slate-500 font-semibold">
+                        {q.createdAt ? (formatDateLabel(q.createdAt).date || q.createdAt) : 'ရက်စွဲ မရှိပါ'}
+                      </span>
+                    </div>
                     <p className="text-slate-700 italic">"{q.doctorAnswer?.answerText}"</p>
                     <p className="text-[11px] text-slate-500 mt-1 font-semibold">
-                      ဖြေကြားသူ: {q.doctorAnswer?.answeredBy} ({q.doctorAnswer?.answeredAt})
+                      ဖြေကြားသူ: {q.doctorAnswer?.answeredBy} ({q.doctorAnswer?.answeredAt ? (formatDateLabel(q.doctorAnswer.answeredAt).date || q.doctorAnswer.answeredAt) : 'ရက်စွဲ မရှိပါ'})
                     </p>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* G-H4: Vaccines — entirely absent from the passport before. */}
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>၇။ ကာကွယ်ဆေး ထိုးနှံမှု မှတ်တမ်း (Vaccination Records)</span>
+            </h3>
+
+            {displayedVaccines.length === 0 ? (
+              <p className="text-xs text-slate-500 italic p-3 bg-slate-50 rounded-xl">
+                ကာကွယ်ဆေး ထိုးနှံမှု မှတ်တမ်း ထည့်သွင်းထားခြင်း မရှိသေးပါ။
+              </p>
+            ) : (
+              <div className="border border-slate-200 rounded-2xl overflow-x-auto text-xs">
+                <table className="w-full min-w-[560px] text-left border-collapse">
+                  <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="p-2.5">ထိုးသည့်ရက်စွဲ</th>
+                      <th className="p-2.5">ကာကွယ်ဆေး</th>
+                      <th className="p-2.5">ကာကွယ်သည့်ရောဂါ</th>
+                      <th className="p-2.5">အကြိမ်ရေ</th>
+                      <th className="p-2.5">နောက်တစ်ကြိမ်</th>
+                      <th className="p-2.5">အခြေအနေ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 font-medium text-slate-800 bg-white">
+                    {displayedVaccines.map((v: any) => (
+                      <tr key={v.id}>
+                        <td className="p-2.5 whitespace-nowrap text-slate-600 font-semibold">
+                          {v.dateAdministered ? (formatDateLabel(v.dateAdministered).date || v.dateAdministered) : 'ရက်စွဲ မရှိပါ'}
+                        </td>
+                        <td className="p-2.5 font-bold text-slate-900">{v.vaccineName || 'မထည့်ရသေးပါ'}</td>
+                        <td className="p-2.5">{v.targetDisease || 'မထည့်ရသေးပါ'}</td>
+                        <td className="p-2.5">{v.doseNumber != null ? `${v.doseNumber}${v.totalDoses != null ? `/${v.totalDoses}` : ''}` : 'မထည့်ရသေးပါ'}</td>
+                        <td className="p-2.5 whitespace-nowrap">{v.nextDueDate ? (formatDateLabel(v.nextDueDate).date || v.nextDueDate) : 'မထည့်ရသေးပါ'}</td>
+                        <td className="p-2.5">{v.status || 'မထည့်ရသေးပါ'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           {/* Footer Medical Disclaimer */}
           <div className="border-t border-slate-200 pt-4">

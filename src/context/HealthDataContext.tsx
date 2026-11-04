@@ -90,6 +90,12 @@ export const resolveCleanName = (name?: string, email?: string, phone?: string):
 export const isPatientOnly = (p: UserProfile): boolean => p?.role !== 'admin';
 
 // Aggregates patient profiles from the users collection and record collections for admin dashboard
+// v2.4.16 (D-C4): family member doc ids are NEVER invented into "patients"
+// — a member's records carry the member doc id as userId, and the old code
+// turned every such member into a phantom patient sharing the owner's
+// email, with a fabricated `${userId}@patient.local` address and an
+// invented chronic condition. Discovered profiles now carry only what the
+// records actually say (email '' and no conditions when unknown).
 export const aggregatePatientsFromRecords = (
   existingUsers: UserProfile[],
   vitals: BloodPressureRecord[] = [],
@@ -98,9 +104,13 @@ export const aggregatePatientsFromRecords = (
   labs: LabTestRecord[] = [],
   meds: Medication[] = [],
   questions: DoctorQuestion[] = [],
-  advices: DoctorAdvice[] = []
+  advices: DoctorAdvice[] = [],
+  familyMemberIds: Set<string> = new Set()
 ): UserProfile[] => {
   const patientMap = new Map<string, UserProfile>();
+  // A record whose userId is a family member doc id belongs to that member,
+  // not to a standalone patient — never discover a patient from it.
+  const isFamilyMemberId = (id?: string): boolean => !!id && familyMemberIds.has(id);
 
   // 1. Add from existing users collection (excluding admin users)
   existingUsers.forEach(u => {
@@ -115,13 +125,13 @@ export const aggregatePatientsFromRecords = (
 
   // 2. Discover from Vitals
   vitals.forEach(v => {
-    if (v.userId && !patientMap.has(v.userId)) {
+    if (v.userId && !patientMap.has(v.userId) && !isFamilyMemberId(v.userId)) {
       const discovered: UserProfile = {
         id: v.userId,
         displayName: resolveCleanName(v.userName || v.patientName, v.patientEmail),
-        email: v.patientEmail || `${v.userId}@patient.local`,
+        email: v.patientEmail || '',
         role: 'patient',
-        chronicConditions: ['သွေးတိုး'],
+        chronicConditions: [],
         createdAt: v.recordedAt || v.createdAt || new Date().toISOString()
       };
       patientMap.set(v.userId, discovered);
@@ -135,13 +145,13 @@ export const aggregatePatientsFromRecords = (
 
   // 3. Discover from Glucose
   glucoses.forEach(g => {
-    if (g.userId && !patientMap.has(g.userId)) {
+    if (g.userId && !patientMap.has(g.userId) && !isFamilyMemberId(g.userId)) {
       const discovered: UserProfile = {
         id: g.userId,
         displayName: resolveCleanName(g.userName || g.patientName, (g as any).patientEmail),
-        email: (g as any).patientEmail || `${g.userId}@patient.local`,
+        email: (g as any).patientEmail || '',
         role: 'patient',
-        chronicConditions: ['ဆီးချို'],
+        chronicConditions: [],
         createdAt: g.recordedAt || g.createdAt || new Date().toISOString()
       };
       patientMap.set(g.userId, discovered);
@@ -155,11 +165,11 @@ export const aggregatePatientsFromRecords = (
 
   // 4. Discover from BMI Records
   bmis.forEach(b => {
-    if (b.userId && !patientMap.has(b.userId)) {
+    if (b.userId && !patientMap.has(b.userId) && !isFamilyMemberId(b.userId)) {
       const discovered: UserProfile = {
         id: b.userId,
         displayName: resolveCleanName(b.userName, undefined),
-        email: `${b.userId}@patient.local`,
+        email: '',
         role: 'patient',
         heightCm: b.heightCm,
         weightKg: b.weightKg,
@@ -180,11 +190,11 @@ export const aggregatePatientsFromRecords = (
 
   // 5. Discover from Medications Records
   meds.forEach(m => {
-    if (m.userId && !patientMap.has(m.userId)) {
+    if (m.userId && !patientMap.has(m.userId) && !isFamilyMemberId(m.userId)) {
       const discovered: UserProfile = {
         id: m.userId,
         displayName: resolveCleanName((m as any).userName || (m as any).patientName, (m as any).patientEmail),
-        email: (m as any).patientEmail || `${m.userId}@patient.local`,
+        email: (m as any).patientEmail || '',
         role: 'patient',
         createdAt: m.startDate || (m as any).createdAt || new Date().toISOString()
       };
@@ -199,11 +209,11 @@ export const aggregatePatientsFromRecords = (
 
   // 6. Discover from Doctor Questions
   questions.forEach(q => {
-    if (q.userId && !patientMap.has(q.userId)) {
+    if (q.userId && !patientMap.has(q.userId) && !isFamilyMemberId(q.userId)) {
       const discovered: UserProfile = {
         id: q.userId,
         displayName: q.patientName || 'မေးမြန်းသူ အသုံးပြုသူ',
-        email: q.patientEmail || `${q.userId}@patient.local`,
+        email: q.patientEmail || '',
         role: 'patient',
         createdAt: q.createdAt || new Date().toISOString()
       };
@@ -213,11 +223,11 @@ export const aggregatePatientsFromRecords = (
 
   // 7. Discover from Advices
   advices.forEach(a => {
-    if (a.userId && !patientMap.has(a.userId)) {
+    if (a.userId && !patientMap.has(a.userId) && !isFamilyMemberId(a.userId)) {
       const discovered: UserProfile = {
         id: a.userId,
         displayName: a.patientName || 'အသုံးပြုသူ',
-        email: (a as any).patientEmail || `${a.userId}@patient.local`,
+        email: (a as any).patientEmail || '',
         role: 'patient',
         createdAt: a.createdAt || new Date().toISOString()
       };
@@ -270,6 +280,14 @@ interface HealthDataContextType {
   ownBPRecords: BloodPressureRecord[];
   ownGlucoseRecords: BloodSugarRecord[];
   ownBMIRecords: BMIRecord[];
+  ownLabRecords: LabTestRecord[];
+  ownMedications: Medication[];
+  ownVaccineRecords: VaccinationRecord[];
+  ownMedicationLogs: MedicationLog[];
+  // True when the current view pools more than one person's records
+  // (family 'all' view, or an admin viewing a patient + their family).
+  // History tables show an owner column when this is true.
+  isPooledView: boolean;
   allLabRecords: LabTestRecord[];
   allMedicationRecords: Medication[];
   allVaccineRecords: VaccinationRecord[];
@@ -301,11 +319,12 @@ interface HealthDataContextType {
   setSelectedFamilyMemberId: (id: string | null) => void;
   selectedFamilyMember: FamilyMember | null;
   addFamilyMember: (member: Omit<FamilyMember, 'id'>) => Promise<void>;
+  updateFamilyMember: (id: string, updates: Partial<FamilyMember>) => Promise<void>;
   deleteFamilyMember: (id: string) => Promise<void>;
 
   // Medication Intake Logs & Adherence
   medicationLogs: MedicationLog[];
-  toggleMedicationDoseTaken: (medicationId: string, dateStr: string, taken: boolean, doseIndex?: number, medName?: string) => Promise<boolean>;
+  toggleMedicationDoseTaken: (medicationId: string, dateStr: string, taken: boolean, doseIndex?: number, medName?: string, owner?: { uid: string; email: string }) => Promise<boolean>;
 
   // Selected Patient for Admin view
   selectedPatientId: string | null;
@@ -654,7 +673,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const refreshAdminData = async () => {
     if (!isAdmin) return;
     try {
-      const [uSnap, vSnap, gSnap, bSnap, lSnap, mSnap, qSnap, aSnap, vacSnap] = await Promise.all([
+      const [uSnap, vSnap, gSnap, bSnap, lSnap, mSnap, qSnap, aSnap, vacSnap, famSnap] = await Promise.all([
         getDocs(collection(db, 'users')),
         getDocs(collection(db, 'vitals')),
         getDocs(collection(db, 'glucose')),
@@ -664,6 +683,9 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         getDocs(collection(db, 'doctorQuestions')),
         getDocs(collection(db, 'doctorAdvices')),
         getDocs(collection(db, 'vaccines')),
+        // v2.4.16 (D-C4): every family member doc id, so the aggregator
+        // never invents a phantom "patient" out of a member's records.
+        getDocs(collection(db, 'familyMembers')),
       ]);
 
       const rawUsers: UserProfile[] = [];
@@ -705,7 +727,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setAllVaccines(vacList);
 
       // Aggregate all discovered patient profiles
-      const combinedPatients = aggregatePatientsFromRecords(rawUsers, vList, gList, bList, lList, mList, qList, aList);
+      const familyMemberIds = new Set<string>(famSnap.docs.map(d => d.id));
+      const combinedPatients = aggregatePatientsFromRecords(rawUsers, vList, gList, bList, lList, mList, qList, aList, familyMemberIds);
       setPatientsList(combinedPatients);
 
       setLastSyncTime(new Date().toLocaleTimeString('my-MM'));
@@ -889,35 +912,6 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           : [currentTargetUserId];
   const inVisibleScope = (userId?: string): boolean => !!userId && visibleUserIds.includes(userId);
 
-  // Filtered views
-  const bpRecords = currentTargetUserId
-    ? allBP.filter(b => inVisibleScope(b.userId))
-    : (isAdmin ? allBP : []);
-
-  const glucoseRecords = currentTargetUserId
-    ? allGlucose.filter(g => inVisibleScope(g.userId))
-    : (isAdmin ? allGlucose : []);
-
-  const labRecords = currentTargetUserId
-    ? allLabs.filter(l => inVisibleScope(l.userId))
-    : (isAdmin ? allLabs : []);
-
-  const medications = currentTargetUserId
-    ? allMeds.filter(m => inVisibleScope(m.userId))
-    : (isAdmin ? allMeds : []);
-
-  const vaccineRecords = currentTargetUserId
-    ? allVaccines.filter(v => inVisibleScope(v.userId))
-    : (isAdmin ? allVaccines : []);
-
-  const doctorAdvices = currentTargetUserId
-    ? allAdvices.filter(a => inVisibleScope(a.userId))
-    : (isAdmin ? allAdvices : []);
-
-  const bmiRecords = currentTargetUserId
-    ? allBMI.filter(b => inVisibleScope(b.userId))
-    : (isAdmin ? allBMI : []);
-
   // The signed-in user's OWN records only (v2.4.15). userId is the primary
   // match; the no-userId + own-email fallback covers legacy records written
   // before userId stamping. Family records always carry their member doc id
@@ -928,6 +922,51 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const ownBPRecords = allBP.filter(isOwnRecord);
   const ownGlucoseRecords = allGlucose.filter(isOwnRecord);
   const ownBMIRecords = allBMI.filter(isOwnRecord);
+  const ownLabRecords = allLabs.filter(isOwnRecord);
+  const ownMedications = allMeds.filter(isOwnRecord);
+  const ownVaccineRecords = allVaccines.filter(isOwnRecord);
+  const ownMedicationLogs = allMedLogs.filter(isOwnRecord);
+
+  // True when the current view pools more than one person's records
+  // (family 'all' view, or an admin viewing a patient + their family).
+  // History tables show an owner column when this is true.
+  const isPooledView = selectedFamilyMemberId === 'all' || (isAdmin && !!selectedPatientId);
+
+  // Filtered views.
+  // v2.4.16 (D-C1 / E-H3 / G-C1): when an admin has NO patient selected,
+  // these show the admin's OWN records only. The old fallback pooled EVERY
+  // user's records and every module, Trends, the Passport and the backup
+  // export presented that pool as if it were one person's log — with no
+  // owner label anywhere. doctorQuestions / doctorAdvices deliberately keep
+  // the pooled fallback for an admin with no patient selected: they are the
+  // admin's work queue, and every item carries its asker's name.
+  const bpRecords = currentTargetUserId
+    ? allBP.filter(b => inVisibleScope(b.userId))
+    : (isAdmin ? ownBPRecords : []);
+
+  const glucoseRecords = currentTargetUserId
+    ? allGlucose.filter(g => inVisibleScope(g.userId))
+    : (isAdmin ? ownGlucoseRecords : []);
+
+  const labRecords = currentTargetUserId
+    ? allLabs.filter(l => inVisibleScope(l.userId))
+    : (isAdmin ? ownLabRecords : []);
+
+  const medications = currentTargetUserId
+    ? allMeds.filter(m => inVisibleScope(m.userId))
+    : (isAdmin ? ownMedications : []);
+
+  const vaccineRecords = currentTargetUserId
+    ? allVaccines.filter(v => inVisibleScope(v.userId))
+    : (isAdmin ? ownVaccineRecords : []);
+
+  const doctorAdvices = currentTargetUserId
+    ? allAdvices.filter(a => inVisibleScope(a.userId))
+    : (isAdmin ? allAdvices : []);
+
+  const bmiRecords = currentTargetUserId
+    ? allBMI.filter(b => inVisibleScope(b.userId))
+    : (isAdmin ? ownBMIRecords : []);
 
   const doctorQuestions = currentTargetUserId
     ? allQuestions.filter(q => inVisibleScope(q.userId))
@@ -1025,15 +1064,64 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       delete cleanUpdates.role;
     }
 
+    const prevPatientsList = patientsList;
     setPatientsList(prev => prev.map(p => (p.id === id ? { ...p, ...cleanUpdates } : p)));
 
     try {
       await setDoc(doc(db, 'users', id), sanitizeForFirestore(cleanUpdates), { merge: true });
       showToast('အသုံးပြုသူမှတ်တမ်းကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ', 'success');
     } catch (e) {
+      // v2.4.16 (C-M6): roll back the optimistic patient update on failure.
+      setPatientsList(prevPatientsList);
       console.warn('Error updating patient in firestore:', e);
       showToast('အသုံးပြုသူမှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
+    }
+  };
+
+  // Delete EVERYTHING that belongs to a user (v2.4.16, D-C2/D-C3): their own
+  // records (userId), legacy email-only records (patientEmail), their
+  // family members' records (member doc ids — the old cascade queried only
+  // userId, so a deleted user's family records survived and the aggregator
+  // re-discovered them as phantom patients), their reserved username and
+  // their notifications. For a family-member delete, pass ONLY the member
+  // id and no email — member records carry the OWNER's email, and deleting
+  // by it would wipe the owner's own records too.
+  const deleteDocsForUserIds = async (userIds: string[], email?: string): Promise<void> => {
+    const docRefs = new Map<string, any>();
+    const collect = async (colName: string, field: 'userId' | 'patientEmail' | 'uid' | 'recipientEmail', value: string) => {
+      try {
+        const snap = await getDocs(query(collection(db, colName), where(field, '==', value)));
+        snap.docs.forEach(d => docRefs.set(`${colName}/${d.id}`, doc(db, colName, d.id)));
+      } catch (err) {
+        console.warn(`Error collecting ${colName} for deletion (${field}=${value}):`, err);
+      }
+    };
+    for (const uid of userIds) {
+      for (const colName of USER_DATA_COLLECTIONS) {
+        await collect(colName, 'userId', uid);
+      }
+      await collect('notifications', 'userId', uid);
+    }
+    if (email) {
+      for (const colName of USER_DATA_COLLECTIONS) {
+        await collect(colName, 'patientEmail', email);
+      }
+      await collect('notifications', 'recipientEmail', email);
+    }
+    // Free the main user's reserved username (family members never have one).
+    await collect('usernames', 'uid', userIds[0]);
+    await Promise.all([...docRefs.values()].map(d => deleteDoc(d)));
+  };
+
+  // The family member doc ids owned by a user (for a full cascade delete).
+  const getFamilyMemberIdsOf = async (ownerUid: string): Promise<string[]> => {
+    try {
+      const snap = await getDocs(query(collection(db, 'familyMembers'), where('userId', '==', ownerUid)));
+      return snap.docs.map(d => d.id);
+    } catch (err) {
+      console.warn('Error listing family members for cascade delete:', err);
+      return [];
     }
   };
 
@@ -1044,6 +1132,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const prevPatients = patientsList;
     const prevSelected = selectedPatientId;
+    const patientEmail = patientsList.find(p => p.id === id)?.email || '';
     setPatientsList(prev => prev.filter(p => p.id !== id));
     if (selectedPatientId === id) {
       setSelectedPatientId(null);
@@ -1061,18 +1150,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (deleteAssociatedData) {
       try {
-        await Promise.all(
-          USER_DATA_COLLECTIONS.map(async (colName) => {
-            try {
-              const q = query(collection(db, colName), where('userId', '==', id));
-              const snap = await getDocs(q);
-              const deletes = snap.docs.map(d => deleteDoc(doc(db, colName, d.id)));
-              await Promise.all(deletes);
-            } catch (err) {
-              console.warn(`Error deleting ${colName} for user ${id}:`, err);
-            }
-          })
-        );
+        const memberIds = await getFamilyMemberIdsOf(id);
+        await deleteDocsForUserIds([id, ...memberIds], patientEmail || undefined);
         showToast('အသုံးပြုသူမှတ်တမ်းနှင့် ဆက်စပ်အချက်အလက်များကို အောင်မြင်စွာ ဖျက်သိမ်းပြီးပါပြီ', 'success');
       } catch (err) {
         console.warn('Error cascading patient records deletion:', err);
@@ -1091,20 +1170,20 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // so deletions were unawaited, and it deleted only the users docs —
     // the patients' health records survived.
     const usersSnap = await getDocs(collection(db, 'users'));
+    const emailById = new Map<string, string>();
     const idsFromUsers = usersSnap.docs
       .filter(d => (d.data() as UserProfile).role !== 'admin')
-      .map(d => d.id);
+      .map(d => {
+        emailById.set(d.id, (d.data() as UserProfile).email || '');
+        return d.id;
+      });
+    patientsList.forEach(p => { if (p.email && !emailById.has(p.id)) emailById.set(p.id, p.email); });
     const allIds = Array.from(new Set([...idsFromUsers, ...patientsList.map(p => p.id)]));
 
     const results = await Promise.allSettled(allIds.map(async (pid) => {
       await deleteDoc(doc(db, 'users', pid));
-      await Promise.all(
-        USER_DATA_COLLECTIONS.map(async (colName) => {
-          const q = query(collection(db, colName), where('userId', '==', pid));
-          const snap = await getDocs(q);
-          await Promise.all(snap.docs.map(d => deleteDoc(doc(db, colName, d.id))));
-        })
-      );
+      const memberIds = await getFamilyMemberIdsOf(pid);
+      await deleteDocsForUserIds([pid, ...memberIds], emailById.get(pid) || undefined);
     }));
     const failedCount = results.filter(r => r.status === 'rejected').length;
     if (failedCount > 0) {
@@ -1349,10 +1428,13 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateMedicationStatus = async (id: string, status: Medication['status']) => {
+    const prev = allMeds;
     setAllMeds(prev => prev.map(m => m.id === id ? { ...m, status } : m));
     try {
       await updateDoc(doc(db, 'medications', id), { status });
     } catch (e) {
+      // v2.4.16 (B-H4): roll back the optimistic status change on failure.
+      setAllMeds(prev);
       console.warn('Error updating medication in firestore:', e);
       showToast('ဆေးအခြေအနေ ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1410,6 +1492,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateVaccineRecord = async (id: string, updates: Partial<VaccinationRecord>) => {
+    const prev = allVaccines;
     setAllVaccines(prev => prev.map(v => (v.id === id ? { ...v, ...updates } : v)));
     try {
       // v2.4.11 (F17): a field passed as `undefined` means "clear it" (e.g.
@@ -1423,6 +1506,9 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       });
       await setDoc(doc(db, 'vaccines', id), payload, { merge: true });
     } catch (e) {
+      // v2.4.16 (B-H4): roll back the optimistic update — the old code left
+      // the edited values on screen after a failed save.
+      setAllVaccines(prev);
       console.warn('Error updating vaccine record in firestore:', e);
       showToast('ကာကွယ်ဆေး မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1592,6 +1678,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       throw new Error('ဆရာဝန်/Admin သာလျှင် ဖြေကြားခွင့်ရှိပါသည်');
     }
 
+    const prevQuestions = allQuestions;
     setAllQuestions(prev => prev.map(q => {
       if (q.id === questionId) {
         return {
@@ -1611,6 +1698,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         updatedAt: new Date().toISOString(),
       }));
     } catch (e) {
+      // v2.4.16 (C-M6): roll back the optimistic answer on failure.
+      setAllQuestions(prevQuestions);
       console.warn('Error updating doctor question in firestore:', e);
       showToast('မေးခွန်း အဖြေပေးပို့ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1625,12 +1714,18 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const q = allQuestions.find(x => x.id === questionId);
       if (q) {
+        // v2.4.16 (F-M4): include a short excerpt of the ANSWER itself —
+        // the old notification only repeated the question text, so the user
+        // had to open the app to learn anything.
+        const answerExcerpt = answer.answerText.length > 140
+          ? `${answer.answerText.slice(0, 140)}…`
+          : answer.answerText;
         await addDoc(collection(db, 'notifications'), sanitizeForFirestore({
           userId: q.userId,
           recipientEmail: q.patientEmail,
           type: 'qa_answered',
           title: '✅ ဆရာဝန်က သင့်မေးခွန်းကို ဖြေကြားပြီးပါပြီ',
-          message: q.title || q.questionDetails || '',
+          message: answerExcerpt,
           timestamp: new Date().toISOString(),
           createdAt: new Date().toISOString(),
           read: false,
@@ -1644,10 +1739,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const closeDoctorQuestion = async (questionId: string) => {
+    if (!isAdmin) {
+      throw new Error('ဆရာဝန်/Admin သာလျှင် မေးခွန်း ပိတ်သိမ်းခွင့်ရှိပါသည်');
+    }
+    const prev = allQuestions;
     setAllQuestions(prev => prev.map(q => q.id === questionId ? { ...q, status: 'closed' } : q));
     try {
       await updateDoc(doc(db, 'doctorQuestions', questionId), { status: 'closed' });
     } catch (e) {
+      setAllQuestions(prev);
       console.warn('Error closing doctor question in firestore:', e);
       showToast('မေးခွန်း ပိတ်သိမ်းခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1655,6 +1755,9 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteDoctorQuestion = async (id: string) => {
+    if (!isAdmin) {
+      throw new Error('ဆရာဝန်/Admin သာလျှင် မေးခွန်း ဖျက်ခွင့်ရှိပါသည်');
+    }
     const prev = allQuestions;
     setAllQuestions(prev.filter(q => q.id !== id));
     try {
@@ -1685,10 +1788,13 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const toggleBroadcastTicker = async (id: string, isActive: boolean) => {
     if (!isAdmin) throw new Error('စီမံခန့်ခွဲသူသာလျှင် ပြင်ဆင်နိုင်ပါသည်');
 
+    const prev = broadcastTickers;
     setBroadcastTickers(prev => prev.map(t => t.id === id ? { ...t, isActive } : t));
     try {
       await updateDoc(doc(db, 'broadcastTickers', id), { isActive });
     } catch (e) {
+      // v2.4.16 (C-M6): roll back the optimistic toggle on failure.
+      setBroadcastTickers(prev);
       console.warn('Error updating broadcast ticker in firestore:', e);
       showToast('သတိပေးစာတန်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
@@ -1744,11 +1850,35 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
     try {
       await deleteDoc(doc(db, 'familyMembers', id));
+      // v2.4.16 (D-C3): the member's health records must go with them —
+      // the old code deleted only the member doc, leaving orphaned records
+      // that the aggregator later re-discovered as a phantom patient.
+      // No email is passed: member records carry the OWNER's email, and
+      // deleting by it would wipe the owner's own records too.
+      await deleteDocsForUserIds([id]);
     } catch (e) {
       setFamilyMembers(restoreDeleted(prev, id));
       setSelectedFamilyMemberId(prevSelected);
       console.warn('Error deleting family member from firestore:', e);
       showToast('မိသားစုဝင် မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ', 'error');
+      throw e;
+    }
+  };
+
+  // Edit a family member's details (v2.4.16, D-M1) — previously the only
+  // way to fix a wrong age / relationship / blood type was delete + re-add,
+  // which orphaned all of their records under the old doc id.
+  const updateFamilyMember = async (id: string, updates: Partial<FamilyMember>) => {
+    if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
+    const prev = familyMembers;
+    setFamilyMembers(prev => prev.map(f => (f.id === id ? { ...f, ...updates } : f)));
+    try {
+      await setDoc(doc(db, 'familyMembers', id), sanitizeForFirestore(updates), { merge: true });
+      showToast('မိသားစုဝင် အချက်အလက် ပြင်ဆင်ပြီးပါပြီ', 'success');
+    } catch (e) {
+      setFamilyMembers(prev);
+      console.warn('Error updating family member in firestore:', e);
+      showToast('မိသားစုဝင် အချက်အလက် ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1764,10 +1894,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     dateStr: string, 
     taken: boolean, 
     doseIndex: number = 0,
-    medName?: string
+    medName?: string,
+    // v2.4.16 (F-H5): the person the DOSE belongs to. The old code always
+    // used resolveTarget() — the VIEWED person — so in family 'all' view a
+    // member's evening dose was logged against the signed-in user, and in
+    // admin+patient view against the admin. Callers that know the med's
+    // owner (e.g. the reminder ticker) pass it explicitly.
+    owner?: { uid: string; email: string }
   ): Promise<boolean> => {
     if (!currentUser) return false;
-    const target = resolveTarget();
+    const target = owner ?? resolveTarget();
     const existingLog = allMedLogs.find(l => l.medicationId === medicationId && l.date === dateStr && (l.doseIndex ?? 0) === doseIndex && l.userId === target.uid);
 
     if (existingLog) {
@@ -1810,7 +1946,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const medicationLogs = currentTargetUserId
     ? allMedLogs.filter(m => inVisibleScope(m.userId))
-    : (isAdmin ? allMedLogs : []);
+    : (isAdmin ? ownMedicationLogs : []);
 
   return (
     <HealthDataContext.Provider value={{
@@ -1833,6 +1969,11 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ownBPRecords,
       ownGlucoseRecords,
       ownBMIRecords,
+      ownLabRecords,
+      ownMedications,
+      ownVaccineRecords,
+      ownMedicationLogs,
+      isPooledView,
       allLabRecords: allLabs,
       allMedicationRecords: allMeds,
       allVaccineRecords: allVaccines,
@@ -1853,6 +1994,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setSelectedFamilyMemberId,
       selectedFamilyMember,
       addFamilyMember,
+      updateFamilyMember,
       deleteFamilyMember,
       selectedPatientId,
       setSelectedPatientId,

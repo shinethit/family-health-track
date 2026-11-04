@@ -15,6 +15,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+import { toLocalDateInput } from '../../lib/medicalCalculations';
 
 interface HealthTopic {
   id: string;
@@ -285,7 +286,7 @@ export const WomensHealthModule: React.FC = () => {
   const [lastPeriodDate, setLastPeriodDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() - 14);
-    return d.toISOString().split('T')[0];
+    return toLocalDateInput(d);
   });
   const [cycleLength, setCycleLength] = useState<number>(28);
   const [periodDuration, setPeriodDuration] = useState<number>(5);

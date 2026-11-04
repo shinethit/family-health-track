@@ -36,21 +36,138 @@ interface TrendsOverviewProps {
 }
 
 export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab }) => {
-  const { 
-    bpRecords, 
-    glucoseRecords, 
-    labRecords, 
-    bmiRecords,
-    doctorAdvices, 
-    selectedPatient, 
+  const {
+    allBPRecords,
+    allGlucoseRecords,
+    allBMIRecords,
+    allLabRecords,
+    allDoctorAdvices,
+    ownBPRecords,
+    ownGlucoseRecords,
+    ownBMIRecords,
+    ownLabRecords,
+    selectedPatient,
     selectedPatientId,
     selectedFamilyMember,
+    selectedFamilyMemberId,
     setSelectedPatientId,
     patientsList,
-    latestBMI,
     dataLoading
   } = useHealthData();
-  const { profile } = useAuth();
+  const { profile, currentUser, isAdmin } = useAuth();
+
+  // WHOSE records does this screen show? (v2.4.16, E-H3/E-H4) Exactly ONE
+  // named person — never a pooled "everyone" summary presented as one
+  // person's log. Same rule as the Sidebar summary (v2.4.15):
+  //   admin + patient selected -> that patient only
+  //   family member selected  -> that member only
+  //   anything else           -> the signed-in user's own records only
+  // (covers admin with no patient selected AND family 'all' view, which
+  // is labelled "ကိုယ်တိုင်" below). The admin filter bar therefore has
+  // no "All Users" option: it selects exactly one person, default self.
+  const isPatientView = isAdmin && !!selectedPatient;
+  const isMemberView = !isAdmin && !!selectedFamilyMember;
+  const viewName = isPatientView
+    ? selectedPatient!.displayName
+    : isMemberView
+      ? selectedFamilyMember!.name
+      : (profile?.displayName || 'အသုံးပြုသူ');
+  const viewRoleLabel = isPatientView
+    ? 'အသုံးပြုသူ'
+    : isMemberView
+      ? 'မိသားစုဝင်'
+      : (selectedFamilyMemberId === 'all' ? 'ကိုယ်တိုင်' : null);
+  const isPatientRecord = (r: { userId?: string; patientEmail?: string }): boolean =>
+    !!selectedPatient && (r.userId === selectedPatient.id ||
+      (!r.userId && !!selectedPatient.email && r.patientEmail === selectedPatient.email));
+  const viewBPRecords = useMemo(() => isPatientView
+    ? allBPRecords.filter(isPatientRecord)
+    : isMemberView
+      ? allBPRecords.filter(r => r.userId === selectedFamilyMember!.id)
+      : ownBPRecords,
+    [isPatientView, isMemberView, allBPRecords, ownBPRecords, selectedPatient, selectedFamilyMember]);
+  const viewGlucoseRecords = useMemo(() => isPatientView
+    ? allGlucoseRecords.filter(isPatientRecord)
+    : isMemberView
+      ? allGlucoseRecords.filter(r => r.userId === selectedFamilyMember!.id)
+      : ownGlucoseRecords,
+    [isPatientView, isMemberView, allGlucoseRecords, ownGlucoseRecords, selectedPatient, selectedFamilyMember]);
+  const viewBMIRecords = useMemo(() => isPatientView
+    ? allBMIRecords.filter(isPatientRecord)
+    : isMemberView
+      ? allBMIRecords.filter(r => r.userId === selectedFamilyMember!.id)
+      : ownBMIRecords,
+    [isPatientView, isMemberView, allBMIRecords, ownBMIRecords, selectedPatient, selectedFamilyMember]);
+  const viewLabRecords = useMemo(() => isPatientView
+    ? allLabRecords.filter(isPatientRecord)
+    : isMemberView
+      ? allLabRecords.filter(r => r.userId === selectedFamilyMember!.id)
+      : ownLabRecords,
+    [isPatientView, isMemberView, allLabRecords, ownLabRecords, selectedPatient, selectedFamilyMember]);
+  const viewAdvices = useMemo(() => isPatientView
+    ? allDoctorAdvices.filter(a => a.userId === selectedPatient!.id)
+    : isMemberView
+      ? allDoctorAdvices.filter(a => a.userId === selectedFamilyMember!.id)
+      : allDoctorAdvices.filter(a => a.userId === currentUser?.uid),
+    [isPatientView, isMemberView, allDoctorAdvices, selectedPatient, selectedFamilyMember, currentUser]);
+
+  // A measurement date is shown only when the record actually HAS one —
+  // never fall back to createdAt (the entry date) in display (D-M3).
+  // createdAt is still used for sort keys only.
+  const displayDate = (d?: string | null): string => (d ? formatDateLabel(d).date : 'ရက်စွဲ မရှိပါ');
+  const recordDateTime = (r: { date?: string; timestamp?: string }): { date: string; time: string } =>
+    (r.date || r.timestamp) ? formatDateLabel(r.date || r.timestamp) : { date: 'ရက်စွဲ မရှိပါ', time: '' };
+
+  // Plain-language status words (same pattern as the Sidebar): the medical
+  // category is kept in parentheses, but the words a user reads first are
+  // plain — never jargon alone. A paediatric guard result shows the guard
+  // label itself, never "ပုံမှန်ပါ".
+  const plainBPStatus = (category: string): string => {
+    switch (category) {
+      case 'normal': return 'ပုံမှန်ပါ';
+      case 'elevated': return 'အနည်းငယ် မြင့်နေပါတယ်';
+      case 'stage1': return 'အနည်းငယ် မြင့်နေပါတယ်';
+      case 'stage2': return 'တော်တော် မြင့်နေပါတယ်';
+      case 'crisis': return 'အရမ်း မြင့်နေပါတယ် — ဆရာဝန်နှင့် အမြန်ပြပါ';
+      default: return 'စစ်ဆေးရန် လိုပါတယ်';
+    }
+  };
+  const plainGluStatus = (status: string): string => {
+    switch (status) {
+      case 'normal': return 'ပုံမှန်ပါ';
+      case 'pre_diabetic': return 'ပုံမှန်ထက် အနည်းငယ် မြင့်နေပါတယ်';
+      case 'diabetic': return 'ဆီးချိုအဆင့်မှာ ရှိနေပါတယ်';
+      case 'high': return 'မြင့်နေပါတယ်';
+      case 'high_danger': return 'အလွန်မြင့်နေပါတယ် — ဆရာဝန်နှင့် အမြန်ပြပါ';
+      case 'critical': return 'အလွန်မြင့်နေပါတယ် — ဆရာဝန်နှင့် အမြန်ပြပါ';
+      case 'low': return 'နည်းနေပါတယ်';
+      default: return 'စစ်ဆေးရန် လိုပါတယ်';
+    }
+  };
+  const plainBMIStatus = (category: string): string => {
+    switch (category) {
+      case 'underweight': return 'ပိန်လွန်းနေပါတယ်';
+      case 'normal': return 'ပုံမှန်ပါ';
+      case 'overweight': return 'အလေးချိန် အနည်းငယ် များနေပါတယ်';
+      case 'obese1': return 'အလေးချိန် များနေပါတယ်';
+      case 'obese2': return 'အလေးချိန် အရမ်း များနေပါတယ်';
+      default: return 'စစ်ဆေးရန် လိုပါတယ်';
+    }
+  };
+  const statusWithLabel = (plain: string, labelMm: string | undefined, isNormal: boolean, isPediatric?: boolean): string =>
+    isPediatric
+      ? (labelMm || plain)
+      : (!isNormal && labelMm && labelMm !== plain) ? `${plain} (${labelMm})` : plain;
+
+  // Lab range flag (E-M4): words, never colour alone. With only `limit`
+  // given, the value must stay BELOW it (e.g. cholesterol < 200).
+  const labFlag = (value: number | null | undefined, min: number, max?: number): string | null => {
+    if (value == null) return null;
+    if (max === undefined) return value < min ? '✅ စံနှုန်းအတွင်း' : '⚠️ စံနှုန်းထက် မြင့်နေပါတယ်';
+    if (value < min) return '⚠️ စံနှုန်းထက် နည်းနေပါတယ်';
+    if (value > max) return '⚠️ စံနှုန်းထက် မြင့်နေပါတယ်';
+    return '✅ စံနှုန်းအတွင်း';
+  };
 
   // View state: 'both' | 'graph' | 'table'
   const [viewMode, setViewMode] = useState<'both' | 'graph' | 'table'>('both');
@@ -75,46 +192,43 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
   // Chronologically sorted records (oldest -> newest for graphs)
   const sortedBP = useMemo(() => {
-    return [...bpRecords].sort((a, b) => 
+    return [...viewBPRecords].sort((a, b) => 
       parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
     );
-  }, [bpRecords]);
+  }, [viewBPRecords]);
 
   const sortedGlucose = useMemo(() => {
-    return [...glucoseRecords].sort((a, b) => 
+    return [...viewGlucoseRecords].sort((a, b) => 
       parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
     );
-  }, [glucoseRecords]);
+  }, [viewGlucoseRecords]);
 
   const sortedBMI = useMemo(() => {
-    return [...bmiRecords].sort((a, b) => 
+    return [...viewBMIRecords].sort((a, b) => 
       parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
     );
-  }, [bmiRecords]);
+  }, [viewBMIRecords]);
 
   // Labs sorted the same way (oldest -> newest) — Firestore returns no
   // ordering, so taking labRecords[0] as "latest" could pick a stale test.
   const sortedLabs = useMemo(() => {
-    return [...labRecords].sort((a, b) =>
+    return [...viewLabRecords].sort((a, b) =>
       parseDateToMs(a.testDate || a.recordedAt || a.createdAt) - parseDateToMs(b.testDate || b.recordedAt || b.createdAt)
     );
-  }, [labRecords]);
+  }, [viewLabRecords]);
 
   // Filtered arrays based on active timeframe
   const filteredBP = useMemo(() => filterByTime(sortedBP), [sortedBP, timeframe]);
   const filteredGlucose = useMemo(() => filterByTime(sortedGlucose), [sortedGlucose, timeframe]);
   const filteredBMI = useMemo(() => filterByTime(sortedBMI), [sortedBMI, timeframe]);
-  const filteredLabs = useMemo(() => filterByTime(labRecords), [labRecords, timeframe]);
+  const filteredLabs = useMemo(() => filterByTime(sortedLabs), [sortedLabs, timeframe]);
 
-  // Latest records
-  const latestBP = sortedBP.length > 0 ? sortedBP[sortedBP.length - 1] : null;
-  const latestGlucose = sortedGlucose.length > 0 ? sortedGlucose[sortedGlucose.length - 1] : null;
-  const latestLab = sortedLabs.length > 0 ? sortedLabs[sortedLabs.length - 1] : null;
-
-  const bpEval = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic) : null;
-  // No fabricated fallback: a record with no glucose value has no status.
-  const latestGluValue = latestGlucose?.value ?? latestGlucose?.glucoseValue ?? null;
-  const gluEval = latestGlucose && latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestGlucose.type || latestGlucose.timing || 'fasting') : null;
+  // Latest records — from the FILTERED arrays (E-M2): the timeframe
+  // filter must filter the snapshot values too, not just the chart.
+  const latestBP = filteredBP.length > 0 ? filteredBP[filteredBP.length - 1] : null;
+  const latestGlucose = filteredGlucose.length > 0 ? filteredGlucose[filteredGlucose.length - 1] : null;
+  const latestLab = filteredLabs.length > 0 ? filteredLabs[filteredLabs.length - 1] : null;
+  const latestBMIRecord = filteredBMI.length > 0 ? filteredBMI[filteredBMI.length - 1] : null;
 
   // Active user age & BMI
   // v2.4.14: family-member view — the age must come from THAT member (a
@@ -124,10 +238,26 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
   const activeDOB = selectedFamilyMember ? undefined : (selectedPatient?.dateOfBirth || profile?.dateOfBirth);
   const ageObj = calculateAge(activeDOB);
   const activeAgeYears = ageObj ? ageObj.years : (selectedPatient?.age || selectedFamilyMember?.age || profile?.age || null);
+  // Pregnancy flag from the VIEWED person's conditions (same source the
+  // Sidebar and BP module use) — needed by calculateBPCategory.
+  const activePerson = selectedPatient || selectedFamilyMember || profile;
+  const isPregnant = ((activePerson as any)?.isPregnant as boolean | undefined) ||
+    (selectedPatient?.chronicConditions || selectedFamilyMember?.chronicConditions || profile?.chronicConditions || []).includes('ကိုယ်ဝန်ဆောင်');
 
-  const activeHeight = latestBMI?.heightCm || selectedPatient?.heightCm || profile?.heightCm || null;
-  const activeWeight = latestBMI?.weightKg || selectedPatient?.weightKg || profile?.weightKg || null;
-  const bmiEval = (activeWeight && activeHeight) ? calculateBMI(activeWeight, activeHeight, activeAgeYears ?? undefined) : null;
+  // E-H1: pass the viewed person's age (and pregnancy flag) into every
+  // classifier, headline and table alike — adult cut-offs must never be
+  // applied to an under-18. Glucose previously had no guard at all.
+  const bpEval = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic, activeAgeYears ?? undefined, isPregnant) : null;
+  // No fabricated fallback: a record with no glucose value has no status.
+  const latestGluValue = latestGlucose?.value ?? latestGlucose?.glucoseValue ?? null;
+  const gluEval = latestGlucose && latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestGlucose.type || latestGlucose.timing || 'fasting', activeAgeYears ?? undefined) : null;
+
+  // BMI comes ONLY from a real BMI record (E-M1): a profile-derived
+  // height/weight must never be presented as a measured BMI. The record's
+  // own age at measurement wins; otherwise the viewed person's age.
+  const bmiEval = latestBMIRecord
+    ? calculateBMI(latestBMIRecord.weightKg, latestBMIRecord.heightCm, latestBMIRecord.ageYears ?? activeAgeYears ?? undefined)
+    : null;
 
   // Active critical alerts
   const alerts: { title: string; desc: string; type: 'warning' | 'danger' | 'info' }[] = [];
@@ -169,7 +299,43 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
   // there is nothing to assess. The banner badge below shows the honest
   // no-data state instead of '🟢 ပုံမှန်ကောင်းမွန်' in that case.
   const hasAnyHealthData =
-    bpRecords.length + glucoseRecords.length + bmiRecords.length + labRecords.length > 0;
+    viewBPRecords.length + viewGlucoseRecords.length + viewBMIRecords.length + viewLabRecords.length > 0;
+
+  // Headline badge (E-H2): derived from the actual latest categories,
+  // NEVER from alerts alone — stage-1 hypertension and pre-diabetes
+  // produce no alert, so an alerts-only badge contradicted the numbers
+  // on the same screen. A paediatric guard result is never "normal".
+  const isPediatricResult = !!(bpEval?.isPediatric || gluEval?.isPediatric || bmiEval?.isPediatric);
+  const badgeReasons: string[] = [];
+  if (bpEval && !bpEval.isPediatric) {
+    if (bpEval.category === 'crisis') badgeReasons.push('သွေးပေါင် အရေးပေါ် အဆင့်');
+    else if (bpEval.category === 'stage2') badgeReasons.push('သွေးပေါင် အဆင့် ၂ သွေးတိုး');
+    else if (bpEval.category === 'stage1') badgeReasons.push('သွေးပေါင် အဆင့် ၁ သွေးတိုး');
+    else if (bpEval.category === 'elevated') badgeReasons.push('သွေးပေါင် အနည်းငယ် မြင့်နေပါတယ်');
+  }
+  if (bpEval?.isPregnancyAlert) badgeReasons.push('ကိုယ်ဝန်ဆောင် သွေးတိုး သတိပေးချက်');
+  if (gluEval && !gluEval.isPediatric) {
+    if (gluEval.status === 'critical' || gluEval.status === 'high_danger') badgeReasons.push('သွေးတွင်းသကြားဓာတ် အလွန်မြင့်နေပါတယ်');
+    else if (gluEval.status === 'diabetic' || gluEval.status === 'high') badgeReasons.push('သွေးတွင်းသကြား ဆီးချိုအဆင့်');
+    else if (gluEval.status === 'pre_diabetic') badgeReasons.push('သွေးတွင်းသကြား ဆီးချိုအကြိုအဆင့်');
+    else if (gluEval.status === 'low') badgeReasons.push('သွေးတွင်းသကြားဓာတ် နည်းနေပါတယ်');
+  }
+  if (bmiEval && !bmiEval.isPediatric) {
+    if (bmiEval.category === 'obese2') badgeReasons.push('BMI အဝလွန်အဆင့် ၂');
+    else if (bmiEval.category === 'obese1') badgeReasons.push('BMI အဝလွန်အဆင့် ၁');
+    else if (bmiEval.category === 'underweight') badgeReasons.push('BMI ပိန်လွန်းနေပါတယ်');
+    else if (bmiEval.category === 'overweight') badgeReasons.push('BMI အလေးချိန် အနည်းငယ် များနေပါတယ်');
+  }
+  const badgeDanger = !!(bpEval && !bpEval.isPediatric && (bpEval.category === 'crisis' || bpEval.category === 'stage2')) ||
+    !!bpEval?.isPregnancyAlert ||
+    !!(gluEval && !gluEval.isPediatric && (gluEval.status === 'critical' || gluEval.status === 'high_danger'));
+  const healthBadge = !hasAnyHealthData
+    ? { text: '📋 မှတ်တမ်း မရှိသေးပါ', reason: '' }
+    : isPediatricResult
+      ? { text: '🔵 ကလေးဆရာဝန်နှင့် စစ်ဆေးရန် လိုပါတယ်', reason: 'အသက် ၁၈ နှစ်အောက် ဖြစ်သဖြင့် လူကြီးစံနှုန်းဖြင့် မသတ်မှတ်ပါ' }
+      : badgeReasons.length === 0
+        ? { text: '🟢 ပုံမှန်ကောင်းမွန်', reason: '' }
+        : { text: badgeDanger ? '🔴 ဂရုပြုစောင့်ကြည့်' : '🟡 သတိထားရန် လိုပါတယ်', reason: badgeReasons.join(' • ') };
 
   // While the first Firestore snapshot is still on its way, show a loading
   // state instead of the empty-data messages and charts — otherwise a slow
@@ -196,12 +362,11 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
               ကျန်းမာရေးသုံးသပ်ချက် အနှစ်ချုပ် (Health Analytics & Historical Trends)
             </span>
             <h2 className="text-xl sm:text-2xl font-extrabold mt-1">
-              {selectedPatient 
-                ? `${selectedPatient.displayName} ၏ သမိုင်းမှတ်တမ်းနှင့် Trend Graph များ` 
-                : profile?.role === 'admin' 
-                  ? 'အသုံးပြုသူများ၏ ဘက်စုံ ကျန်းမာရေးသုံးသပ်ချက် (Admin Dashboard)' 
-                  : `${profile?.displayName || 'အသုံးပြုသူ'} ၏ ဘက်စုံ ကျန်းမာရေး သမိုင်းမှတ်တမ်း`}
+              {viewName} ၏ ဘက်စုံ ကျန်းမာရေး သမိုင်းမှတ်တမ်း
             </h2>
+            <p className="text-xs text-emerald-100 mt-1">
+              ပြသနေသူ: {viewName}{viewRoleLabel ? ` (${viewRoleLabel})` : ''}{isMemberView ? ` • ${selectedFamilyMember!.relationship}` : ''}
+            </p>
             <p className="text-xs text-emerald-100 mt-1 max-w-xl">
               သွေးတိုး၊ ဆီးချို၊ BMI & ခန္ဓာကိုယ်အချိုးအစားနှင့် ဓာတ်ခွဲခန်းစစ်ဆေးချက်များကို Graph & Data ဇယားများဖြင့် အချိန်နှင့်တပြေးညီ ကြည့်ရှုနိုင်ပါသည်
             </p>
@@ -211,10 +376,13 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             <div className="px-4 py-2 bg-white/10 rounded-2xl backdrop-blur-xs text-center border border-white/20">
               <span className="text-[11px] text-emerald-100 block font-medium">ကျန်းမာရေးအဆင့်</span>
               <span className="text-base font-bold">
-                {!hasAnyHealthData
-                  ? '📋 မှတ်တမ်း မရှိသေးပါ'
-                  : alerts.length === 0 ? '🟢 ပုံမှန်ကောင်းမွန်' : alerts.some(a => a.type === 'danger') ? '🔴 ဂရုပြုစောင့်ကြည့်' : '🟡 အလယ်အလတ်'}
+                {healthBadge.text}
               </span>
+              {healthBadge.reason && (
+                <span className="text-[11px] text-emerald-100 block font-normal mt-0.5">
+                  {healthBadge.reason}
+                </span>
+              )}
               {!hasAnyHealthData && (
                 <span className="text-[11px] text-emerald-100 block font-normal mt-0.5">
                   မှတ်တမ်းထည့်ပြီးမှ ကျန်းမာရေး အခြေအနေ ပြပေးပါမယ်
@@ -237,18 +405,18 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                 အသုံးပြုသူ Filter (Select User for Trend Analysis)
               </span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                {selectedPatient 
-                  ? `လက်ရှိ ပြသနေသော အသုံးပြုသူ: ${selectedPatient.displayName}` 
-                  : 'အသုံးပြုသူ အားလုံး၏ ဒေတာပေါင်းချုပ် ဖော်ပြထားပါသည်'}
+                လက်ရှိ ပြသနေသော အသုံးပြုသူ: {viewName}{viewRoleLabel ? ` (${viewRoleLabel})` : ''}
               </span>
             </div>
           </div>
           <select
-            value={selectedPatientId || ''}
-            onChange={(e) => setSelectedPatientId(e.target.value || null)}
+            value={selectedPatientId || '__self__'}
+            onChange={(e) => setSelectedPatientId(e.target.value === '__self__' ? null : e.target.value)}
             className="px-4 py-2 rounded-2xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-xs"
           >
-            <option value="">🌐 အသုံးပြုသူ အားလုံး (All Users)</option>
+            {/* E-H3: no pooled "All Users" option — the filter selects
+                exactly ONE person; no selection means the admin's own data. */}
+            <option value="__self__">👤 ကိုယ်တိုင် ({profile?.displayName || 'အသုံးပြုသူ'})</option>
             {patientsList.map(p => (
               <option key={p.id} value={p.id}>
                 👤 {p.displayName || 'အသုံးပြုသူ'} ({p.email || p.phone || p.id})
@@ -280,16 +448,32 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
         </div>
       )}
 
+      {/* Empty state (E-L10): zero records is never "all good" — say so
+          plainly and point at adding the first record. */}
+      {!hasAnyHealthData && (
+        <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
+          <p className="text-sm font-bold text-slate-900 dark:text-white">မှတ်တမ်း မရှိသေးပါ</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {viewName} ၏ သွေးပေါင်၊ သကြားဓာတ်၊ BMI သို့မဟုတ် ဓာတ်ခွဲခန်း မှတ်တမ်း တစ်ခုမှ မရှိသေးပါ။ မှတ်တမ်း တစ်ခုထည့်လိုက်မှ Trend Graph နှင့် သုံးသပ်ချက် ပြပေးပါမယ်။
+          </p>
+          <button
+            onClick={() => onNavigateTab && onNavigateTab('bp')}
+            className="mt-3 px-4 py-2 rounded-2xl bg-teal-600 text-white text-xs font-bold cursor-pointer hover:bg-teal-700 transition-colors"
+          >
+            ➕ သွေးပေါင်ချိန် မှတ်တမ်း ထည့်မယ်
+          </button>
+        </div>
+      )}
+
       {/* Snapshot Cards - Pristine Pure White */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-        {/* Age & Profile */}
+        {/* Age & Profile — E-L3: age is not a BMI shortcut; no navigation. */}
         <div 
-          onClick={() => onNavigateTab && onNavigateTab('bmi')}
-          className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-teal-500 transition-all cursor-pointer group"
+          className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs"
         >
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span className="font-bold">အသက် (Age)</span>
-            <Calendar className="w-4 h-4 text-teal-600 group-hover:scale-110 transition-transform" />
+            <Calendar className="w-4 h-4 text-teal-600" />
           </div>
           <div className="text-xl font-extrabold font-mono text-slate-900 mt-1">
             {activeAgeYears !== null ? activeAgeYears : '--'} <span className="text-xs text-slate-500 font-sans">နှစ်</span>
@@ -313,11 +497,14 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
           </div>
           {bmiEval ? (
             <span className={`text-[11px] font-bold mt-1 inline-block truncate ${bmiEval.color}`}>
-              {bmiEval.labelMm}
+              {statusWithLabel(plainBMIStatus(bmiEval.category), bmiEval.labelMm, bmiEval.category === 'normal', bmiEval.isPediatric)}
             </span>
           ) : (
             <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
           )}
+          <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">
+            📅 {latestBMIRecord ? displayDate(latestBMIRecord.date || latestBMIRecord.timestamp) : 'ရက်စွဲ မရှိပါ'}
+          </span>
         </div>
 
         {/* BP */}
@@ -334,11 +521,14 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
           </div>
           {bpEval ? (
             <span className={`text-[11px] font-bold mt-1 inline-block ${bpEval.color}`}>
-              {bpEval.labelMm}
+              {statusWithLabel(plainBPStatus(bpEval.category), bpEval.labelMm, bpEval.category === 'normal', bpEval.isPediatric)}
             </span>
           ) : (
             <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
           )}
+          <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">
+            📅 {latestBP ? displayDate(latestBP.date || latestBP.timestamp) : 'ရက်စွဲ မရှိပါ'}
+          </span>
         </div>
 
         {/* Glucose */}
@@ -355,11 +545,14 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
           </div>
           {gluEval ? (
             <span className={`text-[11px] font-bold mt-1 inline-block ${gluEval.color}`}>
-              {gluEval.labelMm}
+              {statusWithLabel(plainGluStatus(gluEval.status), gluEval.labelMm, gluEval.status === 'normal', gluEval.isPediatric)}
             </span>
           ) : (
             <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
           )}
+          <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">
+            📅 {latestGlucose ? displayDate(latestGlucose.date || latestGlucose.timestamp) : 'ရက်စွဲ မရှိပါ'}
+          </span>
         </div>
 
         {/* Renal & Uric Acid */}
@@ -375,8 +568,13 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             Cr: {latestLab?.renal?.creatinine ?? '--'} | Uric: {latestLab?.renal?.uricAcid ?? '--'}
           </div>
           <span className="text-[11px] text-slate-500 mt-1 block truncate font-medium">
-            {latestLab ? `ရက်စွဲ: ${latestLab.testDate}` : 'စစ်ဆေးချက်မရှိသေး'}
+            📅 {latestLab ? displayDate(latestLab.testDate || latestLab.recordedAt) : 'စစ်ဆေးချက်မရှိသေး'}
           </span>
+          {latestLab?.renal?.uricAcid != null && (
+            <span className="text-[11px] mt-0.5 block font-bold">
+              {labFlag(latestLab.renal.uricAcid, 3.5, 7.2)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -547,8 +745,8 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredBP.slice().reverse().map((r, i) => {
-                      const evalB = calculateBPCategory(r.systolic, r.diastolic);
-                      const dInfo = formatDateLabel(r.date || r.timestamp || r.createdAt);
+                      const evalB = calculateBPCategory(r.systolic, r.diastolic, activeAgeYears ?? undefined, isPregnant);
+                      const dInfo = recordDateTime(r);
                       const diet = r.dietRecord || r.dietNotes || r.foodIntake;
                       return (
                         <tr key={r.id || i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
@@ -566,7 +764,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                           </td>
                           <td className="py-2.5 px-4">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${evalB.bgColor} ${evalB.color} ${evalB.borderColor}`}>
-                              {evalB.labelMm}
+                              {statusWithLabel(plainBPStatus(evalB.category), evalB.labelMm, evalB.category === 'normal', evalB.isPediatric)}
                             </span>
                           </td>
                           <td className="py-2.5 px-4 text-slate-800 dark:text-slate-200">
@@ -626,8 +824,8 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                     {filteredGlucose.slice().reverse().map((r, i) => {
                       const val = r.value ?? r.glucoseValue ?? null;
                       const type = r.type || r.timing || 'fasting';
-                      const evalG = val != null ? calculateGlucoseStatus(val, type) : null;
-                      const dInfo = formatDateLabel(r.date || r.timestamp || r.createdAt);
+                      const evalG = val != null ? calculateGlucoseStatus(val, type, activeAgeYears ?? undefined) : null;
+                      const dInfo = recordDateTime(r);
                       const diet = r.dietRecord || r.dietNotes || r.foodIntake;
                       return (
                         <tr key={r.id || i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
@@ -647,7 +845,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                           <td className="py-2.5 px-4">
                             {evalG ? (
                               <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${evalG.bgColor} ${evalG.color} ${evalG.borderColor}`}>
-                                {evalG.labelMm}
+                                {statusWithLabel(plainGluStatus(evalG.status), evalG.labelMm, evalG.status === 'normal', evalG.isPediatric)}
                               </span>
                             ) : (
                               <span className="text-slate-400">—</span>
@@ -703,8 +901,8 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredBMI.slice().reverse().map((r, i) => {
-                      const evalB = calculateBMI(r.weightKg, r.heightCm);
-                      const dInfo = formatDateLabel(r.date || r.timestamp || r.createdAt);
+                      const evalB = calculateBMI(r.weightKg, r.heightCm, r.ageYears ?? activeAgeYears ?? undefined);
+                      const dInfo = recordDateTime(r);
                       return (
                         <tr key={r.id || i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="py-2.5 px-4 font-mono text-slate-700 dark:text-slate-300">
@@ -722,7 +920,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                           <td className="py-2.5 px-4">
                             {evalB ? (
                               <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${evalB.bgColor} ${evalB.color} ${evalB.borderColor}`}>
-                                {evalB.labelMm}
+                                {statusWithLabel(plainBMIStatus(evalB.category), evalB.labelMm, evalB.category === 'normal', evalB.isPediatric)}
                               </span>
                             ) : (
                               r.category
@@ -740,7 +938,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
       )}
 
       {/* Doctor Advice Feed */}
-      {doctorAdvices.length > 0 && (
+      {viewAdvices.length > 0 && (
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
@@ -751,17 +949,17 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                 ဆရာဝန်၏ ကျန်းမာရေးလမ်းညွှန်ချက်များနှင့် ဆေးညွှန်းများ (Doctor Consultations)
               </h3>
               <p className="text-xs text-slate-600">
-                အသုံးပြုသူအတွက် ဆရာဝန်မှ အကြံပြုထားသော အစားအသောက်နှင့် ဆေးဝါးသုံးစွဲမှု လမ်းညွှန်ချက်များ
+                {viewName} အတွက် ဆရာဝန်မှ အကြံပြုထားသော အစားအသောက်နှင့် ဆေးဝါးသုံးစွဲမှု လမ်းညွှန်ချက်များ
               </p>
             </div>
           </div>
 
           <div className="space-y-3">
-            {doctorAdvices.map((adv) => (
+            {viewAdvices.map((adv) => (
               <div key={adv.id} className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs">
                 <div className="flex items-center justify-between text-slate-500 mb-1">
                   <span className="font-extrabold text-indigo-950">{adv.doctorName}</span>
-                  <span className="font-mono">{adv.date}</span>
+                  <span className="font-mono">{displayDate(adv.date)}</span>
                 </div>
                 <p className="text-slate-900 text-sm font-bold leading-relaxed">
                   {adv.advice}
@@ -785,7 +983,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             <div>
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <FlaskConical className="w-5 h-5 text-purple-600" />
-                နောက်ဆုံး ဓာတ်ခွဲခန်းစစ်ဆေးချက် အနှစ်ချုပ် ({latestLab.testDate})
+                နောက်ဆုံး ဓာတ်ခွဲခန်းစစ်ဆေးချက် အနှစ်ချုပ် ({displayDate(latestLab.testDate || latestLab.recordedAt)})
               </h3>
               <p className="text-xs text-slate-600">{latestLab.labName}</p>
             </div>
@@ -799,6 +997,9 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                 {latestLab.cbc?.hemoglobin != null ? `${latestLab.cbc.hemoglobin} g/dL` : '--'}
               </span>
               <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">စံ: 12 - 17</span>
+              {latestLab.cbc?.hemoglobin != null && (
+                <span className="text-[11px] block mt-0.5 font-bold">{labFlag(latestLab.cbc.hemoglobin, 12, 17)}</span>
+              )}
             </div>
 
             {/* FBS */}
@@ -808,6 +1009,9 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                 {latestLab.glucose?.fbs != null ? `${latestLab.glucose.fbs} mg/dL` : '--'}
               </span>
               <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">စံ: 70 - 99</span>
+              {latestLab.glucose?.fbs != null && (
+                <span className="text-[11px] block mt-0.5 font-bold">{labFlag(latestLab.glucose.fbs, 70, 99)}</span>
+              )}
             </div>
 
             {/* ALT */}
@@ -817,6 +1021,9 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                 {latestLab.liver?.alt_sgpt != null ? `${latestLab.liver.alt_sgpt} U/L` : '--'}
               </span>
               <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 7 - 56</span>
+              {latestLab.liver?.alt_sgpt != null && (
+                <span className="text-[11px] block mt-0.5 font-bold">{labFlag(latestLab.liver.alt_sgpt, 7, 56)}</span>
+              )}
             </div>
 
             {/* Creatinine */}
@@ -826,6 +1033,9 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                 {latestLab.renal?.creatinine != null ? `${latestLab.renal.creatinine} mg/dL` : '--'}
               </span>
               <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 0.6 - 1.2</span>
+              {latestLab.renal?.creatinine != null && (
+                <span className="text-[11px] block mt-0.5 font-bold">{labFlag(latestLab.renal.creatinine, 0.6, 1.2)}</span>
+              )}
             </div>
 
             {/* Uric Acid */}
@@ -835,6 +1045,9 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                 {latestLab.renal?.uricAcid != null ? `${latestLab.renal.uricAcid} mg/dL` : '--'}
               </span>
               <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">ပုံမှန်: 3.5 - 7.2</span>
+              {latestLab.renal?.uricAcid != null && (
+                <span className="text-[11px] block mt-0.5 font-bold">{labFlag(latestLab.renal.uricAcid, 3.5, 7.2)}</span>
+              )}
             </div>
 
             {/* Cholesterol */}
@@ -844,6 +1057,9 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
                 {latestLab.lipid?.totalCholesterol != null ? `${latestLab.lipid.totalCholesterol} mg/dL` : '--'}
               </span>
               <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">စံနှုန်း: &lt; 200</span>
+              {latestLab.lipid?.totalCholesterol != null && (
+                <span className="text-[11px] block mt-0.5 font-bold">{labFlag(latestLab.lipid.totalCholesterol, 200)}</span>
+              )}
             </div>
           </div>
         </div>

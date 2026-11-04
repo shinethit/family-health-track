@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShieldAlert, 
   PhoneCall, 
@@ -15,28 +15,57 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
-import { EmergencyProfile, UserProfile } from '../../types/health';
+import { EmergencyProfile, FamilyMember, UserProfile } from '../../types/health';
+import { formatDateLabel } from '../../lib/medicalCalculations';
+
+// The fields an emergency card is built from — a signed-in user / patient
+// profile, or a family member (name instead of displayName, no DOB /
+// allergies of their own; those come only from their emergencyProfile).
+type EmergencySource = {
+  id?: string;
+  displayName?: string;
+  dateOfBirth?: string;
+  bloodType?: string;
+  allergies?: string[];
+  chronicConditions?: string[];
+  emergencyProfile?: EmergencyProfile;
+} | null | undefined;
+
+const toEmergencySource = (person: UserProfile | FamilyMember | null | undefined): EmergencySource => {
+  if (!person) return null;
+  if ('displayName' in person) return person;
+  return {
+    id: person.id,
+    displayName: person.name,
+    bloodType: person.bloodType,
+    chronicConditions: person.chronicConditions,
+    emergencyProfile: person.emergencyProfile,
+  };
+};
 
 // Build the card ONLY from real saved data: first the previously saved
 // emergencyProfile, else the profile's own blood type / allergies /
 // conditions. Anything not yet entered stays empty — never invent a name,
 // phone, hospital, doctor, blood type, allergy or condition. Fabricated
 // emergency data can kill in a real emergency.
-const buildEmergencyData = (patient: UserProfile | null | undefined): EmergencyProfile => {
-  const ep = patient?.emergencyProfile;
+const buildEmergencyData = (person: EmergencySource): EmergencyProfile => {
+  const ep = person?.emergencyProfile;
   return {
-    id: ep?.id || `emg-${patient?.id || 'default'}`,
-    userId: patient?.id || '',
-    patientName: ep?.patientName || patient?.displayName || '',
-    dateOfBirth: ep?.dateOfBirth || patient?.dateOfBirth || '',
-    bloodType: ep?.bloodType || patient?.bloodType || '',
-    allergies: ep?.allergies || patient?.allergies || [],
-    chronicConditions: ep?.chronicConditions || patient?.chronicConditions || [],
+    id: ep?.id || `emg-${person?.id || 'default'}`,
+    userId: person?.id || '',
+    patientName: ep?.patientName || person?.displayName || '',
+    dateOfBirth: ep?.dateOfBirth || person?.dateOfBirth || '',
+    bloodType: ep?.bloodType || person?.bloodType || '',
+    allergies: ep?.allergies || person?.allergies || [],
+    chronicConditions: ep?.chronicConditions || person?.chronicConditions || [],
     primaryContactName: ep?.primaryContactName || '',
     primaryContactPhone: ep?.primaryContactPhone || '',
     primaryContactRelation: ep?.primaryContactRelation || '',
     secondaryContactName: ep?.secondaryContactName || '',
     secondaryContactPhone: ep?.secondaryContactPhone || '',
+    // G-L4: the secondary-contact relation was dropped here even though
+    // the type carries it — a saved relation vanished on reload.
+    secondaryContactRelation: ep?.secondaryContactRelation || '',
     attendingDoctorName: ep?.attendingDoctorName || '',
     attendingDoctorPhone: ep?.attendingDoctorPhone || '',
     preferredHospital: ep?.preferredHospital || '',
@@ -45,18 +74,28 @@ const buildEmergencyData = (patient: UserProfile | null | undefined): EmergencyP
   };
 };
 
+// G-L5: the only blood types a card may carry. Anything else is rejected
+// on save with a clear message — a typo here can kill in an emergency.
+const VALID_BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+
 // Format a stored DOB (ISO date) for the printed card; never invent one.
+// D-M4: hardcoded helper, never toLocaleDateString('my-MM').
 const formatDobForCard = (dob?: string): string => {
   if (!dob) return 'မထည့်ရသေးပါ';
-  const d = new Date(dob);
-  if (Number.isNaN(d.getTime())) return dob;
-  return d.toLocaleDateString('my-MM', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatDateLabel(dob).date || dob;
 };
 
 export const EmergencyIDModule: React.FC = () => {
-  const { currentUser, profile, updateProfile } = useAuth();
-  const { selectedPatient, updatePatient } = useHealthData();
-  const currentPatient = selectedPatient || profile;
+  const { currentUser, profile, updateProfile, isAdmin } = useAuth();
+  const { selectedPatient, selectedFamilyMember, updatePatient, updateFamilyMember } = useHealthData();
+  // D-M5: when a family member is selected, this module shows/saves THAT
+  // member's card (their FamilyMember.emergencyProfile) — the old code
+  // always showed the owner's card. Admins keep viewing the selected
+  // patient's card.
+  const isMemberView = !isAdmin && !!selectedFamilyMember;
+  const viewedPerson = isMemberView
+    ? toEmergencySource(selectedFamilyMember)
+    : toEmergencySource(selectedPatient || profile);
 
   // Same chronic-condition chips as the sign-up / profile-setup form, so
   // the emergency card uses the same words everywhere.
@@ -85,27 +124,85 @@ export const EmergencyIDModule: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [emergencyData, setEmergencyData] = useState<EmergencyProfile>(() => buildEmergencyData(currentPatient));
+  const [emergencyData, setEmergencyData] = useState<EmergencyProfile>(() => buildEmergencyData(viewedPerson));
 
-  // Reload the form when the viewed patient changes (sign-in finishing,
-  // switching patients). Only the patient id is watched on purpose: the
-  // profile snapshot can lag behind a just-completed save, and reloading
-  // from it would wipe the freshly saved card from the screen.
-  const viewedPatientId = currentPatient?.id;
+  // G-M7: dirty tracking + stale reload. The form must never silently
+  // overwrite the user's in-progress edits when the saved card changes
+  // underneath (e.g. an admin saved the same card from another device).
+  // lastLoadedRef holds the card as last loaded/saved; isDirty is true
+  // while the form differs from it.
+  const lastLoadedRef = useRef<string>(JSON.stringify(buildEmergencyData(viewedPerson)));
+  const isDirtyRef = useRef(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [staleNotice, setStaleNotice] = useState(false);
+  const prevPersonIdRef = useRef<string | undefined>(viewedPerson?.id);
+
   useEffect(() => {
-    if (viewedPatientId) setEmergencyData(buildEmergencyData(currentPatient));
+    const dirty = JSON.stringify(emergencyData) !== lastLoadedRef.current;
+    isDirtyRef.current = dirty;
+    setIsDirty(dirty);
+  }, [emergencyData]);
+
+  // Reload the form when the viewed person changes (sign-in finishing,
+  // switching patients/members) or when the SAVED card changes. Only the
+  // person id is watched for the switch on purpose: the profile snapshot
+  // can lag behind a just-completed save, and reloading from it would wipe
+  // the freshly saved card from the screen.
+  const viewedPersonId = viewedPerson?.id;
+  useEffect(() => {
+    const fresh = buildEmergencyData(viewedPerson);
+    const freshJson = JSON.stringify(fresh);
+    const personChanged = prevPersonIdRef.current !== viewedPersonId;
+    prevPersonIdRef.current = viewedPersonId;
+    if (personChanged) {
+      // An explicit switch to another person's card always loads that
+      // person's card (unsaved edits to the previous card are discarded —
+      // the banner above names whose card is shown).
+      setEmergencyData(fresh);
+      lastLoadedRef.current = freshJson;
+      setStaleNotice(false);
+      return;
+    }
+    if (freshJson === lastLoadedRef.current) return;
+    if (isDirtyRef.current) {
+      // G-M7: the saved card changed while the form is dirty — do NOT
+      // overwrite the user's edits. Show the notice and let them choose.
+      setStaleNotice(true);
+      return;
+    }
+    setEmergencyData(fresh);
+    lastLoadedRef.current = freshJson;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewedPatientId]);
+  }, [viewedPersonId, selectedFamilyMember, selectedPatient, profile]);
+
+  const loadFreshCard = () => {
+    const fresh = buildEmergencyData(viewedPerson);
+    setEmergencyData(fresh);
+    lastLoadedRef.current = JSON.stringify(fresh);
+    setStaleNotice(false);
+  };
 
   const handleCancelEdit = () => {
-    setEmergencyData(buildEmergencyData(currentPatient));
+    const fresh = buildEmergencyData(viewedPerson);
+    setEmergencyData(fresh);
+    lastLoadedRef.current = JSON.stringify(fresh);
+    setStaleNotice(false);
     setSaveError(null);
     setIsEditing(false);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const targetId = selectedPatient?.id || profile?.id || currentUser?.uid || '';
+    // G-L5: reject any blood type outside the known set — a typo here is
+    // dangerous. Empty is allowed (means "not entered yet").
+    const bloodType = emergencyData.bloodType.trim().toUpperCase();
+    if (bloodType && !VALID_BLOOD_TYPES.includes(bloodType)) {
+      setSaveError('သွေးအမျိုးအစား မမှန်ပါ — A+, A-, B+, B-, O+, O-, AB+, AB- တို့ထဲက တစ်ခုသာ ရိုက်ထည့်ပါ။');
+      return;
+    }
+    const targetId = isMemberView
+      ? (selectedFamilyMember?.id || '')
+      : (selectedPatient?.id || profile?.id || currentUser?.uid || '');
     if (!targetId) {
       setSaveError('အသုံးပြုသူမှတ်တမ်း မတွေ့ပါ — အကောင့်ပြန်ဝင်ပြီး ထပ်စမ်းကြည့်ပါ။');
       return;
@@ -115,24 +212,33 @@ export const EmergencyIDModule: React.FC = () => {
     try {
       const toSave: EmergencyProfile = {
         ...emergencyData,
+        bloodType,
         id: emergencyData.id || `emg-${targetId}`,
         userId: targetId,
-        patientName: emergencyData.patientName.trim() || currentPatient?.displayName || '',
+        patientName: emergencyData.patientName.trim() || viewedPerson?.displayName || '',
         allergies: emergencyData.allergies.map(a => a.trim()).filter(Boolean),
         chronicConditions: emergencyData.chronicConditions.map(c => c.trim()).filter(Boolean),
         updatedAt: new Date().toISOString(),
       };
-      // updatePatient() already shows a success/error toast itself.
-      await updatePatient(targetId, { emergencyProfile: toSave });
-      // updatePatient() writes Firestore + the admin-only patientsList, but
-      // never the signed-in user's own AuthContext profile — without this,
-      // the card goes blank/old on remount until the next login. Refresh the
-      // profile too when the target is the signed-in user themself.
-      // Both writes are merge setDocs of the same emergencyProfile value.
-      if (targetId === currentUser?.uid) {
-        await updateProfile({ emergencyProfile: toSave }, { silent: true });
+      if (isMemberView) {
+        // D-M5: a member's card lives on the member doc, not the owner's
+        // profile — updateFamilyMember toasts success/failure itself.
+        await updateFamilyMember(targetId, { emergencyProfile: toSave });
+      } else {
+        // updatePatient() already shows a success/error toast itself.
+        await updatePatient(targetId, { emergencyProfile: toSave });
+        // updatePatient() writes Firestore + the admin-only patientsList, but
+        // never the signed-in user's own AuthContext profile — without this,
+        // the card goes blank/old on remount until the next login. Refresh the
+        // profile too when the target is the signed-in user themself.
+        // Both writes are merge setDocs of the same emergencyProfile value.
+        if (targetId === currentUser?.uid) {
+          await updateProfile({ emergencyProfile: toSave }, { silent: true });
+        }
       }
       setEmergencyData(toSave);
+      lastLoadedRef.current = JSON.stringify(toSave);
+      setStaleNotice(false);
       setIsEditing(false);
     } catch (err) {
       setSaveError('သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ထပ်စမ်းကြည့်ပါ။');
@@ -160,7 +266,10 @@ export const EmergencyIDModule: React.FC = () => {
             left: 50%;
             top: 20%;
             transform: translate(-50%, -20%);
-            width: 400px;
+            /* G-M6: a fixed 400px card is cut off on narrow phone print.
+               The card now shrinks to the paper instead. */
+            width: min(400px, calc(100vw - 32px));
+            max-width: 100%;
             padding: 0;
             background: white !important;
             box-shadow: none !important;
@@ -201,11 +310,56 @@ export const EmergencyIDModule: React.FC = () => {
         </div>
       </div>
 
+      {/* D-M5 / G-L6: whose card is this? The old module silently showed
+          the owner's card while a family member was selected, and an admin
+          had no label for whose patient card they were editing. */}
+      {(isMemberView || (isAdmin && selectedPatient)) && (
+        <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-start gap-2">
+          <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <span>
+            {isMemberView
+              ? `ဤသည်မှာ မိသားစုဝင် “${viewedPerson?.displayName || 'အမည် မသိရှိပါ'}” ၏ အရေးပေါ် ကျန်းမာရေးကတ် ဖြစ်ပါသည် — ပြင်ဆင်မှုများသည် ${viewedPerson?.displayName || 'ထိုမိသားစုဝင်'} ၏ ကတ်တွင်သာ သိမ်းဆည်းမည်။`
+              : `Admin အနေဖြင့် အသုံးပြုသူ “${selectedPatient?.displayName || ''}” ၏ အရေးပေါ် ကျန်းမာရေးကတ်ကို ကြည့်နေ/ပြင်နေပါသည်။`}
+          </span>
+        </div>
+      )}
+
+      {/* G-M7: the saved card changed while this form has unsaved edits —
+          the edits are kept; the user chooses what happens next. */}
+      {staleNotice && (
+        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs space-y-2">
+          <p className="font-bold flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <span>ဤကတ်၏ သိမ်းထားသော အချက်အလက် အသစ် ရောက်လာပါပြီ</span>
+          </p>
+          <p className="leading-relaxed">
+            သင် ပြင်ဆင်နေဆဲ (မသိမ်းရသေးသော) အချက်များ ရှိနေသဖြင့် အသစ်ရောက်လာသော အချက်များဖြင့် အလိုအလျောက် အစားမထိုးပါ။ အသစ်ကို ဖတ်လိုက်လျှင် သင် ပြင်ထားသည်များ ပျက်သွားမည်။
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={loadFreshCard}
+              className="px-3 py-1.5 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 cursor-pointer"
+            >
+              အသစ်ကို ဖတ်မည် (ပြင်ထားတာ ပျက်မည်)
+            </button>
+            <button
+              type="button"
+              onClick={() => setStaleNotice(false)}
+              className="px-3 py-1.5 rounded-xl bg-white border border-amber-300 font-bold hover:bg-amber-100 cursor-pointer"
+            >
+              ပြင်ထားတာကို ဆက်ထားမည်
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Edit Form or Visual Pocket Card View */}
       {isEditing ? (
         <form onSubmit={handleSave} className="bg-white border border-slate-200 rounded-3xl p-6 space-y-4 shadow-sm text-xs">
           <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
             အရေးပေါ် ကျန်းမာရေး အချက်အလက်များ ပြင်ဆင်ရန်
+            {isDirty && <span className="ml-2 text-[11px] font-semibold text-amber-700">(မသိမ်းရသေးသော ပြင်ဆင်မှုများ ရှိသည်)</span>}
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -225,8 +379,10 @@ export const EmergencyIDModule: React.FC = () => {
                 type="text"
                 value={emergencyData.bloodType}
                 onChange={(e) => setEmergencyData({ ...emergencyData, bloodType: e.target.value })}
+                placeholder="ဥပမာ- O+"
                 className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none"
               />
+              <p className="text-[11px] text-slate-500 mt-1">A+, A-, B+, B-, O+, O-, AB+, AB- တို့ထဲက တစ်ခုသာ ရိုက်ထည့်ပါ။</p>
             </div>
 
             <div>
@@ -327,6 +483,19 @@ export const EmergencyIDModule: React.FC = () => {
                 value={emergencyData.secondaryContactPhone || ''}
                 onChange={(e) => setEmergencyData({ ...emergencyData, secondaryContactPhone: e.target.value })}
                 className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none font-bold"
+              />
+            </div>
+
+            {/* G-L4: secondary-contact relation — the type has carried this
+                field all along, but there was no input for it. */}
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">ဒုတိယ ဆက်သွယ်သူနှင့် တော်စပ်ပုံ (ဥပမာ- သား/သမီး၊ မိဘ)</label>
+              <input
+                type="text"
+                value={emergencyData.secondaryContactRelation || ''}
+                onChange={(e) => setEmergencyData({ ...emergencyData, secondaryContactRelation: e.target.value })}
+                placeholder="ဥပမာ- သား"
+                className="w-full p-2.5 border border-slate-200 rounded-xl focus:border-rose-500 focus:outline-none"
               />
             </div>
 
@@ -517,7 +686,8 @@ export const EmergencyIDModule: React.FC = () => {
                     <span className="text-[11px] text-rose-200 font-bold shrink-0">ဒုတိယ ဆက်သွယ်ရန်:</span>
                     <span className="font-bold text-white text-right">
                       {emergencyData.secondaryContactName || 'မထည့်ရသေးပါ'}
-                      {emergencyData.secondaryContactPhone ? ` (${emergencyData.secondaryContactPhone})` : ''}
+                      {emergencyData.secondaryContactRelation ? ` (${emergencyData.secondaryContactRelation})` : ''}
+                      {emergencyData.secondaryContactPhone ? ` — ${emergencyData.secondaryContactPhone}` : ''}
                     </span>
                   </div>
                   {emergencyData.specialInstructions && (
@@ -574,6 +744,9 @@ export const EmergencyIDModule: React.FC = () => {
                   <div>
                     <p className="text-[11px] font-bold text-slate-600">ဒုတိယ အရေးပေါ် ဆက်သွယ်ရန်</p>
                     <p className="font-extrabold text-slate-900 mt-0.5">{emergencyData.secondaryContactName || 'မထည့်ရသေးပါ'}</p>
+                    {emergencyData.secondaryContactRelation && (
+                      <p className="text-[11px] text-slate-500">{emergencyData.secondaryContactRelation}</p>
+                    )}
                     <p className="text-slate-800 font-bold mt-1">{emergencyData.secondaryContactPhone || 'မထည့်ရသေးပါ'}</p>
                   </div>
                   {emergencyData.secondaryContactPhone && (

@@ -1,12 +1,23 @@
 import React, { useState, useMemo } from 'react';
+import { Modal } from '../common/Modal';
 import { Plus, Trash2, Droplets, AlertCircle, Info, Calendar, Utensils, BarChart2, Table, TrendingUp, Pencil } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { BloodSugarChart } from '../charts/HealthCharts';
-import { calculateGlucoseStatus, parseDateToMs } from '../../lib/medicalCalculations';
+import { calculateGlucoseStatus, parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
 import { BloodSugarType } from '../../types/health';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+
+// Measurement date + time for display (D-M3): never substitute createdAt
+// for a measurement date — a record with no date shows 'ရက်စွဲ မရှိပါ'.
+// formatDateLabel is the hardcoded Myanmar date helper (no 'my-MM').
+const recordDateTime = (record: { date?: string; timestamp?: string }): string => {
+  const raw = record.date || record.timestamp || '';
+  if (!raw) return 'ရက်စွဲ မရှိပါ';
+  const d = formatDateLabel(raw);
+  return d.time ? `${d.date} ${d.time}` : d.date;
+};
 
 // Local (Asia/Rangoon) date-time for a datetime-local input —
 // new Date().toISOString() is UTC, so a record entered early in the morning
@@ -27,10 +38,7 @@ const toDateTimeLocal = (value: string | undefined): string => {
 };
 
 export const BloodSugarModule: React.FC = () => {
-  const { glucoseRecords, addGlucoseRecord, updateGlucoseRecord, deleteGlucoseRecord, selectedPatient, selectedFamilyMember } = useHealthData();
-  // dataLoading is added by the context work in the same v2.4.8 batch; fall
-  // back to false if it is not present yet so this module still renders.
-  const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
+  const { glucoseRecords, addGlucoseRecord, updateGlucoseRecord, deleteGlucoseRecord, selectedPatient, selectedFamilyMember, isPooledView, dataLoading } = useHealthData();
   const { profile } = useAuth();
   const { showToast } = useToast();
 
@@ -38,6 +46,8 @@ export const BloodSugarModule: React.FC = () => {
   // v2.4.13 edit: id of the record being edited, null in add mode. The
   // same modal/form is reused, prefilled from the record.
   const [editingId, setEditingId] = useState<string | null>(null);
+  // v2.4.16: delete confirm uses the app Modal, never window.confirm.
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   // No prefilled value: 110 invited fake-normal records (v2.4.11 F5).
   // The input starts empty; the user must enter their own real reading.
   const [value, setValue] = useState<number | ''>('');
@@ -139,12 +149,13 @@ export const BloodSugarModule: React.FC = () => {
     });
   }, [sortedGlucose, timeframe]);
 
-  // Search the history list by date, notes, meal info or food record
+  // Search the history list by date, notes, meal info or food record —
+  // or by VALUE (B-M7): searching "120" must find a 120 mg/dL reading.
   const searchedGlucose = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return filteredGlucose;
     return filteredGlucose.filter((r) => {
-      const hay = `${r.date || ''} ${r.timestamp || ''} ${r.notes || ''} ${r.mealInfo || ''} ${r.dietRecord || ''} ${r.dietNotes || ''} ${r.foodIntake || ''}`.toLowerCase();
+      const hay = `${r.date || ''} ${r.timestamp || ''} ${r.notes || ''} ${r.mealInfo || ''} ${r.dietRecord || ''} ${r.dietNotes || ''} ${r.foodIntake || ''} ${r.value ?? r.glucoseValue ?? ''}`.toLowerCase();
       return hay.includes(q);
     });
   }, [filteredGlucose, searchQuery]);
@@ -156,11 +167,17 @@ export const BloodSugarModule: React.FC = () => {
   const latestRecord = sortedGlucose.length > 0 ? sortedGlucose[sortedGlucose.length - 1] : null;
   // No fabricated fallback: a record with no glucose value has no status.
   const latestGluValue = latestRecord?.value ?? latestRecord?.glucoseValue ?? null;
-  const latestEvaluation = latestRecord && latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestRecord.type || latestRecord.timing || 'fasting') : null;
+  // The age of the person whose records these are (paediatric guard in
+  // calculateGlucoseStatus: under 18 gets no adult cut-offs).
+  const targetPerson = selectedPatient || selectedFamilyMember || profile;
+  const personAge = (targetPerson as { age?: number } | null)?.age;
+  const latestEvaluation = latestRecord && latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestRecord.type || latestRecord.timing || 'fasting', personAge) : null;
 
   // Latest HbA1c
   const hba1cRecords = sortedGlucose.filter(r => (r.type || r.timing) === 'hba1c');
   const latestHbA1c = hba1cRecords.length > 0 ? hba1cRecords[hba1cRecords.length - 1] : null;
+  // D-M6: a legacy glucoseValue-only record must still show here.
+  const latestHbA1cValue = latestHbA1c?.value ?? latestHbA1c?.glucoseValue ?? null;
 
   // Fasting records avg
   const fastingRecords = filteredGlucose.filter(r => (r.type || r.timing) === 'fasting');
@@ -169,7 +186,11 @@ export const BloodSugarModule: React.FC = () => {
     : 0;
 
   // Real-time evaluation in modal — only once a real value exists.
-  const currentPreview = value !== '' ? calculateGlucoseStatus(value, type) : null;
+  // B-L6 (HbA1c preview guard): an HbA1c verdict only applies to a value
+  // in the HbA1c range (3–20%). A mg/dL-sized number typed while HbA1c is
+  // selected (e.g. 110) must NOT show a "ဆီးချိုအဆင့်" HbA1c verdict.
+  const hba1cOutOfRange = type === 'hba1c' && value !== '' && (value < 3 || value > 20);
+  const currentPreview = value !== '' && !hba1cOutOfRange ? calculateGlucoseStatus(value, type, personAge) : null;
 
   const handleTypeChange = (newType: BloodSugarType) => {
     setType(newType);
@@ -266,9 +287,11 @@ export const BloodSugarModule: React.FC = () => {
             ဆီးချို / သွေးတွင်းသကြားဓာတ် မှတ်တမ်း (Blood Glucose & HbA1c)
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {selectedPatient 
+            {selectedPatient
               ? `အသုံးပြုသူ ${selectedPatient.displayName} ၏ သကြားဓာတ်စောင့်ကြည့်မှု`
-              : 'အစာမစားမီ၊ အစာစားပြီး ၂ နာရီနှင့် ၃ လပတ် သကြားဓာတ်တို့ကို စနစ်တကျ မှတ်တမ်းတင်ပါ'}
+              : selectedFamilyMember
+                ? `အသုံးပြုသူ ${selectedFamilyMember.name} ၏ သကြားဓာတ်စောင့်ကြည့်မှု`
+                : 'အစာမစားမီ၊ အစာစားပြီး ၂ နာရီနှင့် ၃ လပတ် သကြားဓာတ်တို့ကို စနစ်တကျ မှတ်တမ်းတင်ပါ'}
           </p>
         </div>
 
@@ -291,12 +314,21 @@ export const BloodSugarModule: React.FC = () => {
           </div>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
-              {latestRecord ? latestRecord.value : '--'}
+              {/* D-M6: legacy glucoseValue-only records must show, not '--'. */}
+              {latestGluValue ?? '--'}
             </span>
             <span className="text-xs text-slate-400">
               {latestRecord?.type === 'hba1c' ? '%' : 'mg/dL'}
             </span>
           </div>
+          {/* D-H5: a "Latest" value with no date and no owner cannot be
+              trusted — show when it was measured and whose it is. */}
+          {latestRecord && (
+            <p className="text-[11px] text-slate-400 mt-1.5">
+              {recordDateTime(latestRecord)}
+              {isPooledView && latestRecord.userName ? ` • ${latestRecord.userName}` : isPooledView && latestRecord.patientName ? ` • ${latestRecord.patientName}` : ''}
+            </p>
+          )}
           {latestEvaluation && (
             <div className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${latestEvaluation.bgColor} ${latestEvaluation.color} ${latestEvaluation.borderColor}`}>
               {latestEvaluation.labelMm}
@@ -312,12 +344,19 @@ export const BloodSugarModule: React.FC = () => {
           </div>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
-              {latestHbA1c ? `${latestHbA1c.value}` : '--'}
+              {/* D-M6: legacy glucoseValue-only records must show, not '--'. */}
+              {latestHbA1cValue ?? '--'}
             </span>
             <span className="text-xs text-slate-400">%</span>
           </div>
+          {latestHbA1c && (
+            <p className="text-[11px] text-slate-400 mt-1.5">
+              {recordDateTime(latestHbA1c)}
+              {isPooledView && latestHbA1c.userName ? ` • ${latestHbA1c.userName}` : isPooledView && latestHbA1c.patientName ? ` • ${latestHbA1c.patientName}` : ''}
+            </p>
+          )}
           <p className="text-xs text-slate-400 mt-2">
-            {latestHbA1c ? ((latestHbA1c.value || latestHbA1c.glucoseValue || 0) < 5.7 ? 'ပုံမှန်အဆင့်' : (latestHbA1c.value || latestHbA1c.glucoseValue || 0) <= 6.4 ? 'ဆီးချိုအကြိုအဆင့်' : 'ဆီးချိုထိန်းချုပ်မှု လိုအပ်') : 'စံနှုန်း: ၅.၇% အောက်'}
+            {latestHbA1c ? ((latestHbA1cValue || 0) < 5.7 ? 'ပုံမှန်အဆင့်' : (latestHbA1cValue || 0) <= 6.4 ? 'ဆီးချိုအကြိုအဆင့်' : 'ဆီးချိုထိန်းချုပ်မှု လိုအပ်') : 'စံနှုန်း: ၅.၇% အောက်'}
           </p>
         </div>
 
@@ -483,6 +522,7 @@ export const BloodSugarModule: React.FC = () => {
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th className="py-3 px-4 font-medium">ရက်စွဲ / အချိန်</th>
+                  {isPooledView && <th className="py-3 px-4 font-medium">ပိုင်ရှင်</th>}
                   <th className="py-3 px-4 font-medium">အမျိုးအစား (Type)</th>
                   <th className="py-3 px-4 font-medium">ပမာဏ (Reading)</th>
                   <th className="py-3 px-4 font-medium">အခြေအနေ</th>
@@ -495,7 +535,7 @@ export const BloodSugarModule: React.FC = () => {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {displayGlucose.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-8 px-4 text-center text-slate-400">
+                    <td colSpan={isPooledView ? 9 : 8} className="py-8 px-4 text-center text-slate-400">
                       မှတ်တမ်း မရှိသေးပါ — အထက်ပါ ခလုတ်ဖြင့် ပထမဆုံး သကြားဓာတ် ထည့်သွင်းနိုင်ပါသည်
                     </td>
                   </tr>
@@ -504,13 +544,17 @@ export const BloodSugarModule: React.FC = () => {
                   const rVal = record.value ?? record.glucoseValue ?? null;
                   const rType = record.type || record.timing || 'fasting';
                   const evalInfo = rVal != null ? calculateGlucoseStatus(rVal, rType) : null;
-                  const rDate = record.date || record.timestamp || '';
                   const diet = record.dietRecord || record.dietNotes || record.foodIntake;
                   return (
                     <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">
-                        {rDate.replace('T', ' ')}
+                        {recordDateTime(record)}
                       </td>
+                      {isPooledView && (
+                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300">
+                          {record.userName || record.patientName || '—'}
+                        </td>
+                      )}
                       <td className="py-3 px-4">
                         <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                           {rType === 'fasting' && 'အစာမစားမီ (Fasting)'}
@@ -559,11 +603,7 @@ export const BloodSugarModule: React.FC = () => {
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => {
-                            if (window.confirm('ဤသကြားဓာတ် မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
-                              deleteGlucoseRecord(record.id);
-                            }
-                          }}
+                          onClick={() => setDeleteTargetId(record.id)}
                           className="text-slate-400 hover:text-rose-600 transition-colors p-2 cursor-pointer"
                           title="ဖျက်မည်"
                         >
@@ -733,7 +773,13 @@ export const BloodSugarModule: React.FC = () => {
               </div>
 
               {/* Status Preview (only once a real value exists) */}
-              {currentPreview ? (
+              {hba1cOutOfRange ? (
+                <div className="p-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/40">
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                    ထည့်ထားသော တန်ဖိုး ({value}) သည် HbA1c အတိုင်းအတာ (3–20%) အတွင်း မရှိပါ — mg/dL တန်ဖိုးကို HbA1c အဖြစ် မှားထည့်မိခြင်း ဖြစ်နိုင်ပါသည်။ HbA1c အမျိုးအစား ရွေးထားပါက % တန်ဖိုး ထည့်ပေးပါ။
+                  </p>
+                </div>
+              ) : currentPreview ? (
                 <div className={`p-3 rounded-xl border ${currentPreview.bgColor} ${currentPreview.borderColor}`}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
@@ -790,6 +836,14 @@ export const BloodSugarModule: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Delete confirmation (v2.4.16) */}
+      <Modal isOpen={deleteTargetId !== null} onClose={() => setDeleteTargetId(null)} title="မှတ်တမ်း ဖျက်မည်" size="sm">
+        <p className="text-sm text-slate-700 leading-relaxed">ဤသကြားဓာတ် မှတ်တမ်းကို ဖျက်မှာ သေချာပါသလား? ဖျက်လိုက်ရင် ပြန်မရတော့ပါ။</p>
+        <div className="flex gap-2 justify-end mt-5">
+          <button onClick={() => setDeleteTargetId(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm cursor-pointer">မဖျက်သေးပါ</button>
+          <button onClick={() => { const id = deleteTargetId; setDeleteTargetId(null); if (id) deleteGlucoseRecord(id); }} className="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-sm cursor-pointer">ဖျက်မည်</button>
+        </div>
+      </Modal>
     </div>
   );
 };

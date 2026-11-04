@@ -108,7 +108,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
                 <span>၄။ အကောင့်ဝင်ရောက်မှုနှင့် စကားဝှက် လုံခြုံရေး (Firebase Authentication)</span>
               </h4>
               <p className="text-slate-600 leading-relaxed">
-                အကောင့်ဝင်ရောက်မှုကို Google Firebase Authentication (Email/Password နှင့် Google Sign-In) စနစ်ဖြင့် လုံခြုံစွာ စီမံထားပါသည်။ အသုံးပြုသူ၏ Password များကို စနစ်က ရိုးရိုးစာသားဖြင့် သိမ်းဆည်းထားခြင်း မရှိပါ။
+                အကောင့်ဝင်ရောက်မှုကို Google Firebase Authentication (Email/Password) စနစ်ဖြင့် လုံခြုံစွာ စီမံထားပါသည်။ အသုံးပြုသူ၏ Password များကို စနစ်က ရိုးရိုးစာသားဖြင့် သိမ်းဆည်းထားခြင်း မရှိပါ။
               </p>
             </div>
 

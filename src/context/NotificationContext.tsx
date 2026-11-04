@@ -17,6 +17,7 @@ interface NotificationContextType {
   deleteNotification: (id: string) => void;
   clearAllNotifications: () => void;
   addCustomReminder: (data: Omit<CustomReminder, 'id' | 'createdAt'>) => void;
+  updateCustomReminder: (id: string, data: Partial<Omit<CustomReminder, 'id' | 'createdAt'>>) => void;
   deleteCustomReminder: (id: string) => void;
   toggleReminderActive: (id: string) => void;
   markMedicationTaken: (notificationId: string, medName: string) => void;
@@ -122,11 +123,39 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // same minute does not re-fire. Only today's entries are kept.
   const [firedToday, setFiredToday] = useState<Record<string, string>>({});
 
+  // Auto-generated notifications the user deliberately deleted (v2.4.16,
+  // F-M2): the on-open generator used to re-create them on the next mount,
+  // so "delete" did nothing. Auto ids are med-reminder-<id>-<date>,
+  // alert-bp-/alert-glu-<recordId>, advice-noti-<id>, admin-qa-<id>.
+  // Med-reminder ids carry their date, so yesterday's entries are pruned;
+  // the rest are keyed to one record and stay dismissed until a newer
+  // record replaces it. Capped at 200 entries.
+  const [dismissedAutoIds, setDismissedAutoIds] = useState<string[]>([]);
+  const isAutoNotiId = (id: string): boolean =>
+    id.startsWith('med-reminder-') ||
+    id.startsWith('alert-bp-') ||
+    id.startsWith('alert-glu-') ||
+    id.startsWith('advice-noti-') ||
+    id.startsWith('admin-qa-');
+  const rememberDismissedAuto = useCallback((ids: string[]) => {
+    const autoIds = ids.filter(isAutoNotiId);
+    if (autoIds.length === 0) return;
+    setDismissedAutoIds(prev => {
+      const merged = [...prev];
+      autoIds.forEach(id => { if (!merged.includes(id)) merged.push(id); });
+      return merged.slice(-200);
+    });
+  }, []);
+
   // Snoozed notifications, persisted per user (v2.4.11 6.5): the old snooze
   // was an in-memory setTimeout, lost on reload — a snoozed reminder simply
-  // never came back. { notificationId: { until, title, type } } in
-  // localStorage; an interval re-fires entries whose time has come.
-  const [snoozed, setSnoozed] = useState<Record<string, { until: string; title: string; type: NotificationType }>>({});
+  // never came back. { notificationId: { until, title, message, type,
+  // data } } in localStorage; an interval re-fires entries whose time has
+  // come. The FULL original notification is stored (v2.4.16, F-C1): the old
+  // code kept only a stripped title, so a snoozed medication reminder
+  // re-fired with no medication link and "သောက်ပြီးပါပြီ" falsely confirmed
+  // a dose that was never logged.
+  const [snoozed, setSnoozed] = useState<Record<string, { until: string; title: string; message: string; type: NotificationType; data?: any }>>({});
 
   const localDateStr = (d: Date): string =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -250,6 +279,35 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     localStorage.setItem(remKey, JSON.stringify(customReminders));
   }, [customReminders, profile?.id]);
 
+  // Load / save the dismissed-auto-ids set for this user (v2.4.16, F-M2)
+  useEffect(() => {
+    if (!profile?.id) {
+      setDismissedAutoIds([]);
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(`family_health_dismissed_auto_${profile.id}`);
+      if (!saved) { setDismissedAutoIds([]); return; }
+      const parsed: string[] = JSON.parse(saved);
+      const today = localDateStr(new Date());
+      // Prune med-reminder ids from earlier days (a new day gets a new id);
+      // alert/advice ids stay until a newer record replaces them.
+      setDismissedAutoIds(parsed.filter(id => {
+        if (!id.startsWith('med-reminder-')) return true;
+        return id.endsWith(`-${today}`);
+      }).slice(-200));
+    } catch {
+      setDismissedAutoIds([]);
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    try {
+      localStorage.setItem(`family_health_dismissed_auto_${profile.id}`, JSON.stringify(dismissedAutoIds));
+    } catch { /* ignore */ }
+  }, [dismissedAutoIds, profile?.id]);
+
   // Load / save the fired-today map for this user (pruned to today's date)
   useEffect(() => {
     if (!profile?.id) {
@@ -312,6 +370,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const res = await Notification.requestPermission();
         const granted = res === 'granted';
         setPermissionGranted(granted);
+        // v2.4.16 (F-L7): a denial is silent by default — tell the user
+        // where to re-enable it instead of leaving a dead button.
+        if (res === 'denied') {
+          showToast('သတိပေးချက် ခွင့်ပြုချက် ပိတ်ထားပါသည် — ဘရောက်ဆာ ဆက်တင် (Site settings) မှ Notifications ကို ဖွင့်ပေးပါ။', 'error');
+        }
         return granted;
       } catch (e) {
         console.warn('Error requesting notification permission:', e);
@@ -364,9 +427,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Re-fire snoozed notifications whose time has come (checked every 30s
   // and on mount, so a reload still brings them back). An entry whose
-  // notification was deleted meanwhile is dropped without firing. Entries
-  // more than 60 minutes overdue are dropped silently — re-firing a
-  // reminder many hours late would be noise, not help.
+  // notification was deleted meanwhile is dropped without firing. v2.4.16
+  // (F-C1/F-M3): the re-fire carries the ORIGINAL title, message and data
+  // (medication link + dose slot), so "သောက်ပြီးပါပြီ" logs the real dose.
+  // An entry more than 60 minutes overdue is NOT silently dropped any
+  // more — it fires once as a LATE reminder, so nothing is lost quietly.
   useEffect(() => {
     if (!profile?.id) return;
     const fireDue = () => {
@@ -377,18 +442,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
       if (due.length === 0) return;
       due.forEach(([id, s]) => {
-        // Only re-fire if less than 60 minutes overdue (see above).
-        if (now - new Date(s.until).getTime() <= 60 * 60 * 1000) {
-          const target = notifications.find(n => n.id === id);
-          if (target) {
-            sendManualNotification(
-              `⏰ ပြန်လည်သတိပေးချက်: ${s.title}`,
-              `ရွှေ့ဆိုင်းထားသော သတိပေးချက် ရောက်ရှိပါပြီ`,
-              s.type,
-              'high'
-            );
-          }
-        }
+        const target = notifications.find(n => n.id === id);
+        if (!target) return;
+        const overdueMs = now - new Date(s.until).getTime();
+        const isLate = overdueMs > 60 * 60 * 1000;
+        sendManualNotification(
+          isLate ? `⏰ နောက်ကျနေသော သတိပေးချက်: ${s.title}` : `⏰ ပြန်လည်သတိပေးချက်: ${s.title}`,
+          s.message || `ရွှေ့ဆိုင်းထားသော သတိပေးချက် ရောက်ရှိပါပြီ`,
+          s.type,
+          'high',
+          s.data
+        );
       });
       setSnoozed(prev => {
         const next = { ...prev };
@@ -402,23 +466,41 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }, [profile?.id, snoozed, notifications, sendManualNotification]);
 
   // Due-reminder check (v2.4.8 A1, extended v2.4.10): fire active custom
-  // reminders whose set time (HH:MM) matches the current minute and that
-  // have not fired today — plus medication dose-time reminders: an active,
-  // scheduled medication with a doseTime fires at that minute, once per day
-  // (same fired-today dedup, keyed `med-<id>`). PRN meds, ended courses and
-  // admins never get a dose-time reminder.
+  // reminders whose set time (HH:MM) is due and that have not fired today
+  // — plus medication dose-time reminders: an active, scheduled medication
+  // with a doseTime fires at that time, once per day (same fired-today
+  // dedup, keyed `med-<id>`). PRN meds, ended courses and admins never get
+  // a dose-time reminder.
+  // v2.4.16 (F-H3): a reminder whose minute was MISSED (app asleep, tab
+  // throttled, phone locked) now fires late within a 60-minute grace
+  // window instead of being silently skipped until tomorrow. The old
+  // exact-minute match (`time === hhmm`) dropped it forever.
+  // v2.4.16 (F-H4): a second daily dose time (doseTime2) fires its own
+  // reminder with doseIndex 1, keyed `med-<id>-2`.
+  // v2.4.16 (F-H5): the notification carries the medication's OWNER
+  // (userId + name) — in family 'all' view a member's dose reminder used
+  // to be labelled as the viewer's and logged against the viewer.
   const checkDueReminders = useCallback(() => {
     if (!profile?.id) return;
     const now = new Date();
     const todayStr = localDateStr(now);
-    const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
     const day = now.getDay();
+    // Minutes since the set time today (negative = not due yet). A reminder
+    // is due when its time has arrived within the last 60 minutes.
+    const minutesSince = (hhmm: string): number => {
+      const [h, m] = hhmm.split(':').map(Number);
+      if (Number.isNaN(h) || Number.isNaN(m)) return -1;
+      return nowMinutes - (h * 60 + m);
+    };
     const due = customReminders.filter(
-      (r) =>
-        r.isActive &&
-        r.time === hhmm &&
-        (!r.daysOfWeek || r.daysOfWeek.includes(day)) &&
-        firedToday[r.id] !== todayStr
+      (r) => {
+        const since = minutesSince(r.time);
+        return r.isActive &&
+          since >= 0 && since < 60 &&
+          (!r.daysOfWeek || r.daysOfWeek.includes(day)) &&
+          firedToday[r.id] !== todayStr;
+      }
     );
     due.forEach((rem) => {
       sendManualNotification(
@@ -431,20 +513,31 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       );
     });
 
-    let dueMeds: typeof medications = [];
+    // Medication dose-time reminders: each dose slot (doseTime, doseTime2)
+    // is its own due entry with its own fired-today key.
+    const dueMedSlots: Array<{ med: (typeof medications)[number]; doseIndex: number; doseTime: string }> = [];
     if (!isAdmin) {
-      dueMeds = medications.filter(
-        (m) =>
-          m.status === 'active' &&
-          !!m.doseTime &&
-          m.doseTime === hhmm &&
-          !isPrnMedication(m) &&
-          (!m.endDate || m.endDate >= todayStr) &&
-          firedToday[`med-${m.id}`] !== todayStr
-      );
-      dueMeds.forEach((med) => {
+      medications.forEach((m) => {
+        if (m.status !== 'active' || isPrnMedication(m)) return;
+        if (m.endDate && m.endDate < todayStr) return;
+        const slots: Array<{ time?: string; doseIndex: number }> = [
+          { time: m.doseTime, doseIndex: 0 },
+          { time: m.doseTime2, doseIndex: 1 },
+        ];
+        slots.forEach(({ time, doseIndex }) => {
+          if (!time) return;
+          const since = minutesSince(time);
+          if (since < 0 || since >= 60) return;
+          const firedKey = doseIndex === 0 ? `med-${m.id}` : `med-${m.id}-2`;
+          if (firedToday[firedKey] === todayStr) return;
+          dueMedSlots.push({ med: m, doseIndex, doseTime: time });
+        });
+      });
+      dueMedSlots.forEach(({ med, doseIndex }) => {
+        const ownerName = (med as any).userName || (med as any).patientName || '';
+        const ownerSuffix = ownerName && ownerName !== profile.displayName ? ` (${ownerName})` : '';
         sendManualNotification(
-          `💊 ဆေးသောက်ရန် အချိန်ရောက်ပါပြီ: ${med.name}`,
+          `💊 ဆေးသောက်ရန် အချိန်ရောက်ပါပြီ: ${med.name}${ownerSuffix}`,
           `${med.dosage} (${med.frequency}) - ${timingLabelMm(med.timing)} သောက်ရန်`,
           'medication',
           'high',
@@ -452,20 +545,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             medicationId: med.id,
             medicationName: med.name,
             dosage: med.dosage,
-            userId: profile.id,
+            doseIndex,
+            userId: med.userId || profile.id,
+            userEmail: (med as any).patientEmail || (med as any).userEmail || '',
           }
         );
       });
     }
 
-    if (due.length === 0 && dueMeds.length === 0) return;
+    if (due.length === 0 && dueMedSlots.length === 0) return;
     setFiredToday((prev) => {
       const next = { ...prev };
       due.forEach((rem) => {
         next[rem.id] = todayStr;
       });
-      dueMeds.forEach((med) => {
-        next[`med-${med.id}`] = todayStr;
+      dueMedSlots.forEach(({ med, doseIndex }) => {
+        next[doseIndex === 0 ? `med-${med.id}` : `med-${med.id}-2`] = todayStr;
       });
       return next;
     });
@@ -492,11 +587,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
 
-    // Only active medications belonging to THIS logged-in patient
+    // Active medications in the current view — the owner's own meds, and
+    // (in family 'all' view) family members' meds too (v2.4.16, F-H5).
+    // The reminder carries the med's OWNER (userId + name): the old code
+    // only reminded for the signed-in user's own meds and stamped every
+    // reminder with the viewer's id, so a member's dose was logged
+    // against the wrong person.
     const activeMeds = medications.filter(
-      m => m.status === 'active' && (!m.userId || m.userId === profile.id)
+      m => m.status === 'active'
     );
-    const todayStr = new Date().toISOString().split('T')[0];
     const todayLocal = localDateStr(new Date());
 
     // Check if we need to generate initial reminders for active medications.
@@ -505,19 +604,26 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // nothing. Meds WITHOUT a doseTime keep the on-open reminder, but its
     // title must not falsely claim the dose time has arrived (v2.4.10 6.1).
     activeMeds.forEach(med => {
-      if (med.doseTime || isPrnMedication(med)) return;
+      if (med.doseTime || med.doseTime2 || isPrnMedication(med)) return;
       if (med.endDate && med.endDate < todayLocal) return;
+      const notiId = `med-reminder-${med.id}-${todayLocal}`;
+      // v2.4.16 (F-M2): a reminder the user deliberately deleted stays deleted.
+      if (dismissedAutoIds.includes(notiId)) return;
+      // v2.4.16 (F-M8): compare in LOCAL dates — the old UTC date string
+      // let a reminder re-fire (or never fire) around midnight.
       const existingToday = notifications.some(
         n => n.type === 'medication' &&
              n.data?.medicationId === med.id &&
-             n.timestamp.startsWith(todayStr)
+             localDateStr(new Date(n.timestamp)) === todayLocal
       );
 
       if (!existingToday) {
+        const ownerName = (med as any).userName || (med as any).patientName || '';
+        const ownerSuffix = ownerName && ownerName !== profile.displayName ? ` (${ownerName})` : '';
         const noti: AppNotification = {
-          id: `med-reminder-${med.id}-${todayStr}`,
+          id: notiId,
           type: 'medication',
-          title: `💊 ဆေးသောက်ရန် သတိပေးချက်: ${med.name}`,
+          title: `💊 ဆေးသောက်ရန် သတိပေးချက်: ${med.name}${ownerSuffix}`,
           message: `${med.dosage} (${med.frequency}) - ${timingLabelMm(med.timing)} သောက်ရန်`,
           timestamp: new Date().toISOString(),
           read: false,
@@ -526,7 +632,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             medicationId: med.id,
             medicationName: med.name,
             dosage: med.dosage,
-            userId: profile.id
+            doseIndex: 0,
+            userId: med.userId || profile.id,
+            userEmail: (med as any).patientEmail || (med as any).userEmail || ''
           }
         };
         setNotifications(prev => {
@@ -541,23 +649,26 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const latestBP = bpRecords[0];
       if (latestBP.userId === profile.id && (latestBP.category === 'stage2' || latestBP.category === 'crisis')) {
         const alertId = `alert-bp-${latestBP.id}`;
-        const hasAlert = notifications.some(n => n.id === alertId);
-        if (!hasAlert) {
-          const bpAlert: AppNotification = {
-            id: alertId,
-            type: 'abnormal_alert',
-            title: `⚠️ သွေးတိုး သတိပေးချက် (${latestBP.systolic}/${latestBP.diastolic} mmHg)`,
-            message: `နောက်ဆုံးတိုင်းတာထားသော သွေးပေါင်ချိန်သည် ပုံမှန်ထက် မြင့်တက်နေပါသည် (${latestBP.category === 'crisis' ? 'အရေးပေါ် သွေးတိုးအဆင့်' : 'အဆင့် ၂ သွေးတိုး'})။ ဆေးမှန်မှန်သောက်ပြီး လိုအပ်ပါက ဆရာဝန်နှင့် ပြသပါ`,
-            timestamp: latestBP.createdAt || new Date().toISOString(),
-            read: false,
-            priority: 'urgent',
-            data: {
-              vitalType: 'bp',
-              value: `${latestBP.systolic}/${latestBP.diastolic}`,
-              userId: profile.id
-            }
-          };
-          setNotifications(prev => [bpAlert, ...prev]);
+        // v2.4.16 (F-M2): a deleted alert stays deleted.
+        if (!dismissedAutoIds.includes(alertId)) {
+          const hasAlert = notifications.some(n => n.id === alertId);
+          if (!hasAlert) {
+            const bpAlert: AppNotification = {
+              id: alertId,
+              type: 'abnormal_alert',
+              title: `⚠️ သွေးတိုး သတိပေးချက် (${latestBP.systolic}/${latestBP.diastolic} mmHg)`,
+              message: `နောက်ဆုံးတိုင်းတာထားသော သွေးပေါင်ချိန်သည် ပုံမှန်ထက် မြင့်တက်နေပါသည် (${latestBP.category === 'crisis' ? 'အရေးပေါ် သွေးတိုးအဆင့်' : 'အဆင့် ၂ သွေးတိုး'})။ ဆေးမှန်မှန်သောက်ပြီး လိုအပ်ပါက ဆရာဝန်နှင့် ပြသပါ`,
+              timestamp: latestBP.createdAt || new Date().toISOString(),
+              read: false,
+              priority: 'urgent',
+              data: {
+                vitalType: 'bp',
+                value: `${latestBP.systolic}/${latestBP.diastolic}`,
+                userId: profile.id
+              }
+            };
+            setNotifications(prev => [bpAlert, ...prev]);
+          }
         }
       }
     }
@@ -569,7 +680,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const gluVal = latestGlu.glucoseValue || latestGlu.value || 0;
         if (latestGlu.status === 'diabetic' || latestGlu.status === 'high_danger' || latestGlu.status === 'low') {
           const alertId = `alert-glu-${latestGlu.id}`;
-          const hasAlert = notifications.some(n => n.id === alertId);
+          // v2.4.16 (F-M2): a deleted alert stays deleted.
+          const hasAlert = notifications.some(n => n.id === alertId) || dismissedAutoIds.includes(alertId);
           if (!hasAlert) {
             const gluAlert: AppNotification = {
               id: alertId,
@@ -600,7 +712,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const latestAdvice = doctorAdvices[0];
       if (latestAdvice.userId === profile.id) {
         const adviceId = `advice-noti-${latestAdvice.id}`;
-        if (!notifications.some(n => n.id === adviceId)) {
+        // v2.4.16 (F-M2): a deleted advice notification stays deleted.
+        if (!notifications.some(n => n.id === adviceId) && !dismissedAutoIds.includes(adviceId)) {
           const adviceNoti: AppNotification = {
             id: adviceId,
             type: 'doctor_advice',
@@ -615,7 +728,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       }
     }
-  }, [profile, isAdmin, medications, bpRecords, glucoseRecords, doctorAdvices]);
+  }, [profile, isAdmin, medications, bpRecords, glucoseRecords, doctorAdvices, dismissedAutoIds]);
 
   // Admin-specific notifications (e.g. pending doctor questions from patients needing answer)
   useEffect(() => {
@@ -626,7 +739,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (pendingQuestions.length > 0) {
         const latestQ = pendingQuestions[0];
         const qNotiId = `admin-qa-${latestQ.id}`;
-        if (!notifications.some(n => n.id === qNotiId)) {
+        // v2.4.16 (F-M2): a deleted admin Q&A notification stays deleted.
+        if (!notifications.some(n => n.id === qNotiId) && !dismissedAutoIds.includes(qNotiId)) {
           const qNoti: AppNotification = {
             id: qNotiId,
             type: 'doctor_advice',
@@ -640,27 +754,40 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       }
     }
-  }, [isAdmin, doctorQuestions]);
+  }, [isAdmin, doctorQuestions, dismissedAutoIds]);
 
   const markAsRead = (id: string) => {
+    const prevRead = notifications.find(n => n.id === id)?.read;
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     // Server notifications sync their read state back to Firestore so the
     // badge stays read on the user's other devices too.
     if (serverNotiIds.current.has(id)) {
-      updateDoc(doc(db, 'notifications', id), { read: true }).catch(e =>
-        console.warn('Error marking server notification as read:', e));
+      updateDoc(doc(db, 'notifications', id), { read: true }).catch(e => {
+        // v2.4.16 (F-L6): the sync failed — revert the local read state
+        // instead of showing "read" for a notification that is still unread
+        // on the server.
+        console.warn('Error marking server notification as read:', e);
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: prevRead ?? false } : n));
+      });
     }
   };
 
   const markAllAsRead = () => {
+    const prevReads = new Map(notifications.map(n => [n.id, n.read]));
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     serverNotiIds.current.forEach(id => {
-      updateDoc(doc(db, 'notifications', id), { read: true }).catch(e =>
-        console.warn('Error marking server notification as read:', e));
+      updateDoc(doc(db, 'notifications', id), { read: true }).catch(e => {
+        // v2.4.16 (F-L6): revert this notification's read state on failure.
+        console.warn('Error marking server notification as read:', e);
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: prevReads.get(id) ?? false } : n));
+      });
     });
   };
 
   const deleteNotification = (id: string) => {
+    // v2.4.16 (F-M2): remember deliberately deleted auto notifications so
+    // the on-open generator does not resurrect them.
+    rememberDismissedAuto([id]);
     setNotifications(prev => prev.filter(n => n.id !== id));
     if (serverNotiIds.current.has(id)) {
       serverNotiIds.current.delete(id);
@@ -670,6 +797,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const clearAllNotifications = () => {
+    // v2.4.16 (F-M2): same — a cleared auto notification stays cleared.
+    rememberDismissedAuto(notifications.map(n => n.id));
     setNotifications([]);
     serverNotiIds.current.forEach(id => {
       deleteDoc(doc(db, 'notifications', id)).catch(e =>
@@ -688,12 +817,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     
     // Post confirmation notification — honest wording (v2.4.8 A1): reminders
     // only fire while the app is open; they cannot ring when it is closed.
+    // v2.4.16 (F-M5): the days are named honestly — the old copy always
+    // said "နေ့စဉ်" even for a Mon/Wed/Fri reminder.
+    const days = newRem.daysOfWeek;
+    const dayNames = ['တနင်္ဂနွေ', 'တနင်္လာ', 'အင်္ဂါ', 'ဗုဒ္ဓဟူး', 'ကြာသပတေး', 'သောကြာ', 'စနေ'];
+    const daysLabel = !days || days.length === 0 || days.length === 7
+      ? 'နေ့စဉ်'
+      : days.slice().sort((a, b) => a - b).map(d => dayNames[d]).join('၊ ') + ' နေ့များ';
     sendManualNotification(
       `🔔 သတိပေးချက် အသစ် သတ်မှတ်ပြီးပါပြီ`,
-      `"${newRem.title}" ကို နေ့စဉ် ${newRem.time} တွင် သတိပေးပါမည်။ အက်ပ် ဖွင့်ထားချိန်မှသာ သတိပေးနိုင်ပြီး အက်ပ် ပိတ်ထားချိန်တွင် သတိပေးချက် တက်မလာနိုင်ပါ။`,
+      `"${newRem.title}" ကို ${daysLabel} ${newRem.time} တွင် သတိပေးပါမည်။ အက်ပ် ဖွင့်ထားချိန်မှသာ သတိပေးနိုင်ပြီး အက်ပ် ပိတ်ထားချိန်တွင် သတိပေးချက် တက်မလာနိုင်ပါ။`,
       'custom_reminder',
       'normal'
     );
+  };
+
+  // Edit an existing custom reminder (v2.4.16, F-H1) — previously the only
+  // way to change a time or day was delete + re-add.
+  const updateCustomReminder = (id: string, data: Partial<Omit<CustomReminder, 'id' | 'createdAt'>>) => {
+    setCustomReminders(prev => prev.map(r => (r.id === id ? { ...r, ...data } : r)));
   };
 
   const deleteCustomReminder = (id: string) => {
@@ -707,30 +849,42 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Mark a medication dose as taken FROM a notification (v2.4.10 6.2):
   // previously this only rewrote the notification text and never recorded
   // the dose anywhere. Now it first logs the dose for real via
-  // toggleMedicationDoseTaken (today, dose 0) and only then rewrites the
-  // notification as taken. The medication id comes from the notification's
-  // own data payload (the on-open and dose-time reminders both carry it);
-  // without it there is nothing to log, so the notification is only
-  // rewritten as before. No circular import: this context already depends
-  // on HealthDataContext (useHealthData), which does not import this file.
-  // v2.4.11 (e): toggleMedicationDoseTaken now reports success — if the
-  // write failed, the notification stays NOT taken and the user gets an
-  // error toast instead of a false "သောက်ပြီးပါပြီ".
+  // toggleMedicationDoseTaken and only then rewrites the notification as
+  // taken. v2.4.16 (F-C2/F-H5): the dose SLOT comes from the notification's
+  // own data (doseIndex) — the old code always logged slot 0, so a
+  // twice-daily med's evening dose could never be confirmed from a
+  // notification. The dose is logged against the medication's OWNER
+  // (data.userId), not the viewer — in family 'all' view a member's dose
+  // used to land on the signed-in user. And when the notification carries
+  // no medication link at all, nothing is marked taken: a "သောက်ပြီးပါပြီ"
+  // without a logged dose is a false confirmation.
   const markMedicationTaken = async (notificationId: string, medName: string) => {
     const target = notifications.find((n) => n.id === notificationId);
     const medId = target?.data?.medicationId;
-    if (medId) {
-      const todayStr = localDateStr(new Date());
-      let ok = false;
-      try {
-        ok = await toggleMedicationDoseTaken(medId, todayStr, true, 0, medName);
-      } catch (e) {
-        console.warn('Failed to log dose from notification:', e);
-      }
-      if (!ok) {
-        showToast('ဆေးသောက်မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်နှိပ်ပါ။', 'error');
-        return;
-      }
+    if (!medId) {
+      showToast('ဤသတိပေးချက်တွင် ဆေးအချက်အလက် မပါရှိပါ — ဆေးမှတ်တမ်းမှ တိုက်ရိုက် အမှတ်အသားပြုပါ။', 'error');
+      return;
+    }
+    const doseIndex = typeof target.data?.doseIndex === 'number' ? target.data.doseIndex : 0;
+    const ownerUid = target.data?.userId as string | undefined;
+    const ownerEmail = target.data?.userEmail as string | undefined;
+    const todayStr = localDateStr(new Date());
+    let ok = false;
+    try {
+      ok = await toggleMedicationDoseTaken(
+        medId,
+        todayStr,
+        true,
+        doseIndex,
+        medName,
+        ownerUid ? { uid: ownerUid, email: ownerEmail || '' } : undefined
+      );
+    } catch (e) {
+      console.warn('Failed to log dose from notification:', e);
+    }
+    if (!ok) {
+      showToast('ဆေးသောက်မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်နှိပ်ပါ။', 'error');
+      return;
     }
     setNotifications(prev => prev.map(n => {
       if (n.id === notificationId) {
@@ -752,13 +906,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Snooze a notification: record it persistently (v2.4.11 6.5) instead of
   // an in-memory setTimeout that died on reload. The re-fire is handled by
   // the snooze interval above, which also survives a page reload.
+  // v2.4.16 (F-C1): the FULL original notification (title, message, data)
+  // is stored, so a snoozed medication reminder keeps its medication link
+  // and dose slot when it re-fires.
   const snoozeReminder = (notificationId: string, minutes: number = 15) => {
     const target = notifications.find(n => n.id === notificationId);
     if (!target) return;
     markAsRead(notificationId);
     const until = new Date(Date.now() + minutes * 60 * 1000).toISOString();
-    const cleanTitle = target.title.replace('💊 ', '').replace('✅ ', '');
-    setSnoozed(prev => ({ ...prev, [notificationId]: { until, title: cleanTitle, type: target.type } }));
+    const cleanTitle = target.title.replace('💊 ', '').replace('✅ ', '').replace('⏰ ပြန်လည်သတိပေးချက်: ', '').replace('⏰ နောက်ကျနေသော သတိပေးချက်: ', '');
+    setSnoozed(prev => ({ ...prev, [notificationId]: { until, title: cleanTitle, message: target.message, type: target.type, data: target.data } }));
   };
 
   // For Admin: never include medication reminders in notifications or unreadCount
@@ -781,6 +938,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       deleteNotification,
       clearAllNotifications,
       addCustomReminder,
+      updateCustomReminder,
       deleteCustomReminder,
       toggleReminderActive,
       markMedicationTaken,

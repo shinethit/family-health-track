@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Modal } from '../common/Modal';
 import { 
   FlaskConical, 
   Plus, 
@@ -27,12 +28,25 @@ import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { LabTestRecord, RecordedLabItem } from '../../types/health';
-import { evaluateCustomLabValue, evaluateThyroidFunction } from '../../lib/medicalCalculations';
+import { evaluateCustomLabValue, evaluateThyroidFunction, formatDateLabel } from '../../lib/medicalCalculations';
 
 // Local (Asia/Rangoon) date (YYYY-MM-DD) — new Date().toISOString() is UTC,
 // so a record entered early in the morning got yesterday's date (v2.4.11 F4).
 const localDateStr = (d: Date): string =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Local time (HH:MM) for the same reason — toISOString() is UTC.
+const localTimeStr = (d: Date): string =>
+  `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+// Test date + time for display (D-M3): never substitute createdAt for a
+// measurement date — a record with no date shows 'ရက်စွဲ မရှိပါ'.
+// formatDateLabel is the hardcoded Myanmar date helper (no 'my-MM').
+const recordDateTime = (testDate?: string): string => {
+  if (!testDate) return 'ရက်စွဲ မရှိပါ';
+  const d = formatDateLabel(testDate);
+  return d.time ? `${d.date} ${d.time}` : d.date;
+};
 
 export type LabCategory = 'all' | 'cbc' | 'glucose' | 'liver' | 'renal' | 'lipid' | 'thyroid' | 'urine' | 'inflammatory';
 
@@ -48,6 +62,11 @@ export interface LabTestDef {
   defaultRefText: string;
   step?: string;
   descriptionMm?: string;
+  // B-M2: the value is a free-text range, not a number (e.g. urine Pus
+  // Cells "5–10"). Such a test gets a text input, is saved as a string in
+  // the nested urine object, and is shown as the stored string — it must
+  // never be dropped for failing a numeric parse.
+  isText?: boolean;
 }
 
 // Master standard catalog of clinical lab tests
@@ -583,6 +602,7 @@ export const MASTER_LAB_TESTS: LabTestDef[] = [
     defaultMax: 5,
     defaultRefText: '0 - 5 /HPF',
     step: '1',
+    isText: true,
     descriptionMm: 'ဆီးလမ်းကြောင်း ပိုးဝင်ခြင်း (UTI) စစ်ဆေးချက်'
   },
   {
@@ -596,6 +616,7 @@ export const MASTER_LAB_TESTS: LabTestDef[] = [
     defaultMax: 2,
     defaultRefText: '0 - 2 /HPF',
     step: '1',
+    isText: true,
     descriptionMm: 'ဆီးထဲသွေးပါခြင်း သို့မဟုတ် ကျောက်တည်ခြင်း'
   },
 
@@ -655,10 +676,7 @@ export const MASTER_LAB_TESTS: LabTestDef[] = [
 ];
 
 export const LabTestModule: React.FC = () => {
-  const { labRecords, addLabRecord, updateLabRecord, deleteLabRecord, selectedPatient, selectedFamilyMember } = useHealthData();
-  // dataLoading is added by the context work in the same v2.4.8 batch; fall
-  // back to false if it is not present yet so this module still renders.
-  const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
+  const { labRecords, addLabRecord, updateLabRecord, deleteLabRecord, selectedPatient, selectedFamilyMember, isPooledView, dataLoading } = useHealthData();
   const { profile } = useAuth();
   const { showToast } = useToast();
 
@@ -666,10 +684,13 @@ export const LabTestModule: React.FC = () => {
   // v2.4.13 edit: id of the record being edited, null in add mode. The
   // same modal/form is reused, prefilled from the record.
   const [editingId, setEditingId] = useState<string | null>(null);
-  // Time part of a stored testDate, preserved across an edit. The form's
-  // date input is date-only, so without this the stored time would be lost
-  // when an old record is edited.
-  const [editingTestTime, setEditingTestTime] = useState<string>('');
+  // v2.4.16: delete confirm uses the app Modal, never window.confirm.
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  // B-M3: time of the test (HH:MM, local), editable in the form for new
+  // records as well as edits. The old form was date-only and only
+  // preserved a stored time across an edit — a new record could never
+  // carry a time.
+  const [testTime, setTestTime] = useState<string>(() => localTimeStr(new Date()));
   // Default to the newest record by testDate, matching the history list
   // (newest first) — not labRecords[0], which is in stored order.
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(() =>
@@ -680,7 +701,8 @@ export const LabTestModule: React.FC = () => {
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [showAllHistory, setShowAllHistory] = useState(false);
 
-  // Newest first, then search by date, lab name or notes
+  // Newest first, then search by date, lab name, notes — or by VALUE
+  // (B-M7): searching "13.5" must find a record with a 13.5 result.
   const sortedLabs = useMemo(() => {
     return [...labRecords].sort((a, b) =>
       (Date.parse(b.testDate || '') || 0) - (Date.parse(a.testDate || '') || 0)
@@ -692,7 +714,9 @@ export const LabTestModule: React.FC = () => {
     if (!q) return sortedLabs;
     return sortedLabs.filter((lab) => {
       const testNames = (lab.tests || []).map((t: any) => t.name || '').join(' ');
-      const hay = `${lab.testDate || ''} ${lab.labName || ''} ${lab.notes || ''} ${testNames}`.toLowerCase();
+      const testValues = (lab.tests || []).map((t: any) => String(t.value ?? '')).join(' ');
+      const urineStrings = [lab.urine?.pusCells, lab.urine?.rbc, lab.urine?.protein, lab.urine?.glucose, lab.urine?.epithelial].filter(Boolean).join(' ');
+      const hay = `${lab.testDate || ''} ${lab.labName || ''} ${lab.notes || ''} ${testNames} ${testValues} ${urineStrings}`.toLowerCase();
       return hay.includes(q);
     });
   }, [sortedLabs, historySearchQuery]);
@@ -723,6 +747,7 @@ export const LabTestModule: React.FC = () => {
     setNotes('');
     setDoctorReview('');
     setTestDate(localDateStr(new Date()));
+    setTestTime(localTimeStr(new Date()));
     setTestValues({});
     setCustomRefRanges({});
     setSearchQuery('');
@@ -776,7 +801,7 @@ export const LabTestModule: React.FC = () => {
     setTestValues(values);
     setCustomRefRanges(ranges);
     setTestDate((lab.testDate || '').slice(0, 10) || localDateStr(new Date()));
-    setEditingTestTime((lab.testDate || '').includes('T') ? (lab.testDate || '').slice(11, 16) : '');
+    setTestTime((lab.testDate || '').includes('T') ? (lab.testDate || '').slice(11, 16) : localTimeStr(new Date()));
     setLabName(lab.labName || '');
     setNotes(lab.notes || '');
     setDoctorReview(lab.doctorReview || '');
@@ -791,7 +816,6 @@ export const LabTestModule: React.FC = () => {
   const closeForm = () => {
     if (editingId) {
       resetForm();
-      setEditingTestTime('');
       setEditingId(null);
     }
     setIsOpenAdd(false);
@@ -801,9 +825,12 @@ export const LabTestModule: React.FC = () => {
   const openAdd = () => {
     if (editingId) {
       resetForm();
-      setEditingTestTime('');
       setEditingId(null);
     }
+    // B-L5: a sensible default panel is pre-selected — the CBC panel, the
+    // most commonly ordered set — instead of a wall of 40+ empty rows.
+    setActiveCategory('cbc');
+    setTestTime(localTimeStr(new Date()));
     setIsOpenAdd(true);
   };
 
@@ -877,9 +904,11 @@ export const LabTestModule: React.FC = () => {
     });
   };
 
-  // Calculate live filled count
+  // Calculate live filled count — any non-empty entry counts, including a
+  // text range such as "5–10" (B-M2): requiring a numeric parse here made
+  // a range-only record unsavable.
   const filledCount = useMemo(() => {
-    return Object.values(testValues).filter(v => v !== undefined && v.trim() !== '' && !isNaN(Number(v))).length;
+    return Object.values(testValues).filter(v => v !== undefined && v.trim() !== '').length;
   }, [testValues]);
 
   // Filtered test definitions for the modal
@@ -990,6 +1019,29 @@ export const LabTestModule: React.FC = () => {
     return items;
   }, [activeRecord]);
 
+  // B-M2: urine string results (e.g. Pus Cells "5–10", RBC "0–2") live in
+  // the nested urine object as strings, not in tests[] — displayItems never
+  // sees them, so a saved range value was invisible. Show the stored
+  // string verbatim, with its reference text and no numeric verdict (a
+  // range cannot be judged against a single bound).
+  const urineStringItems = useMemo(() => {
+    if (!activeRecord?.urine) return [];
+    const defs: { key: 'pusCells' | 'rbc' | 'protein' | 'glucose' | 'epithelial'; nameMm: string; nameEn: string; unit: string; ref: string }[] = [
+      { key: 'pusCells', nameMm: 'Pus Cells (ဆီးတွင်း သွေးဖြူဥ)', nameEn: 'Urine Pus Cells (WBC)', unit: '/HPF', ref: '0 - 5 /HPF' },
+      { key: 'rbc', nameMm: 'Red Blood Cells (ဆီးတွင်း သွေးနီဥ)', nameEn: 'Urine RBC', unit: '/HPF', ref: '0 - 2 /HPF' },
+      { key: 'protein', nameMm: 'ဆီးတွင်း ပရိုတင်း', nameEn: 'Urine Protein', unit: '', ref: 'Negative' },
+      { key: 'glucose', nameMm: 'ဆီးတွင်း သကြားဓာတ်', nameEn: 'Urine Glucose', unit: '', ref: 'Negative' },
+      { key: 'epithelial', nameMm: 'Epithelial Cells (ဆီးတွင်း အရေပြားဆဲလ်)', nameEn: 'Urine Epithelial Cells', unit: '/HPF', ref: '0 - 5 /HPF' },
+    ];
+    return defs
+      .filter(d => activeRecord.urine?.[d.key] != null && String(activeRecord.urine[d.key]).trim() !== '')
+      // A numeric urine value is already shown from tests[] — only the
+      // string-only values (ranges) belong here, never a duplicate row.
+      .filter(d => !(d.key === 'pusCells' && displayItems.some(i => i.id === 'urinePusCells')))
+      .filter(d => !(d.key === 'rbc' && displayItems.some(i => i.id === 'urineRbc')))
+      .map(d => ({ ...d, value: String(activeRecord.urine![d.key]) }));
+  }, [activeRecord, displayItems]);
+
   function buildLegacyItem(id: string, value: number): RecordedLabItem {
     const def = MASTER_LAB_TESTS.find(t => t.id === id);
     const evalResult = evaluateCustomLabValue(value, def?.defaultMin, def?.defaultMax, id);
@@ -1016,7 +1068,8 @@ export const LabTestModule: React.FC = () => {
     if (!profile) return;
 
     if (filledCount === 0) {
-      alert('ကျေးဇူးပြု၍ စစ်ဆေးထားသော ဓာတ်ခွဲအဖြေ အနည်းဆုံး တစ်ခု ထည့်သွင်းပေးပါရန် လိုအပ်ပါသည်။');
+      // B-M12: no native alert() — use toast.
+      showToast('ကျေးဇူးပြု၍ စစ်ဆေးထားသော ဓာတ်ခွဲအဖြေ အနည်းဆုံး တစ်ခု ထည့်သွင်းပေးပါရန် လိုအပ်ပါသည်။', 'error');
       return;
     }
 
@@ -1025,7 +1078,11 @@ export const LabTestModule: React.FC = () => {
     try {
       const recordedTests: RecordedLabItem[] = [];
 
-      // Collect ONLY the tests where user entered a valid number
+      // Collect ONLY the tests where user entered a value.
+      // B-M2: a text-range value (e.g. urine "5–10") is NOT a number and
+      // cannot live in tests[] (value: number) — it is saved as a string
+      // in the nested urine object below and shown as the stored string.
+      // It must never be silently dropped for failing a numeric parse.
       MASTER_LAB_TESTS.forEach(def => {
         const rawVal = testValues[def.id];
         if (rawVal !== undefined && rawVal.trim() !== '') {
@@ -1151,13 +1208,20 @@ export const LabTestModule: React.FC = () => {
       const hasInfl = Object.values(inflObj).some(v => v !== undefined);
 
       // Shared payload for both add and edit (userId/userName only in add).
-      // In edit mode the stored time part is re-attached: the form's date
-      // input is date-only, so without this an old record's time would be
-      // lost on every edit.
+      // B-M3: the form now carries a time, so the stored time is the one
+      // the user entered — never lost on edit, never missing on a new record.
+      // B-H3: on edit, stored tests[] entries that are NOT in
+      // MASTER_LAB_TESTS (e.g. admin-created custom tests) are preserved
+      // verbatim — the form cannot edit them, so rebuilding from the
+      // master list alone would silently delete them.
+      const preservedCustomTests: RecordedLabItem[] = editingId
+        ? (labRecords.find(l => l.id === editingId)?.tests || [])
+            .filter(t => !MASTER_LAB_TESTS.some(d => d.id === t.id))
+        : [];
       const payload = {
-        testDate: editingId && editingTestTime ? `${testDate}T${editingTestTime}` : testDate,
+        testDate: testTime ? `${testDate}T${testTime}` : testDate,
         labName: labName.trim() || 'ဆေးဓာတ်ခွဲခန်း',
-        tests: recordedTests,
+        tests: [...recordedTests, ...preservedCustomTests],
         cbc: hasCbc ? cbcObj : undefined,
         glucose: hasGlu ? gluObj : undefined,
         liver: hasLiver ? liverObj : undefined,
@@ -1176,7 +1240,6 @@ export const LabTestModule: React.FC = () => {
         // so no fingerprint follow-up is needed.
         await updateLabRecord(editingId, payload);
         resetForm();
-        setEditingTestTime('');
         setEditingId(null);
         setIsOpenAdd(false);
         showToast('Lab စစ်ဆေးချက် မှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ', 'success');
@@ -1248,9 +1311,11 @@ export const LabTestModule: React.FC = () => {
             ဓာတ်ခွဲခန်းစစ်ဆေးချက်များ (Comprehensive Lab Tests)
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {selectedPatient 
+            {selectedPatient
               ? `အသုံးပြုသူ ${selectedPatient.displayName} ၏ ဓာတ်ခွဲစစ်ဆေးချက် မှတ်တမ်းများ`
-              : 'စစ်ဆေးခဲ့သော ဓာတ်ခွဲအဖြေများကို ဓာတ်ခွဲခန်းစံနှုန်းများနှင့် ယှဉ်ပြပြီး တိကျစွာ မှတ်တမ်းတင်နိုင်ပါသည်'}
+              : selectedFamilyMember
+                ? `အသုံးပြုသူ ${selectedFamilyMember.name} ၏ ဓာတ်ခွဲစစ်ဆေးချက် မှတ်တမ်းများ`
+                : 'စစ်ဆေးခဲ့သော ဓာတ်ခွဲအဖြေများကို ဓာတ်ခွဲခန်းစံနှုန်းများနှင့် ယှဉ်ပြပြီး တိကျစွာ မှတ်တမ်းတင်နိုင်ပါသည်'}
           </p>
         </div>
 
@@ -1322,7 +1387,7 @@ export const LabTestModule: React.FC = () => {
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                        {(lab.testDate || '').replace('T', ' ')}
+                        {recordDateTime(lab.testDate)}
                       </span>
                       <div className="flex items-center">
                         <button
@@ -1338,9 +1403,7 @@ export const LabTestModule: React.FC = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm('ဤဓာတ်ခွဲခန်း စစ်ဆေးချက် မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
-                              deleteLabRecord(lab.id);
-                            }
+                            setDeleteTargetId(lab.id);
                           }}
                           className="text-slate-400 hover:text-rose-600 p-2 rounded-md"
                           title="ဖျက်မည်"
@@ -1359,6 +1422,12 @@ export const LabTestModule: React.FC = () => {
                         {count} မျိုး
                       </span>
                     </div>
+                    {/* D-H5: owner name in the pooled view. */}
+                    {isPooledView && (
+                      <div className="text-[11px] text-slate-500 mt-1">
+                        ပိုင်ရှင်: <span className="font-semibold text-slate-700 dark:text-slate-300">{lab.userName || lab.patientName || '—'}</span>
+                      </div>
+                    )}
 
                     {/* Snapshot of recorded items */}
                     <div className="flex flex-wrap gap-1 mt-2.5">
@@ -1409,8 +1478,14 @@ export const LabTestModule: React.FC = () => {
                     <div className="text-right">
                       <span className="text-xs text-slate-400 block">စစ်ဆေးသည့်ရက်စွဲ</span>
                       <span className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        {(activeRecord.testDate || '').replace('T', ' ')}
+                        {recordDateTime(activeRecord.testDate)}
                       </span>
+                      {/* D-H5: owner name in the pooled view. */}
+                      {isPooledView && (
+                        <span className="text-xs text-slate-500 block mt-0.5">
+                          ပိုင်ရှင်: <span className="font-semibold text-slate-700 dark:text-slate-300">{activeRecord.userName || activeRecord.patientName || '—'}</span>
+                        </span>
+                      )}
                     </div>
                     <div className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold">
                       {displayItems.length} မျိုး စစ်ဆေးခဲ့သည်
@@ -1545,6 +1620,45 @@ export const LabTestModule: React.FC = () => {
                     })}
                   </div>
                 )}
+
+                {/* B-M2: urine string results (ranges like "5–10") */}
+                {urineStringItems.length > 0 && (
+                  <div className="space-y-2.5 pt-2.5">
+                    {urineStringItems.map((item) => (
+                      <div
+                        key={item.key}
+                        className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3"
+                      >
+                        <div className="md:w-5/12 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-300">
+                              ဆီးစစ်ဆေးချက်
+                            </span>
+                            <h5 className="font-bold text-sm text-slate-900 dark:text-white">
+                              {item.nameMm}
+                            </h5>
+                          </div>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono block mt-0.5">
+                            {item.nameEn}
+                          </span>
+                        </div>
+                        <div className="md:w-3/12 flex items-baseline gap-1.5">
+                          <span className="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white">
+                            {item.value}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            {item.unit}
+                          </span>
+                        </div>
+                        <div className="md:w-4/12 flex flex-col justify-center text-xs">
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                            စံနှုန်း (Ref): <strong className="font-mono text-slate-700 dark:text-slate-200">{item.ref}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1594,7 +1708,7 @@ export const LabTestModule: React.FC = () => {
             <form onSubmit={handleSubmit} className="mt-3 space-y-4 overflow-y-auto pr-1 flex-1">
               
               {/* Date & Lab Name Header Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     စစ်ဆေးသည့် ရက်စွဲ *
@@ -1604,6 +1718,19 @@ export const LabTestModule: React.FC = () => {
                     value={testDate}
                     onChange={(e) => setTestDate(e.target.value)}
                     required
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono"
+                  />
+                </div>
+
+                {/* B-M3: new lab records can carry a time, like BP/glucose. */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    စစ်ဆေးသည့် အချိန်
+                  </label>
+                  <input
+                    type="time"
+                    value={testTime}
+                    onChange={(e) => setTestTime(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono"
                   />
                 </div>
@@ -1671,8 +1798,12 @@ export const LabTestModule: React.FC = () => {
               <div className="space-y-2.5">
                 {filteredDefs.map(def => {
                   const rawVal = testValues[def.id] || '';
-                  const hasVal = rawVal.trim() !== '' && !isNaN(Number(rawVal));
-                  const numVal = hasVal ? Number(rawVal.trim()) : 0;
+                  // B-M2: text tests (urine ranges) count as filled on any
+                  // non-empty string; numeric tests need a parseable number.
+                  const hasVal = def.isText
+                    ? rawVal.trim() !== ''
+                    : rawVal.trim() !== '' && !isNaN(Number(rawVal));
+                  const numVal = hasVal && !def.isText ? Number(rawVal.trim()) : 0;
 
                   // Custom reference bounds
                   const custom = customRefRanges[def.id];
@@ -1684,8 +1815,9 @@ export const LabTestModule: React.FC = () => {
                   const effectiveMax = customMaxNum !== undefined ? customMaxNum : def.defaultMax;
                   const isCustom = customMinNum !== undefined || customMaxNum !== undefined;
 
-                  // Live evaluation against current effective bounds
-                  const evalInfo = hasVal ? evaluateCustomLabValue(numVal, effectiveMin, effectiveMax, def.id) : null;
+                  // Live evaluation against current effective bounds —
+                  // text-range values get no numeric verdict (B-M2).
+                  const evalInfo = hasVal && !def.isText ? evaluateCustomLabValue(numVal, effectiveMin, effectiveMax, def.id) : null;
 
                   // Formatted reference range text
                   let displayRefRange = def.defaultRefText;
@@ -1725,9 +1857,9 @@ export const LabTestModule: React.FC = () => {
                         <div className="md:w-3/12 flex items-center gap-2">
                           <div className="relative w-full max-w-[170px]">
                             <input
-                              type="number"
-                              step={def.step || 'any'}
-                              placeholder="ရလဒ်ထည့်ပါ"
+                              type={def.isText ? 'text' : 'number'}
+                              step={def.isText ? undefined : (def.step || 'any')}
+                              placeholder={def.isText ? 'ဥပမာ- 5–10' : 'ရလဒ်ထည့်ပါ'}
                               value={rawVal}
                               onChange={(e) => setTestValues({ ...testValues, [def.id]: e.target.value })}
                               className="w-full pr-12 pl-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono font-bold focus:border-purple-500 focus:outline-hidden"
@@ -1891,6 +2023,14 @@ export const LabTestModule: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Delete confirmation (v2.4.16) */}
+      <Modal isOpen={deleteTargetId !== null} onClose={() => setDeleteTargetId(null)} title="မှတ်တမ်း ဖျက်မည်" size="sm">
+        <p className="text-sm text-slate-700 leading-relaxed">ဤဓာတ်ခွဲခန်း စစ်ဆေးချက် မှတ်တမ်းကို ဖျက်မှာ သေချာပါသလား? ဖျက်လိုက်ရင် ပြန်မရတော့ပါ။</p>
+        <div className="flex gap-2 justify-end mt-5">
+          <button onClick={() => setDeleteTargetId(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm cursor-pointer">မဖျက်သေးပါ</button>
+          <button onClick={() => { const id = deleteTargetId; setDeleteTargetId(null); if (id) deleteLabRecord(id); }} className="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-sm cursor-pointer">ဖျက်မည်</button>
+        </div>
+      </Modal>
     </div>
   );
 };

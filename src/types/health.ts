@@ -245,6 +245,9 @@ export interface Medication {
   // taken — used by the 1-minute reminder ticker (v2.4.10). When empty, the
   // app only reminds once when it is opened, without claiming a dose time.
   doseTime?: string;
+  // Second daily dose time (HH:MM, local) for twice-daily medications
+  // (v2.4.16): a med taken morning + evening needs two reminders, not one.
+  doseTime2?: string;
   status: 'active' | 'completed' | 'paused';
   notes?: string;
   prescribingDoctor?: string;
@@ -285,6 +288,10 @@ export interface FamilyMember {
   chronicConditions: string[];
   avatarColor?: string;
   notes?: string;
+  // A family member's own emergency card (v2.4.16) — previously the
+  // Emergency ID module silently showed/saved the owner's card while a
+  // member was selected.
+  emergencyProfile?: EmergencyProfile;
 }
 
 export type NotificationType = 'medication' | 'vital_check' | 'abnormal_alert' | 'doctor_advice' | 'custom_reminder' | 'qa_answered';
@@ -309,6 +316,11 @@ export interface AppNotification {
     takenAt?: string;
     questionId?: string;
     userId?: string;
+    // v2.4.16: which dose slot this reminder is for (0 = first dose time,
+    // 1 = second dose time) and the medication owner's email, so the dose
+    // is logged against the right person.
+    doseIndex?: number;
+    userEmail?: string;
   };
 }
 
@@ -396,6 +408,7 @@ export interface EmergencyProfile {
   primaryContactRelation: string;
   secondaryContactName?: string;
   secondaryContactPhone?: string;
+  secondaryContactRelation?: string;
   attendingDoctorName?: string;
   attendingDoctorPhone?: string;
   preferredHospital?: string;

@@ -135,3 +135,14 @@ button:active:not(:disabled) {
   transform: scale(0.96) translateY(1px);
   filter: brightness(0.9);
 }
+
+/* v2.4.16 (A-H1 + B-M8): iOS Safari zooms the page when a form control
+   below 16px receives focus, and auth + form inputs across the app are
+   12px (text-xs). Force 16px on every form control. This rule is
+   deliberately UNLAYERED (after the Tailwind import): unlayered author
+   CSS beats Tailwind's layered .text-xs utility, which is what makes it
+   actually take effect. 16px is larger, never smaller, so no text
+   becomes unreadably small. */
+input, select, textarea {
+  font-size: 16px;
+}

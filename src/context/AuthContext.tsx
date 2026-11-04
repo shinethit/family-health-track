@@ -8,9 +8,12 @@ import {
   updatePassword as fbUpdatePassword,
   sendPasswordResetEmail,
   confirmPasswordReset,
-  verifyPasswordResetCode
+  verifyPasswordResetCode,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  deleteUser
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction, deleteDoc, deleteField } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { UserProfile } from '../types/health';
 import { calculateAge, calculateBMI } from '../lib/medicalCalculations';
@@ -25,6 +28,24 @@ export const sanitizeForFirestore = <T extends Record<string, any>>(obj: T): Rec
     }
   });
   return clean;
+};
+
+// v2.4.16 (A-M6): the cached profile is keyed PER USER, never global — a
+// shared phone must never show the previous user's profile to the next
+// signed-in user, and a sign-out that is not a logout must not leave the
+// cached profile behind. The legacy unsuffixed key is only ever READ at
+// first paint (for users upgrading from an older build); every write uses
+// the suffixed key, and sign-out / logout clear all of them.
+const profileCacheKey = (uid?: string | null): string =>
+  uid ? `family_health_profile_${uid}` : 'family_health_profile';
+const clearProfileCache = (): void => {
+  try {
+    Object.keys(localStorage)
+      .filter(k => k === 'family_health_profile' || k.startsWith('family_health_profile_'))
+      .forEach(k => localStorage.removeItem(k));
+  } catch {
+    // ignore — cache clearing is best-effort
+  }
 };
 
 // Map Firebase Auth error codes to user-friendly Burmese messages
@@ -50,12 +71,20 @@ export const getAuthErrorMessage = (error: any): string => {
     case 'auth/weak-password':
       return 'လျှို့ဝှက်နံပါတ်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်။';
     case 'auth/unauthorized-domain':
-      return 'ဤဝက်ဘ်ဆိုဒ်လိပ်စာကို Firebase မှ ခွင့်မပြုထားပါ။ Firebase Console > Authentication > Settings > Authorized domains တွင် သင့် App လိပ်စာ (localhost) ကို ထည့်သွင်းပေးပါ။';
+      // v2.4.16 (A-M3): never show a Firebase Console instruction to an
+      // end user — they cannot fix a domain allow-list.
+      return 'ဤဝက်ဘ်ဆိုဒ်မှ အကောင့်ဝင်ခြင်း ခွင့်မပြုထားပါ။ ကျေးဇူးပြု၍ နောက်မှ ပြန်လည်ကြိုးစားပါ။';
     case 'auth/invalid-action-code':
     case 'auth/expired-action-code':
       // Password-reset (or other action) link that is expired or already used.
       return 'ဤလင့်ခ် သက်တမ်းကုန်သွားပြီ သို့မဟုတ် အသုံးပြုပြီးသား ဖြစ်နေပါသည်။ စကားဝှက် ပြန်လည်ရယူရန် တောင်းဆိုမှုကို ထပ်မံ ပြုလုပ်ပါ။';
     default:
+      // v2.4.16 (A-M3): an unmatched Firebase error code must never surface
+      // its raw English text to the user. An error WITHOUT a Firebase code
+      // is an app-thrown message (already Burmese) — keep it as-is.
+      if (code.startsWith('auth/')) {
+        return 'အကောင့်စစ်ဆေးမှု မအောင်မြင်ပါ။ ကျေးဇူးပြု၍ ပြန်လည်ကြိုးစားပါ။';
+      }
       return error?.message || 'အကောင့်စစ်ဆေးမှု မအောင်မြင်ပါ။ ကျေးဇူးပြု၍ ပြန်လည်ကြိုးစားပါ။';
   }
 };
@@ -116,9 +145,14 @@ interface AuthContextType {
   // Set (or change) the signed-in user's username. Existing users have
   // none yet — ProfileSetupModal wires an input to this.
   setUsername: (username: string) => Promise<void>;
+  // Roll back a username reservation after a failed profile update, so the
+  // usernames doc and the profile never diverge (v2.4.16, A-M5).
+  restoreUsername: (oldUsername: string | undefined, newUsername: string) => Promise<void>;
+  // Remove the signed-in user's username entirely (v2.4.16, A-L3).
+  clearUsername: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>, options?: { silent?: boolean }) => Promise<void>;
-  changePassword: (newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   // In-app password reset (reset link returns to the app itself, not the
   // Firebase hosted page): validate the oobCode, then set the new password.
@@ -193,7 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 displayName: data.displayName || fbUser.displayName || fbUser.email?.split('@')[0] || 'အသုံးပြုသူ',
               };
               setProfile(finalProfile);
-              localStorage.setItem('family_health_profile', JSON.stringify(finalProfile));
+              localStorage.setItem(profileCacheKey(fbUser.uid), JSON.stringify(finalProfile));
             } else {
               const newProfile: UserProfile = {
                 id: fbUser.uid,
@@ -203,7 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 createdAt: new Date().toISOString(),
               };
               setProfile(newProfile);
-              localStorage.setItem('family_health_profile', JSON.stringify(newProfile));
+              localStorage.setItem(profileCacheKey(fbUser.uid), JSON.stringify(newProfile));
               await setDoc(userDocRef, sanitizeForFirestore(newProfile), { merge: true });
             }
           } catch (e) {
@@ -217,7 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               createdAt: new Date().toISOString(),
             };
             setProfile(fallbackProfile);
-            localStorage.setItem('family_health_profile', JSON.stringify(fallbackProfile));
+            localStorage.setItem(profileCacheKey(fbUser.uid), JSON.stringify(fallbackProfile));
           }
           if (isMounted) setLoading(false);
           if (isMounted) setAuthAttempting(false);
@@ -226,6 +260,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentUser(null);
           setProfile(null);
           setIsAdmin(false);
+          // v2.4.16 (A-M6): never leave a cached profile behind on sign-out
+          // — the next user on this phone must not briefly see it.
+          clearProfileCache();
           if (isMounted) setLoading(false);
           if (isMounted) setAuthAttempting(false);
         }
@@ -255,8 +292,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const resolvedEmail = (nameDoc.exists() ? (nameDoc.data() as { email?: string }).email : '') || '';
         if (!resolvedEmail) {
           // Deliberately vague about whether the name exists — and never
-          // reveal whether an email is registered.
-          throw new Error('အသုံးပြုသူအမည် မတွေ့ပါ — အီးမေးလ်ဖြင့် ဝင်ကြည့်ပါ');
+          // reveal whether an email is registered. This message is
+          // identical to a wrong-password failure (A-M1).
+          throw new Error('အီးမေးလ်/အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားနေပါသည်။');
         }
         cleanEmail = resolvedEmail;
       }
@@ -303,7 +341,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         setProfile(activeProf);
-        localStorage.setItem('family_health_profile', JSON.stringify(activeProf));
+        localStorage.setItem(profileCacheKey(res.user.uid), JSON.stringify(activeProf));
       }
     } catch (err: any) {
       console.error('Login error:', err);
@@ -383,8 +421,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             tx.set(ref, { uid: res.user.uid, email: cleanEmail });
           });
         } catch (txErr: any) {
+          // v2.4.16 (A-M4): the registration cannot complete without the
+          // username reservation. Delete the just-created Auth account and
+          // sign out, so the user is not left signed in behind a failure
+          // message with a half-built account (no profile doc, no name).
+          try { await deleteUser(res.user); } catch { /* best effort */ }
+          try { await fbSignOut(auth); } catch { /* ignore */ }
+          setCurrentUser(null);
+          setProfile(null);
+          setIsAdmin(false);
           if (txErr?.message === 'USERNAME_TAKEN') {
-            throw new Error('ဤအသုံးပြုသူအမည် သုံးပြီးသား ဖြစ်နေပါသည်။ အကောင့်ကို အီးမေးလ်ဖြင့် ဖွင့်ပြီးပါပြီ — အကောင့်ဝင်ပြီး ပရိုဖိုင်တွင် တခြား အမည် သတ်မှတ်ပါ။');
+            throw new Error('ဤအသုံးပြုသူအမည် သုံးပြီးသား ဖြစ်နေပါသည်။ အကောင့်ဖွင့်ခြင်း မပြီးမြောက်ပါ — တခြား အမည် ရွေးပြီး ပြန်ဖွင့်ပါ။');
           }
           throw txErr;
         }
@@ -412,7 +459,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       setProfile(newProf);
-      localStorage.setItem('family_health_profile', JSON.stringify(newProf));
+      localStorage.setItem(profileCacheKey(res.user.uid), JSON.stringify(newProf));
 
       // Save to Firestore users collection
       await setDoc(doc(db, 'users', res.user.uid), sanitizeForFirestore(newProf), { merge: true });
@@ -456,7 +503,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Reservation succeeded — now claim the name on the profile. The
     // usernames doc is written first, so a failure here never leaves the
     // profile claiming a name it does not own.
-    await updateProfile({ username: clean } as Partial<UserProfile>);
+    try {
+      await updateProfile({ username: clean } as Partial<UserProfile>);
+    } catch (e) {
+      // v2.4.16 (A-M5): the profile update failed after the reservation —
+      // roll the reservation back so the two never diverge.
+      await restoreUsername(oldUsername, clean);
+      throw e;
+    }
+  };
+
+  // Roll back a username reservation: delete the new name's doc and
+  // re-create the old one (v2.4.16, A-M5). Best-effort: a failure here is
+  // logged, not thrown, so the original error is what the user sees.
+  const restoreUsername = async (oldUsername: string | undefined, newUsername: string): Promise<void> => {
+    if (!currentUser) return;
+    try {
+      await runTransaction(db, async (tx) => {
+        tx.delete(doc(db, 'usernames', newUsername));
+        if (oldUsername) {
+          tx.set(doc(db, 'usernames', oldUsername), { uid: currentUser.uid, email: currentUser.email || profile?.email || '' });
+        }
+      });
+    } catch (e) {
+      console.warn('Failed to roll back username reservation:', e);
+    }
+  };
+
+  // Remove the signed-in user's username entirely (v2.4.16, A-L3): free
+  // the reserved name and clear it from the profile.
+  const clearUsername = async (): Promise<void> => {
+    if (!currentUser || !profile) return;
+    const oldUsername = (profile as ProfileWithUsername).username;
+    if (!oldUsername) return;
+    await deleteDoc(doc(db, 'usernames', oldUsername));
+    await updateProfile({ username: undefined } as Partial<UserProfile>);
   };
 
   const logout = async () => {
@@ -481,9 +562,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // moves into Firestore itself (and removes) after it runs.
     // Only the keys below are removed: the cached profile (re-fetched from
     // Firestore on the next login) and legacy demo/cloud-cache keys that no
-    // code in src/ reads any more.
+    // code in src/ reads any more. The profile cache is cleared per-user
+    // (v2.4.16, A-M6) — see clearProfileCache above.
+    clearProfileCache();
     const keysToRemove = [
-      'family_health_profile',
       'health_demo_profile',
       'health_records_bp',
       'health_records_glucose',
@@ -508,18 +590,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       delete sanitizedData.role;
     }
 
+    // v2.4.16 (A-L2/A-L3): a field passed as explicit `undefined` means
+    // "clear it" — remove it from the merged profile and delete it in
+    // Firestore (sanitizeForFirestore would otherwise just drop the key
+    // and the old value would survive forever).
+    const clearedKeys = Object.keys(sanitizedData).filter(k => (sanitizedData as Record<string, unknown>)[k] === undefined);
+    const heightCleared = clearedKeys.includes('heightCm');
+    const weightCleared = clearedKeys.includes('weightKg');
+
     let computedAge = sanitizedData.age ?? profile.age;
     if (sanitizedData.dateOfBirth) {
       const ageRes = calculateAge(sanitizedData.dateOfBirth);
       if (ageRes) computedAge = ageRes.years;
     }
 
-    const h = sanitizedData.heightCm ?? profile.heightCm;
-    const w = sanitizedData.weightKg ?? profile.weightKg;
+    const h = heightCleared ? undefined : (sanitizedData.heightCm ?? profile.heightCm);
+    const w = weightCleared ? undefined : (sanitizedData.weightKg ?? profile.weightKg);
     let computedBMI = sanitizedData.bmi ?? profile.bmi;
     if (h && w) {
       const bmiRes = calculateBMI(w, h);
       if (bmiRes) computedBMI = bmiRes.bmi;
+    } else if (heightCleared || weightCleared) {
+      // One side of the BMI was cleared — the stored BMI is stale now.
+      computedBMI = undefined;
+      if (!clearedKeys.includes('bmi')) clearedKeys.push('bmi');
     }
 
     const updated: UserProfile = { 
@@ -529,12 +623,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       bmi: computedBMI,
       updatedAt: new Date().toISOString() 
     };
+    clearedKeys.forEach(k => { delete (updated as unknown as Record<string, unknown>)[k]; });
 
     setProfile(updated);
-    localStorage.setItem('family_health_profile', JSON.stringify(updated));
+    localStorage.setItem(profileCacheKey(profile.id), JSON.stringify(updated));
 
     try {
-      await setDoc(doc(db, 'users', currentUser.uid), sanitizeForFirestore(updated), { merge: true });
+      const payload = sanitizeForFirestore(updated);
+      clearedKeys.forEach(k => { payload[k] = deleteField(); });
+      await setDoc(doc(db, 'users', currentUser.uid), payload, { merge: true });
       // v2.4.11: silent refresh (e.g. Emergency ID save already toasts via
       // updatePatient) — without this the user saw two stacked success
       // toasts for one save. Errors still toast and throw.
@@ -548,14 +645,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const changePassword = async (newPassword: string) => {
+  const changePassword = async (currentPassword: string, newPassword: string) => {
     if (!auth.currentUser) {
       throw new Error('အကောင့်ဝင်ထားခြင်း မရှိပါ။');
+    }
+    if (!auth.currentUser.email) {
+      throw new Error('ဤအကောင့်တွင် အီးမေးလ် မရှိပါ — စကားဝှက် ပြောင်းလဲ၍ မရပါ။');
     }
     if (newPassword.length < 6) {
       throw new Error('လျှို့ဝှက်နံပါတ် အသစ်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်။');
     }
     try {
+      // v2.4.16 (A-H2): prove the user knows the CURRENT password before
+      // the password is changed — without this, anyone with an unlocked
+      // phone could lock the real owner out of their own account.
+      const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
       await fbUpdatePassword(auth.currentUser, newPassword);
     } catch (err: any) {
       throwAuthError(err);
@@ -614,6 +719,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login,
       register,
       setUsername,
+      restoreUsername,
+      clearUsername,
       logout,
       updateProfile,
       changePassword,

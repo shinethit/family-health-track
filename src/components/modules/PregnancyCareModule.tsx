@@ -19,6 +19,34 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+import { useAuth } from '../../context/AuthContext';
+import {
+  userKey,
+  readUserStored,
+  migrateLegacyKey,
+} from '../../lib/perUserStorage';
+import { formatDateLabel } from '../../lib/medicalCalculations';
+
+// Per-user localStorage bases (B-M11): kick logs and the hospital-bag
+// checklist used to be in-memory only — a reload wiped them. They are
+// phone-only data, so they persist under per-user keys (same pattern as
+// physio progress), never under a device-global key.
+const KICK_LOGS_BASE = 'fht_pregnancy_kick_logs';
+const HOSPITAL_BAG_BASE = 'fht_pregnancy_hospital_bag';
+
+// Local time (HH:MM) — toLocaleTimeString('my-MM') falls back to English
+// on phones without the Myanmar locale (D-M4).
+const localTimeStr = (d: Date): string =>
+  `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+const readStoredJson = <T,>(base: string, uid: string | null, fallback: T): T => {
+  try {
+    const raw = readUserStored(base, uid || undefined);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 interface TrimesterInfo {
   trimester: number;
@@ -105,7 +133,10 @@ const TRIMESTER_DATA: TrimesterInfo[] = [
 
 export const PregnancyCareModule: React.FC = () => {
   const [selectedTrimester, setSelectedTrimester] = useState<number>(1);
-  
+  // Phone-only pregnancy data belongs to the signed-in user only (B-M11).
+  const { profile, currentUser } = useAuth();
+  const storageUid = profile?.id || currentUser?.uid || '';
+
   // Interactive EDD Calculator State — no default LMP: a pre-filled date
   // would show a due date and trimester for someone who may not be
   // pregnant at all. The user picks a date; nothing is computed until then.
@@ -121,14 +152,32 @@ export const PregnancyCareModule: React.FC = () => {
   // Interactive Fetal Kick Counter State — the log starts empty: a
   // hardcoded "this morning, 10 kicks" entry would present someone else's
   // history as the user's own. Entries only appear once the user counts.
+  // B-M11: the log persists in per-user localStorage (it used to vanish
+  // on every reload).
   const [kickCount, setKickCount] = useState<number>(0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
-  const [kickLogs, setKickLogs] = useState<Array<{ id: string; time: string; kicks: number; durationMinutes: number }>>([]);
+  const [kickLogs, setKickLogs] = useState<Array<{ id: string; time: string; kicks: number; durationMinutes: number }>>(() =>
+    readStoredJson<Array<{ id: string; time: string; kicks: number; durationMinutes: number }>>(KICK_LOGS_BASE, storageUid || null, [])
+  );
 
   // Hospital Bag Checklist State — nothing pre-ticked: the bag starts
   // unpacked and the user ticks items as they actually pack them.
-  const [checkedItems, setCheckedItems] = useState<{ [key: string]: boolean }>({});
+  // B-M11: the checklist persists in per-user localStorage.
+  const [checkedItems, setCheckedItems] = useState<{ [key: string]: boolean }>(() =>
+    readStoredJson<{ [key: string]: boolean }>(HOSPITAL_BAG_BASE, storageUid || null, {})
+  );
+
+  // Migrate legacy device-global keys to this user's suffixed keys ONCE,
+  // then reload from the migrated keys (also re-runs if the profile
+  // arrives late) so a later user on a shared phone never sees this data.
+  useEffect(() => {
+    if (!storageUid) return;
+    migrateLegacyKey(KICK_LOGS_BASE, storageUid);
+    migrateLegacyKey(HOSPITAL_BAG_BASE, storageUid);
+    setKickLogs(readStoredJson<Array<{ id: string; time: string; kicks: number; durationMinutes: number }>>(KICK_LOGS_BASE, storageUid, []));
+    setCheckedItems(readStoredJson<{ [key: string]: boolean }>(HOSPITAL_BAG_BASE, storageUid, {}));
+  }, [storageUid]);
 
   // Calculate EDD based on Naegele's Rule: LMP + 280 days (40 weeks)
   useEffect(() => {
@@ -152,7 +201,7 @@ export const PregnancyCareModule: React.FC = () => {
     const remainingDays = Math.max(0, Math.ceil((edd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
 
     setEddResult({
-      eddFormatted: edd.toLocaleDateString('my-MM', { year: 'numeric', month: 'long', day: 'numeric' }),
+      eddFormatted: formatDateLabel(edd.getTime()).date,
       currentWeeks,
       currentDays,
       trimester: tri,
@@ -185,11 +234,18 @@ export const PregnancyCareModule: React.FC = () => {
       const minutes = Math.ceil(timerSeconds / 60) || 1;
       const newLog = {
         id: Date.now().toString(),
-        time: new Date().toLocaleTimeString('my-MM', { hour: '2-digit', minute: '2-digit' }),
+        time: localTimeStr(new Date()),
         kicks: 10,
         durationMinutes: minutes
       };
-      setKickLogs(prev => [newLog, ...prev]);
+      // B-M11: persist the new log (per-user key) so it survives a reload.
+      const nextLogs = [newLog, ...kickLogs];
+      setKickLogs(nextLogs);
+      try {
+        localStorage.setItem(userKey(KICK_LOGS_BASE, storageUid), JSON.stringify(nextLogs));
+      } catch {
+        // Storage unavailable — the log stays in memory for this session.
+      }
     }
   };
 
@@ -206,10 +262,14 @@ export const PregnancyCareModule: React.FC = () => {
   };
 
   const toggleCheckItem = (id: string) => {
-    setCheckedItems(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+    // B-M11: persist the checklist (per-user key) so it survives a reload.
+    const next = { ...checkedItems, [id]: !checkedItems[id] };
+    setCheckedItems(next);
+    try {
+      localStorage.setItem(userKey(HOSPITAL_BAG_BASE, storageUid), JSON.stringify(next));
+    } catch {
+      // Storage unavailable — the tick stays in memory for this session.
+    }
   };
 
   const hospitalBagSections = [

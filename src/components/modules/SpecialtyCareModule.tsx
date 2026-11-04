@@ -23,6 +23,7 @@ import {
   Zap,
   Check
 } from 'lucide-react';
+import { toLocalDateInput } from '../../lib/medicalCalculations';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -97,7 +98,7 @@ export const SpecialtyCareModule: React.FC = () => {
   });
   const [showAddDentalModal, setShowAddDentalModal] = useState(false);
   const [newDental, setNewDental] = useState<Partial<DentalRecord>>({
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateInput(),
     treatmentType: 'Checkup',
     notes: ''
   });
@@ -120,7 +121,7 @@ export const SpecialtyCareModule: React.FC = () => {
   });
   const [showAddEyeModal, setShowAddEyeModal] = useState(false);
   const [newEye, setNewEye] = useState<Partial<EyePrescription>>({
-    date: new Date().toISOString().split('T')[0],
+    date: toLocalDateInput(),
     odSphere: '0.00',
     odCylinder: '0.00',
     odAxis: '0',
@@ -253,7 +254,7 @@ export const SpecialtyCareModule: React.FC = () => {
     e.preventDefault();
     const record: DentalRecord = {
       id: Date.now().toString(),
-      date: newDental.date || new Date().toISOString().split('T')[0],
+      date: newDental.date || toLocalDateInput(),
       treatmentType: (newDental.treatmentType as any) || 'Checkup',
       toothNumber: newDental.toothNumber,
       dentistName: newDental.dentistName,
@@ -264,7 +265,7 @@ export const SpecialtyCareModule: React.FC = () => {
     };
     setDentalRecords([record, ...dentalRecords]);
     setShowAddDentalModal(false);
-    setNewDental({ date: new Date().toISOString().split('T')[0], treatmentType: 'Checkup', notes: '' });
+    setNewDental({ date: toLocalDateInput(), treatmentType: 'Checkup', notes: '' });
   };
 
   const deleteDentalRecord = (id: string) => {
@@ -276,7 +277,7 @@ export const SpecialtyCareModule: React.FC = () => {
     e.preventDefault();
     const record: EyePrescription = {
       id: Date.now().toString(),
-      date: newEye.date || new Date().toISOString().split('T')[0],
+      date: newEye.date || toLocalDateInput(),
       odSphere: newEye.odSphere || '0.00',
       odCylinder: newEye.odCylinder || '0.00',
       odAxis: newEye.odAxis || '0',

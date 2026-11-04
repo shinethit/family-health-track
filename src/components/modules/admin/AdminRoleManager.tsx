@@ -12,6 +12,23 @@ import { db } from '../../../lib/firebase';
 import { useAuth } from '../../../context/AuthContext';
 import { useHealthData } from '../../../context/HealthDataContext';
 
+// Hardcoded Myanmar month names — never toLocaleDateString('my-MM'): the
+// user's phone may lack the 'my-MM' locale and fall back to English (D-M4).
+const MM_MONTHS = ['ဇန်နဝါရီ', 'ဖေဖော်ဝါရီ', 'မတ်', 'ဧပြီ', 'မေ', 'ဇွန်', 'ဇူလိုင်', 'ဩဂုတ်', 'စက်တင်ဘာ', 'အောက်တိုဘာ', 'နိုဝင်ဘာ', 'ဒီဇင်ဘာ'];
+const formatMmDate = (value?: string): string => {
+  if (!value) return 'ရက်စွဲ မရှိပါ';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'ရက်စွဲ မရှိပါ';
+  return `${d.getFullYear()} ခုနှစ် ${MM_MONTHS[d.getMonth()]} ${d.getDate()} ရက်`;
+};
+
+// v2.4.16 (C-M4): a promotable user must be a real login user — fabricated
+// aggregate emails ('*@patient.local', '*@familyhealth.local') and users
+// with no email at all can never sign in as admin, so they are phantoms
+// for this list, not promotable people.
+const isFabricatedEmail = (email?: string): boolean =>
+  !email || /@(patient\.local|familyhealth\.local)$/i.test(email.trim());
+
 interface AdminEntry {
   id: string;
   email: string;
@@ -66,7 +83,8 @@ export const AdminRoleManager: React.FC = () => {
   if (!isAdmin) return null;
 
   const adminIds = new Set(admins.map((a) => a.id));
-  const promotableUsers = patientsList.filter((p) => !adminIds.has(p.id));
+  const promotableUsers = patientsList.filter((p) => !adminIds.has(p.id) && !isFabricatedEmail(p.email));
+  const hiddenPhantomCount = patientsList.filter((p) => !adminIds.has(p.id) && isFabricatedEmail(p.email)).length;
   const onlyOneAdminLeft = admins.length <= 1;
 
   const handlePromote = async () => {
@@ -154,7 +172,7 @@ export const AdminRoleManager: React.FC = () => {
                     <div className="text-[11px] text-slate-500 truncate">{a.email}</div>
                     {a.grantedAt && (
                       <div className="text-[11px] text-slate-400">
-                        ရာထူးတင်သည့်နေ့: {new Date(a.grantedAt).toLocaleDateString('my-MM')}
+                        ရာထူးတင်သည့်နေ့: {formatMmDate(a.grantedAt)}
                       </div>
                     )}
                   </div>
@@ -219,6 +237,11 @@ export const AdminRoleManager: React.FC = () => {
         <p className="text-[11px] text-slate-400">
           ရာထူးတင်ပြီးသူ အကောင့်ပြန်ဝင်မှ Admin အဖြစ် သုံးလို့ရမယ်။
         </p>
+        {hiddenPhantomCount > 0 && (
+          <p className="text-[11px] text-slate-400">
+            အီးမေးလ်အတု / အီးမေးလ်မရှိသော မှတ်တမ်း {hiddenPhantomCount} ခုကို ရာထူးတင်စာရင်းမှ ဖယ်ထားပါသည် — ထိုသူများသည် အကောင့်ဝင်လို့ မရသော မှတ်တမ်းသက်သက်သာ ဖြစ်ပါသည်။
+          </p>
+        )}
       </div>
 
       <div className="flex items-center gap-2">

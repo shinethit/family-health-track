@@ -23,6 +23,7 @@ import {
   BloodPressureRecord,
   BloodSugarRecord,
   LabTestRecord,
+  RecordedLabItem,
   Medication,
   VaccinationRecord,
   BMIRecord,
@@ -32,6 +33,9 @@ import {
   DoctorAnswer
 } from '../../../types/health';
 import { BloodPressureChart, BloodSugarChart } from '../../charts/HealthCharts';
+import { Modal } from '../../common/Modal';
+import { MASTER_LAB_TESTS } from '../LabTestModule';
+import type { LabTestDef } from '../LabTestModule';
 import { useAuth } from '../../../context/AuthContext';
 import { useHealthData } from '../../../context/HealthDataContext';
 import { 
@@ -81,10 +85,56 @@ const localDateTimeStr = (d: Date): string => {
 // record has no measurement date at all — never substitute the save time
 // for a past measurement date.
 const showRecordDateTime = (value?: string): string => {
-  if (!value) return '—';
+  if (!value) return 'ရက်စွဲ မရှိပါ';
   const m = value.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
   return m ? `${m[1]} ${m[2]}` : value;
 };
+
+// Hardcoded Myanmar month names — never toLocaleDateString('my-MM'): the
+// user's phone may lack the 'my-MM' locale and fall back to English (D-M4).
+const MM_MONTHS = ['ဇန်နဝါရီ', 'ဖေဖော်ဝါရီ', 'မတ်', 'ဧပြီ', 'မေ', 'ဇွန်', 'ဇူလိုင်', 'ဩဂုတ်', 'စက်တင်ဘာ', 'အောက်တိုဘာ', 'နိုဝင်ဘာ', 'ဒီဇင်ဘာ'];
+const formatMmDate = (value?: string): string => {
+  if (!value) return 'ရက်စွဲ မရှိပါ';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'ရက်စွဲ မရှိပါ';
+  return `${d.getFullYear()} ခုနှစ် ${MM_MONTHS[d.getMonth()]} ${d.getDate()} ရက်`;
+};
+
+// Split a duration merged into med notes back into duration + notes (the
+// add path writes `သောက်ရမည့်ရက်: X ရက် | notes` into one notes field) —
+// same pattern as the patient MedicationsModule (C-H5).
+const parseDurationNotes = (notesValue: string | undefined): { durationDays: string; notes: string } => {
+  const m = (notesValue || '').match(/^သောက်ရမည့်ရက်: (.+?) ရက်(?: \| (.*))?$/s);
+  if (!m) return { durationDays: '', notes: notesValue || '' };
+  return { durationDays: m[1], notes: m[2] || '' };
+};
+
+// One editable row of the admin lab form (C-H1 / C-H2): a known test from
+// the SAME vocabulary as the patient form (MASTER_LAB_TESTS, incl. HbA1c /
+// PPBS) keeps its def id, unit and default reference range; 'custom' is a
+// free-text test. origId preserves the stored test's identity on save so
+// unedited tests survive an edit untouched.
+interface LabTestDraft {
+  key: string;
+  defId: string;
+  customName: string;
+  value: string;
+  unit: string;
+  refMin: string;
+  refMax: string;
+  origId?: string;
+  origCategory?: string;
+  origCategoryLabelMm?: string;
+}
+const blankLabDraft = (): LabTestDraft => ({
+  key: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  defId: '',
+  customName: '',
+  value: '',
+  unit: '',
+  refMin: '',
+  refMax: '',
+});
 
 interface AdminPatientDetailProps {
   patient: UserProfile;
@@ -127,10 +177,14 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
 }) => {
   const { profile } = useAuth();
   const {
+    familyMembers,
+    isPooledView,
     addBPRecord, addGlucoseRecord, addLabRecord, addMedication, addVaccineRecord, addBMIRecord,
     // v2.4.13: edit support — added by the sibling HealthDataContext work;
     // these are called here, never defined here.
     updateBPRecord, updateGlucoseRecord, updateBMIRecord, updateLabRecord, updateMedication, updateVaccineRecord,
+    // v2.4.16 (C-H3): single-record delete, confirmed via Modal per row.
+    deleteBPRecord, deleteGlucoseRecord, deleteLabRecord, deleteMedication, deleteVaccineRecord, deleteBMIRecord,
   } = useHealthData();
   // The answer is attributed to the admin who actually writes it — never
   // the patient's name, and never an invented doctor name. No display name
@@ -148,6 +202,8 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   const [answeringId, setAnsweringId] = useState<string | null>(null);
   const [answerText, setAnswerText] = useState('');
   const [answerRecs, setAnswerRecs] = useState('');
+  // v2.4.16 (C-M5): suggested next action on the admin answer.
+  const [answerSuggestedAction, setAnswerSuggestedAction] = useState('');
   const [answerSending, setAnswerSending] = useState(false);
   const [answerError, setAnswerError] = useState<string | null>(null);
   const [qaNotice, setQaNotice] = useState<string | null>(null);
@@ -170,11 +226,9 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   const [gluDate, setGluDate] = useState(localDateTimeStr(new Date()));
   const [labName, setLabName] = useState('');
   const [labDate, setLabDate] = useState(localDateTimeStr(new Date()));
-  const [labTestName, setLabTestName] = useState('');
-  const [labTestValue, setLabTestValue] = useState('');
-  const [labTestUnit, setLabTestUnit] = useState('');
-  const [labRefMin, setLabRefMin] = useState('');
-  const [labRefMax, setLabRefMax] = useState('');
+  // v2.4.16 (C-H1 / C-H2): the lab form edits a LIST of tests, not one —
+  // every stored test is prefilled and unedited ones are preserved on save.
+  const [labTests, setLabTests] = useState<LabTestDraft[]>([blankLabDraft()]);
   const [medName, setMedName] = useState('');
   const [medDosage, setMedDosage] = useState('');
   const [medFrequency, setMedFrequency] = useState('');
@@ -243,8 +297,8 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
     setGluDiet(''); setGluNotes(''); setGluDate(localDateTimeStr(new Date()));
   };
   const resetLabForm = () => {
-    setLabName(''); setLabTestName(''); setLabTestValue(''); setLabTestUnit('');
-    setLabRefMin(''); setLabRefMax(''); setLabNotes(''); setLabDoctorReview('');
+    setLabName(''); setLabTests([blankLabDraft()]);
+    setLabNotes(''); setLabDoctorReview('');
     setLabDate(localDateTimeStr(new Date()));
   };
   const resetMedForm = () => {
@@ -313,12 +367,26 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
     setLabDate(toDateTimeLocal(rec.testDate || rec.recordedAt));
     setLabNotes(rec.notes || '');
     setLabDoctorReview(rec.doctorReview || '');
-    const first = rec.tests && rec.tests.length > 0 ? rec.tests[0] : null;
-    setLabTestName(first ? (first.nameMm || first.nameEn || '') : '');
-    setLabTestValue(first && first.value !== null && first.value !== undefined ? String(first.value) : '');
-    setLabTestUnit(first ? (first.unit || '') : '');
-    setLabRefMin(first && first.refMin !== undefined ? String(first.refMin) : '');
-    setLabRefMax(first && first.refMax !== undefined ? String(first.refMax) : '');
+    // v2.4.16 (C-H2): prefill ALL stored tests, not just the first — each
+    // keeps its def id (same vocabulary as the patient form, so HbA1c stays
+    // HbA1c) and its stored unit / reference range. Unedited rows are
+    // written back unchanged on save.
+    const drafts: LabTestDraft[] = (rec.tests && rec.tests.length > 0 ? rec.tests : []).map((t, i) => {
+      const def = MASTER_LAB_TESTS.find((d) => d.id === t.id);
+      return {
+        key: `edit-${rec.id}-${i}`,
+        defId: def ? def.id : 'custom',
+        customName: def ? '' : (t.nameMm || t.nameEn || ''),
+        value: t.value !== null && t.value !== undefined ? String(t.value) : '',
+        unit: t.unit || def?.unit || '',
+        refMin: t.refMin !== undefined ? String(t.refMin) : (def?.defaultMin !== undefined ? String(def.defaultMin) : ''),
+        refMax: t.refMax !== undefined ? String(t.refMax) : (def?.defaultMax !== undefined ? String(def.defaultMax) : ''),
+        origId: t.id,
+        origCategory: t.category,
+        origCategoryLabelMm: t.categoryLabelMm,
+      };
+    });
+    setLabTests(drafts.length > 0 ? drafts : [blankLabDraft()]);
     setEditingRecord({ kind: 'lab', id: rec.id });
     setOpenRecordForm('lab');
   };
@@ -333,11 +401,11 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
     setMedEndDate(toDateOnly(m.endDate));
     setMedDoseTime(m.doseTime || '');
     setMedDoctor(m.prescribingDoctor || '');
-    setMedNotes(m.notes || '');
-    // The stored notes may already carry a "သောက်ရမည့်ရက်: N ရက်" prefix
-    // from a previous save; it stays inside the notes text and is not
-    // parsed back into the duration box.
-    setMedDuration('');
+    // v2.4.16 (C-H5): parse the duration back out of the notes prefix, so
+    // re-saving writes it exactly once instead of double-stamping it.
+    const parsed = parseDurationNotes(m.notes);
+    setMedDuration(parsed.durationDays);
+    setMedNotes(parsed.notes);
     setMedStatus(m.status);
     setEditingRecord({ kind: 'med', id: m.id });
     setOpenRecordForm('med');
@@ -352,7 +420,13 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
     setVaxStatus(status);
     // Completed: the date is when it was given. Scheduled: there is no
     // administered date — the picked date is the planned (next due) date.
-    setVaxDate(toDateTimeLocal(status === 'completed' ? (v.dateAdministered || v.nextDueDate) : v.nextDueDate));
+    // v2.4.16 (C-L5): a missing administered date is NEVER filled from
+    // nextDueDate — no invented date. The admin picks the real date.
+    setVaxDate(
+      status === 'completed'
+        ? (v.dateAdministered ? toDateTimeLocal(v.dateAdministered) : '')
+        : (v.nextDueDate ? toDateTimeLocal(v.nextDueDate) : '')
+    );
     setVaxNextDate(toDateOnly(v.nextDueDate));
     setVaxAdminBy(v.administeredBy || '');
     setVaxBatch(v.batchNumber || '');
@@ -369,6 +443,22 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
     setEditingRecord({ kind: 'bmi', id: b.id });
     setOpenRecordForm('bmi');
   };
+
+  const cleanName = getResolvedName(patient);
+
+  // --- Owner labels (v2.4.16, C-C2) ---
+  // The lists below are POOLED when an admin views a patient + their family
+  // members (isPooledView). Every row then carries its owner's name, so a
+  // child's readings are never presented as the patient's own data.
+  // (Defined before the list computations below, which use them.)
+  const ownerNameFor = (userId?: string, fallbackName?: string): string => {
+    if (!userId || userId === patient.id) return cleanName;
+    const member = familyMembers.find((f) => f.id === userId);
+    if (member) return member.name;
+    return fallbackName || 'မိသားစုဝင်';
+  };
+  const hasMultipleOwners = (ids: (string | undefined)[]): boolean =>
+    new Set(ids.filter(Boolean)).size > 1;
 
   const sortedUserBP = [...bpRecords].sort((a, b) => 
     parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
@@ -389,6 +479,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
     .slice(0, 5)
     .flatMap((rec) => {
       const date = rec.testDate || rec.recordedAt || rec.createdAt;
+      const owner = ownerNameFor(rec.userId, rec.userName || rec.patientName);
       if (rec.tests && rec.tests.length > 0) {
         return rec.tests.map((t) => ({
           key: `${rec.id}-${t.id}`,
@@ -397,11 +488,13 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
           value: t.value as number | null,
           unit: t.unit || '',
           date,
+          owner,
         }));
       }
-      return [{ key: rec.id, recordId: rec.id, name: rec.labName || 'ဓာတ်ခွဲစစ်ဆေးမှု', value: null as number | null, unit: '', date }];
+      return [{ key: rec.id, recordId: rec.id, name: rec.labName || 'ဓာတ်ခွဲစစ်ဆေးမှု', value: null as number | null, unit: '', date, owner }];
     })
     .slice(0, 5);
+  const labHasMultipleOwners = hasMultipleOwners(labRecords.map((r) => r.userId));
 
   // Latest 5 BMI records (newest first)
   const latestBMIHistory = [...bmiRecords]
@@ -454,7 +547,84 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
       ? calculateBMI(patient.weightKg, patient.heightCm)
       : null;
 
-  const cleanName = getResolvedName(patient);
+  // --- Single-record delete (v2.4.16, C-H3): Modal confirm, then the
+  // context delete. The confirm Modal lives at the bottom of the render.
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: RecordFormKind; id: string; label: string } | null>(null);
+  const [closeTargetId, setCloseTargetId] = useState<string | null>(null);
+  const handleDeleteRecord = async () => {
+    if (!deleteTarget) return;
+    const { kind, id, label } = deleteTarget;
+    setDeleteTarget(null);
+    try {
+      if (kind === 'bp') await deleteBPRecord(id);
+      else if (kind === 'sugar') await deleteGlucoseRecord(id);
+      else if (kind === 'lab') await deleteLabRecord(id);
+      else if (kind === 'med') await deleteMedication(id);
+      else if (kind === 'vaccine') await deleteVaccineRecord(id);
+      else await deleteBMIRecord(id);
+      setRecordMsg({ type: 'success', text: `“${label}” မှတ်တမ်းကို ဖျက်ပြီးပါပြီ။` });
+    } catch (err: any) {
+      setRecordMsg({ type: 'error', text: err?.message || 'မှတ်တမ်း ဖျက်ခြင်း မအောင်မြင်ပါ' });
+    }
+    setTimeout(() => setRecordMsg(null), 4000);
+  };
+
+  // --- Lab draft helpers (v2.4.16, C-H1 / C-H2) ---
+  const updateLabDraft = (key: string, patch: Partial<LabTestDraft>) =>
+    setLabTests((prev) => prev.map((d) => (d.key === key ? { ...d, ...patch } : d)));
+  // Picking a known test fills its unit + default reference range from the
+  // SAME vocabulary the patient form uses — incl. HbA1c (4.0–5.7 %) and
+  // PPBS. 'custom' leaves them for the admin to type.
+  const applyLabDef = (key: string, defId: string) => {
+    if (defId === 'custom' || !defId) {
+      updateLabDraft(key, { defId, customName: '', unit: '', refMin: '', refMax: '' });
+      return;
+    }
+    const def: LabTestDef | undefined = MASTER_LAB_TESTS.find((d) => d.id === defId);
+    if (!def) return;
+    updateLabDraft(key, {
+      defId,
+      customName: '',
+      unit: def.unit,
+      refMin: def.defaultMin !== undefined ? String(def.defaultMin) : '',
+      refMax: def.defaultMax !== undefined ? String(def.defaultMax) : '',
+    });
+  };
+  // Build the tests[] to save from the drafts: only rows with a real
+  // numeric value and a test name; every stored test keeps its identity.
+  const buildLabTests = (): RecordedLabItem[] | undefined => {
+    const built: RecordedLabItem[] = [];
+    labTests.forEach((draft, idx) => {
+      const def: LabTestDef | undefined = draft.defId && draft.defId !== 'custom'
+        ? MASTER_LAB_TESTS.find((d) => d.id === draft.defId)
+        : undefined;
+      const name = def ? def.nameMm : draft.customName.trim();
+      const rawVal = draft.value.trim();
+      if (!name || rawVal === '' || Number.isNaN(Number(rawVal))) return;
+      const val = Number(rawVal);
+      const refMin = draft.refMin.trim() !== '' ? Number(draft.refMin) : def?.defaultMin;
+      const refMax = draft.refMax.trim() !== '' ? Number(draft.refMax) : def?.defaultMax;
+      const evalRes = evaluateCustomLabValue(val, refMin, refMax);
+      built.push({
+        id: draft.origId || (def ? def.id : `custom-${Date.now()}-${idx}`),
+        nameMm: name,
+        nameEn: def ? def.nameEn : name,
+        category: def ? def.category : (draft.origCategory || 'general'),
+        categoryLabelMm: def ? def.categoryLabelMm : (draft.origCategoryLabelMm || 'အထွေထွေ'),
+        value: val,
+        unit: draft.unit.trim() || def?.unit || '',
+        refMin,
+        refMax,
+        refRangeText: refMin !== undefined && refMax !== undefined
+          ? `${refMin} - ${refMax}`
+          : (def?.defaultRefText || '-'),
+        isCustomRef: refMin !== def?.defaultMin || refMax !== def?.defaultMax,
+        status: evalRes.status,
+        statusLabelMm: evalRes.labelMm,
+      });
+    });
+    return built.length > 0 ? built : undefined;
+  };
 
   const handleAdviceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -481,11 +651,13 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         answeredBy: adminAnswerName,
         answerText: answerText.trim(),
         recommendations: recs.length > 0 ? recs : ['ဆရာဝန် ညွှန်ကြားချက်အတိုင်း ဆေးကို ဆက်လက်သောက်သုံးပါ'],
+        suggestedAction: answerSuggestedAction.trim() || undefined,
         answeredAt: new Date().toISOString(),
       });
       setAnsweringId(null);
       setAnswerText('');
       setAnswerRecs('');
+      setAnswerSuggestedAction('');
       setQaNotice('အဖြေကို အသုံးပြုသူထံ ပေးပို့ပြီးပါပြီ။');
       setTimeout(() => setQaNotice(null), 4000);
     } catch (err: any) {
@@ -496,7 +668,8 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   };
 
   const handleCloseQuestion = async (qId: string) => {
-    if (!window.confirm('ဤမေးခွန်းကို ပိတ်သိမ်းမှာသေချာပါသလား? အဖြေရပြီးဖြစ်ကြောင်း မှတ်သားပါမည်။')) return;
+    // Confirm via Modal (closeTargetId) — never window.confirm.
+    setCloseTargetId(null);
     try {
       await onCloseQuestion(qId);
       setQaNotice('မေးခွန်းကို ပိတ်သိမ်းပြီးပါပြီ။');
@@ -581,41 +754,16 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         if (!labName.trim()) {
           throw new Error('ဓာတ်ခွဲခန်း အမည် ဖြည့်ပါ');
         }
-        const testVal = labTestValue ? Number(labTestValue) : NaN;
-        let tests: LabTestRecord['tests'];
-        let notes: string | undefined;
-        if (labTestName.trim() && !Number.isNaN(testVal)) {
-          const refMin = labRefMin ? Number(labRefMin) : undefined;
-          const refMax = labRefMax ? Number(labRefMax) : undefined;
-          // Status comes from the shared helper: with a reference range it
-          // is a real low/normal/high assessment; without one it is just
-          // "Recorded", never an invented normal result.
-          const evalRes = evaluateCustomLabValue(testVal, refMin, refMax);
-          tests = [{
-            id: 'custom-' + Date.now(),
-            nameMm: labTestName.trim(),
-            nameEn: labTestName.trim(),
-            category: 'general',
-            categoryLabelMm: 'အထွေထွေ',
-            value: testVal,
-            unit: labTestUnit.trim(),
-            refMin,
-            refMax,
-            refRangeText: refMin !== undefined && refMax !== undefined ? `${refMin} - ${refMax}` : '-',
-            isCustomRef: refMin !== undefined || refMax !== undefined,
-            status: evalRes.status,
-            statusLabelMm: evalRes.labelMm,
-          }];
-        } else if (labTestName.trim()) {
-          notes = `စစ်ဆေးချက်: ${labTestName.trim()}${labTestValue ? ` = ${labTestValue} ${labTestUnit.trim()}` : ''}`;
-        }
-        // Edit mode with no test typed in: keep the record's existing tests
-        // — editing the lab name/notes must not wipe the saved results.
+        // v2.4.16 (C-H1 / C-H2): tests come from the draft list — same
+        // vocabulary + type-dependent ranges as the patient form. A draft
+        // row with no value is skipped; in edit mode, clearing every row
+        // keeps the stored tests instead of wiping the record.
+        let tests = buildLabTests();
         if (isEditing && !tests) {
           const existing = labRecords.find((x) => x.id === editingRecord!.id);
           if (existing?.tests) tests = existing.tests;
         }
-        const labNotesValue = labNotes.trim() || notes;
+        const labNotesValue = labNotes.trim() || undefined;
         if (isEditing) {
           await updateLabRecord(editingRecord!.id, {
             testDate: labDate,
@@ -665,10 +813,12 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             status: medStatus,
           });
         } else {
+          // v2.4.16 (C-L6): the status picker applies in ADD mode too — the
+          // old code hardcoded 'active' here and ignored the picker.
           await addMedication({
             userId: patient.id,
             ...payload,
-            status: 'active',
+            status: medStatus,
           });
         }
       } else if (kind === 'vaccine') {
@@ -779,6 +929,9 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               {patientBMI && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${patientBMI.bgColor} ${patientBMI.color} ${patientBMI.borderColor}`}>
                   BMI: {patientBMI.bmi} ({patientBMI.labelMm})
+                  {/* D-L3: the badge shows WHEN the BMI was measured — a
+                      value without its date cannot be trusted. */}
+                  {latestPatientBMI?.date ? ` • ${latestPatientBMI.date.slice(0, 10)}` : ''}
                 </span>
               )}
             </div>
@@ -962,20 +1115,62 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         )}
 
         {openRecordForm === 'lab' && (
-          <form onSubmit={(e) => { e.preventDefault(); submitRecord('lab'); }} className="grid grid-cols-2 gap-2">
-            <input type="text" required placeholder="ဓာတ်ခွဲခန်း အမည် * (ဥပမာ- ABC Lab)" value={labName} onChange={(e) => setLabName(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <input type="datetime-local" required value={labDate} onChange={(e) => setLabDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <input type="text" placeholder="စစ်ဆေးချက် အမည် (ဥပမာ- FBS)" value={labTestName} onChange={(e) => setLabTestName(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <input type="number" step="any" placeholder="ရလဒ် တန်ဖိုး" value={labTestValue} onChange={(e) => setLabTestValue(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <input type="text" placeholder="ယူနစ် (ဥပမာ- mg/dL)" value={labTestUnit} onChange={(e) => setLabTestUnit(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <div className="flex gap-2">
-              <input type="number" step="any" placeholder="စံသတ်မှတ်ချက် အနိမ့်ဆုံး" value={labRefMin} onChange={(e) => setLabRefMin(e.target.value)} className="w-1/2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-              <input type="number" step="any" placeholder="အမြင့်ဆုံး" value={labRefMax} onChange={(e) => setLabRefMax(e.target.value)} className="w-1/2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+          <form onSubmit={(e) => { e.preventDefault(); submitRecord('lab'); }} className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <input type="text" required placeholder="ဓာတ်ခွဲခန်း အမည် * (ဥပမာ- ABC Lab)" value={labName} onChange={(e) => setLabName(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+              <input type="datetime-local" required value={labDate} onChange={(e) => setLabDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             </div>
-            <p className="col-span-2 text-[11px] text-slate-400">စံသတ်မှတ်ချက် ဖြည့်ရင် ရလဒ်ကို အနိမ့်/ပုံမှန်/မြင့် လို့ အကဲဖြတ်ပြပါမည်။ မဖြည့်ရင် "မှတ်တမ်းတင်ထားသည်" လို့သာ ပြပါမည်။</p>
-            <textarea rows={2} placeholder="မှတ်ချက် (မဖြည့်လည်းရသည်)" value={labNotes} onChange={(e) => setLabNotes(e.target.value)} className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <textarea rows={2} placeholder="ဆရာဝန်၏ သုံးသပ်ချက် (မဖြည့်လည်းရသည်)" value={labDoctorReview} onChange={(e) => setLabDoctorReview(e.target.value)} className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <div className="col-span-2 flex justify-end">
+            <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+              စစ်ဆေးချက်များ — အသုံးပြုသူဘက်က သုံးတဲ့ စစ်ဆေးချက် စာရင်းအတိုင်းပါ (HbA1c၊ အစာစားပြီး သွေးချို PPBS အပါအဝင်)။ တန်ဖိုး မဖြည့်ထားတဲ့ အတန်းကို မသိမ်းပါ။
+            </p>
+            {labTests.map((draft) => (
+              <div key={draft.key} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={draft.defId}
+                    onChange={(e) => applyLabDef(draft.key, e.target.value)}
+                    className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold"
+                  >
+                    <option value="">စစ်ဆေးချက် ရွေးပါ</option>
+                    {MASTER_LAB_TESTS.map((d) => (
+                      <option key={d.id} value={d.id}>{d.nameMm} ({d.unit})</option>
+                    ))}
+                    <option value="custom">အခြား (စာရိုက်ထည့်မည်)</option>
+                  </select>
+                  <input type="number" step="any" placeholder="ရလဒ် တန်ဖိုး" value={draft.value} onChange={(e) => updateLabDraft(draft.key, { value: e.target.value })} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+                </div>
+                {draft.defId === 'custom' && (
+                  <input type="text" placeholder="စစ်ဆေးချက် အမည် (ဥပမာ- Vitamin D)" value={draft.customName} onChange={(e) => updateLabDraft(draft.key, { customName: e.target.value })} className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+                )}
+                <div className="grid grid-cols-3 gap-2">
+                  <input type="text" placeholder="ယူနစ် (ဥပမာ- mg/dL)" value={draft.unit} onChange={(e) => updateLabDraft(draft.key, { unit: e.target.value })} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+                  <input type="number" step="any" placeholder="စံ အနိမ့်ဆုံး" value={draft.refMin} onChange={(e) => updateLabDraft(draft.key, { refMin: e.target.value })} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+                  <input type="number" step="any" placeholder="စံ အမြင့်ဆုံး" value={draft.refMax} onChange={(e) => updateLabDraft(draft.key, { refMax: e.target.value })} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+                </div>
+                {labTests.length > 1 && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setLabTests((prev) => prev.filter((d) => d.key !== draft.key))}
+                      className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                    >
+                      ✕ ဤစစ်ဆေးချက် ဖြုတ်မည်
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setLabTests((prev) => [...prev, blankLabDraft()])}
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+            >
+              + နောက်ထပ် စစ်ဆေးချက် ထည့်မည်
+            </button>
+            <p className="text-[11px] text-slate-400">စံသတ်မှတ်ချက် ဖြည့်ရင် ရလဒ်ကို အနိမ့်/ပုံမှန်/မြင့် လို့ အကဲဖြတ်ပြပါမည်။ မဖြည့်ရင် စစ်ဆေးချက်ရဲ့ ပုံသေစံသတ်မှတ်ချက် (ဥပမာ HbA1c 4.0–5.7 %) ကို သုံးပါမည်။</p>
+            <textarea rows={2} placeholder="မှတ်ချက် (မဖြည့်လည်းရသည်)" value={labNotes} onChange={(e) => setLabNotes(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <textarea rows={2} placeholder="ဆရာဝန်၏ သုံးသပ်ချက် (မဖြည့်လည်းရသည်)" value={labDoctorReview} onChange={(e) => setLabDoctorReview(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <div className="flex justify-end">
               <button type="submit" disabled={recordSaving} className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer disabled:opacity-50">
                 {recordSaving ? (editingRecord?.kind === 'lab' ? 'သိမ်းဆည်းနေသည်...' : 'ထည့်နေသည်...') : (editingRecord?.kind === 'lab' ? 'သိမ်းဆည်းမည်' : 'ဓာတ်ခွဲခန်း မှတ်တမ်း ထည့်မည်')}
               </button>
@@ -1022,7 +1217,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             <input type="text" placeholder="ကာကွယ်သော ရောဂါ (ဥပမာ- တုပ်ကွေး)" value={vaxDisease} onChange={(e) => setVaxDisease(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" min={1} placeholder="အကြိမ် (ဥပမာ- 1)" value={vaxDose} onChange={(e) => setVaxDose(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" min={1} placeholder="စုစုပေါင်း အကြိမ် (ဥပမာ- 1)" value={vaxTotal} onChange={(e) => setVaxTotal(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <input type="datetime-local" required value={vaxDate} onChange={(e) => setVaxDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="datetime-local" value={vaxDate} onChange={(e) => setVaxDate(e.target.value)} title="ထိုးပြီးသား — ထိုးသည့်ရက် / ထိုးရန် စီစဉ်ထား — ထိုးရမည့်ရက်။ မသိရင် ဗလာထားပါ — ရက်စွဲ အတု မထည့်ပါနှင့်" className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <select value={vaxCategory} onChange={(e) => setVaxCategory(e.target.value as 'adult' | 'child' | 'travel')} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold">
               <option value="adult">လူကြီး</option>
               <option value="child">ကလေး</option>
@@ -1082,6 +1277,15 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                   <Edit3 className="w-3 h-3" />
                   <span>ပြင်ဆင်မည်</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget({ kind: 'bp', id: latestBP.id, label: `သွေးပေါင်ချိန် ${latestBP.systolic}/${latestBP.diastolic}` })}
+                  className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+                  title="မှတ်တမ်း ဖျက်မည်"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>ဖျက်မည်</span>
+                </button>
               </div>
             )}
           </div>
@@ -1094,6 +1298,11 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                 <span className="text-xs text-slate-400">mmHg</span>
                 <span className="text-xs text-slate-400 ml-auto">Pulse: {latestBP.pulse || latestBP.pulseRate || '-'} bpm</span>
               </div>
+              {hasMultipleOwners(sortedUserBP.map((r) => r.userId)) && (
+                <p className="text-[11px] text-slate-500 mt-1">
+                  ပိုင်ရှင်: <strong className="text-slate-700 dark:text-slate-300">{ownerNameFor(latestBP.userId, latestBP.userName || latestBP.patientName)}</strong>
+                </p>
+              )}
               {(() => {
                 const cat = calculateBPCategory(latestBP.systolic, latestBP.diastolic);
                 return (
@@ -1130,6 +1339,15 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                   <Edit3 className="w-3 h-3" />
                   <span>ပြင်ဆင်မည်</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget({ kind: 'sugar', id: latestGlucose.id, label: `သွေးချို ${latestGlucose.glucoseValue || latestGlucose.value}` })}
+                  className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+                  title="မှတ်တမ်း ဖျက်မည်"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>ဖျက်မည်</span>
+                </button>
               </div>
             )}
           </div>
@@ -1142,6 +1360,11 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                 <span className="text-xs text-slate-400">mg/dL</span>
                 <span className="text-xs text-slate-400 ml-auto">({latestGlucose.type || latestGlucose.timing || 'random'})</span>
               </div>
+              {hasMultipleOwners(sortedUserGlu.map((r) => r.userId)) && (
+                <p className="text-[11px] text-slate-500 mt-1">
+                  ပိုင်ရှင်: <strong className="text-slate-700 dark:text-slate-300">{ownerNameFor(latestGlucose.userId, latestGlucose.userName || latestGlucose.patientName)}</strong>
+                </p>
+              )}
               {(() => {
                 const gluVal = latestGlucose.glucoseValue || latestGlucose.value || 0;
                 const gluType = latestGlucose.type || latestGlucose.timing || 'fasting';
@@ -1161,12 +1384,85 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         </div>
       </div>
 
+      {/* Full BP / Glucose history (v2.4.16, C-H4) — every row editable,
+          not just the latest. The old detail page showed only the latest
+          value with an edit button, so older records could never be fixed. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-rose-500" />
+            <span>သွေးပေါင်ချိန် မှတ်တမ်းအားလုံး ({sortedUserBP.length} ကြိမ်) — အချိန်အားလုံး</span>
+          </h3>
+          {isPooledView && hasMultipleOwners(sortedUserBP.map((r) => r.userId)) && (
+            <p className="text-[11px] text-slate-500 mb-2">အသုံးပြုသူနှင့် မိသားစုဝင်များ၏ မှတ်တမ်းများ ရောပါဝင်ပါသည် — ပိုင်ရှင်ကို အတန်းတိုင်းတွင် ပြထားသည်။</p>
+          )}
+          {sortedUserBP.length > 0 ? (
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {[...sortedUserBP].reverse().map((r) => (
+                <div key={r.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-slate-900 dark:text-white text-sm">
+                      {r.systolic}/{r.diastolic} <span className="text-[11px] font-semibold text-slate-400">mmHg</span>
+                      {r.pulse || r.pulseRate ? <span className="text-[11px] font-semibold text-slate-400"> • Pulse {r.pulse || r.pulseRate} bpm</span> : ''}
+                    </p>
+                    <p className="text-slate-500 mt-0.5">
+                      {showRecordDateTime(r.date || r.timestamp || r.createdAt)}
+                      {hasMultipleOwners(sortedUserBP.map((x) => x.userId)) ? ` • ${ownerNameFor(r.userId, r.userName || r.patientName)}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button type="button" onClick={() => startEditBp(r)} className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 hover:underline cursor-pointer whitespace-nowrap" title="သွေးပေါင်ချိန် မှတ်တမ်း ပြင်ဆင်မည်">✏️ ပြင်ဆင်မည်</button>
+                    <button type="button" onClick={() => setDeleteTarget({ kind: 'bp', id: r.id, label: `သွေးပေါင်ချိန် ${r.systolic}/${r.diastolic}` })} className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer whitespace-nowrap" title="မှတ်တမ်း ဖျက်မည်">🗑️ ဖျက်မည်</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 py-3">သွေးပေါင်ချိန် မှတ်တမ်း မရှိသေးပါ</p>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+            <Droplets className="w-4 h-4 text-emerald-500" />
+            <span>သွေးချို မှတ်တမ်းအားလုံး ({sortedUserGlu.length} ကြိမ်) — အချိန်အားလုံး</span>
+          </h3>
+          {isPooledView && hasMultipleOwners(sortedUserGlu.map((r) => r.userId)) && (
+            <p className="text-[11px] text-slate-500 mb-2">အသုံးပြုသူနှင့် မိသားစုဝင်များ၏ မှတ်တမ်းများ ရောပါဝင်ပါသည် — ပိုင်ရှင်ကို အတန်းတိုင်းတွင် ပြထားသည်။</p>
+          )}
+          {sortedUserGlu.length > 0 ? (
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {[...sortedUserGlu].reverse().map((r) => (
+                <div key={r.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-slate-900 dark:text-white text-sm">
+                      {r.glucoseValue || r.value} <span className="text-[11px] font-semibold text-slate-400">mg/dL</span>
+                      <span className="text-[11px] font-semibold text-slate-400"> ({r.type || r.timing || 'random'})</span>
+                    </p>
+                    <p className="text-slate-500 mt-0.5">
+                      {showRecordDateTime(r.date || r.timestamp || r.createdAt)}
+                      {hasMultipleOwners(sortedUserGlu.map((x) => x.userId)) ? ` • ${ownerNameFor(r.userId, r.userName || r.patientName)}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button type="button" onClick={() => startEditSugar(r)} className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 hover:underline cursor-pointer whitespace-nowrap" title="သွေးချို မှတ်တမ်း ပြင်ဆင်မည်">✏️ ပြင်ဆင်မည်</button>
+                    <button type="button" onClick={() => setDeleteTarget({ kind: 'sugar', id: r.id, label: `သွေးချို ${r.glucoseValue || r.value}` })} className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer whitespace-nowrap" title="မှတ်တမ်း ဖျက်မည်">🗑️ ဖျက်မည်</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 py-3">သွေးချို မှတ်တမ်း မရှိသေးပါ</p>
+          )}
+        </div>
+      </div>
+
       {/* Interactive Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
             <Activity className="w-4 h-4 text-rose-500" />
-            <span>သွေးပေါင်ချိန် ပြောင်းလဲမှု ဂရပ်</span>
+            <span>သွေးပေါင်ချိန် ပြောင်းလဲမှု ဂရပ် (အချိန်အားလုံး)</span>
           </h3>
           <BloodPressureChart records={sortedUserBP} />
         </div>
@@ -1174,7 +1470,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
             <Droplets className="w-4 h-4 text-emerald-500" />
-            <span>သွေးချို ပြောင်းလဲမှု ဂရပ်</span>
+            <span>သွေးချို ပြောင်းလဲမှု ဂရပ် (အချိန်အားလုံး)</span>
           </h3>
           <BloodSugarChart records={sortedUserGlu} />
         </div>
@@ -1187,21 +1483,26 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             <FlaskConical className="w-4 h-4 text-sky-500" />
             <span>ဓာတ်ခွဲခန်း စစ်ဆေးချက်များ (နောက်ဆုံး ၅ ခု)</span>
           </h3>
+          {labHasMultipleOwners && (
+            <p className="text-[11px] text-slate-500 mb-2">အသုံးပြုသူနှင့် မိသားစုဝင်များ၏ မှတ်တမ်းများ ရောပါဝင်ပါသည် — ပိုင်ရှင်ကို အတန်းတိုင်းတွင် ပြထားသည်။</p>
+          )}
           {latestLabItems.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500">
                     <th className="text-left font-semibold py-2 pr-2">စစ်ဆေးချက်</th>
+                    {labHasMultipleOwners && <th className="text-left font-semibold py-2 pr-2">ပိုင်ရှင်</th>}
                     <th className="text-left font-semibold py-2 pr-2">တန်ဖိုး</th>
                     <th className="text-left font-semibold py-2 pr-2">ရက်စွဲ</th>
-                    <th className="py-2" aria-label="ပြင်ဆင်မည်" />
+                    <th className="py-2" aria-label="ပြင်ဆင်မည် / ဖျက်မည်" />
                   </tr>
                 </thead>
                 <tbody>
                   {latestLabItems.map((item) => (
                     <tr key={item.key} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="py-2 pr-2 font-semibold text-slate-800 dark:text-slate-200">{item.name}</td>
+                      {labHasMultipleOwners && <td className="py-2 pr-2 text-slate-500">{item.owner}</td>}
                       <td className="py-2 pr-2 text-slate-800 dark:text-slate-200">
                         {item.value !== null ? (
                           <span className="font-bold">{item.value} <span className="text-slate-400 font-semibold">{item.unit}</span></span>
@@ -1210,7 +1511,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                         )}
                       </td>
                       <td className="py-2 pr-2 text-slate-500">{showRecordDateTime(item.date)}</td>
-                      <td className="py-2 text-right">
+                      <td className="py-2 text-right whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => startEditLab(item.recordId)}
@@ -1218,6 +1519,15 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                           title="ဓာတ်ခွဲခန်း မှတ်တမ်း ပြင်ဆင်မည်"
                         >
                           ✏️ ပြင်ဆင်မည်
+                        </button>
+                        {' • '}
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget({ kind: 'lab', id: item.recordId, label: `ဓာတ်ခွဲခန်း မှတ်တမ်း (${item.name})` })}
+                          className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer whitespace-nowrap"
+                          title="ဓာတ်ခွဲခန်း မှတ်တမ်း ဖျက်မည် — မှတ်တမ်းထဲက စစ်ဆေးချက် အားလုံး ဖျက်ပါမည်"
+                        >
+                          🗑️ ဖျက်မည်
                         </button>
                       </td>
                     </tr>
@@ -1245,6 +1555,11 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                       {m.dosage || '—'} • {m.frequency || '—'}
                       {m.prescribedFor ? ` • ${m.prescribedFor}` : ''}
                     </p>
+                    {hasMultipleOwners(medications.map((x) => x.userId)) && (
+                      <p className="text-slate-500 mt-0.5">
+                        ပိုင်ရှင်: <strong className="text-slate-700 dark:text-slate-300">{ownerNameFor(m.userId, m.userName || m.patientName)}</strong>
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1263,6 +1578,14 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                       title="ဆေးမှတ်တမ်း ပြင်ဆင်မည်"
                     >
                       ✏️ ပြင်ဆင်မည်
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget({ kind: 'med', id: m.id, label: `ဆေး ${m.name}` })}
+                      className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer whitespace-nowrap"
+                      title="ဆေးမှတ်တမ်း ဖျက်မည်"
+                    >
+                      🗑️ ဖျက်မည်
                     </button>
                   </div>
                 </div>
@@ -1295,10 +1618,19 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                       <p className="text-slate-500 mt-0.5">
                         {v.targetDisease || ''}{v.doseNumber && v.totalDoses ? ` • အကြိမ် ${v.doseNumber}/${v.totalDoses}` : ''}
                       </p>
+                      {hasMultipleOwners(vaccineRecords.map((x) => x.userId)) && (
+                        <p className="text-slate-500 mt-0.5">
+                          ပိုင်ရှင်: <strong className="text-slate-700 dark:text-slate-300">{ownerNameFor(v.userId, v.patientName)}</strong>
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-slate-500 font-semibold">
-                        {showRecordDateTime(v.dateAdministered)}
+                        {v.dateAdministered
+                          ? showRecordDateTime(v.dateAdministered)
+                          : v.nextDueDate
+                            ? `ထိုးရန်: ${v.nextDueDate.slice(0, 10)}`
+                            : 'ရက်စွဲ မရှိပါ'}
                       </span>
                       <button
                         type="button"
@@ -1307,6 +1639,14 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                         title="ကာကွယ်ဆေး မှတ်တမ်း ပြင်ဆင်မည်"
                       >
                         ✏️ ပြင်ဆင်မည်
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget({ kind: 'vaccine', id: v.id, label: `ကာကွယ်ဆေး ${v.vaccineName}` })}
+                        className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer whitespace-nowrap"
+                        title="ကာကွယ်ဆေး မှတ်တမ်း ဖျက်မည်"
+                      >
+                        🗑️ ဖျက်မည်
                       </button>
                     </div>
                   </div>
@@ -1326,10 +1666,17 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             <div className="space-y-2">
               {latestBMIHistory.map((b) => (
                 <div key={b.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs flex items-center justify-between gap-2">
-                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">BMI {b.bmi}</span>
-                  <span className="text-slate-500">
-                    {b.weightKg ? `${b.weightKg} kg` : ''}{b.weightKg && b.heightCm ? ' • ' : ''}{b.heightCm ? `${b.heightCm} cm` : ''}
-                  </span>
+                  <div className="min-w-0">
+                    <span className="font-extrabold text-slate-900 dark:text-white text-sm">BMI {b.bmi}</span>
+                    <span className="text-slate-500 ml-2">
+                      {b.weightKg ? `${b.weightKg} kg` : ''}{b.weightKg && b.heightCm ? ' • ' : ''}{b.heightCm ? `${b.heightCm} cm` : ''}
+                    </span>
+                    {hasMultipleOwners(bmiRecords.map((x) => x.userId)) && (
+                      <p className="text-slate-500 mt-0.5">
+                        ပိုင်ရှင်: <strong className="text-slate-700 dark:text-slate-300">{ownerNameFor(b.userId, b.userName || b.patientName)}</strong>
+                      </p>
+                    )}
+                  </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <span className="text-slate-400">
                       {showRecordDateTime(b.date || b.timestamp || b.createdAt)}
@@ -1341,6 +1688,14 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                       title="BMI မှတ်တမ်း ပြင်ဆင်မည်"
                     >
                       ✏️ ပြင်ဆင်မည်
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget({ kind: 'bmi', id: b.id, label: `BMI ${b.bmi}` })}
+                      className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer whitespace-nowrap"
+                      title="BMI မှတ်တမ်း ဖျက်မည်"
+                    >
+                      🗑️ ဖျက်မည်
                     </button>
                   </div>
                 </div>
@@ -1367,15 +1722,28 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         {doctorQuestions.length > 0 ? (
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {[...doctorQuestions]
-              .sort((a, b) => parseDateToMs(b.createdAt) - parseDateToMs(a.createdAt))
+              // Urgent pending first, then newest — an urgent question must
+              // never sit buried under routine ones (C-M5).
+              .sort((a, b) => {
+                const rank = (q: DoctorQuestion) =>
+                  q.status === 'pending' ? (q.urgency === 'urgent' ? 0 : q.urgency === 'moderate' ? 1 : 2) : 3;
+                return rank(a) - rank(b) || parseDateToMs(b.createdAt) - parseDateToMs(a.createdAt);
+              })
               .map((q) => (
                 <div key={q.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-bold text-slate-900 dark:text-white">{q.title}</p>
                     <span className="text-[11px] text-slate-400 shrink-0">
-                      {q.createdAt ? new Date(q.createdAt).toLocaleDateString('my-MM') : ''}
+                      {formatMmDate(q.createdAt)}
                     </span>
                   </div>
+                  {/* D-M2: WHO asked — a family member's question is answered
+                      here too, and it must never look like the patient's. */}
+                  {hasMultipleOwners(doctorQuestions.map((x) => x.userId)) && (
+                    <p className="text-[11px] text-slate-500">
+                      မေးမြန်းသူ: <strong className="text-slate-700 dark:text-slate-300">{ownerNameFor(q.userId, q.patientName)}</strong>
+                    </p>
+                  )}
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       q.status === 'answered'
@@ -1406,16 +1774,21 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[11px] text-slate-500">
                           ဖြေကြားသူ: <strong className="text-slate-700 dark:text-slate-300">{q.doctorAnswer.answeredBy}</strong>
-                          {q.doctorAnswer.answeredAt ? ` • ${new Date(q.doctorAnswer.answeredAt).toLocaleDateString('my-MM')}` : ''}
+                          {q.doctorAnswer.answeredAt ? ` • ${formatMmDate(q.doctorAnswer.answeredAt)}` : ''}
                         </p>
                         <button
                           type="button"
-                          onClick={() => handleCloseQuestion(q.id)}
+                          onClick={() => setCloseTargetId(q.id)}
                           className="text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer shrink-0"
                         >
                           ပိတ်သိမ်းမည်
                         </button>
                       </div>
+                      {q.doctorAnswer.suggestedAction && (
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg p-2">
+                          <span className="font-bold">နောက်ထပ်လုပ်ဆောင်ရန်: </span>{q.doctorAnswer.suggestedAction}
+                        </p>
+                      )}
                     </div>
                   ) : q.status === 'closed' ? (
                     <p className="text-slate-500 font-semibold">ပိတ်သိမ်းပြီး</p>
@@ -1435,6 +1808,13 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                         onChange={(e) => setAnswerRecs(e.target.value)}
                         className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                       />
+                      <input
+                        type="text"
+                        placeholder="နောက်ထပ်လုပ်ဆောင်ရန် (ဥပမာ- ၁ ပတ်အတွင်း ဆေးခန်းပြန်ပြပါ — မဖြည့်လည်းရသည်)"
+                        value={answerSuggestedAction}
+                        onChange={(e) => setAnswerSuggestedAction(e.target.value)}
+                        className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                      />
                       <p className="text-[11px] text-slate-500">
                         ဖြေကြားသူ: <strong>{adminAnswerName}</strong> အဖြစ် ပေးပို့ပါမည်။
                       </p>
@@ -1444,7 +1824,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => { setAnsweringId(null); setAnswerText(''); setAnswerRecs(''); setAnswerError(null); }}
+                          onClick={() => { setAnsweringId(null); setAnswerText(''); setAnswerRecs(''); setAnswerSuggestedAction(''); setAnswerError(null); }}
                           className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold cursor-pointer"
                         >
                           ပယ်ဖျက်မည်
@@ -1463,7 +1843,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => { setAnsweringId(q.id); setAnswerText(''); setAnswerRecs(''); setAnswerError(null); }}
+                      onClick={() => { setAnsweringId(q.id); setAnswerText(''); setAnswerRecs(''); setAnswerSuggestedAction(''); setAnswerError(null); }}
                       className="text-xs font-bold text-indigo-700 dark:text-indigo-400 hover:underline flex items-center gap-1.5 cursor-pointer"
                     >
                       <Stethoscope className="w-4 h-4" />
@@ -1503,6 +1883,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             </div>
             <p className="text-[11px] text-slate-400 mt-2">
               နောက်ဆုံး ရက် ၃၀ အတွင်း သောက်ရမည့် အကြိမ်ရေ {adherenceExpected} ကြိမ် ထဲမှ {adherenceTaken} ကြိမ် သောက်ပြီးပါပြီ
+              {isPooledView && hasMultipleOwners(medications.map((m) => m.userId)) ? ' — ဤတွက်ချက်မှုတွင် အသုံးပြုသူနှင့် မိသားစုဝင်များအားလုံး၏ ဆေးများ ပါဝင်ပါသည်' : ''}
             </p>
           </div>
         ) : (
@@ -1586,7 +1967,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                 <div key={a.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
                   <div className="flex items-center justify-between text-[11px] text-slate-500 font-bold">
                     <span>ဆရာဝန်: {a.doctorName || 'Admin ဆရာဝန်'}</span>
-                    <span>{a.date || (a.createdAt ? new Date(a.createdAt).toLocaleDateString('my-MM') : '')}</span>
+                    <span>{a.date || formatMmDate(a.createdAt)}</span>
                   </div>
                   <p className="text-slate-800 dark:text-slate-200">{a.advice}</p>
                   {a.dietRecommendation && (
@@ -1600,6 +1981,67 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
           </div>
         )}
       </div>
+
+      {/* Single-record delete confirm (C-H3) — Modal, never window.confirm */}
+      <Modal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        size="sm"
+        title="မှတ်တမ်း ဖျက်မည်"
+      >
+        <div className="p-5 space-y-4 text-xs">
+          <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+            “{deleteTarget?.label}” မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။
+            {deleteTarget?.kind === 'lab' ? ' ဓာတ်ခွဲခန်း မှတ်တမ်းတစ်ခုလုံးနှင့် ၎င်းထဲက စစ်ဆေးချက် အားလုံး ဖျက်ပါမည်။' : ''}
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
+            >
+              မလုပ်တော့ပါ
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteRecord}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer"
+            >
+              ဖျက်မည်
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Close-question confirm — Modal, never window.confirm */}
+      <Modal
+        isOpen={closeTargetId !== null}
+        onClose={() => setCloseTargetId(null)}
+        size="sm"
+        title="မေးခွန်း ပိတ်သိမ်းမည်"
+      >
+        <div className="p-5 space-y-4 text-xs">
+          <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+            ဤမေးခွန်းကို ပိတ်သိမ်းမှာသေချာပါသလား? အဖြေရပြီးဖြစ်ကြောင်း မှတ်သားပါမည်။
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setCloseTargetId(null)}
+              className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
+            >
+              မလုပ်တော့ပါ
+            </button>
+            <button
+              type="button"
+              onClick={() => { if (closeTargetId) handleCloseQuestion(closeTargetId); }}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer"
+            >
+              ပိတ်သိမ်းမည်
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

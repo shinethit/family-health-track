@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserPlus, Heart, Sparkles, AlertCircle } from 'lucide-react';
 import { Modal } from '../../common/Modal';
+import { useHealthData } from '../../../context/HealthDataContext';
 import { ftInToCm, cmToFtIn, lbToKg, kgToLb } from '../../../lib/medicalCalculations';
 
 // v2.4.12 — height/weight unit options (kg/lb, cm/m/ft-in). Values are
@@ -17,6 +18,7 @@ interface AdminAddPatientModalProps {
     email?: string;
     phone?: string;
     age?: number;
+    dateOfBirth?: string;
     gender?: 'male' | 'female' | 'other';
     chronicConditions: string[];
     heightCm?: number;
@@ -30,10 +32,14 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const { patientsList } = useHealthData();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [age, setAge] = useState<number | string>('');
+  // v2.4.16 (C-L10): the add form had no date of birth — only an age box.
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
   const [conditions, setConditions] = useState<string[]>([]);
   const [height, setHeight] = useState<number | string>('');
@@ -92,6 +98,7 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
     setEmail('');
     setPhone('');
     setAge('');
+    setDateOfBirth('');
     setGender('');
     setConditions([]);
     setHeight('');
@@ -115,6 +122,19 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    // v2.4.16 (C-H6): refuse an email that already belongs to another user.
+    const trimmedEmail = email.trim();
+    if (trimmedEmail) {
+      const clash = patientsList.find(
+        (p) => (p.email || '').trim().toLowerCase() === trimmedEmail.toLowerCase()
+      );
+      if (clash) {
+        setSaveError(
+          `ဤအီးမေးလ် (${trimmedEmail}) ကို အခြားအသုံးပြုသူ "${clash.displayName || clash.email}" က သုံးထားပြီးဖြစ်ပါသည် — အခြားအီးမေးလ် သုံးပါ။`
+        );
+        return;
+      }
+    }
     setIsSubmitting(true);
     setSaveError(null);
     try {
@@ -125,9 +145,10 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
       const weightKg = resolveWeightKg();
       await onSave({
         displayName: name.trim(),
-        email: email.trim() || undefined,
+        email: trimmedEmail || undefined,
         phone: phone.trim() || undefined,
         age: age === '' ? undefined : Number(age),
+        dateOfBirth: dateOfBirth || undefined,
         gender: gender || undefined,
         chronicConditions: conditions,
         heightCm: heightCm > 0 ? Math.round(heightCm * 10) / 10 : undefined,
@@ -223,6 +244,19 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
               type="number"
               value={age}
               onChange={(e) => setAge(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="add-patient-dob" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              မွေးသက္ကရာဇ် (ရွေးချယ်ရန်)
+            </label>
+            <input
+              id="add-patient-dob"
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:outline-hidden"
             />
           </div>

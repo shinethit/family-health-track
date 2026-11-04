@@ -5,6 +5,16 @@ import { useAuth } from '../../context/AuthContext';
 import { UserProfile, DoctorAnswer } from '../../types/health';
 import { EditPatientModal } from './EditPatientModal';
 import { DeletePatientModal } from './DeletePatientModal';
+
+// Hardcoded Myanmar month names — never toLocaleDateString('my-MM'): the
+// user's phone may lack the 'my-MM' locale and fall back to English (D-M4).
+const MM_MONTHS = ['ဇန်နဝါရီ', 'ဖေဖော်ဝါရီ', 'မတ်', 'ဧပြီ', 'မေ', 'ဇွန်', 'ဇူလိုင်', 'ဩဂုတ်', 'စက်တင်ဘာ', 'အောက်တိုဘာ', 'နိုဝင်ဘာ', 'ဒီဇင်ဘာ'];
+const formatMmDate = (value?: string): string => {
+  if (!value) return 'ရက်စွဲ မရှိပါ';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'ရက်စွဲ မရှိပါ';
+  return `${d.getFullYear()} ခုနှစ် ${MM_MONTHS[d.getMonth()]} ${d.getDate()} ရက်`;
+};
 import { AdminQuotaBanner } from './admin/AdminQuotaBanner';
 import { AdminDataRepair } from './admin/AdminDataRepair';
 import { AdminRoleManager } from './admin/AdminRoleManager';
@@ -46,6 +56,7 @@ export const AdminPatientPortal: React.FC = () => {
     selectedPatientId, 
     setSelectedPatientId, 
     selectedPatient,
+    familyMembers,
     bpRecords,
     glucoseRecords,
     labRecords,
@@ -215,6 +226,7 @@ export const AdminPatientPortal: React.FC = () => {
     email?: string;
     phone?: string;
     age?: number;
+    dateOfBirth?: string;
     gender?: 'male' | 'female' | 'other';
     chronicConditions: string[];
     heightCm?: number;
@@ -312,6 +324,20 @@ export const AdminPatientPortal: React.FC = () => {
   const pendingQuestions = [...doctorQuestions]
     .filter((q) => q.status === 'pending')
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // v2.4.16 (C-M1 / D-M2): a question's userId is the ASKER — which may be
+  // a family member's doc id, not a patient id. The old code looked the
+  // asker up in patientsList only, so a family member's pending question
+  // had no owner and no working "ကြည့်ပြီး ဖြေမည်" button. Resolve the
+  // owning patient through the family member when needed.
+  const ownerPatientIdForQuestion = (questionUserId: string): string | null => {
+    if (patientsList.some((p) => p.id === questionUserId)) return questionUserId;
+    const member = familyMembers.find((f) => f.id === questionUserId);
+    return member ? ((member as any).userId as string) || null : null;
+  };
+  const isFamilyMemberQuestion = (questionUserId: string): boolean =>
+    !patientsList.some((p) => p.id === questionUserId) &&
+    familyMembers.some((f) => f.id === questionUserId);
 
   return (
     <div className="space-y-6">
@@ -414,7 +440,9 @@ export const AdminPatientPortal: React.FC = () => {
               </p>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {pendingQuestions.map((q) => {
-                  const owner = patientsList.find((p) => p.id === q.userId);
+                  const ownerPatientId = ownerPatientIdForQuestion(q.userId);
+                  const owner = ownerPatientId ? patientsList.find((p) => p.id === ownerPatientId) : undefined;
+                  const askedByFamilyMember = isFamilyMemberQuestion(q.userId);
                   return (
                     <div
                       key={q.id}
@@ -424,14 +452,15 @@ export const AdminPatientPortal: React.FC = () => {
                         <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{q.title}</p>
                         <p className="text-[11px] text-slate-500 mt-0.5">
                           {q.patientName || 'အသုံးပြုသူ'}
+                          {askedByFamilyMember && owner ? ` (${getResolvedName(owner)} ၏ မိသားစုဝင်)` : ''}
                           {q.urgency === 'urgent' ? ' • 🔴 အရေးကြီး' : q.urgency === 'moderate' ? ' • 🟡 အလယ်အလတ်' : ''}
-                          {q.createdAt ? ` • ${new Date(q.createdAt).toLocaleDateString('my-MM')}` : ''}
+                          {q.createdAt ? ` • ${formatMmDate(q.createdAt)}` : ''}
                         </p>
                       </div>
                       {owner && (
                         <button
                           type="button"
-                          onClick={() => setSelectedPatientId(q.userId)}
+                          onClick={() => setSelectedPatientId(owner.id)}
                           className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer shrink-0"
                         >
                           ကြည့်ပြီး ဖြေမည်

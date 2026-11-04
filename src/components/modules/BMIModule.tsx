@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Modal } from '../common/Modal';
 import { 
   Scale, 
   Ruler, 
@@ -23,17 +24,28 @@ import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useToast } from '../../context/ToastContext';
 import { BMIWeightChart } from '../charts/HealthCharts';
-import { 
-  calculateAge, 
-  calculateBMI, 
-  calculateWaistRisk, 
-  ftInToCm, 
-  cmToFtIn, 
-  lbToKg, 
+import {
+  calculateAge,
+  calculateBMI,
+  calculateWaistRisk,
+  ftInToCm,
+  cmToFtIn,
+  lbToKg,
   kgToLb,
-  parseDateToMs 
+  parseDateToMs,
+  formatDateLabel
 } from '../../lib/medicalCalculations';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+
+// Measurement date + time for display (D-M3): never substitute createdAt
+// for a measurement date — a record with no date shows 'ရက်စွဲ မရှိပါ'.
+// formatDateLabel is the hardcoded Myanmar date helper (no 'my-MM').
+const recordDateTime = (record: { date?: string; timestamp?: string }): string => {
+  const raw = record.date || record.timestamp || '';
+  if (!raw) return 'ရက်စွဲ မရှိပါ';
+  const d = formatDateLabel(raw);
+  return d.time ? `${d.date} ${d.time}` : d.date;
+};
 
 // Local (Asia/Rangoon) date (YYYY-MM-DD) — new Date().toISOString() is UTC,
 // so a record entered early in the morning got yesterday's date (v2.4.11 F4).
@@ -42,16 +54,15 @@ const localDateStr = (d: Date): string =>
 
 export const BMIModule: React.FC = () => {
   const { profile, updateProfile } = useAuth();
-  const { bmiRecords, latestBMI, addBMIRecord, updateBMIRecord, deleteBMIRecord, selectedPatient, selectedFamilyMember } = useHealthData();
-  // dataLoading is added by the context work in the same v2.4.8 batch; fall
-  // back to false if it is not present yet so this module still renders.
-  const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
+  const { bmiRecords, latestBMI, addBMIRecord, updateBMIRecord, deleteBMIRecord, selectedPatient, selectedFamilyMember, isPooledView, dataLoading } = useHealthData();
   const { showToast } = useToast();
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   // v2.4.13 edit: id of the record being edited, null in add mode. The
   // same modal/form is reused, prefilled from the record.
   const [editingId, setEditingId] = useState<string | null>(null);
+  // v2.4.16: delete confirm uses the app Modal, never window.confirm.
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isOpenEditProfile, setIsOpenEditProfile] = useState(false);
 
   // View state: 'both' | 'graph' | 'table'
@@ -84,12 +95,13 @@ export const BMIModule: React.FC = () => {
     });
   }, [sortedBMI, timeframe]);
 
-  // Search the history list by date or notes
+  // Search the history list by date, notes — or by VALUE (B-M7):
+  // searching "65" must find a 65 kg record, "22.5" a BMI of 22.5.
   const searchedBMI = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return filteredBMI;
     return filteredBMI.filter((r) => {
-      const hay = `${r.date || ''} ${r.timestamp || ''} ${r.notes || ''}`.toLowerCase();
+      const hay = `${r.date || ''} ${r.timestamp || ''} ${r.notes || ''} ${r.weightKg} ${r.heightCm} ${r.bmi}`.toLowerCase();
       return hay.includes(q);
     });
   }, [filteredBMI, searchQuery]);
@@ -410,13 +422,26 @@ export const BMIModule: React.FC = () => {
       // is selected, writing their height/weight onto the user's own profile
       // would corrupt it (the BMI record itself is already filed under the
       // family member by addBMIRecord).
+      // B-M1: the profile sync is a separate step with its own failure
+      // path. If the RECORD saved but the profile sync fails, the user must
+      // NOT see a failure toast (and retry into a duplicate) — the record
+      // is saved, only the profile update failed, and that is said plainly.
       if (!selectedPatient && !selectedFamilyMember) {
-        await updateProfile({
-          heightCm: resolvedHeightCm,
-          weightKg: resolvedWeightKg,
-          waistCm: waistInput ? Number(waistInput) : undefined,
-          bmi: calculated?.bmi,
-        });
+        try {
+          await updateProfile({
+            heightCm: resolvedHeightCm,
+            weightKg: resolvedWeightKg,
+            waistCm: waistInput ? Number(waistInput) : undefined,
+            bmi: calculated?.bmi,
+          });
+        } catch (profileErr) {
+          console.warn('BMI record saved but profile sync failed:', profileErr);
+          setIsOpenAdd(false);
+          setNotes('');
+          showToast('BMI မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+          showToast('ပရိုဖိုင်းထဲ အရပ်/ကိုယ်အလေးချိန် မွမ်းမံခြင်း မအောင်မြင်ပါ — BMI မှတ်တမ်းကိုတော့ သိမ်းဆည်းပြီးပါပြီ', 'error');
+          return;
+        }
       }
 
       setIsOpenAdd(false);
@@ -473,7 +498,11 @@ export const BMIModule: React.FC = () => {
                 BMI နှင့် ခန္ဓာကိုယ် ဖွဲ့စည်းမှု တွက်ချက်ခြင်း (Body Mass Index & Age)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                အရပ်အမောင်း၊ ကိုယ်အလေးချိန်၊ မွေးသက္ကရာဇ်မှ အသက်တွက်ချက်မှုနှင့် ကျန်းမာသော ကိုယ်အလေးချိန် အညွှန်းကိန်းများ
+                {selectedPatient
+                  ? `အသုံးပြုသူ ${selectedPatient.displayName} ၏ BMI မှတ်တမ်းများ`
+                  : selectedFamilyMember
+                    ? `အသုံးပြုသူ ${selectedFamilyMember.name} ၏ BMI မှတ်တမ်းများ`
+                    : 'အရပ်အမောင်း၊ ကိုယ်အလေးချိန်၊ မွေးသက္ကရာဇ်မှ အသက်တွက်ချက်မှုနှင့် ကျန်းမာသော ကိုယ်အလေးချိန် အညွှန်းကိန်းများ'}
               </p>
             </div>
           </div>
@@ -566,6 +595,15 @@ export const BMIModule: React.FC = () => {
             <p className={`text-xs font-bold mt-1 ${currentBMIResult?.color || 'text-slate-500'}`}>
               {currentBMIResult ? currentBMIResult.labelMm : 'မှတ်တမ်း မရှိသေးပါ'}
             </p>
+
+            {/* D-H5: a "Latest" value with no date and no owner cannot be
+                trusted — show when it was measured and whose it is. */}
+            {latestBMI && (
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                {recordDateTime(latestBMI)}
+                {isPooledView && latestBMI.userName ? ` • ${latestBMI.userName}` : isPooledView && latestBMI.patientName ? ` • ${latestBMI.patientName}` : ''}
+              </p>
+            )}
 
             <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between">
               <span>စံသတ်မှတ်ချက်:</span>
@@ -904,6 +942,7 @@ export const BMIModule: React.FC = () => {
                 <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-3 px-4 font-semibold">ရက်စွဲ</th>
+                    {isPooledView && <th className="py-3 px-4 font-semibold">ပိုင်ရှင်</th>}
                     <th className="py-3 px-4 font-semibold">အရပ် (Height)</th>
                     <th className="py-3 px-4 font-semibold">ကိုယ်အလေးချိန် (Weight)</th>
                     <th className="py-3 px-4 font-semibold">BMI တန်ဖိုး</th>
@@ -919,8 +958,13 @@ export const BMIModule: React.FC = () => {
                     return (
                       <tr key={r.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="py-3.5 px-4 font-medium text-slate-900 dark:text-white">
-                          {(r.date || '').replace('T', ' ')}
+                          {recordDateTime(r)}
                         </td>
+                        {isPooledView && (
+                          <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
+                            {r.userName || r.patientName || '—'}
+                          </td>
+                        )}
                         <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300">
                           {r.heightCm} cm
                         </td>
@@ -956,11 +1000,7 @@ export const BMIModule: React.FC = () => {
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => {
-                              if (window.confirm('ဤ BMI မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
-                                deleteBMIRecord(r.id);
-                              }
-                            }}
+                            onClick={() => setDeleteTargetId(r.id)}
                             className="p-2 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                             title="ဖျက်မည်"
                           >
@@ -1339,6 +1379,14 @@ export const BMIModule: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Delete confirmation (v2.4.16) */}
+      <Modal isOpen={deleteTargetId !== null} onClose={() => setDeleteTargetId(null)} title="မှတ်တမ်း ဖျက်မည်" size="sm">
+        <p className="text-sm text-slate-700 leading-relaxed">ဤ BMI မှတ်တမ်းကို ဖျက်မှာ သေချာပါသလား? ဖျက်လိုက်ရင် ပြန်မရတော့ပါ။</p>
+        <div className="flex gap-2 justify-end mt-5">
+          <button onClick={() => setDeleteTargetId(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm cursor-pointer">မဖျက်သေးပါ</button>
+          <button onClick={() => { const id = deleteTargetId; setDeleteTargetId(null); if (id) deleteBMIRecord(id); }} className="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-sm cursor-pointer">ဖျက်မည်</button>
+        </div>
+      </Modal>
     </div>
   );
 };

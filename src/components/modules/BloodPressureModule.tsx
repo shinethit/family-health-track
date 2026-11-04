@@ -1,11 +1,22 @@
 import React, { useState, useMemo } from 'react';
+import { Modal } from '../common/Modal';
 import { Plus, Trash2, Heart, Activity, AlertCircle, Info, Calendar, BarChart2, Table, TrendingUp, Utensils, Pencil } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { BloodPressureChart } from '../charts/HealthCharts';
-import { calculateBPCategory, parseDateToMs } from '../../lib/medicalCalculations';
+import { calculateBPCategory, parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
+
+// Measurement date + time for display (D-M3): never substitute createdAt
+// for a measurement date — a record with no date shows 'ရက်စွဲ မရှိပါ'.
+// formatDateLabel is the hardcoded Myanmar date helper (no 'my-MM').
+const recordDateTime = (record: { date?: string; timestamp?: string }): string => {
+  const raw = record.date || record.timestamp || '';
+  if (!raw) return 'ရက်စွဲ မရှိပါ';
+  const d = formatDateLabel(raw);
+  return d.time ? `${d.date} ${d.time}` : d.date;
+};
 
 // Local (Asia/Rangoon) date-time for a datetime-local input —
 // new Date().toISOString() is UTC, so a record entered early in the morning
@@ -55,10 +66,7 @@ const measurementTimeLabel = (record: { condition?: string; date?: string; times
 };
 
 export const BloodPressureModule: React.FC = () => {
-  const { bpRecords, addBPRecord, updateBPRecord, deleteBPRecord, selectedPatient, selectedFamilyMember } = useHealthData();
-  // dataLoading is added by the context work in the same v2.4.8 batch; fall
-  // back to false if it is not present yet so this module still renders.
-  const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
+  const { bpRecords, addBPRecord, updateBPRecord, deleteBPRecord, selectedPatient, selectedFamilyMember, isPooledView, dataLoading } = useHealthData();
   const { profile, isAdmin } = useAuth();
   const { showToast } = useToast();
 
@@ -66,6 +74,8 @@ export const BloodPressureModule: React.FC = () => {
   // v2.4.13 edit: id of the record being edited, null in add mode. The
   // same modal/form is reused, prefilled from the record.
   const [editingId, setEditingId] = useState<string | null>(null);
+  // v2.4.16: delete confirm uses the app Modal, never window.confirm.
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   // No prefilled values: 120/80/72 invited fake-normal records (v2.4.11 F5).
   // Inputs start empty; the user must enter their own real readings.
   const [systolic, setSystolic] = useState<number | ''>('');
@@ -174,12 +184,13 @@ export const BloodPressureModule: React.FC = () => {
     });
   }, [sortedBP, timeframe]);
 
-  // Search the history list by date, notes or food record
+  // Search the history list by date, notes, food record — or by VALUE
+  // (B-M7): searching "120" must find a 120 systolic reading.
   const searchedBP = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return filteredBP;
     return filteredBP.filter((r) => {
-      const hay = `${r.date || ''} ${r.timestamp || ''} ${r.notes || ''} ${r.dietRecord || ''} ${r.dietNotes || ''} ${r.foodIntake || ''}`.toLowerCase();
+      const hay = `${r.date || ''} ${r.timestamp || ''} ${r.notes || ''} ${r.dietRecord || ''} ${r.dietNotes || ''} ${r.foodIntake || ''} ${r.systolic} ${r.diastolic} ${r.pulse ?? r.pulseRate ?? ''}`.toLowerCase();
       return hay.includes(q);
     });
   }, [filteredBP, searchQuery]);
@@ -212,8 +223,10 @@ export const BloodPressureModule: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-    if (systolic === '' || diastolic === '' || pulse === '') {
-      showToast('အပေါ်သွေး၊ အောက်သွေးနှင့် နှလုံးခုန်နှုန်း သုံးခုလုံး ထည့်ပေးပါ', 'error');
+    // B-M13: pulse is OPTIONAL in the patient module (same as the admin
+    // form) — only systolic + diastolic are required.
+    if (systolic === '' || diastolic === '') {
+      showToast('အပေါ်သွေးနှင့် အောက်သွေး ထည့်ပေးပါ', 'error');
       return;
     }
     setIsSubmitting(true);
@@ -224,7 +237,7 @@ export const BloodPressureModule: React.FC = () => {
         await updateBPRecord(editingId, {
           systolic: Number(systolic),
           diastolic: Number(diastolic),
-          pulse: Number(pulse),
+          pulse: pulse === '' ? undefined : Number(pulse),
           condition,
           dietNotes: dietRecord.trim() || undefined,
           foodIntake: dietRecord.trim() || undefined,
@@ -243,7 +256,7 @@ export const BloodPressureModule: React.FC = () => {
         userName: selectedPatient ? selectedPatient.displayName : (selectedFamilyMember ? selectedFamilyMember.name : profile.displayName),
         systolic: Number(systolic),
         diastolic: Number(diastolic),
-        pulse: Number(pulse),
+        pulse: pulse === '' ? undefined : Number(pulse),
         condition,
         dietNotes: dietRecord.trim() || undefined,
         foodIntake: dietRecord.trim() || undefined,
@@ -293,9 +306,11 @@ export const BloodPressureModule: React.FC = () => {
             သွေးတိုး / သွေးပေါင်ချိန် မှတ်တမ်း (Blood Pressure)
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {selectedPatient 
-              ? `အသုံးပြုသူ ${selectedPatient.displayName} ၏ သွေးပေါင်ချိန်စောင့်ကြည့်မှု` 
-              : 'နေ့စဉ် သွေးပေါင်ချိန်ကို တိကျစွာမှတ်တမ်းတင်ပြီး နှလုံးနှင့် သွေးကြောကျန်းမာရေးကို စောင့်ကြပ်ပါ'}
+            {selectedPatient
+              ? `အသုံးပြုသူ ${selectedPatient.displayName} ၏ သွေးပေါင်ချိန်စောင့်ကြည့်မှု`
+              : selectedFamilyMember
+                ? `အသုံးပြုသူ ${selectedFamilyMember.name} ၏ သွေးပေါင်ချိန်စောင့်ကြည့်မှု`
+                : 'နေ့စဉ် သွေးပေါင်ချိန်ကို တိကျစွာမှတ်တမ်းတင်ပြီး နှလုံးနှင့် သွေးကြောကျန်းမာရေးကို စောင့်ကြပ်ပါ'}
           </p>
         </div>
 
@@ -322,6 +337,14 @@ export const BloodPressureModule: React.FC = () => {
             </span>
             <span className="text-xs text-slate-400">mmHg</span>
           </div>
+          {/* D-H5: a "Latest" value with no date and no owner cannot be
+              trusted — show when it was measured and whose it is. */}
+          {latestBP && (
+            <p className="text-[11px] text-slate-400 mt-1.5">
+              {recordDateTime(latestBP)}
+              {isPooledView && latestBP.userName ? ` • ${latestBP.userName}` : isPooledView && latestBP.patientName ? ` • ${latestBP.patientName}` : ''}
+            </p>
+          )}
           {latestEvaluation && (
             <div className="mt-2 space-y-1">
               <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${latestEvaluation.bgColor} ${latestEvaluation.color} ${latestEvaluation.borderColor}`}>
@@ -513,6 +536,7 @@ export const BloodPressureModule: React.FC = () => {
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th className="py-3 px-4 font-medium">ရက်စွဲ / အချိန်</th>
+                  {isPooledView && <th className="py-3 px-4 font-medium">ပိုင်ရှင်</th>}
                   <th className="py-3 px-4 font-medium">အပေါ်သွေး (Sys)</th>
                   <th className="py-3 px-4 font-medium">အောက်သွေး (Dia)</th>
                   <th className="py-3 px-4 font-medium">နှလုံးခုန် (Pulse)</th>
@@ -526,7 +550,7 @@ export const BloodPressureModule: React.FC = () => {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {displayBP.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="py-8 px-4 text-center text-slate-400">
+                    <td colSpan={isPooledView ? 10 : 9} className="py-8 px-4 text-center text-slate-400">
                       မှတ်တမ်း မရှိသေးပါ — အထက်ပါ ခလုတ်ဖြင့် ပထမဆုံး သွေးပေါင်ချိန် ထည့်သွင်းနိုင်ပါသည်
                     </td>
                   </tr>
@@ -537,8 +561,13 @@ export const BloodPressureModule: React.FC = () => {
                   return (
                     <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">
-                        {(record.date || record.timestamp || '').replace('T', ' ')}
+                        {recordDateTime(record)}
                       </td>
+                      {isPooledView && (
+                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300">
+                          {record.userName || record.patientName || '—'}
+                        </td>
+                      )}
                       <td className="py-3 px-4 font-bold text-rose-600 dark:text-rose-400 font-mono text-sm">
                         {record.systolic} <span className="text-[11px] text-slate-400 font-normal">mmHg</span>
                       </td>
@@ -546,7 +575,7 @@ export const BloodPressureModule: React.FC = () => {
                         {record.diastolic} <span className="text-[11px] text-slate-400 font-normal">mmHg</span>
                       </td>
                       <td className="py-3 px-4 font-semibold text-amber-600 dark:text-amber-400 font-mono">
-                        {record.pulse} <span className="text-[11px] text-slate-400 font-normal">bpm</span>
+                        {record.pulse ?? record.pulseRate ?? '—'} <span className="text-[11px] text-slate-400 font-normal">bpm</span>
                       </td>
                       <td className="py-3 px-4">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
@@ -578,11 +607,7 @@ export const BloodPressureModule: React.FC = () => {
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => {
-                            if (window.confirm('ဤသွေးပေါင်ချိန် မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
-                              deleteBPRecord(record.id);
-                            }
-                          }}
+                          onClick={() => setDeleteTargetId(record.id)}
                           className="text-slate-400 hover:text-rose-600 transition-colors p-2 cursor-pointer"
                           title="ဖျက်မည်"
                         >
@@ -671,7 +696,7 @@ export const BloodPressureModule: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    နှလုံးခုန်နှုန်း (Pulse bpm) *
+                    နှလုံးခုန်နှုန်း (Pulse bpm) <span className="text-slate-400 font-normal">— မဖြည့်လည်းရသည်</span>
                   </label>
                   <input
                     type="number"
@@ -679,7 +704,6 @@ export const BloodPressureModule: React.FC = () => {
                     max="220"
                     value={pulse}
                     onChange={(e) => setPulse(e.target.value === '' ? '' : Number(e.target.value))}
-                    required
                     placeholder="ဥပမာ- 72"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-base font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   />
@@ -810,6 +834,14 @@ export const BloodPressureModule: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Delete confirmation (v2.4.16) */}
+      <Modal isOpen={deleteTargetId !== null} onClose={() => setDeleteTargetId(null)} title="မှတ်တမ်း ဖျက်မည်" size="sm">
+        <p className="text-sm text-slate-700 leading-relaxed">ဤသွေးပေါင်ချိန် မှတ်တမ်းကို ဖျက်မှာ သေချာပါသလား? ဖျက်လိုက်ရင် ပြန်မရတော့ပါ။</p>
+        <div className="flex gap-2 justify-end mt-5">
+          <button onClick={() => setDeleteTargetId(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm cursor-pointer">မဖျက်သေးပါ</button>
+          <button onClick={() => { const id = deleteTargetId; setDeleteTargetId(null); if (id) deleteBPRecord(id); }} className="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-sm cursor-pointer">ဖျက်မည်</button>
+        </div>
+      </Modal>
     </div>
   );
 };

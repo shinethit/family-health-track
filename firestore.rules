@@ -29,11 +29,44 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/familyMembers/$(memberId)).data.userId == request.auth.uid;
     }
 
+    // v2.4.16 (rules audit I-H4): a field is unchanged by an update when it
+    // is present in both the old and the new doc with the same value, or
+    // absent from both. Used to pin ownership fields so a record can never
+    // be reassigned to another user by editing it.
+    function fieldUnchanged(field) {
+      return (field in resource.data) == (field in request.resource.data)
+        && (!(field in resource.data) || resource.data[field] == request.resource.data[field]);
+    }
+
+    // v2.4.16 (rules audit I-H3): the identity a non-admin create may claim.
+    // A record is filed either under the writer themself (userId == uid) or
+    // under one of the writer's own family members, and patientEmail — when
+    // present — must be the writer's own auth email. The old rules accepted
+    // each half separately, so anyone could file a record under a victim's
+    // uid by stamping their OWN email on it (and plant familyMember docs
+    // the same way).
+    function isOwnRecordTarget(data) {
+      return (data.userId == request.auth.uid || isOwnFamilyMember(data.userId))
+        && (!('patientEmail' in data) || data.patientEmail == request.auth.token.email);
+    }
+
+    // v2.4.16 (rules audit I-H4): ownership fields on update. userId may
+    // never change — no client flow reassigns a record. patientEmail may
+    // change only by an admin: Data Repair (repairPatientEmails) backfills
+    // it on stale records, and no non-admin flow ever writes it.
+    function ownershipUnchanged() {
+      return fieldUnchanged('userId') && (isAdmin() || fieldUnchanged('patientEmail'));
+    }
+
     // Admins are managed in-app (Admin Role Manager): an admin can promote
     // another user and remove another admin, but never themself. The very
     // first admin must still be created manually in the Firebase Console.
+    // v2.4.16 (rules audit I-M6): read is no longer open to every signed-in
+    // user — that exposed the full admin list to anyone who could sign in.
+    // Admins can read all of them; anyone else can read only their own doc,
+    // which is what the login admin check (verifyIsAdmin) needs.
     match /admins/{adminId} {
-      allow read: if isSignedIn();
+      allow read: if isAdmin() || request.auth.uid == adminId;
       allow create: if isAdmin();
       allow delete: if isAdmin() && request.auth.uid != adminId;
       allow update: if false;
@@ -41,7 +74,14 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role != 'admin');
+      // v2.4.16 (rules audit I-C1): an admin may create a user doc — Admin
+      // Add Patient files a record-only patient under a 'pat-…' id, and an
+      // admin restoring a backup recreates a missing profile the same way.
+      // The owner may still never create their own doc with role 'admin'
+      // (that grants nothing by itself — admin status comes only from the
+      // /admins collection, and the client distrusts the role field — but
+      // the guard stays as defence in depth).
+      allow create: if (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role != 'admin')) || isAdmin();
       allow update: if (isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role != 'admin' || (resource != null && 'role' in resource.data && request.resource.data.role == resource.data.role))) || isAdmin();
       allow delete: if isOwner(userId) || isAdmin();
     }
@@ -51,79 +91,106 @@ service cloud.firestore {
     // signed out) may read it, because login resolves a username to its
     // email before signing in. Only the owner may create/update/delete
     // their own entry.
+    // v2.4.16 (rules audit I-H1 / A-H3 / I-M1): create/update now bind the
+    // doc to the writer — update used to accept ANY doc as long as the NEW
+    // uid was the writer's, so anyone could steal an existing username by
+    // overwriting its doc. Create also requires the email to be the
+    // writer's own auth email. Delete is open to the owner or an admin
+    // (the admin patient-delete cascade frees the username, which the old
+    // owner-only rule denied). Residual, NOT fixable by rules alone:
+    // claiming an as-yet-unclaimed name is first-come-first-served, and
+    // the public read exposes the { uid, email } mapping — login needs the
+    // pre-sign-in lookup, so hiding the email needs a server-side resolver.
     match /usernames/{username} {
       allow read: if true;
-      allow create, update: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.email == request.auth.token.email;
+      allow update: if isSignedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == resource.data.uid && (request.resource.data.email == resource.data.email || request.resource.data.email == request.auth.token.email);
+      allow delete: if (isSignedIn() && resource.data.uid == request.auth.uid) || isAdmin();
     }
 
     // Query by Email or UserID is safely allowed
     match /vitals/{vitalId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isAdmin() || (isSignedIn() && isOwnRecordTarget(request.resource.data));
+      allow update: if (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin()) && ownershipUnchanged();
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /glucose/{gluId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isAdmin() || (isSignedIn() && isOwnRecordTarget(request.resource.data));
+      allow update: if (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin()) && ownershipUnchanged();
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /bmi/{bmiId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isAdmin() || (isSignedIn() && isOwnRecordTarget(request.resource.data));
+      allow update: if (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin()) && ownershipUnchanged();
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /labTests/{testId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isAdmin() || (isSignedIn() && isOwnRecordTarget(request.resource.data));
+      allow update: if (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin()) && ownershipUnchanged();
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /medications/{medId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isAdmin() || (isSignedIn() && isOwnRecordTarget(request.resource.data));
+      allow update: if (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin()) && ownershipUnchanged();
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /familyMembers/{memberId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
+      // v2.4.16 (rules audit I-H3): a member doc is filed under the OWNER
+      // (userId == writer's uid, patientEmail the writer's own email when
+      // present) or by an admin for their selected patient. Members do not
+      // own members, so the isOwnFamilyMember alternative does not apply.
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid && (!('patientEmail' in request.resource.data) || request.resource.data.patientEmail == request.auth.token.email));
+      allow update: if (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin()) && ownershipUnchanged();
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
     }
 
     match /medicationLogs/{logId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isAdmin() || (isSignedIn() && isOwnRecordTarget(request.resource.data));
+      allow update: if (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin()) && ownershipUnchanged();
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /vaccines/{vacId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
+      allow create: if isAdmin() || (isSignedIn() && isOwnRecordTarget(request.resource.data));
+      allow update: if (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin()) && ownershipUnchanged();
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
     match /doctorAdvices/{adviceId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
       allow create, update: if isAdmin();
+      // v2.4.16 (rules audit I-M5): patient delete is DELIBERATELY left
+      // allowed — the self-account-deletion cascade deletes the user's own
+      // advices as the owner, and no rule can tell that apart from a
+      // patient deleting an advice in the UI (the client offers no such
+      // button; deleteDoctorAdvice is admin-only). The exposure is
+      // self-only: a patient can delete only advices addressed to them.
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) || isAdmin();
     }
 
     match /doctorQuestions/{questionId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
-      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(request.resource.data.userId)) || isAdmin();
-      allow update: if isAdmin() || (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email) && request.resource.data.userId == resource.data.userId && (!('doctorAnswer' in request.resource.data) || request.resource.data.doctorAnswer == resource.data.doctorAnswer));
+      allow create: if isAdmin() || (isSignedIn() && isOwnRecordTarget(request.resource.data));
+      // v2.4.16 (rules audit I-M2): updates are admin-only. The old owner
+      // branch let the asker fake status 'answered' (status was unguarded)
+      // and delete the doctorAnswer via deleteField() (an absent field
+      // passed the old check). No client flow updates a question as a
+      // non-admin — answer and close are admin-only, and Data Repair runs
+      // as an admin — so nothing legitimate is lost.
+      allow update: if isAdmin();
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.patientEmail == request.auth.token.email || isOwnFamilyMember(resource.data.userId)) || isAdmin();
     }
 
@@ -134,10 +201,16 @@ service cloud.firestore {
     // record belongs to a family member doc id, which is never a uid).
     // Admins may create them and read them for support; only the recipient
     // may mark or delete their own.
+    // v2.4.16 (rules audit I-H2 / I-M7): create used to accept EITHER
+    // userId == own uid OR recipientEmail == own email, so anyone could
+    // push a spoofed 'qa_answered' to any user by mixing a victim's uid
+    // with their own email (or vice versa). Both address fields must now
+    // belong to the writer, and update may never retarget a notification
+    // (userId/recipientEmail are pinned — mark-as-read only touches read).
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.recipientEmail == request.auth.token.email) || isAdmin();
-      allow create: if isAdmin() || (isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.recipientEmail == request.auth.token.email));
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.recipientEmail == request.auth.token.email) || isAdmin();
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid && (!('recipientEmail' in request.resource.data) || request.resource.data.recipientEmail == request.auth.token.email));
+      allow update: if (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.recipientEmail == request.auth.token.email) || isAdmin()) && fieldUnchanged('userId') && fieldUnchanged('recipientEmail');
       allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.recipientEmail == request.auth.token.email) || isAdmin();
     }
 

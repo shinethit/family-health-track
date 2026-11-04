@@ -16,11 +16,13 @@ import {
   Sparkles,
   ShieldAlert,
   Info,
+  Pencil,
   X
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import { CustomReminder } from '../../types/health';
+import { Modal } from '../common/Modal';
 
 // Myanmar weekday names (JS getDay(): 0 = Sunday). Used for the reminder
 // day picker (v2.4.11 10-F) and for showing which days a reminder fires.
@@ -39,7 +41,29 @@ const categoryLabelMm = (category: CustomReminder['category']): string =>
   category === 'doctor' ? 'ဆရာဝန်နှင့် ပြသရန်' :
   category === 'exercise' ? 'လေ့ကျင့်ခန်း' : 'အထွေထွေ';
 
-export const RemindersModule: React.FC = () => {
+// v2.4.16 (D-M4): hardcoded Myanmar month names — the phone may lack the
+// Intl 'my-MM' locale, in which case toLocaleDateString('my-MM') silently
+// falls back to English. Never use 'my-MM' in this file.
+const MONTHS_MM = ['ဇန်နဝါရီ', 'ဖေဖော်ဝါရီ', 'မတ်', 'ဧပြီ', 'မေ', 'ဇွန်', 'ဇူလိုင်', 'သြဂုတ်', 'စက်တင်ဘာ', 'အောက်တိုဘာ', 'နိုဝင်ဘာ', 'ဒီဇင်ဘာ'];
+const formatDateTimeMm = (timestamp: string): string => {
+  const d = new Date(timestamp);
+  if (Number.isNaN(d.getTime())) return '';
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getDate()} ${MONTHS_MM[d.getMonth()]} ${d.getFullYear()}, ${hh}:${mm}`;
+};
+
+// v2.4.16 (F-L2): snooze choices offered on medication notifications.
+const SNOOZE_OPTIONS_MIN = [5, 15, 30, 60];
+
+interface RemindersModuleProps {
+  // v2.4.16 (F-M4): tapping a doctor Q&A notification opens the Q&A view.
+  // App.tsx must pass () => setActiveTab('doctor_qa'); without it the row
+  // is not tappable — this module cannot reach App's tab state on its own.
+  onOpenDoctorQA?: () => void;
+}
+
+export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA }) => {
   const { profile, isAdmin } = useAuth();
   const {
     notifications,
@@ -52,6 +76,7 @@ export const RemindersModule: React.FC = () => {
     deleteNotification,
     clearAllNotifications,
     addCustomReminder,
+    updateCustomReminder,
     deleteCustomReminder,
     toggleReminderActive,
     markMedicationTaken,
@@ -61,6 +86,14 @@ export const RemindersModule: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'reminders' | 'notifications'>('reminders');
   const [showAddModal, setShowAddReminderModal] = useState(false);
+  // v2.4.16 (F-H1): the reminder being edited, if any — null means the
+  // form creates a new reminder. The same modal serves add + edit.
+  const [editingReminder, setEditingReminder] = useState<CustomReminder | null>(null);
+  // v2.4.16 (F-H1): a failed save keeps the form open with this error.
+  const [formError, setFormError] = useState<string | null>(null);
+  // v2.4.16 (F-H2): delete / clear-all go through a confirm Modal first.
+  const [pendingDeleteReminder, setPendingDeleteReminder] = useState<CustomReminder | null>(null);
+  const [pendingClearAll, setPendingClearAll] = useState(false);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -77,26 +110,72 @@ export const RemindersModule: React.FC = () => {
     );
   };
 
-  const handleAddReminder = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
+  const resetForm = () => {
+    setTitle('');
+    setNotes('');
+    setCategory('medication');
+    setTime('08:00');
+    setSelectedDays(ALL_DAYS);
+    setEditingReminder(null);
+    setFormError(null);
+  };
 
-    addCustomReminder({
+  const openAddReminder = () => {
+    resetForm();
+    setShowAddReminderModal(true);
+  };
+
+  // v2.4.16 (F-H1): prefill the form with the reminder's current values.
+  const openEditReminder = (rem: CustomReminder) => {
+    setTitle(rem.title);
+    setCategory(rem.category);
+    setTime(rem.time);
+    setNotes(rem.notes || '');
+    setSelectedDays(rem.daysOfWeek && rem.daysOfWeek.length > 0 ? rem.daysOfWeek : ALL_DAYS);
+    setEditingReminder(rem);
+    setFormError(null);
+    setShowAddReminderModal(true);
+  };
+
+  const closeFormModal = () => {
+    setShowAddReminderModal(false);
+    resetForm();
+  };
+
+  const handleSaveReminder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      setFormError('ခေါင်းစဉ် ဖြည့်ပေးပါ။');
+      return;
+    }
+
+    const data = {
       title: title.trim(),
       category,
       time,
-      // Nothing selected means "every day" — the ticker treats an empty
-      // daysOfWeek as all days, but storing all 7 explicitly keeps the
-      // stored data honest about what will happen.
+      // Nothing selected means "every day" (F-L4) — the ticker treats an
+      // empty daysOfWeek as all days, but storing all 7 explicitly keeps
+      // the stored data honest about what will happen.
       daysOfWeek: selectedDays.length > 0 ? selectedDays : ALL_DAYS,
-      isActive: true,
+      isActive: editingReminder ? editingReminder.isActive : true,
       notes: notes.trim() || undefined,
-    });
+    };
 
-    setTitle('');
-    setNotes('');
-    setSelectedDays(ALL_DAYS);
-    setShowAddReminderModal(false);
+    if (editingReminder) {
+      // v2.4.16 (F-H1): update in place. On failure the form stays open
+      // with an honest error — the user's edits are not thrown away.
+      try {
+        updateCustomReminder(editingReminder.id, data);
+      } catch (err) {
+        console.error('Failed to update reminder:', err);
+        setFormError('ပြင်ဆင်ခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်နှိပ်ပါ။');
+        return;
+      }
+    } else {
+      addCustomReminder(data);
+    }
+
+    closeFormModal();
   };
 
   return (
@@ -128,7 +207,7 @@ export const RemindersModule: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setShowAddReminderModal(true)}
+              onClick={openAddReminder}
               className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-2 cursor-pointer transition-all active:scale-95"
             >
               <Plus className="w-4 h-4" />
@@ -220,6 +299,22 @@ export const RemindersModule: React.FC = () => {
       {/* Tab 1: Reminders List */}
       {activeTab === 'reminders' && (
         <div className="space-y-4">
+          {/* v2.4.16 (F-M9): empty state — a clear message, not a blank grid. */}
+          {customReminders.length === 0 ? (
+            <div className="p-10 text-center rounded-3xl bg-white border border-dashed border-slate-300 text-slate-700 space-y-2 shadow-xs">
+              <BellRing className="w-12 h-12 mx-auto text-slate-400" />
+              <p className="text-sm font-bold text-slate-900">Reminder မသတ်မှတ်ရသေးပါ</p>
+              <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+                ဆေးသောက်ချိန်၊ သွေးပေါင်ချိန်/သကြားဓာတ် တိုင်းချိန်၊ ဆရာဝန်ပြသရန် ရက်ချိန်းများကို အချိန်မှန် သတိပေးဖို့ Reminder တစ်ခု ဖန်တီးလိုက်ပါ။
+              </p>
+              <button
+                onClick={openAddReminder}
+                className="mt-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs cursor-pointer"
+              >
+                + Reminder အသစ် ပြုလုပ်မည်
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {customReminders.map((rem) => {
               const getIcon = () => {
@@ -242,12 +337,12 @@ export const RemindersModule: React.FC = () => {
                       : 'bg-slate-50 border-slate-200 opacity-60 text-slate-500'
                   }`}
                 >
-                  <div className="flex items-start gap-3.5">
+                  <div className="flex items-start gap-3.5 min-w-0 flex-1">
                     <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 shrink-0">
                       {getIcon()}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-base font-extrabold font-mono text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
                           {rem.time}
                         </span>
@@ -258,11 +353,11 @@ export const RemindersModule: React.FC = () => {
                           📅 {formatDaysMm(rem.daysOfWeek)}
                         </span>
                       </div>
-                      <h3 className="text-sm font-extrabold text-slate-900 mt-2">
+                      <h3 className="text-sm font-extrabold text-slate-900 mt-2 break-words">
                         {rem.title}
                       </h3>
                       {rem.notes && (
-                        <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                        <p className="text-xs text-slate-600 mt-1 leading-relaxed break-words">
                           {rem.notes}
                         </p>
                       )}
@@ -283,10 +378,21 @@ export const RemindersModule: React.FC = () => {
                       />
                     </button>
 
+                    {/* v2.4.16 (F-H1): edit in place instead of delete + re-add. */}
                     <button
-                      onClick={() => deleteCustomReminder(rem.id)}
+                      onClick={() => openEditReminder(rem)}
+                      className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                      title="ပြင်ဆင်မည်"
+                      aria-label={`"${rem.title}" ပြင်ဆင်မည်`}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => setPendingDeleteReminder(rem)}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                       title="ဖျက်မည်"
+                      aria-label={`"${rem.title}" ဖျက်မည်`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -295,6 +401,7 @@ export const RemindersModule: React.FC = () => {
               );
             })}
           </div>
+          )}
         </div>
       )}
 
@@ -314,7 +421,7 @@ export const RemindersModule: React.FC = () => {
               </button>
               <span>•</span>
               <button
-                onClick={clearAllNotifications}
+                onClick={() => setPendingClearAll(true)}
                 className="text-xs text-rose-600 font-bold hover:underline cursor-pointer"
               >
                 အကုန် ဖျက်မည်
@@ -341,7 +448,7 @@ export const RemindersModule: React.FC = () => {
                       : 'bg-emerald-50/60 border-emerald-200 text-slate-900 font-medium'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className="p-2.5 rounded-xl bg-white border border-slate-200 shrink-0 mt-0.5">
                       {n.type === 'abnormal_alert' ? (
                         <AlertTriangle className="w-5 h-5 text-rose-600" />
@@ -352,24 +459,39 @@ export const RemindersModule: React.FC = () => {
                       )}
                     </div>
 
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-extrabold text-slate-900">
+                        <h4 className="text-sm font-extrabold text-slate-900 break-words min-w-0">
                           {n.title}
                         </h4>
                         {!n.read && (
-                          <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
+                          <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping shrink-0" />
                         )}
                       </div>
-                      <p className="text-xs text-slate-700 mt-1 leading-relaxed">
+                      <p className="text-xs text-slate-700 mt-1 leading-relaxed break-words">
                         {n.message}
                       </p>
                       <span className="text-[11px] text-slate-500 font-mono mt-1 block">
-                        {new Date(n.timestamp).toLocaleString('my-MM')}
+                        {formatDateTimeMm(n.timestamp)}
                       </span>
 
+                      {/* v2.4.16 (F-M4): a doctor Q&A notification opens the Q&A
+                          view. Only tappable when App wired onOpenDoctorQA. */}
+                      {(n.type === 'doctor_advice' || n.type === 'qa_answered') && onOpenDoctorQA && (
+                        <button
+                          onClick={() => {
+                            markAsRead(n.id);
+                            onOpenDoctorQA();
+                          }}
+                          className="mt-2 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                        >
+                          <span>ဆရာဝန် Q&A ကြည့်မည်</span>
+                          <span aria-hidden="true">→</span>
+                        </button>
+                      )}
+
                       {n.type === 'medication' && n.data?.medicationName && (
-                        <div className="mt-2.5 flex items-center gap-2">
+                        <div className="mt-2.5 flex flex-wrap items-center gap-2">
                           <button
                             onClick={() => markMedicationTaken(n.id, n.data!.medicationName!)}
                             className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
@@ -378,13 +500,18 @@ export const RemindersModule: React.FC = () => {
                             <span>ဆေး သောက်ပြီးပါပြီ</span>
                           </button>
 
-                          <button
-                            onClick={() => snoozeReminder(n.id, 15)}
-                            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer border border-slate-200"
-                          >
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>၁၅ မိနစ် ရွှေ့မည်</span>
-                          </button>
+                          {/* v2.4.16 (F-L2): snooze choices instead of a fixed 15 min. */}
+                          <span className="text-[11px] text-slate-500 font-bold">ရွှေ့ဆိုင်းမည်:</span>
+                          {SNOOZE_OPTIONS_MIN.map((mins) => (
+                            <button
+                              key={mins}
+                              onClick={() => snoozeReminder(n.id, mins)}
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 cursor-pointer border border-slate-200"
+                            >
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>{mins} မိနစ်</span>
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -415,24 +542,30 @@ export const RemindersModule: React.FC = () => {
         </div>
       )}
 
-      {/* Add New Reminder Modal */}
+      {/* Add / Edit Reminder Modal (v2.4.16 F-H1: one form serves both) */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
                 <BellRing className="w-5 h-5 text-amber-600" />
-                <span>Reminder အသစ် ဖန်တီးမည်</span>
+                <span>{editingReminder ? 'Reminder ပြင်ဆင်မည်' : 'Reminder အသစ် ဖန်တီးမည်'}</span>
               </h3>
               <button
-                onClick={() => setShowAddReminderModal(false)}
+                onClick={closeFormModal}
                 className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddReminder} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveReminder} className="space-y-4 text-xs">
+              {formError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{formError}</span>
+                </div>
+              )}
               <div>
                 <label className="block font-bold text-slate-800 mb-1">
                   သတိပေးချက် ခေါင်းစဉ် *
@@ -461,7 +594,9 @@ export const RemindersModule: React.FC = () => {
                     <option value="bp">🩺 သွေးပေါင်ချိန် တိုင်းရန်</option>
                     <option value="glucose">🩸 သွေးချို စစ်ဆေးရန်</option>
                     <option value="water">💧 ရေသောက်ရန်</option>
+                    <option value="exercise">🏃 လေ့ကျင့်ခန်း လုပ်ရန်</option>
                     <option value="doctor">🏥 ဆရာဝန်ပြသရန်</option>
+                    <option value="other">🔔 အထွေထွေ</option>
                   </select>
                 </div>
 
@@ -505,6 +640,7 @@ export const RemindersModule: React.FC = () => {
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
                   ရွေးထားသော ရက်: {formatDaysMm(selectedDays.length > 0 ? selectedDays : ALL_DAYS)}
+                  {selectedDays.length === 0 && ' — ရက်မရွေးထားပါက နေ့တိုင်း သတိပေးမည်'}
                 </p>
               </div>
 
@@ -529,7 +665,7 @@ export const RemindersModule: React.FC = () => {
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddReminderModal(false)}
+                  onClick={closeFormModal}
                   className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold cursor-pointer"
                 >
                   ပယ်ဖျက်မည်
@@ -538,13 +674,77 @@ export const RemindersModule: React.FC = () => {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold cursor-pointer shadow-xs"
                 >
-                  သိမ်းဆည်းမည်
+                  {editingReminder ? 'ပြင်ဆင်ပြီး သိမ်းမည်' : 'သိမ်းဆည်းမည်'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* v2.4.16 (F-H2): confirm before deleting a custom reminder. */}
+      <Modal
+        isOpen={pendingDeleteReminder !== null}
+        onClose={() => setPendingDeleteReminder(null)}
+        title="Reminder ဖျက်မည်"
+        size="sm"
+      >
+        <div className="p-5 space-y-4 text-sm text-slate-700">
+          <p className="leading-relaxed">
+            <strong className="text-slate-900 break-words">“{pendingDeleteReminder?.title}”</strong>
+            {' '}({pendingDeleteReminder ? formatDaysMm(pendingDeleteReminder.daysOfWeek) : ''} {pendingDeleteReminder?.time})
+            ကို ဖျက်လိုက်ရင် ဒီ Reminder အတွက် နောက်ထပ် သတိပေးချက် တက်လာတော့မှာ မဟုတ်ပါဘူး။ တကယ် ဖျက်မှာလား?
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => setPendingDeleteReminder(null)}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer"
+            >
+              မဖျက်တော့ပါ
+            </button>
+            <button
+              onClick={() => {
+                if (pendingDeleteReminder) deleteCustomReminder(pendingDeleteReminder.id);
+                setPendingDeleteReminder(null);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-xs"
+            >
+              ဖျက်မည်
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* v2.4.16 (F-H2): confirm before clearing ALL notifications. */}
+      <Modal
+        isOpen={pendingClearAll}
+        onClose={() => setPendingClearAll(false)}
+        title="သတိပေးချက် အကုန် ဖျက်မည်"
+        size="sm"
+      >
+        <div className="p-5 space-y-4 text-sm text-slate-700">
+          <p className="leading-relaxed">
+            သတိပေးချက် မှတ်တမ်း <strong className="text-slate-900">{notifications.length} ခု</strong> လုံးကို ဖျက်လိုက်မှာလား? ဖျက်ပြီးရင် ပြန်ရတော့မှာ မဟုတ်ပါဘူး။
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => setPendingClearAll(false)}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer"
+            >
+              မဖျက်တော့ပါ
+            </button>
+            <button
+              onClick={() => {
+                clearAllNotifications();
+                setPendingClearAll(false);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-xs"
+            >
+              အကုန် ဖျက်မည်
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

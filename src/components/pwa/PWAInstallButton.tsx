@@ -6,6 +6,9 @@ export const PWAInstallButton: React.FC<{ className?: string }> = ({ className =
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
+  // v2.4.16 (H-H14): the old fallback used a native alert(). Show the same
+  // instructions inline in the UI instead — no alert() anywhere.
+  const [showFallbackHelp, setShowFallbackHelp] = useState(false);
 
   // If already running as an installed PWA, hide the install button
   if (isInstalled) {
@@ -98,17 +101,34 @@ export const PWAInstallButton: React.FC<{ className?: string }> = ({ className =
     );
   }
 
-  // Fallback if browser ambient prompt is waiting or manual instructions
+  // Fallback if browser ambient prompt is waiting or manual instructions.
+  // v2.4.16 (H-H14): inline help in the UI — the old version used a native
+  // alert() here. No alert() anywhere in this component.
   return (
-    <button
-      onClick={() => {
-        alert('App အဖြစ် ထည့်သွင်းရန် Browser Menu (⋮) ကို နှိပ်ပြီး "Add to Home screen" သို့မဟုတ် "Install App" ကို ရွေးချယ်နိုင်ပါသည်');
-      }}
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-900/40 hover:bg-purple-900/80 text-amber-200 border border-amber-400/30 text-xs font-semibold transition-all cursor-pointer ${className}`}
-      title="App အဖြစ် ထည့်သွင်းရန်"
-    >
-      <Download className="w-3.5 h-3.5 text-amber-400" />
-      <span className="font-myanmar text-[11px] hidden sm:inline">PWA App သွင်းမည်</span>
-    </button>
+    <div className="relative">
+      <button
+        onClick={() => setShowFallbackHelp((v) => !v)}
+        aria-expanded={showFallbackHelp}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-900/40 hover:bg-purple-900/80 text-amber-200 border border-amber-400/30 text-xs font-semibold transition-all cursor-pointer ${className}`}
+        title="App အဖြစ် ထည့်သွင်းရန်"
+      >
+        <Download className="w-3.5 h-3.5 text-amber-400" />
+        <span className="font-myanmar text-[11px] hidden sm:inline">PWA App သွင်းမည်</span>
+      </button>
+
+      {showFallbackHelp && (
+        <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl bg-slate-900 border border-amber-400/40 p-4 shadow-2xl text-white z-50">
+          <p className="text-xs font-myanmar text-slate-200 leading-relaxed">
+            App အဖြစ် ထည့်သွင်းရန် Browser Menu (⋮) ကို နှိပ်ပြီး &quot;Add to Home screen&quot; သို့မဟုတ် &quot;Install App&quot; ကို ရွေးချယ်နိုင်ပါသည်။
+          </p>
+          <button
+            onClick={() => setShowFallbackHelp(false)}
+            className="mt-3 w-full py-2 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 font-semibold text-xs transition-colors cursor-pointer border border-amber-400/30"
+          >
+            နားလည်ပါပြီ (ပိတ်မည်)
+          </button>
+        </div>
+      )}
+    </div>
   );
 };

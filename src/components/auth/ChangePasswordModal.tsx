@@ -10,8 +10,11 @@ interface ChangePasswordModalProps {
 
 export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClose }) => {
   const { changePassword, profile } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -22,6 +25,13 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
     e.preventDefault();
     setError(null);
     setSuccess(false);
+
+    // v2.4.16 (A-H2): the current password is required — without it,
+    // anyone holding an unlocked phone could lock the owner out.
+    if (!currentPassword) {
+      setError('လက်ရှိ လျှို့ဝှက်နံပါတ်ကို ထည့်သွင်းပါ');
+      return;
+    }
 
     if (newPassword.length < 6) {
       setError('လျှို့ဝှက်နံပါတ် အသစ်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်');
@@ -35,8 +45,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
 
     setLoading(true);
     try {
-      await changePassword(newPassword);
+      await changePassword(currentPassword, newPassword);
       setSuccess(true);
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setTimeout(() => {
@@ -47,6 +58,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
       console.error(err);
       if (err.code === 'auth/requires-recent-login') {
         setError('လုံခြုံရေးအရ စကားဝှက်မပြောင်းမီ အကောင့်ကို အသစ်ပြန်ဝင်ရန် လိုအပ်ပါသည်');
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError('လက်ရှိ လျှို့ဝှက်နံပါတ် မှားနေပါသည်။');
       } else {
         setError(err.message || 'စကားဝှက် ပြောင်းလဲခြင်း မအောင်မြင်ပါ');
       }
@@ -96,18 +109,51 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              လက်ရှိ စကားဝှက် (Current Password)
+            </label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type={showCurrent ? 'text' : 'password'}
+                required
+                placeholder="လက်ရှိ သုံးနေသော စကားဝှက်"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrent(!showCurrent)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold"
+                aria-label={showCurrent ? 'စကားဝှက် ဖျောက်မည်' : 'စကားဝှက် ပြမည်'}
+              >
+                {showCurrent ? 'ဖျောက်' : 'ပြ'}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
               စကားဝှက်အသစ် (New Password)
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
-                type="password"
+                type={showNew ? 'text' : 'password'}
                 required
                 placeholder="အနည်းဆုံး ၆ လုံး"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               />
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer text-xs font-bold"
+                aria-label={showNew ? 'စကားဝှက် ဖျောက်မည်' : 'စကားဝှက် ပြမည်'}
+              >
+                {showNew ? 'ဖျောက်' : 'ပြ'}
+              </button>
             </div>
           </div>
 

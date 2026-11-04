@@ -13,6 +13,7 @@ import {
 import { UserProfile } from '../../types/health';
 import { calculateBMI } from '../../lib/medicalCalculations';
 import { Modal } from '../common/Modal';
+import { useHealthData } from '../../context/HealthDataContext';
 
 interface EditPatientModalProps {
   isOpen: boolean;
@@ -42,23 +43,27 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
   onClose,
   onSave,
 }) => {
-  if (!isOpen || !patient) return null;
+  // v2.4.16 (C-C1): gender / blood type stay UNKNOWN when unknown — the
+  // old code prefilled 'male' / 'O+' and saved them, stamping a wrong
+  // gender and blood type onto any user who had never given one, just by
+  // opening Edit and saving an unrelated field. '' means "not given".
+  const { patientsList } = useHealthData();
 
-  const [displayName, setDisplayName] = useState(patient.displayName || '');
-  const [email, setEmail] = useState(patient.email || '');
-  const [phone, setPhone] = useState(patient.phone || '');
-  const [age, setAge] = useState<number | string>(patient.age || '');
-  const [dateOfBirth, setDateOfBirth] = useState(patient.dateOfBirth || '');
-  const [gender, setGender] = useState<'male' | 'female' | 'other'>(patient.gender || 'male');
-  const [heightCm, setHeightCm] = useState<number | string>(patient.heightCm || '');
-  const [weightKg, setWeightKg] = useState<number | string>(patient.weightKg || '');
-  const [waistCm, setWaistCm] = useState<number | string>(patient.waistCm || '');
-  const [bloodType, setBloodType] = useState(patient.bloodType || 'O+');
-  const [chronicConditions, setChronicConditions] = useState<string[]>(patient.chronicConditions || []);
+  const [displayName, setDisplayName] = useState(patient?.displayName || '');
+  const [email, setEmail] = useState(patient?.email || '');
+  const [phone, setPhone] = useState(patient?.phone || '');
+  const [age, setAge] = useState<number | string>(patient?.age || '');
+  const [dateOfBirth, setDateOfBirth] = useState(patient?.dateOfBirth || '');
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>(patient?.gender || '');
+  const [heightCm, setHeightCm] = useState<number | string>(patient?.heightCm || '');
+  const [weightKg, setWeightKg] = useState<number | string>(patient?.weightKg || '');
+  const [waistCm, setWaistCm] = useState<number | string>(patient?.waistCm || '');
+  const [bloodType, setBloodType] = useState(patient?.bloodType || '');
+  const [chronicConditions, setChronicConditions] = useState<string[]>(patient?.chronicConditions || []);
   const [customCondition, setCustomCondition] = useState('');
-  const [emergencyContact, setEmergencyContact] = useState(patient.emergencyContact || '');
-  const [allergiesText, setAllergiesText] = useState((patient.allergies || []).join(', '));
-  const [notes, setNotes] = useState(patient.notes || '');
+  const [emergencyContact, setEmergencyContact] = useState(patient?.emergencyContact || '');
+  const [allergiesText, setAllergiesText] = useState((patient?.allergies || []).join(', '));
+  const [notes, setNotes] = useState(patient?.notes || '');
 
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -70,11 +75,12 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
       setPhone(patient.phone || '');
       setAge(patient.age || '');
       setDateOfBirth(patient.dateOfBirth || '');
-      setGender(patient.gender || 'male');
+      // Unknown stays unknown — never default to 'male' / 'O+' (C-C1).
+      setGender(patient.gender || '');
       setHeightCm(patient.heightCm || '');
       setWeightKg(patient.weightKg || '');
       setWaistCm(patient.waistCm || '');
-      setBloodType(patient.bloodType || 'O+');
+      setBloodType(patient.bloodType || '');
       setChronicConditions(patient.chronicConditions || []);
       setEmergencyContact(patient.emergencyContact || '');
       setAllergiesText((patient.allergies || []).join(', '));
@@ -82,6 +88,10 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
       setErrorMsg(null);
     }
   }, [patient]);
+
+  // All hooks above this line — the early return must come after them, or
+  // the hook count changes between renders when the modal opens/closes.
+  if (!isOpen || !patient) return null;
 
   const parsedWeight = Number(weightKg);
   const parsedHeight = Number(heightCm);
@@ -114,6 +124,20 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
       return;
     }
 
+    // v2.4.16 (C-H6): refuse an email that already belongs to another user.
+    const trimmedEmail = email.trim();
+    if (trimmedEmail) {
+      const clash = patientsList.find(
+        (p) => p.id !== patient.id && (p.email || '').trim().toLowerCase() === trimmedEmail.toLowerCase()
+      );
+      if (clash) {
+        setErrorMsg(
+          `ဤအီးမေးလ် (${trimmedEmail}) ကို အခြားအသုံးပြုသူ "${clash.displayName || clash.email}" က သုံးထားပြီးဖြစ်ပါသည် — အခြားအီးမေးလ် သုံးပါ။`
+        );
+        return;
+      }
+    }
+
     setIsSaving(true);
     setErrorMsg(null);
 
@@ -126,11 +150,13 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
     try {
       await onSave(patient.id, {
         displayName: displayName.trim(),
-        email: email.trim() || undefined,
+        email: trimmedEmail || undefined,
         phone: phone.trim() || undefined,
         age: parsedAge,
         dateOfBirth: dateOfBirth || undefined,
-        gender,
+        // Unknown stays unknown: '' saves as undefined, which the context
+        // strips — it never writes a guessed 'male' / 'O+' (C-C1).
+        gender: gender || undefined,
         heightCm: parsedHeight > 0 ? parsedHeight : undefined,
         weightKg: parsedWeight > 0 ? parsedWeight : undefined,
         waistCm: waistCm ? Number(waistCm) : undefined,
@@ -285,6 +311,7 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
                   onChange={(e: any) => setGender(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:border-indigo-500"
                 >
+                  <option value="">မရွေးပါ / မသိပါ</option>
                   <option value="male">ကျား (Male)</option>
                   <option value="female">မ (Female)</option>
                   <option value="other">အခြား (Other)</option>
@@ -357,6 +384,7 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
                   onChange={(e) => setBloodType(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:border-indigo-500 font-bold"
                 >
+                  <option value="">မသိပါ / မထည့်ပါ</option>
                   {BLOOD_TYPES.map(bt => (
                     <option key={bt} value={bt}>{bt}</option>
                   ))}

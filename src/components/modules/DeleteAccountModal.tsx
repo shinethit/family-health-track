@@ -70,6 +70,10 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [progressText, setProgressText] = useState('');
+  // A-M10: collections whose cleanup failed. The account deletion still
+  // proceeds (below) and this list is shown honestly on the done screen,
+  // so the user can ask an admin to remove the leftovers.
+  const [failedNames, setFailedNames] = useState<string[]>([]);
 
   if (!isOpen || !currentUser) return null;
 
@@ -159,20 +163,23 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
         console.warn('Could not delete own admins doc (rules forbid self-delete):', e);
       }
 
-      // Stop and abort if any collection failed to delete completely
-      if (failedCollections.length > 0) {
-        throw new Error(
-          `${failedCollections.join('၊ ')} ကို ဖျက်ပစ်ရာတွင် ခွင့်ပြုချက်မရှိပါ (သို့မဟုတ်) ချို့ယွင်းချက် ဖြစ်ပေါ်ခဲ့ပါသည်။ သင်၏ ဒေတာများ မကျန်စေရန်အတွက် Auth အကောင့်ဖျက်ခြင်းကို ရပ်ဆိုင်းထားပါသည်။ ကျေးဇူးပြု၍ စနစ်စီမံခန့်ခွဲသူ (Admin) ထံ ဆက်သွယ်ပါ`
-        );
-      }
+      // A-M10: NEVER abort the account deletion because part of the
+      // cleanup failed. The old code threw here after some collections
+      // were already deleted — leaving a half-deleted account: data gone,
+      // account alive, and the user told to "contact admin" with no record
+      // of what actually failed. Now every failure is collected in
+      // failedCollections, the Auth deletion proceeds, and the done screen
+      // names exactly what is left behind.
+      // (No throw here — see the done step.)
 
-      // 3. Delete user document in users collection
+      // 3. Delete user document in users collection — a failure here is
+      // also non-fatal (it joins failedCollections and is reported).
       setProgressText('အသုံးပြုသူ ပရိုဖိုင် ဖျက်သိမ်းနေပါသည်...');
       try {
         await deleteDoc(doc(db, 'users', currentUser.uid));
       } catch (e: any) {
         console.error('Error deleting user profile:', e);
-        throw new Error('အသုံးပြုသူ ပရိုဖိုင် ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ။ Auth အကောင့်ဖျက်ခြင်းကို ရပ်ဆိုင်းထားပါသည်။');
+        failedCollections.push('အသုံးပြုသူ ပရိုဖိုင်');
       }
 
       // 3b. Free the username (v2.4.12): delete every `usernames` doc
@@ -207,6 +214,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
       // so they are deliberately NOT deleted here.
       removeOwnLocalKeys(currentUser.uid);
 
+      setFailedNames(failedCollections);
       setStep('done');
       setTimeout(async () => {
         await logout();
@@ -275,6 +283,9 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
                 <li>ဆရာဝန် မေးမြန်းထားသော မေးခွန်းများနှင့် အကြံပြုချက်များ</li>
                 <li>Firebase Authentication အကောင့်နှင့် ပရိုဖိုင်ဒေတာအားလုံး</li>
               </ul>
+              <p className="text-[11px] text-slate-500 leading-relaxed pt-1">
+                ဒေတာအချို့ ဖျက်မရခဲ့လျှင်လည်း အကောင့်ကို ဆက်လက် ဖျက်သိမ်းမည်ဖြစ်ပြီး၊ ကျန်နေသော ဒေတာများကို ပြီးဆုံးသည့် စာမျက်နှာတွင် ဖော်ပြပေးပါမည်။
+              </p>
             </div>
 
             <div className="flex gap-2.5 pt-2">
@@ -389,6 +400,17 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
               <h3 className="font-bold text-slate-900 text-base">အကောင့်ကို အပြီးတိုင် ဖျက်သိမ်းပြီးပါပြီ</h3>
               <p className="text-xs text-slate-500 mt-1">အသုံးပြုခဲ့သည့်အတွက် ကျေးဇူးတင်ရှိပါသည်။</p>
             </div>
+            {failedNames.length > 0 && (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs text-left space-y-1.5">
+                <p className="font-bold flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>အောက်ပါ ဒေတာများ ဖျက်မရခဲ့ပါ</span>
+                </p>
+                <p className="leading-relaxed">
+                  သင့်အကောင့်ကို ဖျက်သိမ်းပြီးပါပြီ၊ သို့သော် ဤအချက်အလက်များ ဖျက်ရာတွင် ချို့ယွင်းချက် ဖြစ်ခဲ့ပါသည်: <strong>{failedNames.join('၊ ')}</strong>။ ကျန်နေသော ဒေတာများ ဖျက်ရန် စနစ်စီမံခန့်ခွဲသူ (Admin) ထံ ဆက်သွယ်ပေးပါ။
+                </p>
+              </div>
+            )}
           </div>
         )}
 

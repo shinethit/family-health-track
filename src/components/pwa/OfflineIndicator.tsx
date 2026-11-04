@@ -31,7 +31,9 @@ export const OfflineIndicator: React.FC = () => {
     return (
       <div className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-2xl bg-emerald-600 text-white px-3.5 py-2 text-xs font-semibold shadow-xl animate-in slide-in-from-bottom duration-300">
         <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-        <span>အင်တာနက် ပြန်လည် ချိတ်ဆက်မိပါပြီ (Online)</span>
+        {/* v2.4.16 (H-H10): say only that the internet is back — never claim
+            data has synced, because reconnecting alone syncs nothing. */}
+        <span>အင်တာနက် ပြန်ရပါပြီ (Online)</span>
       </div>
     );
   }

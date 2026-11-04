@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { User, Check, Calendar, Ruler, Scale, AlertCircle, AtSign } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../common/Modal';
@@ -30,10 +30,12 @@ const USERNAME_RE = /^[a-z0-9_.]{3,20}$/;
 
 export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, onClose, onSaved }) => {
   const auth = useAuth();
-  const { updateProfile, profile } = auth;
-  // setUsername is added by the AuthContext work in the same v2.4.12 batch;
-  // the cast keeps this file compiling if that lands after this file.
-  const setUsername = (auth as unknown as { setUsername?: (username: string) => Promise<void> }).setUsername;
+  const { updateProfile, profile, setUsername, restoreUsername, clearUsername } = auth;
+  // Tracks which profile the form was prefilled from, so a profile that
+  // finishes loading AFTER the modal opened still prefills it (v2.4.16,
+  // A-L10) — the old effect ran only when isOpen changed, so a slow profile
+  // left the form blank and a save could wipe stored values.
+  const prefilledProfileId = useRef<string | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [username, setUsernameInput] = useState('');
   const [dob, setDob] = useState('');
@@ -56,7 +58,15 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
   // Height/weight show in the user's saved unit (v2.4.12); the stored
   // canonical values are heightCm / weightKg.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      prefilledProfileId.current = null;
+      return;
+    }
+    if (!profile) return;
+    // Only prefill once per profile — re-running on every profile change
+    // would wipe the user's in-progress edits after a save.
+    if (prefilledProfileId.current === profile.id) return;
+    prefilledProfileId.current = profile.id;
     const prefs = profilePrefs(profile);
     setDisplayName(profile?.displayName || '');
     setUsernameInput(prefs.username || '');
@@ -83,7 +93,7 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
     setChronicConditions(profile?.chronicConditions || []);
     setError(null);
     setSuccess(false);
-  }, [isOpen]);
+  }, [isOpen, profile]);
 
   if (!isOpen) return null;
 
@@ -98,6 +108,18 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
   // Canonical values for saving: height in cm, weight in kg.
   // Math (shared with BMIModule via lib/medicalCalculations):
   //   m -> cm: m x 100 | ft-in -> cm: (ft x 12 + in) x 2.54 | lb -> kg: lb x 0.45359237
+
+  // True when the user deliberately emptied the height / weight inputs
+  // (v2.4.16, A-L2) — distinct from an invalid value, which resolves to 0
+  // but must NOT clear the stored measurement.
+  const heightInputsEmpty = (): boolean =>
+    heightUnit === 'cm'
+      ? heightCmInput === ''
+      : heightUnit === 'm'
+        ? heightMInput === ''
+        : heightFeetInput === '' && heightInchesInput === '';
+  const weightInputsEmpty = (): boolean =>
+    weightUnit === 'kg' ? weightKgInput === '' : weightLbInput === '';
   const resolveHeightCm = (): number => {
     if (heightUnit === 'cm') return Number(heightCmInput) || 0;
     if (heightUnit === 'm') return Math.round((Number(heightMInput) || 0) * 100 * 10) / 10;
@@ -146,21 +168,52 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
     const newUsername = username.trim().toLowerCase();
     const currentUsername = profilePrefs(profile).username || '';
     const usernameChanged = !!newUsername && newUsername !== currentUsername;
+    // v2.4.16 (A-L3): the username box was emptied — the name is being removed.
+    const usernameCleared = !newUsername && !!currentUsername;
     if (usernameChanged && !USERNAME_RE.test(newUsername)) {
       setError('အသုံးပြုသူအမည် (username) သည် အင်္ဂလိပ်အက္ခရာအသေး၊ ဂဏန်း၊ _ သို့မဟုတ် . သာ ပါရပြီး ၃ လုံးမှ ၂၀ လုံးအထိ ဖြစ်ရပါမည်');
       return;
     }
 
-    // Only include fields the user actually entered — an empty field keeps
-    // whatever value the profile already had.
+    // v2.4.16 (A-M8): range validation — a typo must not store a 300 cm
+    // height, a 5 kg adult weight, or a birth date in the future.
+    if (dob) {
+      const dobDate = new Date(`${dob}T00:00:00`);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (Number.isNaN(dobDate.getTime()) || dobDate.getTime() > today.getTime()) {
+        setError('မွေးနေ့သည် အနာဂတ် ရက်စွဲ ဖြစ်နေပါသည်။ မှန်ကန်သော မွေးနေ့ ထည့်ပါ');
+        return;
+      }
+    }
     const heightCm = resolveHeightCm();
     const weightKg = resolveWeightKg();
+    if (heightCm > 0 && (heightCm < 50 || heightCm > 250)) {
+      setError('အရပ် (cm) သည် ၅၀ မှ ၂၅၀ အတွင်း ဖြစ်ရပါမည်။ မှန်ကန်ကြောင်း စစ်ဆေးပါ');
+      return;
+    }
+    if (weightKg > 0 && (weightKg < 2 || weightKg > 300)) {
+      setError('ကိုယ်အလေးချိန် (kg) သည် ၂ မှ ၃၀၀ အတွင်း ဖြစ်ရပါမည်။ မှန်ကန်ကြောင်း စစ်ဆေးပါ');
+      return;
+    }
+
+    // Only include fields the user actually entered — an empty field keeps
+    // whatever value the profile already had, EXCEPT a field the user
+    // deliberately emptied after a value was stored (v2.4.16, A-L2):
+    // passing explicit undefined clears it (see updateProfile).
     const data: Partial<UserProfile> = { displayName: displayName.trim() };
     if (dob) data.dateOfBirth = dob;
     if (gender) data.gender = gender;
     if (heightCm > 0) data.heightCm = Math.round(heightCm * 10) / 10;
+    else if (profile?.heightCm != null && heightInputsEmpty()) data.heightCm = undefined;
     if (weightKg > 0) data.weightKg = Math.round(weightKg * 10) / 10;
-    data.chronicConditions = chronicConditions;
+    else if (profile?.weightKg != null && weightInputsEmpty()) data.weightKg = undefined;
+    // v2.4.16 (A-L4): keep conditions that are NOT among the 6 toggles —
+    // they were added elsewhere (e.g. Emergency ID) and this form must not
+    // silently drop them. Only the 6 toggles come from this form's state.
+    const customConditions = (profile?.chronicConditions || []).filter(c => !CHRONIC_CONDITIONS.includes(c));
+    const toggledConditions = chronicConditions.filter(c => CHRONIC_CONDITIONS.includes(c));
+    data.chronicConditions = [...customConditions, ...toggledConditions];
     // Save the unit preference so every form shows the user's units next time.
     const prefsToSave = { heightUnit, weightUnit } as Partial<UserProfile>;
 
@@ -171,7 +224,19 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
       if (usernameChanged && setUsername) {
         await setUsername(newUsername);
       }
-      await updateProfile({ ...data, ...prefsToSave });
+      if (usernameCleared && clearUsername) {
+        await clearUsername();
+      }
+      try {
+        await updateProfile({ ...data, ...prefsToSave });
+      } catch (e) {
+        // v2.4.16 (A-M5): the profile save failed AFTER the username was
+        // reserved — roll the reservation back so the two never diverge.
+        if (usernameChanged && restoreUsername) {
+          await restoreUsername(currentUsername, newUsername);
+        }
+        throw e;
+      }
       setSuccess(true);
       onSaved?.();
       setTimeout(() => {

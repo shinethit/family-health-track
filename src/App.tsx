@@ -37,6 +37,11 @@ import { Navbar } from './components/layout/Navbar';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { CURRENT_SYSTEM_VERSION } from './constants/version';
 import { db } from './lib/firebase';
+import {
+  markVersionUpdatePromptShown,
+  readShownVersionUpdateHash,
+  shouldShowVersionUpdatePrompt,
+} from './lib/versionCheck';
 
 // Lazy-loaded Modals
 const NotificationCenterModal = lazy(() => import('./components/modules/NotificationCenterModal').then(m => ({ default: m.NotificationCenterModal })));
@@ -83,7 +88,7 @@ import { ProfileSetupModal } from './components/modules/ProfileSetupModal';
 
 const MainContent: React.FC = () => {
   const { currentUser, profile, isAdmin, logout, loading, authAttempting } = useAuth();
-  const { selectedPatient, setSelectedPatientId, doctorQuestions, allDoctorQuestions, broadcastTickers, bpRecords, glucoseRecords, bmiRecords, labRecords, medications, dataLoading } = useHealthData();
+  const { selectedPatient, setSelectedPatientId, doctorQuestions, allDoctorQuestions, broadcastTickers, bpRecords, glucoseRecords, bmiRecords, labRecords, medications, doctorAdvices, dataLoading } = useHealthData();
   const { unreadCount, notifications } = useNotifications();
   const [activeTab, setActiveTab] = useState<
     'trends' | 'bp' | 'sugar' | 'bmi' | 'labs' | 'medications' | 'otc_meds' | 'news' | 'home_testing_guide' | 'investigations_guide' | 'doctor_qa' | 'reminders' | 'vaccine' | 'emergency' | 'diet' | 'physio' | 'specialty' | 'derma' | 'firstaid' | 'special_needs' | 'womens_health' | 'pregnancy' | 'child_care' | 'milestones' | 'elderly_care' | 'admin'
@@ -99,9 +104,27 @@ const MainContent: React.FC = () => {
   const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isProfileSetupOpen, setIsProfileSetupOpen] = useState(false);
+  // Mirror of isProfileSetupOpen for the version-check closure (the auto
+  // check effect has empty deps, so it cannot read the state directly).
+  // Used to suppress the update TOAST while the profile modal is open
+  // (v2.4.16, E-L7) — the modal itself already waits (see its render gate).
+  const isProfileSetupOpenRef = useRef(false);
+  useEffect(() => { isProfileSetupOpenRef.current = isProfileSetupOpen; }, [isProfileSetupOpen]);
+  // True when this page load came from a password-reset link
+  // (?mode=resetPassword&oobCode=…) — the reset form must render even
+  // while the user is already logged in (v2.4.16, A-M7). Cleared by the
+  // LoginScreen when the reset flow finishes or is abandoned.
+  const [isResetLink, setIsResetLink] = useState<boolean>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('mode') === 'resetPassword' && !!params.get('oobCode');
+    } catch {
+      return false;
+    }
+  });
   const [showVersionUpdateModal, setShowVersionUpdateModal] = useState(false);
   const [versionUpdatePendingReload, setVersionUpdatePendingReload] = useState(false);
-  const [latestAppVersion, setLatestAppVersion] = useState(CURRENT_SYSTEM_VERSION);
+  const [latestAppVersion, setLatestAppVersion] = useState<string | null>(CURRENT_SYSTEM_VERSION);
   const [versionToast, setVersionToast] = useState<{ message: string; type: 'checking' | 'success' | 'updated' | 'error' } | null>(null);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
 
@@ -173,15 +196,21 @@ const MainContent: React.FC = () => {
         return;
       }
     } catch {}
-    const missingBasics = !profile.dateOfBirth && !profile.heightCm && !profile.weightKg;
+    // v2.4.16 (A-M11): ANY missing basic opens the setup — the old check
+    // required ALL THREE to be missing, so a profile with only a missing
+    // weight (or only a missing DOB) never got prompted, and the record
+    // stayed incomplete for analysis.
+    const missingBasics = !profile.dateOfBirth || !profile.heightCm || !profile.weightKg;
     if (missingBasics) setIsProfileSetupOpen(true);
   }, [loading, currentUser, profile]);
 
   // First-run welcome: a brand-new user (no records at all yet) gets a
   // short 3-step checklist on the Trends tab. Dismissing it once sets the
   // flag so it never shows again; it never blocks the app.
+  // v2.4.16 (E-L10): doctor advices count as "has data" too — a user who
+  // only has an advice from their doctor is not a brand-new user.
   const hasAnyRecord =
-    bpRecords.length + glucoseRecords.length + bmiRecords.length + labRecords.length + medications.length > 0;
+    bpRecords.length + glucoseRecords.length + bmiRecords.length + labRecords.length + medications.length + doctorAdvices.length > 0;
   const [showFirstRunWelcome, setShowFirstRunWelcome] = useState(false);
   useEffect(() => {
     if (loading || dataLoading || !currentUser || isAdmin) return;
@@ -299,27 +328,45 @@ const MainContent: React.FC = () => {
   // compared a localStorage value with CURRENT_SYSTEM_VERSION, so it always
   // reported success and could never tell that a new deploy had arrived.
   const handleCheckVersion = async (isManual = false) => {
-    if (isCheckingVersion) return;
-    setIsCheckingVersion(true);
-    if (isManual) {
-      setVersionToast({ message: 'စနစ်ဗားရှင်း စစ်ဆေးနေပါသည်...', type: 'checking' });
+    // v2.4.16 (H-H5): a manual tap while an auto check is in flight used
+    // to be silently swallowed — say so instead of looking dead.
+    if (isCheckingVersion) {
+      if (isManual) {
+        setVersionToast({ message: 'ဗားရှင်း စစ်ဆေးနေပါသည် — ခဏစောင့်ပါ။', type: 'checking' });
+        setTimeout(() => setVersionToast(null), 3500);
+      }
+      return;
     }
+    setIsCheckingVersion(true);
+    // v2.4.16 (H-H7): only clear the toast when THIS run actually set one —
+    // the old unconditional timeout could wipe a toast set by a later check.
+    let toastSet = false;
+    const showVersionToast = (t: { message: string; type: 'checking' | 'success' | 'updated' | 'error' }) => {
+      toastSet = true;
+      setVersionToast(t);
+    };
     try {
       const loadedHash = getLoadedBundleHash();
       if (!loadedHash) {
         // Dev server / non-bundled page: no bundle hash to compare.
         // Fall back to the old localStorage behaviour.
         const lastSeen = localStorage.getItem('myanmar_health_app_version');
-        if (!lastSeen || lastSeen !== CURRENT_SYSTEM_VERSION) {
+        if (!lastSeen) {
+          // v2.4.16 (H-H8): first run on a dev server is NOT an upgrade —
+          // record the version silently instead of claiming one happened.
           localStorage.setItem('myanmar_health_app_version', CURRENT_SYSTEM_VERSION);
           setVersionUpdatePendingReload(false);
+        } else if (lastSeen !== CURRENT_SYSTEM_VERSION) {
+          localStorage.setItem('myanmar_health_app_version', CURRENT_SYSTEM_VERSION);
+          setVersionUpdatePendingReload(false);
+          setLatestAppVersion(CURRENT_SYSTEM_VERSION);
           setShowVersionUpdateModal(true);
-          setVersionToast({
+          showVersionToast({
             message: `🔄 စနစ်ဗားရှင်းသစ် ${CURRENT_SYSTEM_VERSION} သို့ အောင်မြင်စွာ အဆင့်မြှင့်လိုက်ပါပြီ!`,
             type: 'updated',
           });
         } else if (isManual) {
-          setVersionToast({
+          showVersionToast({
             message: `✅ သင်သည် နောက်ဆုံးပေါ် စနစ်ဗားရှင်း ${CURRENT_SYSTEM_VERSION} ကို အသုံးပြုနေပါသည်!`,
             type: 'success',
           });
@@ -338,23 +385,54 @@ const MainContent: React.FC = () => {
 
       if (servedHash !== loadedHash) {
         // A newer deploy is live on the server — this page is stale.
-        setLatestAppVersion(CURRENT_SYSTEM_VERSION);
+        // v2.4.16 (H-H1): the served deploy's version STRING is not
+        // available from the bundle hash alone, so the pending-reload
+        // prompt must NOT name a version or show highlights — the old
+        // code passed CURRENT_SYSTEM_VERSION (the LOADED bundle's
+        // version), so a v2.4.15 user was told to "get v2.4.15" and shown
+        // v2.4.15's highlights as "what's new". null = unknown.
+        setLatestAppVersion(null);
         setVersionUpdatePendingReload(true);
-        setShowVersionUpdateModal(true);
-        setVersionToast({
-          message: '🔄 ဗားရှင်းအသစ် ရောက်ရှိနေပါသည် — စာမျက်နှာကို ပြန်ဖွင့်ပြီး (Reload) အသစ်ရယူပါ။',
-          type: 'updated',
-        });
-      } else if (isManual) {
-        setVersionToast({
-          message: `✅ သင်သည် နောက်ဆုံးပေါ် စနစ်ဗားရှင်း ${CURRENT_SYSTEM_VERSION} ကို အသုံးပြုနေပါသည်!`,
-          type: 'success',
-        });
+        // v2.4.16 — the AUTO prompt appears at most once per deploy.
+        // Remember the served hash we already prompted for, so dismissing
+        // the modal without reloading does not re-show the SAME prompt on
+        // the next focus / visibilitychange. The modal AND the toast are
+        // both skipped on repeat auto checks. Manual checks always show
+        // their result, even if the auto prompt was already shown once.
+        if (
+          shouldShowVersionUpdatePrompt({
+            isManual,
+            servedHash,
+            alreadyShownHash: readShownVersionUpdateHash(),
+          })
+        ) {
+          markVersionUpdatePromptShown(servedHash);
+          setShowVersionUpdateModal(true);
+          // v2.4.16 (E-L7): the modal waits for the profile-setup modal,
+          // and so must the toast — otherwise the toast pops over it.
+          if (!isProfileSetupOpenRef.current) {
+            showVersionToast({
+              message: '🔄 ဗားရှင်းအသစ် ရောက်ရှိနေပါသည် — စာမျက်နှာကို ပြန်ဖွင့်ပြီး (Reload) အသစ်ရယူပါ။',
+              type: 'updated',
+            });
+          }
+        }
+      } else {
+        // v2.4.16 (H-H9): up-to-date means no reload is pending any more —
+        // clear the flag so a stale prompt can never linger after a
+        // successful reload.
+        setVersionUpdatePendingReload(false);
+        if (isManual) {
+          showVersionToast({
+            message: `✅ သင်သည် နောက်ဆုံးပေါ် စနစ်ဗားရှင်း ${CURRENT_SYSTEM_VERSION} ကို အသုံးပြုနေပါသည်!`,
+            type: 'success',
+          });
+        }
       }
     } catch (e) {
       console.warn('Version check failed:', e);
       if (isManual) {
-        setVersionToast({
+        showVersionToast({
           message: '⚠️ ဗားရှင်း စစ်ဆေးခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။',
           type: 'error',
         });
@@ -362,7 +440,7 @@ const MainContent: React.FC = () => {
       // Auto check stays silent on failure — never claim up-to-date.
     } finally {
       setIsCheckingVersion(false);
-      setTimeout(() => setVersionToast(null), 3500);
+      if (toastSet) setTimeout(() => setVersionToast(null), 3500);
     }
   };
 
@@ -373,12 +451,18 @@ const MainContent: React.FC = () => {
     handleCheckVersion(false);
 
     const handleFocus = () => handleCheckVersion(false);
+    // v2.4.16 (H-H6): only check when the tab actually becomes VISIBLE —
+    // the old handler ran on every visibilitychange, including when the
+    // tab was being hidden, wasting a check on the way out.
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') handleCheckVersion(false);
+    };
     window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
@@ -416,9 +500,12 @@ const MainContent: React.FC = () => {
     );
   }
 
-  // Show Login Screen strictly when no Firebase currentUser is authenticated
-  if (!currentUser) {
-    return <LoginScreen />;
+  // Show Login Screen strictly when no Firebase currentUser is authenticated.
+  // v2.4.16 (A-M7): a password-reset link (?mode=resetPassword&oobCode=…)
+  // must render the reset form even while the user is already logged in —
+  // otherwise the link does nothing and the user cannot set a password.
+  if (!currentUser || isResetLink) {
+    return <LoginScreen onResetFinished={() => setIsResetLink(false)} />;
   }
 
   // Get current active Category and ONLY its sub-category tabs
@@ -429,7 +516,7 @@ const MainContent: React.FC = () => {
     <div className="min-h-screen w-full bg-white text-slate-900 flex flex-col font-sans">
       {/* Live Version Check Toast Notification */}
       {versionToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl shadow-xl border border-indigo-200 bg-white/95 text-slate-900 flex items-center gap-2.5 text-xs font-bold animate-in fade-in slide-in-from-top-2 backdrop-blur-md">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[70] max-w-[calc(100vw-2rem)] px-4 py-2.5 rounded-2xl shadow-xl border border-indigo-200 bg-white/95 text-slate-900 flex items-center gap-2.5 text-xs font-bold animate-in fade-in slide-in-from-top-2 backdrop-blur-md">
           {versionToast.type === 'checking' && (
             <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin shrink-0" />
           )}
@@ -450,7 +537,7 @@ const MainContent: React.FC = () => {
               : versionToast.type === 'error'
               ? 'text-rose-900'
               : 'text-indigo-900'
-          }>
+          } style={{ overflowWrap: 'anywhere' }}>
             {versionToast.message}
           </span>
         </div>
@@ -557,7 +644,7 @@ const MainContent: React.FC = () => {
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* First-run welcome — 3-step checklist for a brand-new user with
             no records yet. Small and dismissible; never blocks the app. */}
-        {showFirstRunWelcome && activeTab === 'trends' && (
+        {showFirstRunWelcome && activeTab === 'trends' && !isProfileSetupOpen && (
           <div className="mb-4 p-4 rounded-3xl bg-emerald-50 border border-emerald-200 shadow-xs">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -596,7 +683,7 @@ const MainContent: React.FC = () => {
         )}
         {/* Family member switcher — only on the record tabs it applies to.
             (Admins see the full user directory instead; the bar hides itself.) */}
-        {['bp', 'sugar', 'bmi', 'labs', 'medications'].includes(activeTab) && <FamilyMembersBar />}
+        {['bp', 'sugar', 'bmi', 'labs', 'medications', 'trends', 'vaccine'].includes(activeTab) && <FamilyMembersBar />}
         <Suspense fallback={<div className="flex items-center justify-center py-16 text-slate-500 font-medium text-sm">ဖွင့်နေသည်...</div>}>
           {activeTab === 'admin' && isAdmin && <AdminPatientPortal />}
           {activeTab === 'doctor_qa' && <DoctorQnAModule />}
@@ -617,7 +704,7 @@ const MainContent: React.FC = () => {
           {activeTab === 'otc_meds' && <HomeMedicinesGuideModule />}
           {activeTab === 'news' && <HealthNewsModule />}
           {activeTab === 'investigations_guide' && <LabInvestigationGuideModule />}
-          {activeTab === 'reminders' && <RemindersModule />}
+          {activeTab === 'reminders' && <RemindersModule onOpenDoctorQA={() => setActiveTab('doctor_qa')} />}
           {activeTab === 'special_needs' && <SpecialNeedsCareModule />}
           {activeTab === 'womens_health' && <WomensHealthModule />}
           {activeTab === 'pregnancy' && <PregnancyCareModule />}
@@ -659,6 +746,7 @@ const MainContent: React.FC = () => {
           <NotificationCenterModal 
             isOpen={isNotificationsOpen} 
             onClose={() => setIsNotificationsOpen(false)} 
+            onOpenDoctorQA={() => { setIsNotificationsOpen(false); setActiveTab('doctor_qa'); }}
           />
         )}
         {isVersionHistoryOpen && (

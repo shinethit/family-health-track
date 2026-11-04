@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Users, UserPlus, Heart, Activity, Check, Trash2, X, Plus } from 'lucide-react';
+import { Users, UserPlus, Heart, Activity, Check, Trash2, X, Plus, Pencil } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { Modal } from '../common/Modal';
 import { FamilyMember } from '../../types/health';
 
 export const FamilyMembersBar: React.FC = () => {
@@ -12,6 +13,7 @@ export const FamilyMembersBar: React.FC = () => {
     setSelectedFamilyMemberId, 
     selectedFamilyMember,
     addFamilyMember,
+    updateFamilyMember,
     deleteFamilyMember,
     bpRecords,
     glucoseRecords,
@@ -22,6 +24,15 @@ export const FamilyMembersBar: React.FC = () => {
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // D-M1: the member being edited (null = adding a new one). The same
+  // form is reused, prefilled from the member — previously the only way
+  // to fix a wrong age / relationship / blood type was delete + re-add,
+  // which orphaned all of their records under the old doc id.
+  const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
+  // D-M7: delete confirmation state (generic Modal, never window.confirm)
+  // and the member awaiting deletion.
+  const [deleteTarget, setDeleteTarget] = useState<FamilyMember | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   // No prefilled fake person (v2.4.11 F19): the old form opened with a
   // made-up mother — relationship 'အမေ', age 50, O+, hypertension — so
   // saving without touching anything filed a person who does not exist.
@@ -45,6 +56,29 @@ export const FamilyMembersBar: React.FC = () => {
     setNotes('');
   };
 
+  const openAddForm = () => {
+    setEditingMember(null);
+    resetAddForm();
+    setIsOpenAdd(true);
+  };
+
+  const openEditForm = (member: FamilyMember) => {
+    setEditingMember(member);
+    setName(member.name);
+    setRelationship(member.relationship);
+    setAge(member.age);
+    setGender(member.gender);
+    setBloodType(member.bloodType || '');
+    setConditions(member.chronicConditions || []);
+    setNotes(member.notes || '');
+    setIsOpenAdd(true);
+  };
+
+  const closeForm = () => {
+    setIsOpenAdd(false);
+    setEditingMember(null);
+  };
+
   if (isAdmin) {
     return null; // Admin has the full patient directory
   }
@@ -62,36 +96,78 @@ export const FamilyMembersBar: React.FC = () => {
   // awaited: success toasts and clears the WHOLE form (F19 — the old code
   // cleared only name/notes, so the fake defaults leaked into the next
   // add); failure toasts, keeps the entered values, and leaves the modal
-  // open so the admin can retry.
+  // open so the admin can retry. D-M1: the same handler edits — the form
+  // is prefilled from the member and updateFamilyMember keeps the doc id,
+  // so the member's records stay attached.
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || age === '' || !gender) return;
     setIsSubmitting(true);
     try {
-      await addFamilyMember({
-        name: name.trim(),
-        relationship: relationship.trim(),
-        age,
-        gender,
-        bloodType: bloodType || undefined,
-        chronicConditions: conditions,
-        notes: notes.trim() || undefined,
-      });
-      showToast('မိသားစုဝင်အသစ် ထည့်သွင်းပြီးပါပြီ', 'success');
-      resetAddForm();
-      setIsOpenAdd(false);
+      if (editingMember) {
+        await updateFamilyMember(editingMember.id, {
+          name: name.trim(),
+          relationship: relationship.trim(),
+          age,
+          gender,
+          bloodType: bloodType || undefined,
+          chronicConditions: conditions,
+          notes: notes.trim() || undefined,
+        });
+        // updateFamilyMember toasts success/failure itself.
+        resetAddForm();
+        setEditingMember(null);
+        setIsOpenAdd(false);
+      } else {
+        await addFamilyMember({
+          name: name.trim(),
+          relationship: relationship.trim(),
+          age,
+          gender,
+          bloodType: bloodType || undefined,
+          chronicConditions: conditions,
+          notes: notes.trim() || undefined,
+        });
+        showToast('မိသားစုဝင်အသစ် ထည့်သွင်းပြီးပါပြီ', 'success');
+        resetAddForm();
+        setIsOpenAdd(false);
+      }
     } catch (err) {
-      console.warn('Error adding family member:', err);
-      showToast('မိသားစုဝင် ထည့်သွင်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+      console.warn('Error saving family member:', err);
+      showToast(
+        editingMember
+          ? 'မိသားစုဝင် ပြင်ဆင်ခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။'
+          : 'မိသားစုဝင် ထည့်သွင်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။',
+        'error'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // v2.4.11 F22: deleting a family member was one tap with no confirmation.
+  // D-M7: the delete is now awaited and reported honestly — the old code
+  // called deleteFamilyMember without awaiting it, so a failed delete
+  // (and its cascade) looked successful. deleteFamilyMember itself toasts
+  // on failure, so only success is toasted here.
   const handleDeleteMember = (member: FamilyMember) => {
-    if (!window.confirm(`'${member.name}' ကို မိသားစုဝင်စာရင်းမှ ဖျက်မလား?`)) return;
-    deleteFamilyMember(member.id);
+    setDeleteTarget(member);
+  };
+
+  const confirmDeleteMember = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteFamilyMember(deleteTarget.id);
+      showToast(`'${deleteTarget.name}' ကို ဖျက်သိမ်းပြီးပါပြီ`, 'success');
+      setDeleteTarget(null);
+    } catch (err) {
+      // Failure was already toasted by deleteFamilyMember; the member
+      // stays in the list (the context rolls the optimistic removal back).
+      console.warn('Error deleting family member:', err);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -115,7 +191,7 @@ export const FamilyMembersBar: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setIsOpenAdd(true)}
+          onClick={openAddForm}
           className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
         >
           <UserPlus className="w-3.5 h-3.5" />
@@ -136,7 +212,7 @@ export const FamilyMembersBar: React.FC = () => {
             မိမိ၏ မိခင်၊ ဖခင်၊ ဇနီး၊ ခင်ပွန်း သို့မဟုတ် သားသမီးများ၏ သွေးတိုး၊ ဆီးချိုနှင့် ကျန်းမာရေးမှတ်တမ်းများကို စနစ်တကျ စောင့်ရှောက်နိုင်ရန် မိသားစုဝင်ကို စတင်ထည့်သွင်းပါ
           </p>
           <button
-            onClick={() => setIsOpenAdd(true)}
+            onClick={openAddForm}
             className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
@@ -280,16 +356,28 @@ export const FamilyMembersBar: React.FC = () => {
                   <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
                     <span>✓ လက်ရှိရွေးချယ်ထားသည်</span>
                     {familyMembers.length > 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteMember(member);
-                        }}
-                        className="text-slate-400 hover:text-rose-500 p-0.5"
-                        title="မိသားစုဝင် ဖျက်မည်"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      <span className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditForm(member);
+                          }}
+                          className="text-slate-400 hover:text-emerald-600 p-0.5"
+                          title="မိသားစုဝင် ပြင်ဆင်မည်"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteMember(member);
+                          }}
+                          className="text-slate-400 hover:text-rose-500 p-0.5"
+                          title="မိသားစုဝင် ဖျက်မည်"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </span>
                     )}
                   </div>
                 )}
@@ -299,17 +387,17 @@ export const FamilyMembersBar: React.FC = () => {
         </div>
       )}
 
-      {/* Add Family Member Modal */}
+      {/* Add / Edit Family Member Modal */}
       {isOpenAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 my-8">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-emerald-600" />
-                မိသားစုဝင် အသစ်ထည့်သွင်းခြင်း
+                {editingMember ? <Pencil className="w-5 h-5 text-emerald-600" /> : <UserPlus className="w-5 h-5 text-emerald-600" />}
+                {editingMember ? `မိသားစုဝင် ပြင်ဆင်ခြင်း — ${editingMember.name}` : 'မိသားစုဝင် အသစ်ထည့်သွင်းခြင်း'}
               </h3>
               <button
-                onClick={() => setIsOpenAdd(false)}
+                onClick={closeForm}
                 className="text-slate-400 hover:text-slate-600"
               >
                 <X className="w-5 h-5" />
@@ -450,7 +538,7 @@ export const FamilyMembersBar: React.FC = () => {
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsOpenAdd(false)}
+                  onClick={closeForm}
                   className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400"
                 >
                   မလုပ်တော့ပါ
@@ -460,13 +548,55 @@ export const FamilyMembersBar: React.FC = () => {
                   disabled={isSubmitting}
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
-                  {isSubmitting ? 'ထည့်သွင်းနေသည်...' : 'မိသားစုဝင် ထည့်သွင်းမည်'}
+                  {isSubmitting
+                    ? (editingMember ? 'ပြင်ဆင်နေသည်...' : 'ထည့်သွင်းနေသည်...')
+                    : (editingMember ? 'ပြင်ဆင်ပြီး သိမ်းမည်' : 'မိသားစုဝင် ထည့်သွင်းမည်')}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* D-M7: delete confirmation — generic Modal, never window.confirm.
+          The delete (member doc + cascade of their records) is awaited;
+          success/failure is toasted honestly. */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => { if (!isDeleting) setDeleteTarget(null); }}
+        size="sm"
+        showHeader={false}
+      >
+        <div className="p-6 space-y-4 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+            <Trash2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-bold text-base text-slate-900">မိသားစုဝင် ဖျက်မည်</h3>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              '{deleteTarget?.name}' ကို မိသားစုဝင်စာရင်းမှ ဖျက်မလား? သူတို့၏ ကျန်းမာရေးမှတ်တမ်းများ (သွေးပေါင်၊ သွေးချို၊ ဆေး၊ ဓာတ်ခွဲ) လည်း အတူတူ ပျက်သွားမည်။ ဤလုပ်ဆောင်ချက်သည် ပြန်ပြင်၍ မရပါ။
+            </p>
+          </div>
+          <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              disabled={isDeleting}
+              className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer disabled:opacity-50"
+            >
+              မဖျက်တော့ပါ
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteMember}
+              disabled={isDeleting}
+              className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer disabled:opacity-50"
+            >
+              {isDeleting ? 'ဖျက်နေသည်...' : 'ဖျက်သိမ်းမည်'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

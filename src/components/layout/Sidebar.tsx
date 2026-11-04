@@ -29,6 +29,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { CURRENT_SYSTEM_VERSION } from '../../constants/version';
 import { calculateBPCategory, calculateGlucoseStatus, calculateBMI, parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
 import { PWAInstallButton } from '../pwa/PWAInstallButton';
+import { Modal } from '../common/Modal';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -64,12 +65,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCategoryGroup
 }) => {
   const { profile, logout, currentUser, isAdmin } = useAuth();
+  // Logout confirm (v2.4.16, A-L5): the native confirm() was replaced by
+  // the app's own Modal so the confirm looks and behaves like the rest
+  // of the app (and works the same on every browser).
+  const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
   // Change Password only works for email/password accounts — accounts
   // created with Google before v2.4.12 have no password until one is set
   // via "forgot password".
   const isPasswordUser = currentUser?.providerData?.some((p) => p.providerId === 'password') ?? false;
   const {
-    selectedPatient, selectedFamilyMember,
+    selectedPatient, selectedFamilyMember, selectedFamilyMemberId,
     ownBPRecords, ownGlucoseRecords, ownBMIRecords,
     allBPRecords, allGlucoseRecords, allBMIRecords,
     dataLoading,
@@ -81,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // person's summary. The old code took sortByDateDesc(bpRecords)[0]
   // where bpRecords for an admin with NO patient selected was ALL users'
   // records pooled, while the header showed the admin's own name.
-  //   admin + patient selected -> that patient only ('လူနာ')
+  //   admin + patient selected -> that patient only ('အသုံးပြုသူ')
   //   family member selected  -> that member only ('မိသားစုဝင်')
   //   anything else           -> the signed-in user's own records only
   //     (covers admin with no patient selected AND family 'all' view)
@@ -110,13 +115,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ? selectedFamilyMember!.name
       : (profile?.displayName || 'အသုံးပြုသူ');
   // Second header line: the patient's email, the member's relationship,
-  // or the signed-in user's own email.
+  // or the signed-in user's own email. In family 'all' view the card shows
+  // the signed-in user's OWN records (v2.4.15), so it is labelled
+  // "ကိုယ်တိုင်" (v2.4.16, D-L2) — otherwise it reads as if the pooled
+  // family view were one person's summary.
   const summarySubline = isPatientView
     ? (selectedPatient!.email || '')
     : isMemberView
       ? `မိသားစုဝင် • ${selectedFamilyMember!.relationship}`
-      : (profile?.email || currentUser?.email || '');
-  const summaryRoleLabel = isPatientView ? 'လူနာ' : isMemberView ? 'မိသားစုဝင်' : null;
+      : selectedFamilyMemberId === 'all'
+        ? `ကိုယ်တိုင် • ${profile?.email || currentUser?.email || ''}`
+        : (profile?.email || currentUser?.email || '');
+  const summaryRoleLabel = isPatientView ? 'အသုံးပြုသူ' : isMemberView ? 'မိသားစုဝင်' : null;
   const targetAge = isPatientView
     ? selectedPatient!.age
     : isMemberView
@@ -143,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const bpEval = latestBP ? calculateBPCategory(latestBP.systolic, latestBP.diastolic, targetAge, isPregnant) : null;
   // No fabricated fallback: a record with no glucose value has no status.
   const latestGluValue = latestGlu?.glucoseValue ?? latestGlu?.value ?? null;
-  const gluEval = latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestGlu.timing || latestGlu.type || 'fasting') : null;
+  const gluEval = latestGluValue != null ? calculateGlucoseStatus(latestGluValue, latestGlu.timing || latestGlu.type || 'fasting', targetAge ?? undefined) : null;
   const bmiEval = latestBMI ? calculateBMI(latestBMI.weightKg, latestBMI.heightCm, targetAge) : null;
 
   const hasAnyRecords = Boolean(latestBP || latestGlu || latestBMI);
@@ -158,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       case 'stage1': return 'အနည်းငယ် မြင့်နေပါတယ်';
       case 'stage2': return 'တော်တော် မြင့်နေပါတယ်';
       case 'crisis': return 'အရမ်း မြင့်နေပါတယ် — ဆရာဝန်နှင့် အမြန်ပြပါ';
-      default: return 'ပုံမှန်ပါ';
+      default: return 'စစ်ဆေးရန် လိုပါတယ်';
     }
   };
   const plainGluStatus = (status: string): string => {
@@ -168,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       case 'high': return 'မြင့်နေပါတယ်';
       case 'critical': return 'အလွန်မြင့်နေပါတယ် — ဆရာဝန်နှင့် အမြန်ပြပါ';
       case 'low': return 'နည်းနေပါတယ်';
-      default: return 'ပုံမှန်ပါ';
+      default: return 'စစ်ဆေးရန် လိုပါတယ်';
     }
   };
   const plainBMIStatus = (category: string): string => {
@@ -178,7 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       case 'overweight': return 'အလေးချိန် အနည်းငယ် များနေပါတယ်';
       case 'obese1': return 'အလေးချိန် များနေပါတယ်';
       case 'obese2': return 'အလေးချိန် အရမ်း များနေပါတယ်';
-      default: return 'ပုံမှန်ပါ';
+      default: return 'စစ်ဆေးရန် လိုပါတယ်';
     }
   };
   // Medical label in parentheses only when it adds information (never
@@ -189,8 +199,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     isPediatric
       ? (labelMm || plain)
       : (!isNormal && labelMm && labelMm !== plain) ? `${plain} (${labelMm})` : plain;
-  const recordDate = (r: { date?: string; timestamp?: string; createdAt?: string }): string =>
-    formatDateLabel(r.date || r.timestamp || r.createdAt).date;
+  // A measurement date is shown only when the record actually HAS one —
+  // the old code fell back to createdAt (the entry date), presenting it
+  // as if the measurement happened then (v2.4.16, D-M3).
+  const recordDate = (r: { date?: string; timestamp?: string; createdAt?: string }): string => {
+    const d = r.date || r.timestamp;
+    return d ? formatDateLabel(d).date : 'ရက်စွဲ မရှိပါ';
+  };
 
   // Open one metric's module for the SAME person the card shows: the
   // person selection (patient / family member / self) is already set in
@@ -243,9 +258,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1.5">
                <div className="flex items-center justify-between gap-2">
                  <p className="text-[11px] font-bold text-slate-500">ကျန်းမာရေးအခြေနေ အကျဉ်း</p>
-                 {summaryRoleLabel && (
-                   <span className="px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-extrabold">{summaryRoleLabel}</span>
-                 )}
                </div>
                <p className="text-[11px] text-slate-400 font-semibold">{summaryName} ၏ နောက်ဆုံး တိုင်းတာချက်များ</p>
                
@@ -262,7 +274,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                            <span className={`w-2 h-2 rounded-full ${
                              bpEval.category === 'normal' ? 'bg-emerald-500' :
                              bpEval.category === 'elevated' ? 'bg-yellow-500' :
-                             bpEval.category === 'stage1' ? 'bg-amber-500' : 'bg-rose-500'
+                             bpEval.category === 'stage1' ? 'bg-amber-500' :
+                             bpEval.category === 'stage2' ? 'bg-rose-500' :
+                             bpEval.category === 'crisis' ? 'bg-red-700' : 'bg-slate-400'
                            }`} />
                            <span>သွေးပေါင်: {latestBP.systolic}/{latestBP.diastolic}</span>
                          </span>
@@ -407,13 +421,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Footer */}
           <div className="p-4 border-t border-slate-100 space-y-2">
             <PWAInstallButton className="w-full justify-center" />
-            <button onClick={() => { if (window.confirm('အကောင့်ထွက်မှာ သေချာပါသလား?')) logout(); }} className="w-full flex items-center gap-3 p-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold cursor-pointer">
+            <button onClick={() => setShowLogoutConfirm(true)} className="w-full flex items-center gap-3 p-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold cursor-pointer">
               <LogOut className="w-5 h-5" />
               အကောင့်ထွက်မည်
             </button>
           </div>
         </div>
       </div>
+
+      {/* Logout confirmation (v2.4.16, A-L5) */}
+      <Modal isOpen={showLogoutConfirm} onClose={() => setShowLogoutConfirm(false)} title="အကောင့်ထွက်မည်" size="sm">
+        <p className="text-sm text-slate-700 leading-relaxed">အကောင့်ထွက်မှာ သေချာပါသလား? ထွက်လိုက်ရင် ဒီစက်ပေါ်က အကောင့်ထဲ ပြန်ဝင်ရပါမယ်။</p>
+        <div className="flex gap-2 justify-end mt-5">
+          <button onClick={() => setShowLogoutConfirm(false)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm cursor-pointer">မထွက်သေးပါ</button>
+          <button onClick={() => { setShowLogoutConfirm(false); logout(); }} className="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-sm cursor-pointer">အကောင့်ထွက်မည်</button>
+        </div>
+      </Modal>
     </>
   );
 };

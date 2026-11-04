@@ -33,6 +33,12 @@ import {
   migrateLegacyKeysMatching,
 } from '../../lib/perUserStorage';
 
+// Local (Asia/Rangoon) date (YYYY-MM-DD) — new Date().toISOString() is
+// UTC, so "today" was yesterday for the first 6.5 hours of the Myanmar
+// day (B-M10): the streak and "completed today" used the wrong day.
+const localDateStr = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 // Real streak: consecutive days (ending today, or yesterday if nothing has
 // been done yet today) with at least one completed exercise, read from the
 // per-user per-day keys physio_completed_<date>_<uid> (falling back to the
@@ -43,7 +49,7 @@ const computePhysioStreak = (uid?: string | null): number => {
   try {
     let streak = 0;
     const d = new Date();
-    const dayKey = (date: Date) => `physio_completed_${date.toISOString().split('T')[0]}`;
+    const dayKey = (date: Date) => `physio_completed_${localDateStr(date)}`;
     const hasCompleted = (date: Date): boolean => {
       try {
         const raw = readUserStored(dayKey(date), uid);
@@ -84,7 +90,7 @@ export const PhysiotherapyModule: React.FC = () => {
   // Daily Progress & Streak Tracking
   const [completedTodayIds, setCompletedTodayIds] = useState<string[]>(() => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = localDateStr(new Date());
       const saved = readUserStored(`physio_completed_${today}`, storageUid);
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
@@ -103,7 +109,7 @@ export const PhysiotherapyModule: React.FC = () => {
     if (!storageUid) return;
     migrateLegacyKeysMatching(/^physio_completed_\d{4}-\d{2}-\d{2}$/, storageUid);
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = localDateStr(new Date());
       const saved = localStorage.getItem(userKey(`physio_completed_${today}`, storageUid));
       setCompletedTodayIds(saved ? JSON.parse(saved) : []);
     } catch {
@@ -182,7 +188,7 @@ export const PhysiotherapyModule: React.FC = () => {
 
   // Mark Exercise as Completed Today (stored under this user's key only)
   const handleMarkCompleted = (id: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateStr(new Date());
     if (!completedTodayIds.includes(id)) {
       const updated = [...completedTodayIds, id];
       setCompletedTodayIds(updated);

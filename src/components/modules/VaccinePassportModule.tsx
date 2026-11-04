@@ -25,6 +25,16 @@ import { useToast } from '../../context/ToastContext';
 import { VaccinationRecord } from '../../types/health';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 import { Modal } from '../common/Modal';
+import { formatDateLabel } from '../../lib/medicalCalculations';
+
+// Date + time for display (D-M3): never substitute createdAt for a
+// measurement date — a record with no date shows 'ရက်စွဲ မရှိပါ'.
+// formatDateLabel is the hardcoded Myanmar date helper (no 'my-MM').
+const recordDateTime = (raw?: string): string => {
+  if (!raw) return 'ရက်စွဲ မရှိပါ';
+  const d = formatDateLabel(raw);
+  return d.time ? `${d.date} ${d.time}` : d.date;
+};
 
 // Standard Read-Only Recommended Vaccines Reference Guide for Myanmar Families
 export interface RecommendedVaccine {
@@ -107,18 +117,24 @@ export const VaccinePassportModule: React.FC = () => {
   const { profile } = useAuth();
   const {
     selectedPatient,
+    selectedFamilyMember,
     vaccineRecords,
     addVaccineRecord,
     updateVaccineRecord,
-    deleteVaccineRecord
+    deleteVaccineRecord,
+    isPooledView,
+    dataLoading
   } = useHealthData();
   const { showToast } = useToast();
-  const currentPatient = selectedPatient || profile;
-
-  // Local (Asia/Rangoon) date (YYYY-MM-DD) — new Date().toISOString() is UTC,
-  // so a record entered early in the morning got yesterday's date (v2.4.11 F4).
-  const localDateStr = (d: Date): string =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // B-H1: the person whose records these are. A selected family member's
+  // records must be filed and shown under THAT member — the old code used
+  // selectedPatient || profile, so a member's records were stamped and
+  // headed with the owner's name. (The context's vaccineRecords list and
+  // resolveTarget() already scope/file by the member; this module only
+  // has to name the right person.)
+  const currentPatient = selectedPatient || selectedFamilyMember || profile;
+  const currentPersonName =
+    (selectedPatient?.displayName) || (selectedFamilyMember?.name) || profile?.displayName || 'အသုံးပြုသူ';
 
   // View tabs: 'records' for real user records, 'recommendations' for reference guide
   const [activeView, setActiveView] = useState<'records' | 'recommendations'>('records');
@@ -126,6 +142,8 @@ export const VaccinePassportModule: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   // User records paging (latest 20 by default)
   const [showAllVaccines, setShowAllVaccines] = useState(false);
+  // v2.4.16: delete confirm uses the app Modal, never window.confirm.
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -261,7 +279,7 @@ export const VaccinePassportModule: React.FC = () => {
       }
       await addVaccineRecord({
         userId: currentPatient?.id || '',
-        patientName: currentPatient?.displayName || 'အသုံးပြုသူ',
+        patientName: currentPersonName,
         vaccineName: newVaccineName.trim(),
         targetDisease: newTargetDisease.trim() || 'ကာကွယ်ဆေး',
         doseNumber: Number(newDoseNumber),
@@ -298,32 +316,47 @@ export const VaccinePassportModule: React.FC = () => {
 
   const handleToggleStatus = async (record: VaccinationRecord) => {
     const nextStatus = record.status === 'completed' ? 'scheduled' : 'completed';
+    // B-M6: marking a vaccine "done" must NEVER invent today's date as
+    // the administered date. If the record has no administered date, open
+    // the edit form (prefilled as completed, date empty) so the user
+    // enters the real date — or leaves it empty. Only a record that
+    // already has a date toggles straight to completed.
+    if (nextStatus === 'completed' && !record.dateAdministered) {
+      startEdit(record);
+      setNewStatus('completed');
+      setNewDate('');
+      setNewNextDate('');
+      showToast('ထိုးခဲ့သည့် ရက်စွဲ အမှန်ကို ထည့်ပေးပါ — ရက်စွဲ မထည့်ထားရင်လည်း ထိုးပြီးအဖြစ် မှတ်သားနိုင်ပါသည်', 'success');
+      return;
+    }
     try {
       await updateVaccineRecord(record.id, {
         status: nextStatus,
-        // NOTE (v2.4.11 F17): toggling back to 'scheduled' should clear the
-        // administered date, but the context's sanitize strips undefined/null
-        // from the merge, so Firestore keeps the old date until the context
-        // is fixed to use deleteField(). The local list still shows it
-        // cleared; it returns after a reload. Flagged for the parent.
+        // Toggling back to 'scheduled' clears the administered date (the
+        // context sends deleteField() for undefined). Toggling to
+        // 'completed' keeps the stored date — never today's date.
         dateAdministered: nextStatus === 'completed'
-          ? (record.dateAdministered || localDateStr(new Date()))
+          ? record.dateAdministered
           : undefined
       });
       showToast(nextStatus === 'completed' ? 'ကာကွယ်ဆေး ထိုးပြီးအဖြစ် မှတ်သားပြီးပါပြီ' : 'ကာကွယ်ဆေး မထိုးရသေးအဖြစ် ပြောင်းလဲပြီးပါပြီ', 'success');
     } catch (err) {
+      // B-H4: the context already rolled the optimistic toggle back and
+      // showed its failure toast — no second toast here.
       console.error('Failed to toggle vaccine status:', err);
-      showToast('ကာကွယ်ဆေး အခြေအနေ ပြောင်းလဲခြင်း မအောင်မြင်ပါ', 'error');
     }
   };
 
-  const handleDeleteRecord = async (id: string, name: string) => {
-    if (!window.confirm(`"${name}" ကာကွယ်ဆေးမှတ်တမ်းကို အပြီးတိုင် ဖျက်ပစ်ရန် သေချာပါသလား?`)) {
-      return;
-    }
+  const handleDeleteRecord = (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+  };
+  const confirmDeleteRecord = async () => {
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    if (!target) return;
     try {
-      await deleteVaccineRecord(id);
-      showToast(`"${name}" ကာကွယ်ဆေးမှတ်တမ်းကို ဖျက်ပစ်ပြီးပါပြီ`, 'success');
+      await deleteVaccineRecord(target.id);
+      showToast(`"${target.name}" ကာကွယ်ဆေးမှတ်တမ်းကို ဖျက်ပစ်ပြီးပါပြီ`, 'success');
     } catch (err) {
       console.error('Failed to delete vaccine record:', err);
       showToast('ကာကွယ်ဆေး မှတ်တမ်း ဖျက်ပစ်ခြင်း မအောင်မြင်ပါ', 'error');
@@ -333,10 +366,19 @@ export const VaccinePassportModule: React.FC = () => {
   // Filter actual user records
   const filteredRecords = vaccineRecords.filter(r => {
     const matchesCat = categoryFilter === 'all' || r.category === categoryFilter;
-    const matchesSearch = r.vaccineName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = r.vaccineName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           r.targetDisease.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCat && matchesSearch;
   });
+
+  // B-H2: history is sorted NEWEST first (by administered date, then due
+  // date; a record with neither date sorts last — never by createdAt,
+  // D-M3) and the "latest 20" slice applies AFTER sorting.
+  const recordSortKey = (r: VaccinationRecord): string =>
+    r.dateAdministered || r.nextDueDate || '';
+  const sortedRecords = [...filteredRecords].sort((a, b) =>
+    recordSortKey(b).localeCompare(recordSortKey(a))
+  );
 
   // Filter recommended vaccines reference
   const filteredRecommendations = RECOMMENDED_VACCINES.filter(r => {
@@ -346,11 +388,22 @@ export const VaccinePassportModule: React.FC = () => {
     return matchesCat && matchesSearch;
   });
 
-  // Show only the latest 20 user records unless expanded
-  const displayRecords = showAllVaccines ? filteredRecords : filteredRecords.slice(0, 20);
+  // Show only the latest 20 user records unless expanded (after sorting).
+  const displayRecords = showAllVaccines ? sortedRecords : sortedRecords.slice(0, 20);
 
   const completedCount = vaccineRecords.filter(r => r.status === 'completed').length;
   const scheduledCount = vaccineRecords.filter(r => r.status === 'scheduled').length;
+
+  // B-H5: while the first Firestore snapshot is still loading, show a
+  // loading state instead of flashing "no records".
+  if (dataLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+        <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-teal-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
+        <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -363,7 +416,7 @@ export const VaccinePassportModule: React.FC = () => {
           <div>
             <h2 className="text-xl font-bold tracking-tight">ကာကွယ်ဆေး ထိုးနှံမှု မှတ်တမ်းနှင့် အချိန်ဇယား (Vaccination Passport)</h2>
             <p className="text-xs text-teal-100 mt-1">
-              {currentPatient?.displayName || 'မိသားစုဝင်'} ၏ တရားဝင် ကာကွယ်ဆေး ထိုးနှံပြီးစီးမှု မှတ်တမ်းများနှင့် အကြံပြုချက်များ
+              {currentPersonName} ၏ တရားဝင် ကာကွယ်ဆေး ထိုးနှံပြီးစီးမှု မှတ်တမ်းများနှင့် အကြံပြုချက်များ
             </p>
           </div>
         </div>
@@ -407,7 +460,7 @@ export const VaccinePassportModule: React.FC = () => {
           <div>
             <p className="text-xs font-bold text-sky-800">လက်ရှိ အသုံးပြုသူ / မိသားစုဝင်</p>
             <p className="text-base font-extrabold text-sky-900 mt-0.5 truncate max-w-[160px]">
-              {currentPatient?.displayName || 'မိသားစုဝင်'}
+              {currentPersonName}
             </p>
           </div>
           <User className="w-8 h-8 text-sky-600" />
@@ -496,7 +549,7 @@ export const VaccinePassportModule: React.FC = () => {
                 <Syringe className="w-6 h-6" />
               </div>
               <h3 className="text-sm font-bold text-slate-800">
-                {currentPatient?.displayName} အတွက် ကာကွယ်ဆေး မှတ်တမ်း မရှိသေးပါ
+                {currentPersonName} အတွက် ကာကွယ်ဆေး မှတ်တမ်း မရှိသေးပါ
               </h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 အောက်ပါ အကြံပြုထားသော စံပြကာကွယ်ဆေးများမှ ရွေးချယ်၍ဖြစ်စေ၊ ကာကွယ်ဆေး အသစ်ထည့်သွင်း၍ဖြစ်စေ တိုက်ရိုက် မှတ်တမ်းတင်နိုင်ပါသည်။
@@ -556,6 +609,12 @@ export const VaccinePassportModule: React.FC = () => {
                           <p className="text-[11px] text-slate-500 mt-1">
                             ထိုးနှံမှု အကြိမ်: <strong>{vac.doseNumber} / {vac.totalDoses}</strong> ကြိမ်မြောက်
                           </p>
+                          {/* D-H5: owner name in the pooled view. */}
+                          {isPooledView && (
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              ပိုင်ရှင်: <span className="font-semibold text-slate-700">{vac.patientName || '—'}</span>
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -604,17 +663,17 @@ export const VaccinePassportModule: React.FC = () => {
 
                     {/* Vaccine Notes & Dates */}
                     <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600 space-y-1">
-                      {vac.dateAdministered && (
+                      {isDone && (
                         <p className="flex items-center gap-1.5 text-emerald-800 font-semibold">
                           <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>ထိုးနှံခဲ့သည့်ရက်စွဲ: {(vac.dateAdministered || '').replace('T', ' ')}</span>
+                          <span>ထိုးနှံခဲ့သည့်ရက်စွဲ: {recordDateTime(vac.dateAdministered)}</span>
                         </p>
                       )}
 
                       {vac.nextDueDate && (
                         <p className="flex items-center gap-1.5 text-amber-800 font-semibold">
                           <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          <span>နောက်တစ်ကြိမ် ထိုးနှံရန် ရက်စွဲ: {vac.nextDueDate}</span>
+                          <span>နောက်တစ်ကြိမ် ထိုးနှံရန် ရက်စွဲ: {recordDateTime(vac.nextDueDate)}</span>
                         </p>
                       )}
 
@@ -955,6 +1014,14 @@ export const VaccinePassportModule: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      </Modal>
+      {/* Delete confirmation (v2.4.16) */}
+      <Modal isOpen={deleteTarget !== null} onClose={() => setDeleteTarget(null)} title="မှတ်တမ်း ဖျက်မည်" size="sm">
+        <p className="text-sm text-slate-700 leading-relaxed">"{deleteTarget?.name}" ကာကွယ်ဆေးမှတ်တမ်းကို အပြီးတိုင် ဖျက်ပစ်ရန် သေချာပါသလား? ဖျက်လိုက်ရင် ပြန်မရတော့ပါ။</p>
+        <div className="flex gap-2 justify-end mt-5">
+          <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm cursor-pointer">မဖျက်သေးပါ</button>
+          <button onClick={confirmDeleteRecord} className="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-sm cursor-pointer">ဖျက်မည်</button>
         </div>
       </Modal>
     </div>

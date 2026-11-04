@@ -6,9 +6,11 @@ import {
   ToggleLeft, 
   ToggleRight, 
   Radio, 
-  Volume2 
+  Volume2,
+  AlertCircle
 } from 'lucide-react';
 import { BroadcastTicker } from '../../../types/health';
+import { Modal } from '../../common/Modal';
 
 interface AdminBroadcastManagerProps {
   tickers: BroadcastTicker[];
@@ -26,16 +28,33 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
   const [message, setMessage] = useState('');
   const [type, setType] = useState<'info' | 'warning' | 'urgent'>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // v2.4.16 (C-M3): a failed send used to fail silently — the form just
+  // stopped spinning and the admin had no idea the ticker never went out.
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
     setIsSubmitting(true);
+    setSendError(null);
     try {
       await onAddTicker(message.trim(), type);
       setMessage('');
+    } catch (err: any) {
+      // Honest failure: keep the typed message so the admin can retry.
+      setSendError(err?.message || 'သတင်းလွှာ ပေးပို့ခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleToggle = async (id: string, next: boolean) => {
+    setSendError(null);
+    try {
+      await onToggleTicker(id, next);
+    } catch (err: any) {
+      setSendError(err?.message || 'သတင်းလွှာ အဖွင့်/အပိတ် ပြောင်းခြင်း မအောင်မြင်ပါ — ပြန်ကြိုးစားပါ။');
     }
   };
 
@@ -61,6 +80,12 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
       </div>
 
       {/* Add New Ticker Form */}
+      {sendError && (
+        <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>{sendError}</span>
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
         <div className="flex-1">
           <label htmlFor="admin-broadcast-message" className="sr-only">သတင်းစကား / သတိပေးချက် ရေးသားပါ</label>
@@ -127,7 +152,7 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => onToggleTicker(t.id, !t.isActive)}
+                  onClick={() => handleToggle(t.id, !t.isActive)}
                   className="p-1 rounded-lg text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 cursor-pointer"
                   title={t.isActive ? 'ပိတ်မည်' : 'ဖွင့်မည်'}
                   aria-label={t.isActive ? 'သတင်းလွှာ ပိတ်မည်' : 'သတင်းလွှာ ဖွင့်မည်'}
@@ -141,11 +166,7 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => {
-                    if (window.confirm(`"${t.message}" သတင်းလွှာကို ဖျက်မှာသေချာပါသလား?`)) {
-                      onDeleteTicker(t.id);
-                    }
-                  }}
+                  onClick={() => setConfirmDeleteId(t.id)}
                   className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                   title="ဖျက်မည်"
                   aria-label="သတင်းလွှာ ဖျက်မည်"
@@ -157,6 +178,47 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
           ))}
         </div>
       )}
+
+      {/* Delete confirm (Modal — never window.confirm) */}
+      <Modal
+        isOpen={confirmDeleteId !== null}
+        onClose={() => setConfirmDeleteId(null)}
+        size="sm"
+        title="သတင်းလွှာ ဖျက်မည်"
+      >
+        <div className="p-5 space-y-4 text-xs">
+          <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+            “{tickers.find((t) => t.id === confirmDeleteId)?.message}” သတင်းလွှာကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteId(null)}
+              className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
+            >
+              မလုပ်တော့ပါ
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const id = confirmDeleteId;
+                setConfirmDeleteId(null);
+                if (!id) return;
+                try {
+                  await onDeleteTicker(id);
+                } catch (err: any) {
+                  setSendError(err?.message || 'သတင်းလွှာ ဖျက်ခြင်း မအောင်မြင်ပါ — ပြန်ကြိုးစားပါ။');
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer"
+            >
+              ဖျက်မည်
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
+
+export default AdminBroadcastManager;

@@ -93,9 +93,32 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
   };
 
   // 1. Export JSON Data
+  // G-M8: the export must toast an honest summary — what was exported
+  // and how many records of each type — not just "downloaded".
+  const exportSummaryParts = (): string[] => {
+    const parts: [string, number][] = [
+      ['သွေးပေါင်ချိန်', bpRecords.length],
+      ['သွေးချို', glucoseRecords.length],
+      ['BMI', bmiRecords.length],
+      ['ဓာတ်ခွဲ', labRecords.length],
+      ['ဆေး', medications.length],
+      ['ကာကွယ်ဆေး', vaccineRecords.length],
+      ['မိသားစုဝင်', familyMembers.length],
+      ['အကြံပြုချက်', doctorAdvices.length],
+      ['မေးခွန်း', doctorQuestions.length],
+      ['ဆေးသောက်မှတ်တမ်း', medicationLogs.length],
+    ];
+    const out = parts.filter(([, n]) => n > 0).map(([label, n]) => `${label} ${n} ခု`);
+    if (exportProfile) out.push('ပရိုဖိုင် ၁ ခု');
+    return out;
+  };
+
   const handleExportJSON = () => {
     setIsExporting(true);
     try {
+      // Phone-only data is collected once here (not twice) so the export
+      // and the summary count agree.
+      const localDataForExport = isOwnExport ? collectLocalData() : {};
       const backupPayload = {
         app: 'FamilyHealthTrack',
         version: CURRENT_SYSTEM_VERSION,
@@ -111,7 +134,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
         // Medication intake logs (top level, like the other record arrays)
         medicationLogs: medicationLogs,
         // Phone-only data — only for your own export (see isOwnExport above)
-        localData: isOwnExport ? collectLocalData() : {},
+        localData: localDataForExport,
         data: {
           vitals: bpRecords,
           glucose: glucoseRecords,
@@ -133,6 +156,12 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
+      const summary = exportSummaryParts();
+      const localCount = Object.keys(localDataForExport).length;
+      showToast(
+        `JSON ထုတ်ယူပြီးပါပြီ — ${targetName}: ${summary.length > 0 ? summary.join('၊ ') : 'မှတ်တမ်း မရှိပါ'}${localCount > 0 ? `၊ ဖုန်းထဲမှတ်တမ်း ${localCount} ခု` : ''}။`,
+        'success'
+      );
     } catch (err: any) {
       console.error('Export JSON error:', err);
       showToast('ဒေတာ ထုတ်ယူခြင်း မအောင်မြင်ပါ။ ပြန်လည်ကြိုးစားပါ။', 'error');
@@ -209,18 +238,29 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
         });
       }
 
-      // (d) Lab Tests CSV
+      // (d) Lab Tests CSV — G-M9: a missing value must be an empty cell,
+      // never the literal text 'undefined'. `${t.value}` wrote 'undefined'
+      // when a hand-edited backup had no value; the ref range likewise
+      // wrote ' - ' when both bounds were missing.
       if (labRecords.length > 0) {
         const rows: any[][] = [];
         labRecords.forEach(l => {
           if (l.tests && l.tests.length > 0) {
             l.tests.forEach(t => {
+              const resultStr = (t.value === undefined || t.value === null)
+                ? ''
+                : `${t.value}${t.unit ? ` ${t.unit}` : ''}`;
+              const rangeStr = t.refRangeText
+                ? t.refRangeText
+                : [t.refMin, t.refMax].some(v => v !== undefined && v !== null)
+                  ? `${t.refMin ?? ''} - ${t.refMax ?? ''}`.replace(/^\s*-\s*|\s*-\s*$/g, '')
+                  : '';
               rows.push([
                 l.testDate || l.recordedAt || l.createdAt || '',
                 l.labName || '',
                 t.nameMm || t.nameEn || '',
-                `${t.value} ${t.unit || ''}`,
-                t.refRangeText || `${t.refMin ?? ''} - ${t.refMax ?? ''}`,
+                resultStr,
+                rangeStr,
                 t.statusLabelMm || t.status || '',
               ]);
             });
@@ -385,7 +425,9 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
         downloadCSVWithBOM(f.csv, f.filename);
         await sleep(600);
       }
-      showToast(`CSV ဖိုင် (${files.length}) ခု ဒေါင်းလုဒ်ဆွဲပြီးပါပြီ။`, 'success');
+      // G-M8: honest summary — which types were exported and how many
+      // records of each, not just a file count.
+      showToast(`CSV ဖိုင် (${files.length}) ခု ဒေါင်းလုဒ်ဆွဲပြီးပါပြီ — ${targetName}: ${exportSummaryParts().join('၊ ')}။`, 'success');
     } catch (err: any) {
       console.error('Export CSV error:', err);
       showToast('CSV ထုတ်ယူခြင်း မအောင်မြင်ပါ။ ပြန်လည်ကြိုးစားပါ။', 'error');
@@ -418,6 +460,21 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
         const dataObj = parsed.data || parsed;
         const localDataObj = (parsed.localData && typeof parsed.localData === 'object') ? parsed.localData : {};
         const medLogsArr = Array.isArray(parsed.medicationLogs) ? parsed.medicationLogs : (Array.isArray(dataObj.medicationLogs) ? dataObj.medicationLogs : []);
+        // G-H1: whose backup is this? The owner is stamped in the file
+        // (patient block, falling back to the profile). The preview must
+        // show it, and warn when it is NOT the person being restored into.
+        const backupOwner = {
+          id: parsed.patient?.id || parsed.profile?.id || '',
+          name: parsed.patient?.displayName || parsed.profile?.displayName || '',
+          email: parsed.patient?.email || parsed.profile?.email || '',
+        };
+        const ownerMismatch =
+          (backupOwner.id !== '' && targetUid !== undefined && backupOwner.id !== targetUid) ||
+          (backupOwner.email !== '' && targetEmail !== '' && backupOwner.email !== targetEmail);
+        // G-M10: the profile is a record too — the imported total must
+        // count it (1 when a profile / emergency profile is in the file),
+        // or the count lies about what will be restored.
+        const hasProfile = !!(parsed.profile || parsed.emergencyProfile);
         const counts = {
           vitals: Array.isArray(dataObj.vitals) ? dataObj.vitals.length : 0,
           glucose: Array.isArray(dataObj.glucose) ? dataObj.glucose.length : 0,
@@ -430,6 +487,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
           doctorQuestions: Array.isArray(dataObj.doctorQuestions) ? dataObj.doctorQuestions.length : 0,
           medicationLogs: medLogsArr.length,
           localData: Object.keys(localDataObj).length,
+          profile: hasProfile ? 1 : 0,
         };
 
         const totalRecords = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -447,6 +505,13 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
           emergencyProfile: parsed.emergencyProfile || null,
           medicationLogs: medLogsArr,
           localData: localDataObj,
+          backupOwner,
+          ownerMismatch,
+          // G-H7: phone-only data can only be restored into the SAME
+          // person's own browser. Restoring into someone else's account
+          // (an admin restoring a patient) can never reach that person's
+          // phone, so those keys are skipped, never silently written here.
+          isOwnRestore: !targetUid || targetUid === currentUser?.uid,
         });
       } catch (err: any) {
         setImportError(err.message || 'JSON ဖိုင်ဖတ်ရှုခြင်း မအောင်မြင်ပါ။');
@@ -468,7 +533,11 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
     try {
       const { data } = importPreview;
       let insertedCount = 0;
-      let skippedCount = 0;
+      // G-H6: invalid rows and duplicates are DIFFERENT reasons to skip —
+      // the old code lumped both into one "skipped" count, so a file full
+      // of broken rows was reported as "duplicates". Count them apart.
+      let duplicateCount = 0;
+      let invalidCount = 0;
       // Collections that failed (e.g. doctorAdvices can only be written by
       // an admin — a regular user restoring advice is denied by the rules).
       // One collection failing must not abort the rest.
@@ -545,12 +614,14 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
         for (const item of items) {
           const transformed = transform(item);
           if (!transformed) {
-            skippedCount++;
+            // The row is broken (missing the fields a record needs) —
+            // invalid, NOT a duplicate. Reported apart below (G-H6).
+            invalidCount++;
             continue;
           }
           const itemKey = keyGenerator(item, item.id);
           if (existingKeySet.has(itemKey) || existingKeySet.has('content:' + contentHash(item))) {
-            skippedCount++;
+            duplicateCount++;
             continue;
           }
 
@@ -620,7 +691,10 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
             category: v.category,
             condition: v.condition,
             patientName: v.patientName || targetName,
-            recordedAt: v.recordedAt || v.createdAt || new Date().toISOString(),
+            // G-M1 / D-M3: a missing measurement date stays missing — never
+            // stamp "now" as the measurement date. The display shows
+            // 'ရက်စွဲ မရှိပါ' instead of inventing one.
+            recordedAt: v.recordedAt || v.createdAt,
             notes: v.notes || '',
           };
         }
@@ -641,7 +715,8 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
             type: g.type || g.timing,
             status: g.status,
             patientName: g.patientName || targetName,
-            recordedAt: g.recordedAt || g.createdAt || new Date().toISOString(),
+            // G-M1 / D-M3: missing measurement date stays missing (see vitals).
+            recordedAt: g.recordedAt || g.createdAt,
             notes: g.notes || '',
           };
         }
@@ -662,7 +737,8 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
             bmi: numOrUndef(b.bmi),
             category: b.category,
             userName: b.userName || targetName,
-            date: b.date || b.timestamp || b.createdAt || new Date().toISOString(),
+            // G-M1 / D-M3: missing measurement date stays missing (see vitals).
+            date: b.date || b.timestamp || b.createdAt,
           };
         }
       ));
@@ -682,7 +758,8 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
           const hasPanel = ['cbc', 'glucose', 'liver', 'renal', 'lipid', 'thyroid', 'urine', 'inflammatory'].some((p) => l[p] != null);
           if (!hasTests && !hasPanel && !l.labName) return null;
           return {
-            testDate: l.testDate || l.createdAt || new Date().toISOString(),
+            // G-M1 / D-M3: missing test date stays missing (see vitals).
+            testDate: l.testDate || l.createdAt,
             recordedAt: l.recordedAt,
             labName: l.labName || '',
             tests: l.tests,
@@ -839,6 +916,11 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
 
       // Profile + Emergency ID (top level in the backup). Role is never
       // restored from a file — roles are managed via the admins doc.
+      // G-H1: identity fields are NEVER silently overwritten from a file.
+      // A backup from another person (or an old backup of this person)
+      // must not rename the account, swap its email, or change its DOB.
+      // Only health data is restored — blood type, conditions, allergies,
+      // phone, emergency profile — and the preview says so plainly.
       let profileRestored = false;
       const fileProfile = importPreview.profile || null;
       const fileEmergency = importPreview.emergencyProfile || null;
@@ -846,6 +928,10 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
         const cleanProfile: Record<string, any> = { ...(fileProfile || {}) };
         delete cleanProfile.id;
         delete cleanProfile.role;
+        delete cleanProfile.displayName;
+        delete cleanProfile.email;
+        delete cleanProfile.dateOfBirth;
+        delete cleanProfile.username;
         if (fileEmergency) cleanProfile.emergencyProfile = fileEmergency;
         try {
           await setDoc(doc(db, 'users', targetUid), stripUndefined(cleanProfile), { merge: true });
@@ -856,37 +942,50 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
         }
       }
 
-      // Phone-only data (localStorage) — a key suffixed with another user's
-      // uid is never restored into this account (it can only be in the file
-      // if the backup was made before the per-user keys existed, or was
-      // hand-edited). Legacy un-suffixed keys restore as-is: they belong to
-      // the person restoring their own backup.
+      // Phone-only data (localStorage) — G-H7: when the restore target is
+      // NOT the signed-in user, localData is SKIPPED entirely. Those keys
+      // live in a browser, not in the account: writing them into the
+      // admin's browser would put the patient's phone-only data where the
+      // patient can never see it, while looking like a successful restore.
+      // The patient must restore their own backup on their own phone.
       let localRestored = 0;
       let localSkipped = 0;
+      let localNotRestorable = 0;
       const localDataObj = importPreview.localData || {};
-      Object.entries(localDataObj).forEach(([key, value]) => {
-        const ownerUid = localKeyOwnerUid(key);
-        if (ownerUid !== null && ownerUid !== targetUid) { localSkipped++; return; }
-        try {
-          localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
-          localRestored++;
-        } catch (e) {
-          console.warn('Could not restore local key', key, e);
-          localSkipped++;
-        }
-      });
+      if (!importPreview.isOwnRestore) {
+        localNotRestorable = Object.keys(localDataObj).length;
+      } else {
+        Object.entries(localDataObj).forEach(([key, value]) => {
+          const ownerUid = localKeyOwnerUid(key);
+          if (ownerUid !== null && ownerUid !== targetUid) { localSkipped++; return; }
+          try {
+            localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+            localRestored++;
+          } catch (e) {
+            console.warn('Could not restore local key', key, e);
+            localSkipped++;
+          }
+        });
+      }
 
       if (insertedCount === 0 && !profileRestored && localRestored === 0 && failedKinds.length > 0) {
         setImportError(`မှတ်တမ်းများ သွင်းယူခြင်း မအောင်မြင်ပါ။ သွင်းယူလို့ မရခဲ့သော အမျိုးအစားများ: ${failedKinds.join(', ')}`);
       } else {
-        const parts = [`မှတ်တမ်း အသစ် (${insertedCount}) ခု အောင်မြင်စွာ ပြန်လည်သွင်းယူပြီးပါပြီ! (ထပ်နေသော မှတ်တမ်း ${skippedCount} ခုကို ကျော်ခဲ့ပါသည်)`];
-        if (profileRestored) parts.push('ပရိုဖိုင် ပြန်လည်ရောက်ရှိပါပြီ။');
+        // G-M10: the imported total counts the profile too when it was
+        // restored; G-H6: duplicates and invalid rows are reported apart.
+        const totalImported = insertedCount + (profileRestored ? 1 : 0);
+        const parts = [`မှတ်တမ်း အသစ် (${totalImported}) ခု အောင်မြင်စွာ ပြန်လည်သွင်းယူပြီးပါပြီ!`];
+        if (duplicateCount > 0) parts.push(`ထပ်နေသော မှတ်တမ်း ${duplicateCount} ခုကို ကျော်ခဲ့ပါသည်။`);
+        if (invalidCount > 0) parts.push(`အချက်အလက် မပြည့်စုံသော မှတ်တမ်း ${invalidCount} ခုကို သွင်းမရဘဲ ကျော်ခဲ့ပါသည်။`);
+        if (profileRestored) parts.push('ပရိုဖိုင် ကျန်းမာရေးအချက်အလက်သာ ပြန်ရောက်ပါပြီ (အမည်/အီးမေးလ်/မွေးသက္ကရာဇ် မပြောင်းပါ)။');
         if (localRestored > 0) parts.push(`ဖုန်းထဲမှတ်တမ်း (${localRestored}) ခု ပြန်ရောက်ပါပြီ — မြင်ရဖို့ စာမျက်နှာကို ပြန်ဖွင့်ပေးပါ။`);
+        if (localNotRestorable > 0) parts.push(`ဖုန်းထဲမှတ်တမ်း (${localNotRestorable}) ခု ပြန်မရောက်ပါ — ${targetName} ၏ ဖုန်းထဲမှတ်တမ်းကို ဤဘရောက်ဇာထဲ ထည့်လို့မရပါ၊ ထိုသူ၏ ကိုယ်ပိုင်ဖုန်းထဲတွင်သာ ပြန်သွင်းနိုင်ပါသည်။`);
+        if (localSkipped > 0) parts.push(`ဖုန်းထဲမှတ်တမ်း (${localSkipped}) ခုကို (ပိုင်ရှင် မတူသဖြင့်) ကျော်ခဲ့ပါသည်။`);
         if (failedKinds.length > 0) parts.push(`သွင်းယူလို့ မရခဲ့သော အမျိုးအစားများ: ${failedKinds.join(', ')} (မအောင်မြင်သော အမျိုးအစားမှ မှတ်တမ်းများ ပြန်မရောက်ပါ — တစ်စိတ်တစ်ပိုင်းဟု ရေးထားမှသာ အဲဒီအပိုင်း ရောက်ပြီး ဖြစ်ပါတယ်)`);
         setImportStatus({
           success: failedKinds.length === 0,
           message: parts.join(' '),
-          count: insertedCount
+          count: totalImported
         });
       }
       setImportPreview(null);
@@ -1029,7 +1128,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
                   <span>အရင် Export လုပ်ထားသော JSON Backup ဖိုင်ကို ရွေးချယ်ပါ</span>
                 </p>
                 <p className="text-[11px] leading-relaxed text-slate-600">
-                  စနစ်သည် ဖိုင်ကို အလိုအလျောက် စစ်ဆေးပြီး ထပ်နေသော မှတ်တမ်းများကို ကျော်ကာ မှတ်တမ်းအသစ်များကိုသာ သင့်အကောင့်ထဲသို့ လုံခြုံစွာ သွင်းယူပေးမည် ဖြစ်ပါသည်။ ပရိုဖိုင်၊ Emergency ID နှင့် ဖုန်းထဲမှတ်တမ်းများလည်း ပြန်လည်ရောက်ရှိပါမည်။
+                  စနစ်သည် ဖိုင်ကို အလိုအလျောက် စစ်ဆေးပြီး ထပ်နေသော မှတ်တမ်းများကို ကျော်ကာ မှတ်တမ်းအသစ်များကိုသာ သင့်အကောင့်ထဲသို့ လုံခြုံစွာ သွင်းယူပေးမည် ဖြစ်ပါသည်။ ပရိုဖိုင်၏ ကျန်းမာရေးအချက်အလက်များသာ ပြန်ရောက်မည် — အမည်၊ အီးမေးလ်၊ မွေးသက္ကရာဇ်ကိုမူ လက်ရှိ အကောင့်အတိုင်း ထားပြီး မပြောင်းပါ။ ဖုန်းထဲမှတ်တမ်းများမှာ ကိုယ်ပိုင်ဖုန်းထဲတွင်သာ ပြန်သွင်းနိုင်ပါသည်။
                 </p>
               </div>
 
@@ -1084,6 +1183,29 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    {/* G-H1: whose backup is this — shown before anything is
+                        imported, with a warning when it is not the restore
+                        target's own file. */}
+                    <div className="p-2 bg-white rounded-lg border border-slate-200 col-span-2">
+                      ဖိုင်ပိုင်ရှင်: <strong>{importPreview.backupOwner?.name || 'အမည် မသိရှိပါ'}</strong>
+                      {importPreview.backupOwner?.email ? ` (${importPreview.backupOwner.email})` : ''}
+                      <span className="text-slate-500"> — သွင်းမည့်အကောင့်: {targetName}</span>
+                    </div>
+                    {importPreview.ownerMismatch && (
+                      <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-300 text-amber-900 col-span-2 leading-relaxed">
+                        <strong>⚠️ သတိပေးချက်:</strong> ဤဖိုင်သည် <strong>{importPreview.backupOwner?.name || 'အခြားသူ'}</strong> ၏ backup ဖြစ်ပြီး၊ <strong>{targetName}</strong> ၏ အကောင့်ထဲသို့ သွင်းယူမည် ဖြစ်သည်။ မှတ်တမ်းများကို {targetName} ၏ အမည်ဖြင့် ပြောင်းသွင်းမည်ဖြစ်ပြီး၊ ပရိုဖိုင်၏ အမည်/အီးမေးလ်/မွေးသက္ကရာဇ်ကိုမူ မပြောင်းပါ။ မှားယွင်းသော ဖိုင်ဖြစ်ပါက မသွင်းပါနှင့်။
+                      </div>
+                    )}
+                    {importPreview.counts.profile > 0 && (
+                      <div className="p-2 bg-white rounded-lg border border-slate-200 col-span-2 text-slate-600">
+                        ပရိုဖိုင် ပါဝင်သည် — ကျန်းမာရေးအချက်အလက်သာ ပြန်ရောက်မည်။ အမည်၊ အီးမေးလ်၊ မွေးသက္ကရာဇ် မပြောင်းပါ။
+                      </div>
+                    )}
+                    {!importPreview.isOwnRestore && importPreview.counts.localData > 0 && (
+                      <div className="p-2 bg-white rounded-lg border border-slate-200 col-span-2 text-slate-600">
+                        ဖုန်းထဲမှတ်တမ်း ({importPreview.counts.localData}) ခု ပါသော်လည်း {targetName} ၏ ကိုယ်ပိုင်ဖုန်းထဲတွင်သာ ပြန်သွင်းနိုင်သဖြင့် ဤနေရာတွင် ပြန်မရောက်ပါ။
+                      </div>
+                    )}
                     <div className="p-2 bg-white rounded-lg border border-slate-200">
                       သွေးပေါင်ချိန်: <strong>{importPreview.counts.vitals} ခု</strong>
                     </div>
@@ -1116,6 +1238,9 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
                     </div>
                     <div className="p-2 bg-white rounded-lg border border-slate-200">
                       ဖုန်းထဲမှတ်တမ်း: <strong>{importPreview.counts.localData} ခု</strong>
+                    </div>
+                    <div className="p-2 bg-white rounded-lg border border-slate-200">
+                      ပရိုဖိုင်: <strong>{importPreview.counts.profile} ခု</strong>
                     </div>
                   </div>
 

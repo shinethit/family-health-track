@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Modal } from '../common/Modal';
 import { Pill, Plus, Trash2, Clock, Sparkles, X, Check, Pencil } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -40,8 +41,8 @@ const doseSlots = (med: Medication): { doseIndex: number; label: string }[] => {
 };
 
 export const MedicationsModule: React.FC = () => {
-  const { 
-    medications, 
+  const {
+    medications,
     medicationLogs,
     toggleMedicationDoseTaken,
     addMedication,
@@ -49,11 +50,10 @@ export const MedicationsModule: React.FC = () => {
     updateMedicationStatus,
     deleteMedication,
     selectedPatient,
-    selectedFamilyMember
+    selectedFamilyMember,
+    isPooledView,
+    dataLoading
   } = useHealthData();
-  // dataLoading is added by the context work in the same v2.4.8 batch; fall
-  // back to false if it is not present yet so this module still renders.
-  const dataLoading = (useHealthData() as unknown as { dataLoading?: boolean }).dataLoading ?? false;
   const { profile } = useAuth();
   const { showToast } = useToast();
 
@@ -62,6 +62,10 @@ export const MedicationsModule: React.FC = () => {
   // Medication list search + paging (latest 20 by default)
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllMeds, setShowAllMeds] = useState(false);
+  // v2.4.16: status-toggle + delete confirms use the app Modal, never
+  // window.confirm.
+  const [pendingToggleMed, setPendingToggleMed] = useState<Medication | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const todayStr = localDateStr(new Date());
 
@@ -95,6 +99,10 @@ export const MedicationsModule: React.FC = () => {
   // v2.4.10: optional dose clock-time (HH:MM) for dose-time reminders, and
   // optional end date after which no reminders fire. Both may stay empty.
   const [doseTime, setDoseTime] = useState('');
+  // F-H4: second daily dose time (HH:MM) for twice-daily meds — the
+  // Medication type already has doseTime2 and the reminder ticker already
+  // fires it; this wires the form field and the display.
+  const [doseTime2, setDoseTime2] = useState('');
   const [endDate, setEndDate] = useState('');
   const [prescribingDoctor, setPrescribingDoctor] = useState('');
   const [notes, setNotes] = useState('');
@@ -126,6 +134,7 @@ export const MedicationsModule: React.FC = () => {
     setTiming('after_meal');
     setNotes('');
     setDoseTime('');
+    setDoseTime2('');
     setEndDate('');
     setSelectedFreqOption('မနက် (၁) ကြိမ်');
     setCustomFrequency('');
@@ -152,10 +161,9 @@ export const MedicationsModule: React.FC = () => {
     setDurationDays(parsed.durationDays);
     setNotes(parsed.notes);
     setPrescribedFor(med.prescribedFor || '');
-    // The form has no start-date input: keep the original start date in
-    // state so the update sends it back unchanged.
     setStartDate(med.startDate || localDateStr(new Date()));
     setDoseTime(med.doseTime || '');
+    setDoseTime2(med.doseTime2 || '');
     setEndDate(med.endDate || '');
     setPrescribingDoctor(med.prescribingDoctor || '');
     setIsOpenAdd(true);
@@ -187,6 +195,27 @@ export const MedicationsModule: React.FC = () => {
       l => l.medicationId === medId && l.date === todayStr && (l.doseIndex ?? 0) === doseIndex && l.taken
     );
     toggleMedicationDoseTaken(medId, todayStr, !isCurrentlyTaken, doseIndex, medName);
+  };
+
+  // B-M5: toggling a medication's status asks first, and a failed toggle
+  // rolls the UI back — updateMedicationStatus in the context already
+  // restores the old value and toasts on failure, so no second toast here.
+  // v2.4.16: the ask is the app Modal, not window.confirm.
+  const handleToggleStatus = (med: Medication) => {
+    setPendingToggleMed(med);
+  };
+  const confirmToggleStatus = async () => {
+    const med = pendingToggleMed;
+    setPendingToggleMed(null);
+    if (!med) return;
+    const nextStatus = med.status === 'active' ? 'paused' : 'active';
+    try {
+      await updateMedicationStatus(med.id, nextStatus);
+      showToast(`"${med.name}" ဆေးကို ${nextStatus === 'paused' ? 'ခေတ္တရပ်နားထားပါပြီ' : 'ပြန်လည်သောက်သုံးရန် ပြောင်းထားပါပြီ'}`, 'success');
+    } catch (err) {
+      // Context already rolled the UI back and showed its failure toast.
+      console.warn('Failed to toggle medication status:', err);
+    }
   };
 
   const isDoseTaken = (medId: string, doseIndex: number) =>
@@ -232,18 +261,29 @@ export const MedicationsModule: React.FC = () => {
   }, [searchedMeds, showAllMeds]);
 
   const activeMeds = medications.filter(m => m.status === 'active');
+  // F-H7: today's denominator must respect startDate/endDate — a med that
+  // has not started yet, or already ended, does not count for today.
+  const inDateWindow = (m: Medication): boolean => {
+    if (m.startDate && m.startDate > todayStr) return false;
+    if (m.endDate && m.endDate < todayStr) return false;
+    return true;
+  };
+  const dueTodayMeds = activeMeds.filter(inDateWindow);
   // Today's adherence counts expected DOSES, not meds (v2.4.11 6.4): a
   // twice-daily med contributes 2 slots, so it can reach 100%. PRN
   // (လိုအပ်သည့်အခါ) meds have no daily schedule and count for neither side.
   const isPrnMedication = (m: Medication): boolean =>
     /လိုအပ်သည့်အခါ|PRN/i.test(m.frequency || '');
-  const scheduledActiveMeds = activeMeds.filter((m) => !isPrnMedication(m));
+  const scheduledActiveMeds = dueTodayMeds.filter((m) => !isPrnMedication(m));
   const todaySlots = scheduledActiveMeds.flatMap((m) =>
     doseSlots(m).map((slot) => ({ med: m, slot }))
   );
   const activeCount = todaySlots.length;
   const takenCount = todaySlots.filter(({ med, slot }) => isDoseTaken(med.id, slot.doseIndex)).length;
-  const adherencePercent = activeCount > 0 ? Math.round((takenCount / activeCount) * 100) : 0;
+  // F-L5: the percentage is capped at 100% (taken slots can never exceed
+  // expected slots — each slot is counted once via isDoseTaken — but the
+  // cap is explicit so a duplicate dose log can never inflate it).
+  const adherencePercent = activeCount > 0 ? Math.min(100, Math.round((takenCount / activeCount) * 100)) : 0;
 
   // Preset drug templates
   const presets = [
@@ -304,6 +344,7 @@ export const MedicationsModule: React.FC = () => {
           prescribedFor,
           startDate,
           doseTime: doseTime || undefined,
+          doseTime2: doseTime2 || undefined,
           endDate: endDate || undefined,
           prescribingDoctor,
           notes: combinedNotes,
@@ -324,6 +365,7 @@ export const MedicationsModule: React.FC = () => {
         prescribedFor,
         startDate,
         doseTime: doseTime || undefined,
+        doseTime2: doseTime2 || undefined,
         endDate: endDate || undefined,
         status: 'active',
         prescribingDoctor,
@@ -344,6 +386,7 @@ export const MedicationsModule: React.FC = () => {
       setTiming('after_meal');
       setNotes('');
       setDoseTime('');
+      setDoseTime2('');
       setEndDate('');
       setSelectedFreqOption('မနက် (၁) ကြိမ်');
       setCustomFrequency('');
@@ -383,9 +426,11 @@ export const MedicationsModule: React.FC = () => {
             သောက်နေသောဆေးများ စာရင်း (Current Medications)
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {selectedPatient 
+            {selectedPatient
               ? `အသုံးပြုသူ ${selectedPatient.displayName} ၏ လက်ရှိသောက်နေသော ဆေးဝါးများနှင့် ဆေးချိန်ညွှန်းချက်များ`
-              : 'သွေးတိုး၊ ဆီးချို၊ အဆီကျနှင့် အခြားသောက်သုံးနေသော ဆေးဝါးများကို တိကျစွာ မှတ်တမ်းတင်ပါ'}
+              : selectedFamilyMember
+                ? `အသုံးပြုသူ ${selectedFamilyMember.name} ၏ လက်ရှိသောက်နေသော ဆေးဝါးများနှင့် ဆေးချိန်ညွှန်းချက်များ`
+                : 'သွေးတိုး၊ ဆီးချို၊ အဆီကျနှင့် အခြားသောက်သုံးနေသော ဆေးဝါးများကို တိကျစွာ မှတ်တမ်းတင်ပါ'}
           </p>
         </div>
 
@@ -417,7 +462,13 @@ export const MedicationsModule: React.FC = () => {
           
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300">
-              ယနေ့ ဆေးသောက်ပြီးမှု: {takenCount}/{activeCount} ကြိမ် ({adherencePercent}%)
+              {/* F-H6: never fabricate '0/0 ကြိမ် (0%)' when there are no
+                  meds at all — say so honestly instead. */}
+              {medications.length === 0
+                ? 'ဆေး မရှိသေးပါ'
+                : activeCount === 0
+                  ? 'ယနေ့ အချိန်ဇယားရှိ ဆေး မရှိပါ'
+                  : `ယနေ့ ဆေးသောက်ပြီးမှု: ${takenCount}/${activeCount} ကြိမ် (${adherencePercent}%)`}
             </span>
           </div>
         </div>
@@ -431,7 +482,7 @@ export const MedicationsModule: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {activeMeds.map((med) => {
+          {dueTodayMeds.map((med) => {
             const slots = doseSlots(med);
             const allTaken = slots.every(s => isDoseTaken(med.id, s.doseIndex));
             return (
@@ -556,6 +607,12 @@ export const MedicationsModule: React.FC = () => {
                         <span className="font-mono">{med.genericName}</span>
                       </div>
                     )}
+                    {/* D-H5: owner name in the pooled view. */}
+                    {isPooledView && (
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        ပိုင်ရှင်: <span className="font-semibold text-slate-700 dark:text-slate-300">{med.userName || med.patientName || '—'}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1">
@@ -567,7 +624,7 @@ export const MedicationsModule: React.FC = () => {
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => updateMedicationStatus(med.id, med.status === 'active' ? 'paused' : 'active')}
+                      onClick={() => handleToggleStatus(med)}
                       className={`px-2 py-0.5 rounded text-[10px] font-medium border cursor-pointer ${
                         med.status === 'active'
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
@@ -577,11 +634,7 @@ export const MedicationsModule: React.FC = () => {
                       {med.status === 'active' ? 'Active သောက်ဆဲ' : 'Paused ရပ်နား'}
                     </button>
                     <button
-                      onClick={() => {
-                        if (window.confirm(`"${med.name}" ဆေးမှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။`)) {
-                          deleteMedication(med.id);
-                        }
-                      }}
+                      onClick={() => setDeleteTargetId(med.id)}
                       className="text-slate-400 hover:text-rose-600 p-2 rounded-md cursor-pointer"
                       title="ဖျက်မည်"
                     >
@@ -624,11 +677,11 @@ export const MedicationsModule: React.FC = () => {
                     </span>
                   </div>
 
-                  {med.doseTime && (
+                  {(med.doseTime || med.doseTime2) && (
                     <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
                       <span className="text-slate-400 text-[11px] block">သောက်ရမည့်အချိန်</span>
                       <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                        {med.doseTime}
+                        {[med.doseTime, med.doseTime2].filter(Boolean).join('၊ ')}
                       </span>
                     </div>
                   )}
@@ -861,7 +914,40 @@ export const MedicationsModule: React.FC = () => {
                 </div>
               </div>
 
-              {/* Dose Time & End Date (both optional) */}
+              {/* Start Date & End Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    စတင်သောက်သည့်ရက် (Start Date)
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    ဒီရက်မရောက်သေးရင် ယနေ့ဆေးစာရင်းမှာ မပါပါ။
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    သောက်ပြီးဆုံးမည့်ရက် (မဖြည့်လည်းရသည်)
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    ဒီရက်ကျော်ရင် သတိပေးချက် မထွက်တော့ပါ။
+                  </p>
+                </div>
+              </div>
+
+              {/* Dose Times (both optional) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -880,16 +966,16 @@ export const MedicationsModule: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    သောက်ပြီးဆုံးမည့်ရက် (မဖြည့်လည်းရသည်)
+                    ဒုတိယ အကြိမ် သောက်ရမည့်အချိန် (မဖြည့်လည်းရသည်)
                   </label>
                   <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    type="time"
+                    value={doseTime2}
+                    onChange={(e) => setDoseTime2(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
-                    ဒီရက်ကျော်ရင် သတိပေးချက် မထွက်တော့ပါ။
+                    တစ်နေ့ ၂ ကြိမ် သောက်ရသော ဆေးအတွက် — ဒုတိယ အကြိမ် အချိန်ရောက်မှ သတိပေးမယ်။
                   </p>
                 </div>
               </div>
@@ -957,6 +1043,24 @@ export const MedicationsModule: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Status-toggle confirmation (v2.4.16, B-M5) */}
+      <Modal isOpen={pendingToggleMed !== null} onClose={() => setPendingToggleMed(null)} title="ဆေး အခြေအနေ ပြောင်းမည်" size="sm">
+        <p className="text-sm text-slate-700 leading-relaxed">
+          "{pendingToggleMed?.name}" ဆေးကို {pendingToggleMed?.status === 'active' ? 'ခေတ္တရပ်နားမည်' : 'ပြန်လည်သောက်သုံးမည်'} — သေချာပါသလား?
+        </p>
+        <div className="flex gap-2 justify-end mt-5">
+          <button onClick={() => setPendingToggleMed(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm cursor-pointer">မလုပ်သေးပါ</button>
+          <button onClick={confirmToggleStatus} className="px-4 py-2 rounded-xl bg-teal-600 text-white font-bold text-sm cursor-pointer">ပြောင်းမည်</button>
+        </div>
+      </Modal>
+      {/* Delete confirmation (v2.4.16) */}
+      <Modal isOpen={deleteTargetId !== null} onClose={() => setDeleteTargetId(null)} title="မှတ်တမ်း ဖျက်မည်" size="sm">
+        <p className="text-sm text-slate-700 leading-relaxed">ဤဆေးမှတ်တမ်းကို ဖျက်မှာ သေချာပါသလား? ဖျက်လိုက်ရင် ပြန်မရတော့ပါ။</p>
+        <div className="flex gap-2 justify-end mt-5">
+          <button onClick={() => setDeleteTargetId(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm cursor-pointer">မဖျက်သေးပါ</button>
+          <button onClick={() => { const id = deleteTargetId; setDeleteTargetId(null); if (id) deleteMedication(id); }} className="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-sm cursor-pointer">ဖျက်မည်</button>
+        </div>
+      </Modal>
     </div>
   );
 };

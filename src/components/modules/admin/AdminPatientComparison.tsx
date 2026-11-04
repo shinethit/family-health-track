@@ -45,9 +45,12 @@ const sortDesc = <T extends Dated & { testDate?: string }>(arr: T[]): T[] =>
   [...arr].sort((a, b) => dateMs(b) - dateMs(a));
 
 const fmtDate = (s?: string): string => {
-  if (!s) return '—';
+  if (!s) return 'ရက်စွဲ မရှိပါ';
   const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('my-MM');
+  if (Number.isNaN(d.getTime())) return 'ရက်စွဲ မရှိပါ';
+  // Hardcoded Myanmar month names — never toLocaleDateString('my-MM') (D-M4).
+  const MM_MONTHS = ['ဇန်နဝါရီ', 'ဖေဖော်ဝါရီ', 'မတ်', 'ဧပြီ', 'မေ', 'ဇွန်', 'ဇူလိုင်', 'ဩဂုတ်', 'စက်တင်ဘာ', 'အောက်တိုဘာ', 'နိုဝင်ဘာ', 'ဒီဇင်ဘာ'];
+  return `${d.getFullYear()} ခုနှစ် ${MM_MONTHS[d.getMonth()]} ${d.getDate()} ရက်`;
 };
 
 const avg = (nums: number[]): number | null =>
@@ -79,7 +82,6 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
 }) => {
   const {
     patientsList,
-    familyMembers,
     allBPRecords,
     allGlucoseRecords,
     allBMIRecords,
@@ -94,14 +96,11 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
     .filter((p): p is UserProfile => !!p);
 
   const stats: PatientStats[] = patients.map((patient) => {
-    // Include records filed under the patient's family members too, like
-    // the filtered views do — a family member's doc id is their userId.
-    const scope = new Set<string>([
-      patient.id,
-      ...familyMembers
-        .filter((f) => (f as any).userId === patient.id)
-        .map((f) => f.id),
-    ]);
+    // v2.4.16 (C-C2): PATIENT-ONLY scope. The old code pooled the patient's
+    // family members' records into the same column, so a child's readings
+    // were averaged into a parent's average and the "latest" value could be
+    // the child's. A column is one person, never a household.
+    const scope = new Set<string>([patient.id]);
     const bp = sortAsc(allBPRecords.filter((r) => scope.has(r.userId)));
     const glu = sortAsc(allGlucoseRecords.filter((r) => scope.has(r.userId)));
     const bmiRecs = sortAsc(allBMIRecords.filter((r) => scope.has(r.userId)));
@@ -132,16 +131,18 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
   const resolveName = (p: UserProfile): string =>
     resolveCleanName(p.displayName, p.email, p.phone);
 
-  const bmiFor = (s: PatientStats): { text: string; label: string | null } => {
+  const bmiFor = (s: PatientStats): { text: string; label: string | null; fromRecord: boolean } => {
     if (s.latestBMI) {
-      return { text: `${s.latestBMI.bmi}`, label: null };
+      // v2.4.16 (C-L1): a BMI from a measurement record is labelled as
+      // record-derived — it is NOT the profile BMI.
+      return { text: `${s.latestBMI.bmi}`, label: null, fromRecord: true };
     }
     if (s.patient.weightKg && s.patient.heightCm) {
       const calc = calculateBMI(s.patient.weightKg, s.patient.heightCm);
-      if (!calc) return { text: 'မရှိသေးပါ', label: null };
-      return { text: `${calc.bmi}`, label: calc.labelMm };
+      if (!calc) return { text: 'မရှိသေးပါ', label: null, fromRecord: false };
+      return { text: `${calc.bmi}`, label: calc.labelMm, fromRecord: false };
     }
-    return { text: 'မရှိသေးပါ', label: null };
+    return { text: 'မရှိသေးပါ', label: null, fromRecord: false };
   };
 
   return (
@@ -165,6 +166,9 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
             </h2>
             <p className="text-xs text-slate-500 mt-1">
               ရွေးချယ်ထားသော အသုံးပြုသူများ၏ သွေးပေါင်၊ သွေးချို၊ BMI၊ ဆေးနှင့် ဓာတ်ခွဲမှတ်တမ်းများကို ဘေးချင်းယှဉ် ကြည့်ရှုနိုင်ပါသည်
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1">
+              ပျမ်းမျှတန်ဖိုးများသည် အသုံးပြုသူကိုယ်တိုင်၏ မှတ်တမ်းများကိုသာ အခြေခံပြီး အချိန်အားလုံး (all-time) အတွက် တွက်ထားခြင်းဖြစ်သည် — မိသားစုဝင်များ၏ မှတ်တမ်းများ မပါဝင်ပါ။
             </p>
             {patientIds.length > 4 && (
               <p className="text-[11px] text-amber-600 font-semibold mt-1">
@@ -241,9 +245,9 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
                     })}
                   </tr>
 
-                  {/* Average BP */}
+                  {/* Average BP — patient-only, all-time (C-C2, C-L2) */}
                   <tr className="border-b border-slate-100 dark:border-slate-800">
-                    <td className="font-semibold text-slate-500 p-2.5">ပျမ်းမျှ သွေးပေါင်</td>
+                    <td className="font-semibold text-slate-500 p-2.5">ပျမ်းမျှ သွေးပေါင် (အချိန်အားလုံး)</td>
                     {stats.map((s) => (
                       <td key={s.patient.id} className="p-2.5 text-slate-800 dark:text-slate-200">
                         {s.avgSys !== null && s.avgDia !== null ? (
@@ -282,9 +286,9 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
                     })}
                   </tr>
 
-                  {/* Average Glucose */}
+                  {/* Average Glucose — patient-only, all-time (C-C2, C-L2) */}
                   <tr className="border-b border-slate-100 dark:border-slate-800">
-                    <td className="font-semibold text-slate-500 p-2.5">ပျမ်းမျှ သွေးချို</td>
+                    <td className="font-semibold text-slate-500 p-2.5">ပျမ်းမျှ သွေးချို (အချိန်အားလုံး)</td>
                     {stats.map((s) => (
                       <td key={s.patient.id} className="p-2.5 text-slate-800 dark:text-slate-200">
                         {s.avgGlu !== null ? (
@@ -315,7 +319,9 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
                               <span className="font-bold">{b.text}</span>
                               {b.label && <span className="text-slate-400"> ({b.label})</span>}
                               {s.latestBMI && (
-                                <div className="text-[11px] text-slate-400 mt-1">{fmtDate(s.latestBMI.date || s.latestBMI.timestamp || s.latestBMI.createdAt)}</div>
+                                <div className="text-[11px] text-slate-400 mt-1">
+                                  မှတ်တမ်းမှ BMI • {fmtDate(s.latestBMI.date || s.latestBMI.timestamp || s.latestBMI.createdAt)}
+                                </div>
                               )}
                             </div>
                           )}

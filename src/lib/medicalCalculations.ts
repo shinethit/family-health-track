@@ -212,8 +212,14 @@ export function ftInToCm(feet: number, inches: number): number {
 
 export function cmToFtIn(cm: number): { feet: number; inches: number } {
   const totalInches = cm / 2.54;
-  const feet = Math.floor(totalInches / 12);
-  const inches = Math.round((totalInches % 12) * 10) / 10;
+  let feet = Math.floor(totalInches / 12);
+  let inches = Math.round((totalInches % 12) * 10) / 10;
+  // Rounding can push inches to exactly 12 (e.g. 182.9 cm) — carry it
+  // into the next foot instead of showing "5 ft 12 in".
+  if (inches >= 12) {
+    feet += 1;
+    inches = 0;
+  }
   return { feet, inches };
 }
 
@@ -335,7 +341,7 @@ export function calculateBPCategory(
   };
 }
 
-export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
+export function calculateGlucoseStatus(value: number, type: BloodSugarType, age?: number): {
   status: GlucoseStatus;
   labelMm: string;
   labelEn: string;
@@ -344,8 +350,26 @@ export function calculateGlucoseStatus(value: number, type: BloodSugarType): {
   borderColor: string;
   advice: string;
   sourceMm: string;
+  isPediatric?: boolean;
 } {
   const source = 'ရင်းမြစ်: ADA (American Diabetes Association) Standards of Care';
+
+  // Pediatric safety guard (Age < 18) — adult cutoffs are NOT applied;
+  // a child's glucose range must be judged by a paediatrician (same
+  // pattern as calculateBMI / calculateBPCategory).
+  if (age !== undefined && age < 18) {
+    return {
+      status: 'pediatric',
+      labelMm: 'ကလေး/ဆယ်ကျော်သက် (ကလေးဆရာဝန်နှင့် သီးသန့်စစ်ဆေးရန်)',
+      labelEn: 'Pediatric (Clinical Assessment Required)',
+      color: 'text-indigo-700 dark:text-indigo-400',
+      bgColor: 'bg-indigo-50 dark:bg-indigo-950/40',
+      borderColor: 'border-indigo-300 dark:border-indigo-800',
+      advice: 'အသက် ၁၈ နှစ်အောက် ကလေးနှင့် ဆယ်ကျော်သက်များ၏ သွေးတွင်းသကြားဓာတ် ပုံမှန်သတ်မှတ်ချက်သည် လူကြီးစံနှုန်းနှင့် ကွာခြားနိုင်သဖြင့် ကလေးအထူးကုဆရာဝန်နှင့် တိုင်ပင်ဆွေးနွေးရန် လိုအပ်ပါသည်။',
+      sourceMm: 'ရင်းမြစ်: ADA Standards of Care — Children and Adolescents',
+      isPediatric: true,
+    };
+  }
 
   if (type === 'hba1c') {
     if (value < 5.7) {
@@ -962,5 +986,17 @@ export function formatDateLabel(dateStr?: string | number): { date: string; time
     date: `${day}-${month}-${year}`,
     time: `${hours}:${mins}`
   };
+}
+
+/**
+ * Local YYYY-MM-DD for <input type="date"> defaults (v2.4.16).
+ * `new Date().toISOString().split('T')[0]` is UTC — in Myanmar (UTC+6:30)
+ * it is yesterday's date after ~17:30 local time. This uses the device's
+ * local calendar date instead.
+ */
+export function toLocalDateInput(date: Date = new Date()): string {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 

@@ -19,6 +19,37 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { DoctorQuestion } from '../../types/health';
+import { Modal } from '../common/Modal';
+
+// Hardcoded Myanmar month names — never toLocaleDateString('my-MM'): the
+// user's phone may lack the 'my-MM' locale and fall back to English (D-M4).
+const MM_MONTHS = ['ဇန်နဝါရီ', 'ဖေဖော်ဝါရီ', 'မတ်', 'ဧပြီ', 'မေ', 'ဇွန်', 'ဇူလိုင်', 'ဩဂုတ်', 'စက်တင်ဘာ', 'အောက်တိုဘာ', 'နိုဝင်ဘာ', 'ဒီဇင်ဘာ'];
+const formatMmDate = (value?: string): string => {
+  if (!value) return 'ရက်စွဲ မရှိပါ';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'ရက်စွဲ မရှိပါ';
+  return `${d.getFullYear()} ခုနှစ် ${MM_MONTHS[d.getMonth()]} ${d.getDate()} ရက်`;
+};
+const formatMmDateTime = (value?: string): string => {
+  if (!value) return 'ရက်စွဲ မရှိပါ';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'ရက်စွဲ မရှိပါ';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${formatMmDate(value)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+// Urgent questions first, then by newest — so an urgent question can never
+// sit buried under routine ones (C-M5).
+const URGENCY_RANK: Record<string, number> = { urgent: 0, moderate: 1, routine: 2 };
+const sortQuestionsForAdmin = (qs: DoctorQuestion[]): DoctorQuestion[] =>
+  [...qs].sort((a, b) => {
+    const aPending = a.status === 'pending' ? 0 : 1;
+    const bPending = b.status === 'pending' ? 0 : 1;
+    if (aPending !== bPending) return aPending - bPending;
+    const u = (URGENCY_RANK[a.urgency] ?? 2) - (URGENCY_RANK[b.urgency] ?? 2);
+    if (u !== 0) return u;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
 const FAQ_ITEMS = [
   {
@@ -70,6 +101,14 @@ export const DoctorQnAModule: React.FC = () => {
   const [answerText, setAnswerText] = useState('');
   const [recommendationsInput, setRecommendationsInput] = useState('');
   const [suggestedAction, setSuggestedAction] = useState('');
+  // Delete / close confirms (Modal — never window.confirm; delete is
+  // admin-only, the context also refuses it for non-admins) (C-M7).
+  const [deleteTarget, setDeleteTarget] = useState<DoctorQuestion | null>(null);
+  const [closeTarget, setCloseTarget] = useState<DoctorQuestion | null>(null);
+
+  // Urgent pending questions, most urgent first (C-M5).
+  const sortedQuestions = sortQuestionsForAdmin(doctorQuestions);
+  const urgentPendingCount = doctorQuestions.filter((q) => q.status === 'pending' && q.urgency === 'urgent').length;
 
   // Latest stats for auto-fill preview
   const latestBP = bpRecords[0];
@@ -211,6 +250,14 @@ export const DoctorQnAModule: React.FC = () => {
         </div>
       )}
 
+      {/* Urgent questions must be visible at a glance, not buried (C-M5). */}
+      {urgentPendingCount > 0 && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+          <span>🔴</span>
+          <span>အရေးကြီး မေးခွန်း {urgentPendingCount} ခု ဖြေကြားရန် စောင့်ဆိုင်းနေပါသည် — အရင်ဆုံး ဖြေကြားပေးပါ။</span>
+        </div>
+      )}
+
       {/* Tab Content 1: My Questions */}
       {activeTab === 'my_questions' && (
         <div className="space-y-4">
@@ -231,7 +278,7 @@ export const DoctorQnAModule: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {doctorQuestions.map((q) => {
+              {sortedQuestions.map((q) => {
                 const isAnswered = q.status === 'answered' && q.doctorAnswer;
                 return (
                   <div
@@ -271,11 +318,7 @@ export const DoctorQnAModule: React.FC = () => {
 
                           <span className="text-[11px] text-slate-500 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {new Date(q.createdAt).toLocaleDateString('my-MM', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric'
-                            })}
+                            {formatMmDate(q.createdAt)}
                           </span>
                         </div>
 
@@ -288,17 +331,18 @@ export const DoctorQnAModule: React.FC = () => {
                         </p>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          if (window.confirm('ဤမေးခွန်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။')) {
-                            deleteDoctorQuestion(q.id);
-                          }
-                        }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="ဖျက်မည်"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {/* Delete is admin-only (context also refuses it for
+                          non-admins) and always confirmed via Modal (C-M7). */}
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(q)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="ဖျက်မည်"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
 
                     {/* Question Details */}
@@ -343,7 +387,7 @@ export const DoctorQnAModule: React.FC = () => {
                                 {q.doctorAnswer?.answeredBy || 'ဆရာဝန်'} ၏ အကြံပြုအဖြေ
                               </span>
                               <span className="text-[11px] text-emerald-700">
-                                {q.doctorAnswer?.answeredAt ? new Date(q.doctorAnswer.answeredAt).toLocaleString('my-MM') : ''}
+                                {q.doctorAnswer?.answeredAt ? formatMmDateTime(q.doctorAnswer.answeredAt) : ''}
                               </span>
                             </div>
                           </div>
@@ -381,11 +425,8 @@ export const DoctorQnAModule: React.FC = () => {
                         {/* Close / mark resolved — visible to the asker and the admin */}
                         <div className="flex justify-end pt-1">
                           <button
-                            onClick={() => {
-                              if (window.confirm('ဤမေးခွန်းကို ပိတ်သိမ်းမှာသေချာပါသလား? အဖြေရပြီးဖြစ်ကြောင်း မှတ်သားပါမည်။')) {
-                                closeDoctorQuestion(q.id);
-                              }
-                            }}
+                            type="button"
+                            onClick={() => setCloseTarget(q)}
                             className="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -420,6 +461,18 @@ export const DoctorQnAModule: React.FC = () => {
                                 placeholder="ဥပမာ- ရေများများသောက်ပါ&#10;ဆားလျှော့စားပါ"
                                 value={recommendationsInput}
                                 onChange={(e) => setRecommendationsInput(e.target.value)}
+                                className="w-full p-2.5 rounded-xl bg-white border border-indigo-200 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                                နောက်ထပ်လုပ်ဆောင်ရန် (အကြံပြုလုပ်ငန်း — ဥပမာ ဆေးခန်းပြန်ပြရန်၊ ဓာတ်ခွဲပြန်စစ်ရန်)
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="ဥပမာ- ၁ ပတ်အတွင်း သွေးပေါင်ပြန်တိုင်းပြီး ဆေးခန်းပြန်ပြပါ"
+                                value={suggestedAction}
+                                onChange={(e) => setSuggestedAction(e.target.value)}
                                 className="w-full p-2.5 rounded-xl bg-white border border-indigo-200 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                               />
                             </div>
@@ -659,6 +712,74 @@ export const DoctorQnAModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete confirm — admin-only, via Modal (C-M7) */}
+      <Modal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        size="sm"
+        title="မေးခွန်း ဖျက်မည်"
+      >
+        <div className="p-5 space-y-4 text-xs">
+          <p className="text-slate-700 leading-relaxed">
+            “{deleteTarget?.title}” မေးခွန်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold cursor-pointer"
+            >
+              မလုပ်တော့ပါ
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const q = deleteTarget;
+                setDeleteTarget(null);
+                if (q) await deleteDoctorQuestion(q.id);
+              }}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer"
+            >
+              ဖျက်မည်
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Close confirm — via Modal, never window.confirm */}
+      <Modal
+        isOpen={closeTarget !== null}
+        onClose={() => setCloseTarget(null)}
+        size="sm"
+        title="မေးခွန်း ပိတ်သိမ်းမည်"
+      >
+        <div className="p-5 space-y-4 text-xs">
+          <p className="text-slate-700 leading-relaxed">
+            “{closeTarget?.title}” မေးခွန်းကို ပိတ်သိမ်းမှာသေချာပါသလား? အဖြေရပြီးဖြစ်ကြောင်း မှတ်သားပါမည်။
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setCloseTarget(null)}
+              className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold cursor-pointer"
+            >
+              မလုပ်တော့ပါ
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const q = closeTarget;
+                setCloseTarget(null);
+                if (q) await closeDoctorQuestion(q.id);
+              }}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer"
+            >
+              ပိတ်သိမ်းမည်
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

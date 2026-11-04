@@ -16,7 +16,8 @@ import {
   Calendar,
   Sparkles,
   ShieldAlert,
-  Droplets
+  Droplets,
+  Pencil
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
@@ -32,12 +33,31 @@ const formatDaysMm = (days?: number[]): string => {
   return [...days].sort((a, b) => a - b).map(d => WEEKDAYS_MM[d]).join('၊ ');
 };
 
+// v2.4.16 (D-M4): hardcoded Myanmar month names — the phone may lack the
+// Intl 'my-MM' locale, in which case toLocaleDateString('my-MM') silently
+// falls back to English. Never use 'my-MM' in this file.
+const MONTHS_MM = ['ဇန်နဝါရီ', 'ဖေဖော်ဝါရီ', 'မတ်', 'ဧပြီ', 'မေ', 'ဇွန်', 'ဇူလိုင်', 'သြဂုတ်', 'စက်တင်ဘာ', 'အောက်တိုဘာ', 'နိုဝင်ဘာ', 'ဒီဇင်ဘာ'];
+const formatDateTimeMm = (timestamp: string): string => {
+  const d = new Date(timestamp);
+  if (Number.isNaN(d.getTime())) return '';
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getDate()} ${MONTHS_MM[d.getMonth()]} • ${hh}:${mm}`;
+};
+
+// v2.4.16 (F-L2): snooze choices offered on medication notifications.
+const SNOOZE_OPTIONS_MIN = [5, 15, 30, 60];
+
 interface NotificationCenterModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // v2.4.16 (F-M4): tapping a doctor Q&A notification opens the Q&A view.
+  // App.tsx must pass () => setActiveTab('doctor_qa'); without it the row
+  // is not tappable — this modal cannot reach App's tab state on its own.
+  onOpenDoctorQA?: () => void;
 }
 
-export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = ({ isOpen, onClose }) => {
+export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = ({ isOpen, onClose, onOpenDoctorQA }) => {
   const { profile, isAdmin } = useAuth();
   const {
     notifications,
@@ -50,16 +70,24 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     deleteNotification,
     clearAllNotifications,
     addCustomReminder,
+    updateCustomReminder,
     deleteCustomReminder,
     toggleReminderActive,
     markMedicationTaken,
     snoozeReminder,
-    sendManualNotification,
     playNotificationSound,
   } = useNotifications();
 
   const [activeTab, setActiveTab] = useState<'all' | 'meds' | 'alerts' | 'reminders'>('all');
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
+  // v2.4.16 (F-H1): the reminder being edited, if any — null means the
+  // panel creates a new reminder. The same panel serves add + edit.
+  const [editingReminder, setEditingReminder] = useState<CustomReminder | null>(null);
+  // v2.4.16 (F-H1): a failed save keeps the panel open with this error.
+  const [formError, setFormError] = useState<string | null>(null);
+  // v2.4.16 (F-H2): delete / clear-all go through a confirm Modal first.
+  const [pendingDeleteReminder, setPendingDeleteReminder] = useState<CustomReminder | null>(null);
+  const [pendingClearAll, setPendingClearAll] = useState(false);
 
   // New Reminder form state
   const [newTitle, setNewTitle] = useState('');
@@ -77,23 +105,72 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
   if (!isOpen) return null;
 
-  const handleAddReminder = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
+  const openAddReminder = () => {
+    setNewTitle('');
+    setNewNotes('');
+    setNewCategory('medication');
+    setNewTime('08:00');
+    setNewDays(ALL_DAYS);
+    setEditingReminder(null);
+    setFormError(null);
+    setShowAddReminderModal(true);
+  };
 
-    addCustomReminder({
+  // v2.4.16 (F-H1): prefill the panel with the reminder's current values.
+  const openEditReminder = (rem: CustomReminder) => {
+    setNewTitle(rem.title);
+    setNewCategory(rem.category);
+    setNewTime(rem.time);
+    setNewNotes(rem.notes || '');
+    setNewDays(rem.daysOfWeek && rem.daysOfWeek.length > 0 ? rem.daysOfWeek : ALL_DAYS);
+    setEditingReminder(rem);
+    setFormError(null);
+    setShowAddReminderModal(true);
+  };
+
+  const closeReminderPanel = () => {
+    setShowAddReminderModal(false);
+    setEditingReminder(null);
+    setFormError(null);
+  };
+
+  const handleSaveReminder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) {
+      setFormError('ခေါင်းစဉ် ဖြည့်ပေးပါ။');
+      return;
+    }
+
+    const data = {
       title: newTitle.trim(),
       category: newCategory,
       time: newTime,
+      // Nothing selected means "every day" (F-L4) — the ticker treats an
+      // empty daysOfWeek as all days, but storing all 7 explicitly keeps
+      // the stored data honest about what will happen.
       daysOfWeek: newDays.length > 0 ? newDays : ALL_DAYS,
-      isActive: true,
+      isActive: editingReminder ? editingReminder.isActive : true,
       notes: newNotes.trim() || undefined,
-    });
+    };
+
+    if (editingReminder) {
+      // v2.4.16 (F-H1): update in place. On failure the panel stays open
+      // with an honest error — the user's edits are not thrown away.
+      try {
+        updateCustomReminder(editingReminder.id, data);
+      } catch (err) {
+        console.error('Failed to update reminder:', err);
+        setFormError('ပြင်ဆင်ခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်နှိပ်ပါ။');
+        return;
+      }
+    } else {
+      addCustomReminder(data);
+    }
 
     setNewTitle('');
     setNewNotes('');
     setNewDays(ALL_DAYS);
-    setShowAddReminderModal(false);
+    closeReminderPanel();
   };
 
   const filteredNotifications = notifications.filter(n => {
@@ -231,7 +308,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setShowAddReminderModal(true)}
+              onClick={openAddReminder}
               className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -250,7 +327,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 </button>
                 <button
                   type="button"
-                  onClick={clearAllNotifications}
+                  onClick={() => setPendingClearAll(true)}
                   title="အားလုံး ရှင်းလင်းမည်"
                   aria-label="အားလုံး ရှင်းလင်းမည်"
                   className="p-1.5 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-950/50 text-rose-500 text-xs transition-colors cursor-pointer"
@@ -272,7 +349,23 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 <span>{customReminders.filter(r => r.isActive).length} ခု ဖွင့်ထားပါသည်</span>
               </div>
 
-              {customReminders.map(rem => (
+              {/* v2.4.16 (F-M9): empty state — a clear message, not a blank list. */}
+              {customReminders.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <Bell className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-700 stroke-1" />
+                  <p className="font-medium text-sm text-slate-700 dark:text-slate-300">Reminder မသတ်မှတ်ရသေးပါ</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    ဆေးသောက်ချိန်၊ သွေးပေါင်ချိန်/သကြားဓာတ် တိုင်းချိန်များကို အချိန်မှန် သတိပေးဖို့ Reminder တစ်ခု ဖန်တီးလိုက်ပါ
+                  </p>
+                  <button
+                    onClick={openAddReminder}
+                    className="mt-4 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold cursor-pointer shadow-xs"
+                  >
+                    + Reminder အသစ် ဖန်တီးမည်
+                  </button>
+                </div>
+              ) : (
+              customReminders.map(rem => (
                 <div 
                   key={rem.id}
                   className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
@@ -281,8 +374,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                       : 'bg-slate-100/50 dark:bg-slate-900/40 border-slate-200/50 opacity-60'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
                       rem.category === 'medication' ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600' :
                       rem.category === 'bp' ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600' :
                       rem.category === 'glucose' ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-600' :
@@ -295,10 +388,10 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                        rem.category === 'doctor' ? <Calendar className="w-5 h-5" /> :
                        <Clock className="w-5 h-5" />}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">{rem.title}</h4>
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 break-words min-w-0">{rem.title}</h4>
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 shrink-0">
                           {rem.time}
                         </span>
                         <span className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -306,12 +399,12 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                         </span>
                       </div>
                       {rem.notes && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{rem.notes}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 break-words">{rem.notes}</p>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => toggleReminderActive(rem.id)}
                       className={`px-3 py-1 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
@@ -322,15 +415,26 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                     >
                       {rem.isActive ? 'ဖွင့်ထားသည်' : 'ပိတ်ထားသည်'}
                     </button>
+                    {/* v2.4.16 (F-H1): edit in place instead of delete + re-add. */}
                     <button
-                      onClick={() => deleteCustomReminder(rem.id)}
+                      onClick={() => openEditReminder(rem)}
+                      title="ပြင်ဆင်မည်"
+                      aria-label={`"${rem.title}" ပြင်ဆင်မည်`}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 transition-colors cursor-pointer"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setPendingDeleteReminder(rem)}
+                      title="ဖျက်မည်"
+                      aria-label={`"${rem.title}" ဖျက်မည်`}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-              ))}
+              )))}
             </div>
           ) : (
             // Notifications List
@@ -341,12 +445,19 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 <p className="text-xs text-slate-400 mt-1">
                   ဆေးသောက်ချိန် သို့မဟုတ် ကျန်းမာရေးတိုင်းတာချိန် ရောက်ရှိပါက ဤနေရာတွင် အသိပေးပါမည်
                 </p>
+                {/* v2.4.16 (F-L1): sound-only test. The old button created a
+                    fake notification that looked exactly like a real
+                    reminder ("စမ်းသပ် သတိပေးချက်"). Testing the sound must
+                    not create any notification — it only plays the chime. */}
                 <button
-                  onClick={() => sendManualNotification('🔔 စမ်းသပ် သတိပေးချက်', 'သတိပေးချက် စနစ် အလုပ်လုပ်ပါသည်။', 'custom_reminder', 'normal')}
+                  onClick={playNotificationSound}
                   className="mt-4 px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold cursor-pointer hover:bg-emerald-100"
                 >
-                  🔔 နမူနာ Noti တစ်ခု စမ်းသပ်ကြည့်မည်
+                  🔊 အသံသာ စမ်းသပ်မည် (Noti အတု မဖန်တီးပါ)
                 </button>
+                <p className="text-[11px] text-slate-400 mt-2">
+                  အသံမြည်ခြင်းကိုသာ စမ်းသပ်တာပါ — သတိပေးချက် မှတ်တမ်းထဲကို ဘာမှ ထည့်မသွားပါဘူး။
+                </p>
               </div>
             ) : (
               filteredNotifications.map(item => (
@@ -359,7 +470,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                         item.type === 'medication' ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400' :
                         item.type === 'abnormal_alert' ? 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400' :
@@ -372,30 +483,46 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                          <Bell className="w-5 h-5" />}
                       </div>
 
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                          <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 break-words min-w-0">
                             {item.title}
                           </h4>
                           {!item.read && (
-                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                           )}
                         </div>
 
-                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed break-words">
                           {item.message}
                         </p>
 
                         <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-400">
-                          <Clock className="w-3 h-3" />
+                          <Clock className="w-3 h-3 shrink-0" />
                           <span>
-                            {new Date(item.timestamp).toLocaleDateString('my-MM', { month: 'short', day: 'numeric' })} • {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {formatDateTimeMm(item.timestamp)}
                           </span>
                         </div>
 
+                        {/* v2.4.16 (F-M4): a doctor Q&A notification opens the
+                            Q&A view. Only shown when App wired onOpenDoctorQA. */}
+                        {(item.type === 'doctor_advice' || item.type === 'qa_answered') && onOpenDoctorQA && (
+                          <button
+                            onClick={() => {
+                              markAsRead(item.id);
+                              onClose();
+                              onOpenDoctorQA();
+                            }}
+                            className="mt-2 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                          >
+                            <span>ဆရာဝန် Q&A ကြည့်မည်</span>
+                            <span aria-hidden="true">→</span>
+                          </button>
+                        )}
+
                         {/* Medication Interactive Actions */}
                         {item.type === 'medication' && !item.data?.takenAt && (
-                          <div className="flex items-center gap-2 mt-3">
+                          <div className="flex flex-wrap items-center gap-2 mt-3">
                             <button
                               onClick={() => markMedicationTaken(item.id, item.data?.medicationName || 'ဆေး')}
                               className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
@@ -403,13 +530,18 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                               <Check className="w-3.5 h-3.5" />
                               <span>သောက်ပြီးပါပြီ ✅</span>
                             </button>
-                            <button
-                              onClick={() => snoozeReminder(item.id, 15)}
-                              className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
-                            >
-                              <Clock className="w-3 h-3" />
-                              <span>၁၅ မိနစ် ရွှေ့ဆိုင်းမည်</span>
-                            </button>
+                            {/* v2.4.16 (F-L2): snooze choices instead of a fixed 15 min. */}
+                            <span className="text-[11px] text-slate-500 font-bold">ရွှေ့ဆိုင်းမည်:</span>
+                            {SNOOZE_OPTIONS_MIN.map((mins) => (
+                              <button
+                                key={mins}
+                                onClick={() => snoozeReminder(item.id, mins)}
+                                className="px-2.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                              >
+                                <Clock className="w-3 h-3" />
+                                <span>{mins} မိနစ်</span>
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -440,14 +572,20 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           )}
         </div>
 
-        {/* Add Reminder Modal Overlay */}
+        {/* Add / Edit Reminder Panel (v2.4.16 F-H1: one panel serves both) */}
         {showAddReminderModal && (
           <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850">
             <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
               <Plus className="w-4 h-4 text-emerald-500" />
-              Reminder အသစ် သတ်မှတ်ရန်
+              {editingReminder ? 'Reminder ပြင်ဆင်ရန်' : 'Reminder အသစ် သတ်မှတ်ရန်'}
             </h4>
-            <form onSubmit={handleAddReminder} className="space-y-3">
+            <form onSubmit={handleSaveReminder} className="space-y-3">
+              {formError && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{formError}</span>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
@@ -535,6 +673,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
                   ရွေးထားသော ရက်: {formatDaysMm(newDays.length > 0 ? newDays : ALL_DAYS)}
+                  {newDays.length === 0 && ' — ရက်မရွေးထားပါက နေ့တိုင်း သတိပေးမည်'}
                 </p>
               </div>
 
@@ -545,7 +684,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddReminderModal(false)}
+                  onClick={closeReminderPanel}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   မလုပ်တော့ပါ
@@ -554,12 +693,76 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   type="submit"
                   className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer"
                 >
-                  သတ်မှတ်မည်
+                  {editingReminder ? 'ပြင်ဆင်ပြီး သိမ်းမည်' : 'သတ်မှတ်မည်'}
                 </button>
               </div>
             </form>
           </div>
         )}
+
+        {/* v2.4.16 (F-H2): confirm before deleting a custom reminder. */}
+        <Modal
+          isOpen={pendingDeleteReminder !== null}
+          onClose={() => setPendingDeleteReminder(null)}
+          title="Reminder ဖျက်မည်"
+          size="sm"
+        >
+          <div className="p-5 space-y-4 text-sm text-slate-700 dark:text-slate-300">
+            <p className="leading-relaxed">
+              <strong className="text-slate-900 dark:text-white break-words">“{pendingDeleteReminder?.title}”</strong>
+              {' '}({pendingDeleteReminder ? formatDaysMm(pendingDeleteReminder.daysOfWeek) : ''} {pendingDeleteReminder?.time})
+              ကို ဖျက်လိုက်ရင် ဒီ Reminder အတွက် နောက်ထပ် သတိပေးချက် တက်လာတော့မှာ မဟုတ်ပါဘူး။ တကယ် ဖျက်မှာလား?
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setPendingDeleteReminder(null)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+              >
+                မဖျက်တော့ပါ
+              </button>
+              <button
+                onClick={() => {
+                  if (pendingDeleteReminder) deleteCustomReminder(pendingDeleteReminder.id);
+                  setPendingDeleteReminder(null);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-xs"
+              >
+                ဖျက်မည်
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* v2.4.16 (F-H2): confirm before clearing ALL notifications. */}
+        <Modal
+          isOpen={pendingClearAll}
+          onClose={() => setPendingClearAll(false)}
+          title="သတိပေးချက် အကုန် ဖျက်မည်"
+          size="sm"
+        >
+          <div className="p-5 space-y-4 text-sm text-slate-700 dark:text-slate-300">
+            <p className="leading-relaxed">
+              သတိပေးချက် မှတ်တမ်း <strong className="text-slate-900 dark:text-white">{notifications.length} ခု</strong> လုံးကို ဖျက်လိုက်မှာလား? ဖျက်ပြီးရင် ပြန်ရတော့မှာ မဟုတ်ပါဘူး။
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setPendingClearAll(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
+              >
+                မဖျက်တော့ပါ
+              </button>
+              <button
+                onClick={() => {
+                  clearAllNotifications();
+                  setPendingClearAll(false);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-xs"
+              >
+                အကုန် ဖျက်မည်
+              </button>
+            </div>
+          </div>
+        </Modal>
 
       </div>
     </Modal>

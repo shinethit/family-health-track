@@ -21,7 +21,14 @@ import {
 } from 'lucide-react';
 import { useAuth, validateUsername } from '../../context/AuthContext';
 
-export const LoginScreen: React.FC = () => {
+interface LoginScreenProps {
+  // Called when the password-reset flow finishes or is abandoned, so the
+  // app can return to the main screen (v2.4.16, A-M7) — a reset link opened
+  // while already logged in must not strand the user on the login form.
+  onResetFinished?: () => void;
+}
+
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => {
   const { login, register, resetPassword, verifyResetCode, confirmResetPassword } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -82,6 +89,9 @@ export const LoginScreen: React.FC = () => {
     setNewPassword('');
     setConfirmNewPassword('');
     setResetError(null);
+    // v2.4.16 (A-M7): if this reset was opened while logged in, return to
+    // the main app instead of stranding the user on the login form.
+    onResetFinished?.();
   };
 
   const handleConfirmReset = async (e: React.FormEvent) => {
@@ -122,14 +132,17 @@ export const LoginScreen: React.FC = () => {
         if (!name.trim() || !email.trim() || !password) {
           throw new Error('ကျေးဇူးပြု၍ အမည်၊ အီးမေးလ်နှင့် လျှို့ဝှက်နံပါတ် ဖြည့်သွင်းပါ');
         }
-        const usernameError = validateUsername(username);
+        // v2.4.16 (A-H5): the username is OPTIONAL at sign-up — a user can
+        // sign up with just name + email + password and set a username
+        // later in their profile. Only validate when one was typed.
+        const usernameError = username.trim() ? validateUsername(username) : null;
         if (usernameError) {
           throw new Error(usernameError);
         }
         if (password.length < 6) {
           throw new Error('စကားဝှက်သည် အနည်းဆုံး ၆ လုံး ရှိရပါမည်');
         }
-        await register(email, password, name, undefined, undefined, undefined, undefined, undefined, username);
+        await register(email, password, name, undefined, undefined, undefined, undefined, undefined, username.trim() ? username : undefined);
       }
     } catch (err: any) {
       console.error(err);
@@ -163,8 +176,11 @@ export const LoginScreen: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       // Never show the raw Firebase error text (English) to the user.
+      // v2.4.16 (A-M2): a user-not-found here must show the SAME success
+      // copy as a real send — saying "no account with this email" would let
+      // anyone check whether an email is registered.
       if (err.code === 'auth/user-not-found') {
-        setForgotError('ဤအီးမေးလ်ဖြင့် အကောင့်မရှိသေးပါ။ အီးမေးလ်မှန်ကန်ကြောင်း စစ်ဆေးပါ။');
+        setForgotSuccess(true);
       } else if (err.code === 'auth/invalid-email') {
         setForgotError('အီးမေးလ် ပုံစံ မမှန်ကန်ပါ။ (ဥပမာ- user@example.com)');
       } else if (err.code === 'auth/too-many-requests') {
@@ -402,21 +418,20 @@ export const LoginScreen: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-white mb-1.5">
-                      အသုံးပြုသူအမည် (Username) *
+                      အသုံးပြုသူအမည် (Username) — မဖြစ်မနေ မဟုတ်ပါ
                     </label>
                     <div className="relative">
                       <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                       <input
                         type="text"
-                        required
                         autoComplete="username"
-                        placeholder="ဥပမာ- aungkyaw123"
+                        placeholder="ဥပမာ- aungkyaw123 (မထည့်လည်း ရပါသည်)"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-slate-950 border border-slate-600 text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden placeholder:text-slate-600"
                       />
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">အင်္ဂလိပ် စာလုံး၊ ဂဏန်း၊ _ နှင့် . သာ — အနည်းဆုံး ၃ လုံး။ အကောင့်ဝင်ရာတွင် အီးမေးလ်အစား သုံးနိုင်ပါသည်။</p>
+                    <p className="text-[11px] text-slate-400 mt-1">အင်္ဂလိပ် စာလုံး၊ ဂဏန်း၊ _ နှင့် . သာ — အနည်းဆုံး ၃ လုံး။ အကောင့်ဝင်ရာတွင် အီးမေးလ်အစား သုံးနိုင်ပါသည်။ နောက်မှ ပရိုဖိုင်တွင် သတ်မှတ်နိုင်ပါသည်။</p>
                   </div>
                 </>
               )}
@@ -451,7 +466,9 @@ export const LoginScreen: React.FC = () => {
                       type="button"
                       onClick={() => {
                         setShowForgotPassword(true);
-                        setForgotEmail(email);
+                        // v2.4.16 (A-L6): only prefill a real email — a
+                        // username in this box would fail validation.
+                        setForgotEmail(email.includes('@') ? email : '');
                         setForgotSuccess(false);
                         setForgotError(null);
                         setResendNote(false);
