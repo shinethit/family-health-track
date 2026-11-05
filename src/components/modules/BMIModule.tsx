@@ -162,7 +162,7 @@ export const BMIModule: React.FC = () => {
 
   // Profile Edit states (for Date of Birth & Age)
   const [editDob, setEditDob] = useState<string>(() => profile?.dateOfBirth || '');
-  const [editGender, setEditGender] = useState<'male' | 'female' | 'other'>(() => profile?.gender || 'male');
+  const [editGender, setEditGender] = useState<'' | 'male' | 'female' | 'other'>(() => (profile?.gender as '' | 'male' | 'female' | 'other' | undefined) || '');
   const [editBloodType, setEditBloodType] = useState<string>(() => profile?.bloodType || '');
 
   // Compute active user metrics
@@ -501,6 +501,17 @@ export const BMIModule: React.FC = () => {
   // Handle Save Profile / DOB update
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    // v2.4.23: same future-DOB guard as ProfileSetupModal (A-M8) — the
+    // preview already warns about a wrong birth date, but Save still worked.
+    if (editDob) {
+      const dobDate = new Date(`${editDob}T00:00:00`);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (Number.isNaN(dobDate.getTime()) || dobDate.getTime() > today.getTime()) {
+        showToast('မွေးနေ့သည် အနာဂတ် ရက်စွဲ ဖြစ်နေပါသည်။ မှန်ကန်သော မွေးနေ့ ထည့်ပါ', 'error');
+        return;
+      }
+    }
     const calculated = calculateAge(editDob);
     try {
       // v2.4.22 (Bug A): a stalled profile write must not hang this modal
@@ -510,8 +521,8 @@ export const BMIModule: React.FC = () => {
         updateProfile({
           dateOfBirth: editDob,
           age: calculated ? calculated.years : undefined,
-          gender: editGender,
-          bloodType: editBloodType,
+          gender: editGender || undefined,
+          bloodType: editBloodType || undefined,
         }),
         SAVE_CONFIRM_TIMEOUT_MS,
         SAVE_UNCONFIRMED_MESSAGE,
@@ -527,7 +538,7 @@ export const BMIModule: React.FC = () => {
   // state instead of empty charts / "no records" messages.
   if (dataLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+      <div className="flex flex-col items-center justify-center py-8 space-y-3">
         <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-teal-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
         <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
       </div>
@@ -535,17 +546,17 @@ export const BMIModule: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Top Banner & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center">
-              <Scale className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+              <Scale className="w-4 h-4" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                BMI နှင့် ခန္ဓာကိုယ် ဖွဲ့စည်းမှု တွက်ချက်ခြင်း (Body Mass Index & Age)
+                BMI နှင့် ခန္ဓာကိုယ် ဖွဲ့စည်းမှု တွက်ချက်ခြင်း
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {selectedPatient
@@ -578,9 +589,9 @@ export const BMIModule: React.FC = () => {
       </div>
 
       {/* Primary Vitals Cards: Age & BMI Current Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Card 1: Age & Date of Birth */}
-        <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-teal-500" />
@@ -593,7 +604,7 @@ export const BMIModule: React.FC = () => {
 
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white">
                 {activeAgeYears !== null ? activeAgeYears : '--'}
               </span>
               <span className="text-sm font-semibold text-slate-500">
@@ -621,7 +632,7 @@ export const BMIModule: React.FC = () => {
         </div>
 
         {/* Card 2: Current BMI */}
-        <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <Scale className="w-4 h-4 text-emerald-500" />
@@ -636,7 +647,7 @@ export const BMIModule: React.FC = () => {
 
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
+              <span className="text-2xl font-extrabold text-slate-900 dark:text-white">
                 {currentBMIResult ? currentBMIResult.bmi : '--'}
               </span>
               <span className="text-xs font-semibold text-slate-400">kg/m²</span>
@@ -674,7 +685,7 @@ export const BMIModule: React.FC = () => {
         </div>
 
         {/* Card 3: Height & Weight */}
-        <div className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
+        <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <Ruler className="w-4 h-4 text-sky-500" />
@@ -756,7 +767,7 @@ export const BMIModule: React.FC = () => {
               className="absolute -top-1 transition-all duration-500 flex flex-col items-center -translate-x-1/2 z-10"
               style={{
                 // Map BMI 15 -> 35 to percentage 0% -> 100%
-                left: `${Math.min(Math.max(((currentBMIResult.bmi - 15) / (35 - 15)) * 100, 2), 98)}%`
+                left: `${Math.min(Math.max(((currentBMIResult.bmi - 15) / (35 - 15)) * 100, 2), 94)}%`
               }}
             >
               <div className="px-2 py-0.5 rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold shadow-md whitespace-nowrap">
@@ -842,22 +853,19 @@ export const BMIModule: React.FC = () => {
       </div>
 
       {/* Control Bar: View Switcher (Graph vs Table vs Both) + Timeframe Filter */}
-      <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-2xl bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-2xl bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              ကိုယ်အလေးချိန် & BMI သမိုင်းမှတ်တမ်း ပြသမှု (BMI History Views)
+              ပြသမှု ပုံစံ
             </h3>
-            <p className="text-[11px] text-slate-500">
-              Graph မျဉ်းကွေးဖြင့် ဖြစ်စေ၊ Data ဇယားဖြင့် ဖြစ်စေ ကာလအလိုက် စောင့်ကြည့်နိုင်ပါသည်
-            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
             <button
@@ -1007,15 +1015,15 @@ export const BMIModule: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
                   <tr>
-                    <th className="py-3 px-4 font-semibold">ရက်စွဲ</th>
-                    {isPooledView && <th className="py-3 px-4 font-semibold">ပိုင်ရှင်</th>}
-                    <th className="py-3 px-4 font-semibold">အရပ် (Height)</th>
-                    <th className="py-3 px-4 font-semibold">ကိုယ်အလေးချိန် (Weight)</th>
-                    <th className="py-3 px-4 font-semibold">BMI တန်ဖိုး</th>
-                    <th className="py-3 px-4 font-semibold">အဆင့်ခွဲခြားချက်</th>
-                    <th className="py-3 px-4 font-semibold">ခါးအတိုင်းအတာ</th>
-                    <th className="py-3 px-4 font-semibold">မှတ်ချက်</th>
-                    <th className="py-3 px-4 font-semibold text-right">လုပ်ဆောင်ချက်</th>
+                    <th className="py-2 px-3 font-semibold">ရက်စွဲ</th>
+                    {isPooledView && <th className="py-2 px-3 font-semibold">ပိုင်ရှင်</th>}
+                    <th className="py-2 px-3 font-semibold">အရပ် (Height)</th>
+                    <th className="py-2 px-3 font-semibold">ကိုယ်အလေးချိန် (Weight)</th>
+                    <th className="py-2 px-3 font-semibold">BMI တန်ဖိုး</th>
+                    <th className="py-2 px-3 font-semibold">အဆင့်ခွဲခြားချက်</th>
+                    <th className="py-2 px-3 font-semibold">ခါးအတိုင်းအတာ</th>
+                    <th className="py-2 px-3 font-semibold">မှတ်ချက်</th>
+                    <th className="py-2 px-3 font-semibold text-right">လုပ်ဆောင်ချက်</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1399,6 +1407,7 @@ export const BMIModule: React.FC = () => {
                     onChange={(e: any) => setEditGender(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   >
+                    <option value="">မရွေးရသေးပါ</option>
                     <option value="male">အမျိုးသား (Male)</option>
                     <option value="female">အမျိုးသမီး (Female)</option>
                     <option value="other">အခြား (Other)</option>
@@ -1414,6 +1423,7 @@ export const BMIModule: React.FC = () => {
                     onChange={(e) => setEditBloodType(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
                   >
+                    <option value="">မရွေးရသေးပါ</option>
                     <option value="A+">A Positive (A+)</option>
                     <option value="A-">A Negative (A-)</option>
                     <option value="B+">B Positive (B+)</option>

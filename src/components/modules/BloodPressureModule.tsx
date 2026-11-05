@@ -238,6 +238,12 @@ export const BloodPressureModule: React.FC = () => {
       showToast('အပေါ်သွေးနှင့် အောက်သွေး ထည့်ပေးပါ', 'error');
       return;
     }
+    // v2.4.23: diastolic >= systolic is impossible (almost certainly the
+    // two values were swapped) — reject instead of saving silently.
+    if (Number(diastolic) >= Number(systolic)) {
+      showToast('အပေါ်သွေး (systolic) က အောက်သွေး (diastolic) ထက် ကြီးရပါမည် — တန်ဖိုး မှားရိုက်မိလား စစ်ပါ', 'error');
+      return;
+    }
     setIsSubmitting(true);
     // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
     // context checks the list first and never writes a second copy.
@@ -311,7 +317,7 @@ export const BloodPressureModule: React.FC = () => {
   // state instead of empty charts / "no records" messages.
   if (dataLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+      <div className="flex flex-col items-center justify-center py-8 space-y-3">
         <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-rose-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
         <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
       </div>
@@ -319,13 +325,13 @@ export const BloodPressureModule: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Top Banner / Summary */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Activity className="w-6 h-6 text-rose-500" />
-            သွေးတိုး / သွေးပေါင်ချိန် မှတ်တမ်း (Blood Pressure)
+            သွေးတိုး / သွေးပေါင်ချိန် မှတ်တမ်း
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {selectedPatient
@@ -346,15 +352,15 @@ export const BloodPressureModule: React.FC = () => {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Latest Reading */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span>နောက်ဆုံးတိုင်းတာချက် (Latest)</span>
             <Activity className="w-4 h-4 text-rose-500" />
           </div>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+            <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
               {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : '--/--'}
             </span>
             <span className="text-xs text-slate-400">mmHg</span>
@@ -380,13 +386,13 @@ export const BloodPressureModule: React.FC = () => {
         </div>
 
         {/* Pulse */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span>နှလုံးခုန်နှုန်း (Pulse)</span>
             <Heart className="w-4 h-4 text-amber-500" />
           </div>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+            <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
               {latestBP ? (latestBP.pulse || latestBP.pulseRate || '--') : '--'}
             </span>
             <span className="text-xs text-slate-400">bpm</span>
@@ -397,13 +403,13 @@ export const BloodPressureModule: React.FC = () => {
         </div>
 
         {/* Average BP */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span>ပျမ်းမျှ သွေးပေါင်ချိန် (Average)</span>
             <Info className="w-4 h-4 text-blue-500" />
           </div>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+            <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
               {avgSystolic ? `${avgSystolic}/${avgDiastolic}` : '--/--'}
             </span>
             <span className="text-xs text-slate-400">mmHg</span>
@@ -414,7 +420,7 @@ export const BloodPressureModule: React.FC = () => {
         </div>
 
         {/* Clinical Advice Card */}
-        <div className="bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/30 dark:to-orange-950/20 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/40 shadow-xs">
+        <div className="bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/30 dark:to-orange-950/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/40 shadow-xs">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400 mb-1">
             <AlertCircle className="w-4 h-4" />
             ဆရာဝန် သတိပြုရန် အချက်
@@ -426,22 +432,19 @@ export const BloodPressureModule: React.FC = () => {
       </div>
 
       {/* Control Bar: View Switcher (Graph vs Table vs Both) + Timeframe Filter */}
-      <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-2xl bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-2xl bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              သွေးပေါင်ချိန် သမိုင်းမှတ်တမ်း ပြသမှု (BP History Views)
+              ပြသမှု ပုံစံ
             </h3>
-            <p className="text-[11px] text-slate-500">
-              Graph မျဉ်းကွေးဖြင့် ဖြစ်စေ၊ Data ဇယားဖြင့် ဖြစ်စေ ကာလအလိုက် စောင့်ကြည့်နိုင်ပါသည်
-            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
             <button
@@ -533,7 +536,7 @@ export const BloodPressureModule: React.FC = () => {
       {/* DATA TABLE VIEW: History Table */}
       {(viewMode === 'both' || viewMode === 'table') && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
               သွေးပေါင်ချိန် မှတ်တမ်းများ (Blood Pressure Log - {timeframe === 'all' ? 'အားလုံး' : timeframe === '1m' ? '၁ လစာ' : timeframe === '3m' ? '၃ လစာ' : '၆ လစာ'})
             </h3>
@@ -543,7 +546,7 @@ export const BloodPressureModule: React.FC = () => {
           </div>
 
           {/* History search */}
-          <div className="px-4 pt-3">
+          <div className="px-3 pt-2">
             <input
               type="text"
               value={searchQuery}
@@ -557,54 +560,54 @@ export const BloodPressureModule: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
                 <tr>
-                  <th className="py-3 px-4 font-medium">ရက်စွဲ / အချိန်</th>
-                  {isPooledView && <th className="py-3 px-4 font-medium">ပိုင်ရှင်</th>}
-                  <th className="py-3 px-4 font-medium">အပေါ်သွေး (Sys)</th>
-                  <th className="py-3 px-4 font-medium">အောက်သွေး (Dia)</th>
-                  <th className="py-3 px-4 font-medium">နှလုံးခုန် (Pulse)</th>
-                  <th className="py-3 px-4 font-medium">အခြေအနေ သတ်မှတ်ချက်</th>
-                  <th className="py-3 px-4 font-medium">စားသုံးခဲ့သော အစားအသောက်</th>
-                  <th className="py-3 px-4 font-medium">တိုင်းတာချိန်</th>
-                  <th className="py-3 px-4 font-medium">မှတ်ချက်</th>
-                  <th className="py-3 px-4 font-medium text-right">လုပ်ဆောင်ချက်</th>
+                  <th className="py-2 px-3 font-medium">ရက်စွဲ / အချိန်</th>
+                  {isPooledView && <th className="py-2 px-3 font-medium">ပိုင်ရှင်</th>}
+                  <th className="py-2 px-3 font-medium">အပေါ်သွေး (Sys)</th>
+                  <th className="py-2 px-3 font-medium">အောက်သွေး (Dia)</th>
+                  <th className="py-2 px-3 font-medium">နှလုံးခုန် (Pulse)</th>
+                  <th className="py-2 px-3 font-medium">အခြေအနေ သတ်မှတ်ချက်</th>
+                  <th className="py-2 px-3 font-medium">စားသုံးခဲ့သော အစားအသောက်</th>
+                  <th className="py-2 px-3 font-medium">တိုင်းတာချိန်</th>
+                  <th className="py-2 px-3 font-medium">မှတ်ချက်</th>
+                  <th className="py-2 px-3 font-medium text-right">လုပ်ဆောင်ချက်</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {displayBP.length === 0 && (
                   <tr>
-                    <td colSpan={isPooledView ? 10 : 9} className="py-8 px-4 text-center text-slate-400">
+                    <td colSpan={isPooledView ? 10 : 9} className="py-4 px-4 text-center text-slate-400">
                       မှတ်တမ်း မရှိသေးပါ — အထက်ပါ ခလုတ်ဖြင့် ပထမဆုံး သွေးပေါင်ချိန် ထည့်သွင်းနိုင်ပါသည်
                     </td>
                   </tr>
                 )}
                 {displayBP.map((record) => {
-                  const evalInfo = calculateBPCategory(record.systolic, record.diastolic);
+                  const evalInfo = calculateBPCategory(record.systolic, record.diastolic, personAge, isPersonPregnant);
                   const diet = record.dietRecord || record.dietNotes || record.foodIntake;
                   return (
                     <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">
+                      <td className="py-2 px-3 text-slate-600 dark:text-slate-300 font-mono">
                         {recordDateTime(record)}
                       </td>
                       {isPooledView && (
-                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300">
+                        <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
                           {record.userName || record.patientName || '—'}
                         </td>
                       )}
-                      <td className="py-3 px-4 font-bold text-rose-600 dark:text-rose-400 font-mono text-sm">
+                      <td className="py-2 px-3 font-bold text-rose-600 dark:text-rose-400 font-mono text-sm">
                         {record.systolic} <span className="text-[11px] text-slate-400 font-normal">mmHg</span>
                       </td>
-                      <td className="py-3 px-4 font-bold text-blue-600 dark:text-blue-400 font-mono text-sm">
+                      <td className="py-2 px-3 font-bold text-blue-600 dark:text-blue-400 font-mono text-sm">
                         {record.diastolic} <span className="text-[11px] text-slate-400 font-normal">mmHg</span>
                       </td>
-                      <td className="py-3 px-4 font-semibold text-amber-600 dark:text-amber-400 font-mono">
+                      <td className="py-2 px-3 font-semibold text-amber-600 dark:text-amber-400 font-mono">
                         {record.pulse ?? record.pulseRate ?? '—'} <span className="text-[11px] text-slate-400 font-normal">bpm</span>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-2 px-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
                           {evalInfo.labelMm}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-slate-800 dark:text-slate-200">
+                      <td className="py-2 px-3 text-slate-800 dark:text-slate-200">
                         {diet ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60 font-medium text-[11px]">
                             <Utensils className="w-3 h-3 text-amber-600" />
@@ -614,13 +617,13 @@ export const BloodPressureModule: React.FC = () => {
                           <span className="text-slate-400">-</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                      <td className="py-2 px-3 text-slate-600 dark:text-slate-400">
                         {measurementTimeLabel(record)}
                       </td>
-                      <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
+                      <td className="py-2 px-3 text-slate-500 max-w-xs truncate">
                         {record.notes || '-'}
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-2 px-3 text-right">
                         <button
                           onClick={() => startEdit(record)}
                           className="text-slate-400 hover:text-rose-600 transition-colors p-2 cursor-pointer"

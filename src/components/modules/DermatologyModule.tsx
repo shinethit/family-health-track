@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { usePersistentState } from '../../lib/usePersistentState';
 import { 
   Sparkles, 
   Sun, 
@@ -16,11 +18,16 @@ import {
 } from 'lucide-react';
 
 export const DermatologyModule: React.FC = () => {
+  // v2.4.23: guide-module interactive state persists per user (it used to
+  // vanish on every tab switch) — see usePersistentState.
+  const { profile, currentUser } = useAuth();
+  const storageUid = profile?.id || currentUser?.uid || null;
+
   const [activeTab, setActiveTab] = useState<'quiz' | 'abcde' | 'conditions' | 'climate'>('quiz');
 
   // --- SKIN TYPE QUIZ STATE ---
-  const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
-  const [quizResult, setQuizResult] = useState<string | null>(null);
+  const [quizAnswers, setQuizAnswers] = usePersistentState<Record<number, string>>('fht_derm_quiz_answers', storageUid, {});
+  const [quizResult, setQuizResult] = usePersistentState<string | null>('fht_derm_quiz_result', storageUid, null);
 
   const quizQuestions = [
     {
@@ -73,7 +80,7 @@ export const DermatologyModule: React.FC = () => {
   };
 
   // --- MOLE ABCDE STATE ---
-  const [abcde, setAbcde] = useState({
+  const [abcde, setAbcde] = usePersistentState<{ asymmetry: boolean; border: boolean; color: boolean; diameter: boolean; evolving: boolean }>('fht_derm_abcde', storageUid, {
     asymmetry: false, // A
     border: false,    // B
     color: false,     // C
@@ -129,9 +136,9 @@ export const DermatologyModule: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-4 max-w-7xl mx-auto pb-6">
       {/* Top Dermatology Banner */}
-      <div className="bg-gradient-to-r from-rose-700 via-pink-700 to-purple-800 rounded-2xl p-5 sm:p-7 text-white shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-rose-700 via-pink-700 to-purple-800 rounded-2xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-6 -translate-y-6 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -141,7 +148,7 @@ export const DermatologyModule: React.FC = () => {
                 <Sparkles className="w-3.5 h-3.5" /> Dermatology & Beauty Health
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+            <h1 className="text-lg font-extrabold tracking-tight">
               အရေပြား ကျန်းမာရေးနှင့် မြန်မာ့ရာသီဥတု အလှအပ ထိန်းသိမ်းနည်း
             </h1>
             <p className="text-rose-100 text-xs sm:text-sm mt-1 max-w-2xl">
@@ -190,7 +197,7 @@ export const DermatologyModule: React.FC = () => {
       {/* 1. SKIN TYPE QUIZ TAB */}
       {/* ========================================================================= */}
       {activeTab === 'quiz' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs max-w-3xl mx-auto">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
               <Sparkles className="w-5 h-5 text-rose-600" />
@@ -307,7 +314,7 @@ export const DermatologyModule: React.FC = () => {
       {/* 2. MOLE ABCDE CHECKER TAB */}
       {/* ========================================================================= */}
       {activeTab === 'abcde' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs max-w-3xl mx-auto space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
@@ -370,7 +377,7 @@ export const DermatologyModule: React.FC = () => {
       {/* 3. COMMON SKIN CONDITIONS TAB */}
       {/* ========================================================================= */}
       {activeTab === 'conditions' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -423,7 +430,7 @@ export const DermatologyModule: React.FC = () => {
       {/* 4. MYANMAR CLIMATE SKINCARE TAB */}
       {/* ========================================================================= */}
       {activeTab === 'climate' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">

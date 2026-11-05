@@ -36,7 +36,7 @@ export const AdminQuotaBanner: React.FC<AdminQuotaBannerProps> = ({
   const lastSync = dbStats?.lastSyncTime ?? '—';
 
   return (
-    <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 shadow-sm space-y-4">
+    <div className="bg-slate-900 text-white p-4 rounded-3xl border border-slate-800 shadow-sm space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold">
@@ -81,14 +81,14 @@ export const AdminQuotaBanner: React.FC<AdminQuotaBannerProps> = ({
       </div>
 
       {showQuotaDetails && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-800/80">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-800/80">
           {/* Total Documents */}
-          <div className="bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/60">
+          <div className="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>စုစုပေါင်း မှတ်တမ်းများ</span>
               <HardDrive className="w-4 h-4 text-sky-400" />
             </div>
-            <div className="text-xl font-extrabold text-white mt-1">
+            <div className="text-lg font-extrabold text-white mt-1">
               {(dbStats?.totalDocuments ?? 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">docs</span>
             </div>
             <div className="text-[11px] text-slate-400 mt-1">
@@ -97,7 +97,7 @@ export const AdminQuotaBanner: React.FC<AdminQuotaBannerProps> = ({
           </div>
 
           {/* Records by type — real counts only */}
-          <div className="bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/60 space-y-1.5">
+          <div className="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60 space-y-1.5">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>မှတ်တမ်း အမျိုးအစား</span>
               <Layers className="w-4 h-4 text-teal-400" />
@@ -109,7 +109,7 @@ export const AdminQuotaBanner: React.FC<AdminQuotaBannerProps> = ({
           </div>
 
           {/* Users, questions & advice — real counts only */}
-          <div className="bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/60 space-y-1.5">
+          <div className="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60 space-y-1.5">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>အသုံးပြုသူနှင့် ဆက်သွယ်မှု</span>
               <Sparkles className="w-4 h-4 text-amber-400" />
@@ -121,7 +121,7 @@ export const AdminQuotaBanner: React.FC<AdminQuotaBannerProps> = ({
           </div>
 
           {/* Sync Status */}
-          <div className="bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/60">
+          <div className="bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>Database Status</span>
               <Layers className="w-4 h-4 text-emerald-400" />

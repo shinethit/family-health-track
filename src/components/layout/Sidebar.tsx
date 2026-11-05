@@ -256,10 +256,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs" onClick={onClose} />
       )}
 
-      <div className={`fixed top-0 left-0 z-50 h-full w-72 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed top-0 left-0 z-50 h-full w-68 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="p-3 border-b border-slate-100 flex items-center justify-between">
             <h3 className="font-extrabold text-slate-900">မီနူး</h3>
             <button onClick={onClose} className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 cursor-pointer">
               <X className="w-5 h-5" />
@@ -270,9 +270,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               show the SAME person (the summary person: patient / family
               member / self). The old code showed the admin's own name
               here while the card below showed a pooled stranger's vitals. */}
-          <div className="p-4 border-b border-slate-100 bg-slate-50">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+          <div className="p-3 border-b border-slate-100 bg-slate-50">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
                 {summaryName?.charAt(0) || 'U'}
               </div>
               <div className="truncate min-w-0">
@@ -289,7 +289,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Real computed health summary card — one clear line per
                 metric: plain-language status + measurement date, and each
                 row is tappable to open that person's module view. */}
-            <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1.5">
+            <div className="bg-white p-2.5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1">
                <div className="flex items-center justify-between gap-2">
                  <p className="text-[11px] font-bold text-slate-500">ကျန်းမာရေးအခြေနေ အကျဉ်း</p>
                </div>

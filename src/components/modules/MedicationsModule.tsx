@@ -431,7 +431,7 @@ export const MedicationsModule: React.FC = () => {
   // state instead of an empty medication list.
   if (dataLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+      <div className="flex flex-col items-center justify-center py-8 space-y-3">
         <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-sky-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
         <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
       </div>
@@ -439,13 +439,13 @@ export const MedicationsModule: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Title & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Pill className="w-6 h-6 text-sky-500" />
-            သောက်နေသောဆေးများ စာရင်း (Current Medications)
+            သောက်နေသောဆေးများ စာရင်း
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {selectedPatient
@@ -466,15 +466,15 @@ export const MedicationsModule: React.FC = () => {
       </div>
 
       {/* Today's Pill Schedule & Compliance Box with Adherence progress */}
-      <div className="bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 dark:from-sky-950/40 dark:via-blue-950/40 dark:to-indigo-950/40 p-5 rounded-3xl border border-sky-200 dark:border-sky-800 shadow-xs space-y-4">
+      <div className="bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 dark:from-sky-950/40 dark:via-blue-950/40 dark:to-indigo-950/40 p-4 rounded-3xl border border-sky-200 dark:border-sky-800 shadow-xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-sky-600 text-white flex items-center justify-center shadow-xs">
-              <Clock className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-2xl bg-sky-600 text-white flex items-center justify-center shadow-xs">
+              <Clock className="w-4 h-4" />
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                ယနေ့ ဆေးသောက်ရန် စစ်ဆေးမှု (Today's Medication Tracker)
+                ယနေ့ ဆေးသောက်ရန် စစ်ဆေးမှု
               </h3>
               <p className="text-xs text-slate-500">
                 သောက်ပြီးသော ဆေးများကို အမှန်ခြစ်၍ သောက်သုံးမှု မကျန်စေရန် စောင့်ကြည့်ပါ
@@ -603,16 +603,16 @@ export const MedicationsModule: React.FC = () => {
 
       {/* Medications Grid */}
       {searchedMeds.length === 0 && (
-        <p className="text-xs text-slate-500 text-center py-8">
+        <p className="text-xs text-slate-500 text-center py-4">
           {searchQuery.trim() ? 'ရှာဖွေမှုနှင့် ကိုက်ညီသော ဆေး မရှိပါ' : 'ဆေး မှတ်တမ်း မရှိသေးပါ'}
         </p>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {displayMeds.map((med) => {
           return (
             <div
               key={med.id}
-              className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative flex flex-col justify-between"
+              className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-start justify-between gap-3 mb-2">

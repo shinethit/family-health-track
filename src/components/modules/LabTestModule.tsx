@@ -821,7 +821,7 @@ export const LabTestModule: React.FC = () => {
 
   // Close the form. In edit mode the prefilled values are cleared back to
   // fresh add defaults so a later Add never inherits them. resetForm stays
-  // field-only: the in-modal "အကုန်ရှင်းမည်" button must not exit edit mode.
+  // field-only: the in-modal "အားလုံးရှင်းမည်" button must not exit edit mode.
   const closeForm = () => {
     if (editingId) {
       resetForm();
@@ -1316,7 +1316,7 @@ export const LabTestModule: React.FC = () => {
   // state instead of the "no records" message.
   if (dataLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+      <div className="flex flex-col items-center justify-center py-8 space-y-3">
         <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-purple-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
         <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
       </div>
@@ -1324,13 +1324,13 @@ export const LabTestModule: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Title & Add Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <FlaskConical className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-            ဓာတ်ခွဲခန်းစစ်ဆေးချက်များ (Comprehensive Lab Tests)
+            ဓာတ်ခွဲခန်းစစ်ဆေးချက်များ
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {selectedPatient
@@ -1351,8 +1351,8 @@ export const LabTestModule: React.FC = () => {
       </div>
 
       {labRecords.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
-          <FlaskConical className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+        <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+          <FlaskConical className="w-8 h-8 text-slate-400 mx-auto mb-3" />
           <h3 className="font-semibold text-slate-800 dark:text-slate-200">ဓာတ်ခွဲခန်းစစ်ဆေးချက် မရှိသေးပါ</h3>
           <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
             အထက်ပါခလုတ်ကိုနှိပ်၍ မိမိစစ်ဆေးခဲ့သော စစ်ဆေးချက်များကို ရွေးချယ်ထည့်သွင်းပါ။ (စစ်ဆေးခဲ့သည့် အကွက်များကိုသာ သိမ်းဆည်းပေးမည်ဖြစ်ပါသည်)
@@ -1716,7 +1716,7 @@ export const LabTestModule: React.FC = () => {
                   title="အကွက်အားလုံး ရှင်းလင်းမည်"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span className="hidden sm:inline">အကုန်ရှင်းမည်</span>
+                  <span className="hidden sm:inline">အားလုံးရှင်းမည်</span>
                 </button>
                 <button
                   onClick={closeForm}

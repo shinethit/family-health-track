@@ -6,6 +6,12 @@ import { useAuth } from './AuthContext';
 import { useHealthData } from './HealthDataContext';
 import { useToast } from './ToastContext';
 
+// v2.4.23: the record lists are unsorted Firestore return order (no
+// orderBy) — sort a copy by date desc before taking [0], otherwise an
+// abnormal-value alert can fire on a stale reading.
+const sortByDateDesc = <T extends { date?: string; timestamp?: string; createdAt?: string }>(arr: T[]): T[] =>
+  [...arr].sort((a, b) => new Date(b.date || b.timestamp || b.createdAt || 0).getTime() - new Date(a.date || a.timestamp || a.createdAt || 0).getTime());
+
 interface NotificationContextType {
   notifications: AppNotification[];
   unreadCount: number;
@@ -381,6 +387,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return false;
       }
     }
+    // v2.4.23: no Notification API at all (in-app webviews) — the button
+    // used to do nothing silently. Say so honestly.
+    showToast('ဤဘရောက်ဇာ/အက်ပ်တွင် သတိပေးချက် မရနိုင်ပါ', 'error');
     return false;
   };
 
@@ -646,7 +655,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // Check abnormal Blood Pressure Alert for THIS patient
     if (bpRecords.length > 0) {
-      const latestBP = bpRecords[0];
+      const latestBP = sortByDateDesc(bpRecords)[0];
       if (latestBP.userId === profile.id && (latestBP.category === 'stage2' || latestBP.category === 'crisis')) {
         const alertId = `alert-bp-${latestBP.id}`;
         // v2.4.16 (F-M2): a deleted alert stays deleted.
@@ -675,7 +684,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // Check abnormal Glucose Alert for THIS patient
     if (glucoseRecords.length > 0) {
-      const latestGlu = glucoseRecords[0];
+      const latestGlu = sortByDateDesc(glucoseRecords)[0];
       if (latestGlu.userId === profile.id) {
         const gluVal = latestGlu.glucoseValue || latestGlu.value || 0;
         if (latestGlu.status === 'diabetic' || latestGlu.status === 'high_danger' || latestGlu.status === 'low') {
@@ -826,7 +835,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       : days.slice().sort((a, b) => a - b).map(d => dayNames[d]).join('၊ ') + ' နေ့များ';
     sendManualNotification(
       `🔔 သတိပေးချက် အသစ် သတ်မှတ်ပြီးပါပြီ`,
-      `"${newRem.title}" ကို ${daysLabel} ${newRem.time} တွင် သတိပေးပါမည်။ အက်ပ် ဖွင့်ထားချိန်မှသာ သတိပေးနိုင်ပြီး အက်ပ် ပိတ်ထားချိန်တွင် သတိပေးချက် တက်မလာနိုင်ပါ။`,
+      `"${newRem.title}" ကို ${daysLabel} ${newRem.time} တွင် သတိပေးပါမည်။ အက်ပ် ဖွင့်ထားချိန်မှသာ သတိပေးနိုင်ပြီး အက်ပ် ပိတ်ထားချိန်တွင် သတိပေးချက် တက်မလာနိုင်ပါ။ ဤသတိပေးချက်ကို ဤစက်တွင်သာ သိမ်းထားပါသည် — အခြားစက်မှာ မပေါ်ပါ။`,
       'custom_reminder',
       'normal'
     );

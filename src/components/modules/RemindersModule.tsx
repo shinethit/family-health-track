@@ -181,15 +181,15 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
   return (
     <div className="space-y-6">
       {/* Top Banner - Pure White High Contrast */}
-      <div className="p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="p-4 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold mb-2">
               <BellRing className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
               <span>ကျန်းမာရေး သတိပေးချက်နှင့် Reminder စနစ်</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">
-              သတိပေးချက်များ & Reminders (Health Alerts Center)
+            <h2 className="text-lg font-extrabold text-slate-900">
+              သတိပေးချက်များ & Reminders
             </h2>
             <p className="text-xs text-slate-600 mt-1 max-w-xl">
               နေ့စဉ် ဆေးသောက်ချိန်၊ သွေးပေါင်ချိန်/သကြားဓာတ် တိုင်းတာချိန်၊ ဆရာဝန်ပြသရန် ရက်ချိန်းနှင့် ရေသောက်ရန် သတိပေးချက်များကို စနစ်တကျ ပြုလုပ်နိုင်ပါသည်
@@ -299,10 +299,11 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
       {/* Tab 1: Reminders List */}
       {activeTab === 'reminders' && (
         <div className="space-y-4">
+          <p className="text-[11px] text-slate-500">ဤသတိပေးချက်များကို ဤစက်တွင်သာ သိမ်းထားပါသည် — အခြားစက်မှာ မပေါ်ပါ။ အက်ပ် ဖွင့်ထားချိန်မှသာ သတိပေးနိုင်ပါသည်။</p>
           {/* v2.4.16 (F-M9): empty state — a clear message, not a blank grid. */}
           {customReminders.length === 0 ? (
-            <div className="p-10 text-center rounded-3xl bg-white border border-dashed border-slate-300 text-slate-700 space-y-2 shadow-xs">
-              <BellRing className="w-12 h-12 mx-auto text-slate-400" />
+            <div className="p-6 text-center rounded-3xl bg-white border border-dashed border-slate-300 text-slate-700 space-y-2 shadow-xs">
+              <BellRing className="w-8 h-8 mx-auto text-slate-400" />
               <p className="text-sm font-bold text-slate-900">Reminder မသတ်မှတ်ရသေးပါ</p>
               <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
                 ဆေးသောက်ချိန်၊ သွေးပေါင်ချိန်/သကြားဓာတ် တိုင်းချိန်၊ ဆရာဝန်ပြသရန် ရက်ချိန်းများကို အချိန်မှန် သတိပေးဖို့ Reminder တစ်ခု ဖန်တီးလိုက်ပါ။
@@ -417,21 +418,21 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
                 onClick={markAllAsRead}
                 className="text-xs text-emerald-700 font-bold hover:underline cursor-pointer"
               >
-                အကုန် ဖတ်ပြီးအဖြစ် မှတ်သားမည်
+                အားလုံး ဖတ်ပြီးအဖြစ် မှတ်သားမည်
               </button>
               <span>•</span>
               <button
                 onClick={() => setPendingClearAll(true)}
                 className="text-xs text-rose-600 font-bold hover:underline cursor-pointer"
               >
-                အကုန် ဖျက်မည်
+                အားလုံး ဖျက်မည်
               </button>
             </div>
           </div>
 
           {notifications.length === 0 ? (
-            <div className="p-10 text-center rounded-3xl bg-slate-50 border border-dashed border-slate-300 text-slate-700 space-y-2">
-              <Bell className="w-12 h-12 mx-auto text-slate-400" />
+            <div className="p-6 text-center rounded-3xl bg-slate-50 border border-dashed border-slate-300 text-slate-700 space-y-2">
+              <Bell className="w-8 h-8 mx-auto text-slate-400" />
               <p className="text-sm font-bold text-slate-900">သတိပေးချက် မရှိသေးပါ</p>
               <p className="text-xs text-slate-600 max-w-md mx-auto">
                 သွေးပေါင်ချိန်/သကြားဓာတ် လွန်ကဲခြင်းများနှင့် ဆေးသောက်ချိန်များ ရောက်သည့်အခါ သတိပေးချက်များ ဤနေရာတွင် တက်လာမည် ဖြစ်ပါသည်
@@ -545,7 +546,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
       {/* Add / Edit Reminder Modal (v2.4.16 F-H1: one form serves both) */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md p-4 shadow-2xl space-y-3">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
                 <BellRing className="w-5 h-5 text-amber-600" />
@@ -719,7 +720,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
       <Modal
         isOpen={pendingClearAll}
         onClose={() => setPendingClearAll(false)}
-        title="သတိပေးချက် အကုန် ဖျက်မည်"
+        title="သတိပေးချက် အားလုံး ဖျက်မည်"
         size="sm"
       >
         <div className="p-5 space-y-4 text-sm text-slate-700">
@@ -740,7 +741,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
               }}
               className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-xs"
             >
-              အကုန် ဖျက်မည်
+              အားလုံး ဖျက်မည်
             </button>
           </div>
         </div>

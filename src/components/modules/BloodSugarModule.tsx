@@ -235,6 +235,13 @@ export const BloodSugarModule: React.FC = () => {
       showToast('သွေးတွင်းသကြားဓာတ် တန်ဖိုး ထည့်ပေးပါ', 'error');
       return;
     }
+    // v2.4.23: JS range check (the admin form already has one; this form
+    // relied only on HTML min/max). HbA1c is a % (3-20); anything else is
+    // mg/dL (20-600, matching this input's own min/max).
+    if (type === 'hba1c' ? (Number(value) < 3 || Number(value) > 20) : (Number(value) < 20 || Number(value) > 600)) {
+      showToast(type === 'hba1c' ? 'HbA1c တန်ဖိုး ၃ မှ ၂၀ % အတွင်း ထည့်ပါ' : 'သွေးတွင်းသကြားဓာတ် တန်ဖိုး ၂၀ မှ ၆၀၀ mg/dL အတွင်း ထည့်ပါ', 'error');
+      return;
+    }
     setIsSubmitting(true);
     // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
     // context checks the list first and never writes a second copy.
@@ -304,7 +311,7 @@ export const BloodSugarModule: React.FC = () => {
   // state instead of empty charts / "no records" messages.
   if (dataLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+      <div className="flex flex-col items-center justify-center py-8 space-y-3">
         <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-emerald-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
         <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
       </div>
@@ -312,13 +319,13 @@ export const BloodSugarModule: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Banner / Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Droplets className="w-6 h-6 text-emerald-500" />
-            ဆီးချို / သွေးတွင်းသကြားဓာတ် မှတ်တမ်း (Blood Glucose & HbA1c)
+            ဆီးချို / သွေးတွင်းသကြားဓာတ် မှတ်တမ်း
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {selectedPatient
@@ -339,15 +346,15 @@ export const BloodSugarModule: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Latest Reading */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span>နောက်ဆုံးတိုင်းတာချက် (Latest)</span>
             <Droplets className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+            <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
               {/* D-M6: legacy glucoseValue-only records must show, not '--'. */}
               {latestGluValue ?? '--'}
             </span>
@@ -371,13 +378,13 @@ export const BloodSugarModule: React.FC = () => {
         </div>
 
         {/* 3-Month HbA1c */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span>၃ လပတ် ပျမ်းမျှ (HbA1c)</span>
             <span className="text-xs font-semibold px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded">Lab</span>
           </div>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+            <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
               {/* D-M6: legacy glucoseValue-only records must show, not '--'. */}
               {latestHbA1cValue ?? '--'}
             </span>
@@ -395,13 +402,13 @@ export const BloodSugarModule: React.FC = () => {
         </div>
 
         {/* Average Fasting */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span>အစာမစားမီ ပျမ်းမျှ (Fasting Avg)</span>
             <Info className="w-4 h-4 text-blue-500" />
           </div>
           <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+            <span className="text-xl font-bold text-slate-900 dark:text-white font-mono">
               {avgFasting || '--'}
             </span>
             <span className="text-xs text-slate-400">mg/dL</span>
@@ -412,7 +419,7 @@ export const BloodSugarModule: React.FC = () => {
         </div>
 
         {/* Nutrition advice */}
-        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 shadow-xs">
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 shadow-xs">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-400 mb-1">
             <AlertCircle className="w-4 h-4" />
             အစားအသောက် အကြံပြုချက်
@@ -424,22 +431,19 @@ export const BloodSugarModule: React.FC = () => {
       </div>
 
       {/* Control Bar: View Switcher (Graph vs Table vs Both) + Timeframe Filter */}
-      <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              ဆီးချို / သကြားဓာတ် သမိုင်းမှတ်တမ်း ပြသမှု (Glucose History Views)
+              ပြသမှု ပုံစံ
             </h3>
-            <p className="text-[11px] text-slate-500">
-              Graph မျဉ်းကွေးဖြင့် ဖြစ်စေ၊ Data ဇယားဖြင့် ဖြစ်စေ ကာလအလိုက် စောင့်ကြည့်နိုင်ပါသည်
-            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
             <button
@@ -531,7 +535,7 @@ export const BloodSugarModule: React.FC = () => {
       {/* DATA TABLE VIEW: History Table */}
       {(viewMode === 'both' || viewMode === 'table') && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
               သကြားဓာတ် စစ်ဆေးမှုမှတ်တမ်းများ (Glucose Logs - {timeframe === 'all' ? 'အားလုံး' : timeframe === '1m' ? '၁ လစာ' : timeframe === '3m' ? '၃ လစာ' : '၆ လစာ'})
             </h3>
@@ -541,7 +545,7 @@ export const BloodSugarModule: React.FC = () => {
           </div>
 
           {/* History search */}
-          <div className="px-4 pt-3">
+          <div className="px-3 pt-2">
             <input
               type="text"
               value={searchQuery}
@@ -555,21 +559,21 @@ export const BloodSugarModule: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 border-b border-slate-200 dark:border-slate-800">
                 <tr>
-                  <th className="py-3 px-4 font-medium">ရက်စွဲ / အချိန်</th>
-                  {isPooledView && <th className="py-3 px-4 font-medium">ပိုင်ရှင်</th>}
-                  <th className="py-3 px-4 font-medium">အမျိုးအစား (Type)</th>
-                  <th className="py-3 px-4 font-medium">ပမာဏ (Reading)</th>
-                  <th className="py-3 px-4 font-medium">အခြေအနေ</th>
-                  <th className="py-3 px-4 font-medium">စားသုံးခဲ့သော အစားအသောက်</th>
-                  <th className="py-3 px-4 font-medium">စစ်ဆေးချိန် ဆက်စပ်မှု</th>
-                  <th className="py-3 px-4 font-medium">မှတ်ချက်</th>
-                  <th className="py-3 px-4 font-medium text-right">လုပ်ဆောင်ချက်</th>
+                  <th className="py-2 px-3 font-medium">ရက်စွဲ / အချိန်</th>
+                  {isPooledView && <th className="py-2 px-3 font-medium">ပိုင်ရှင်</th>}
+                  <th className="py-2 px-3 font-medium">အမျိုးအစား (Type)</th>
+                  <th className="py-2 px-3 font-medium">ပမာဏ (Reading)</th>
+                  <th className="py-2 px-3 font-medium">အခြေအနေ</th>
+                  <th className="py-2 px-3 font-medium">စားသုံးခဲ့သော အစားအသောက်</th>
+                  <th className="py-2 px-3 font-medium">စစ်ဆေးချိန် ဆက်စပ်မှု</th>
+                  <th className="py-2 px-3 font-medium">မှတ်ချက်</th>
+                  <th className="py-2 px-3 font-medium text-right">လုပ်ဆောင်ချက်</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {displayGlucose.length === 0 && (
                   <tr>
-                    <td colSpan={isPooledView ? 9 : 8} className="py-8 px-4 text-center text-slate-400">
+                    <td colSpan={isPooledView ? 9 : 8} className="py-4 px-4 text-center text-slate-400">
                       မှတ်တမ်း မရှိသေးပါ — အထက်ပါ ခလုတ်ဖြင့် ပထမဆုံး သကြားဓာတ် ထည့်သွင်းနိုင်ပါသည်
                     </td>
                   </tr>
@@ -577,19 +581,19 @@ export const BloodSugarModule: React.FC = () => {
                 {displayGlucose.map((record) => {
                   const rVal = record.value ?? record.glucoseValue ?? null;
                   const rType = record.type || record.timing || 'fasting';
-                  const evalInfo = rVal != null ? calculateGlucoseStatus(rVal, rType) : null;
+                  const evalInfo = rVal != null ? calculateGlucoseStatus(rVal, rType, personAge) : null;
                   const diet = record.dietRecord || record.dietNotes || record.foodIntake;
                   return (
                     <tr key={record.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">
+                      <td className="py-2 px-3 text-slate-600 dark:text-slate-300 font-mono">
                         {recordDateTime(record)}
                       </td>
                       {isPooledView && (
-                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300">
+                        <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
                           {record.userName || record.patientName || '—'}
                         </td>
                       )}
-                      <td className="py-3 px-4">
+                      <td className="py-2 px-3">
                         <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                           {rType === 'fasting' && 'အစာမစားမီ (Fasting)'}
                           {rType === 'post_prandial' && 'အစာစားပြီး ၂ နာရီ'}
@@ -597,13 +601,13 @@ export const BloodSugarModule: React.FC = () => {
                           {rType === 'hba1c' && 'HbA1c (၃ လပတ်)'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-white font-mono text-sm">
+                      <td className="py-2 px-3 font-bold text-slate-900 dark:text-white font-mono text-sm">
                         {rVal ?? '—'}{' '}
                         <span className="text-[11px] text-slate-400 font-normal">
                           {rType === 'hba1c' ? '%' : 'mg/dL'}
                         </span>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-2 px-3">
                         {evalInfo ? (
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${evalInfo.bgColor} ${evalInfo.color} ${evalInfo.borderColor}`}>
                             {evalInfo.labelMm}
@@ -612,7 +616,7 @@ export const BloodSugarModule: React.FC = () => {
                           <span className="text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-800 dark:text-slate-200">
+                      <td className="py-2 px-3 text-slate-800 dark:text-slate-200">
                         {diet ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 font-medium text-[11px]">
                             <Utensils className="w-3 h-3 text-emerald-600" />
@@ -622,13 +626,13 @@ export const BloodSugarModule: React.FC = () => {
                           <span className="text-slate-400">-</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                      <td className="py-2 px-3 text-slate-600 dark:text-slate-400">
                         {record.mealInfo || '-'}
                       </td>
-                      <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
+                      <td className="py-2 px-3 text-slate-500 max-w-xs truncate">
                         {record.notes || '-'}
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-2 px-3 text-right">
                         <button
                           onClick={() => startEdit(record)}
                           className="text-slate-400 hover:text-emerald-600 transition-colors p-2 cursor-pointer"

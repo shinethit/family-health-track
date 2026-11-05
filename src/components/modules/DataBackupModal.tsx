@@ -1060,7 +1060,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs text-slate-700">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs text-slate-700">
           
           {activeTab === 'export' ? (
             <div className="space-y-4">
@@ -1133,7 +1133,7 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({ isOpen, onClos
               </div>
 
               {/* File Input */}
-              <div className="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:bg-slate-50 transition-colors">
+              <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:bg-slate-50 transition-colors">
                 <input
                   ref={fileInputRef}
                   type="file"

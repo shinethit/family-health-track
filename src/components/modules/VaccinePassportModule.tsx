@@ -430,13 +430,13 @@ export const VaccinePassportModule: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Module Title Banner */}
-      <div className="bg-gradient-to-r from-teal-700 to-emerald-800 text-white p-6 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-teal-700 to-emerald-800 text-white p-4 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
           <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-xs shrink-0">
             <Syringe className="w-8 h-8 text-teal-200" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight">ကာကွယ်ဆေး ထိုးနှံမှု မှတ်တမ်းနှင့် အချိန်ဇယား (Vaccination Passport)</h2>
+            <h2 className="text-lg font-bold tracking-tight">ကာကွယ်ဆေး ထိုးနှံမှု မှတ်တမ်းနှင့် အချိန်ဇယား</h2>
             <p className="text-xs text-teal-100 mt-1">
               {currentPersonName} ၏ တရားဝင် ကာကွယ်ဆေး ထိုးနှံပြီးစီးမှု မှတ်တမ်းများနှင့် အကြံပြုချက်များ
             </p>
@@ -465,7 +465,7 @@ export const VaccinePassportModule: React.FC = () => {
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-emerald-800">ထိုးနှံပြီးစီးခဲ့သော ကာကွယ်ဆေး</p>
-            <p className="text-2xl font-black text-emerald-900 mt-0.5">{completedCount} မျိုး</p>
+            <p className="text-xl font-black text-emerald-900 mt-0.5">{completedCount} မျိုး</p>
           </div>
           <ShieldCheck className="w-8 h-8 text-emerald-600" />
         </div>
@@ -473,7 +473,7 @@ export const VaccinePassportModule: React.FC = () => {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-amber-800">ထိုးနှံရန် အစီအစဉ်ရှိသော ကာကွယ်ဆေး</p>
-            <p className="text-2xl font-black text-amber-900 mt-0.5">{scheduledCount} မျိုး</p>
+            <p className="text-xl font-black text-amber-900 mt-0.5">{scheduledCount} မျိုး</p>
           </div>
           <Clock className="w-8 h-8 text-amber-600" />
         </div>
@@ -566,7 +566,7 @@ export const VaccinePassportModule: React.FC = () => {
       {activeView === 'records' && (
         <div>
           {filteredRecords.length === 0 ? (
-            <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-10 text-center space-y-3">
+            <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-6 text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
                 <Syringe className="w-6 h-6" />
               </div>
@@ -836,7 +836,7 @@ export const VaccinePassportModule: React.FC = () => {
           </span>
         }
       >
-        <div className="p-5 sm:p-6">
+        <div className="p-4 sm:p-5">
           <form onSubmit={handleAddVaccine} className="space-y-3.5 text-xs">
             <div>
               <label htmlFor="vac-name" className="font-semibold text-slate-700 block mb-1">

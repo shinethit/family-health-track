@@ -332,9 +332,9 @@ export const SpecialNeedsCareModule: React.FC = () => {
   const checklistPercentage = Math.round((completedChecklistCount / ACCESSIBILITY_CHECKLIST_ITEMS.length) * 100);
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-12">
+    <div className="space-y-4 animate-fadeIn pb-6">
       {/* Top Header Card */}
-      <div className="bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 rounded-3xl p-4 sm:p-6 text-white shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
         
         <div className="relative z-10">
@@ -349,7 +349,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
             </span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-3">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight mb-2">
             မသန်စွမ်းနှင့် အထူးလိုအပ်ချက် စောင့်ရှောက်ရေး
           </h1>
           <p className="text-indigo-100/90 text-sm sm:text-base max-w-3xl leading-relaxed">
@@ -547,7 +547,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
             </div>
 
             {/* Scrollable Content Body */}
-            <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               {/* Summary Box */}
               <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4">
                 <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wide flex items-center gap-1.5 mb-1.5">

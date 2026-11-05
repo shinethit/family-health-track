@@ -50,7 +50,7 @@ export const HomeMedicinesGuideModule: React.FC = () => {
   }, [selectedCategory, searchQuery]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-4 animate-in fade-in duration-200">
       {/* Top Banner & Medical Disclaimer */}
       <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-teal-50 via-sky-50 to-emerald-50 border border-teal-200 shadow-xs relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
@@ -59,7 +59,7 @@ export const HomeMedicinesGuideModule: React.FC = () => {
               <Pill className="w-3.5 h-3.5 text-teal-600" />
               <span>အိမ်သုံး ဆေးဝါးများ အသုံးပြုပုံနှင့် လုံခြုံရေး လမ်းညွှန်</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">
+            <h2 className="text-lg font-extrabold text-slate-900">
               အိမ်သုံး ဆေးဝါးများ လမ်းညွှန် (Household OTC Guide)
             </h2>
             <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
@@ -202,7 +202,7 @@ export const HomeMedicinesGuideModule: React.FC = () => {
       {/* Medicine Detail Modal */}
       {activeMedicine && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl my-6 max-h-[90vh] flex flex-col">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-2xl w-full p-4 sm:p-5 shadow-2xl my-6 max-h-[90vh] flex flex-col">
             
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-100 shrink-0">

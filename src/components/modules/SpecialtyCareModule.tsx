@@ -310,9 +310,9 @@ export const SpecialtyCareModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-4 max-w-7xl mx-auto pb-6">
       {/* Top Specialty Care Header Banner */}
-      <div className="bg-gradient-to-r from-teal-700 via-emerald-700 to-cyan-800 rounded-2xl p-5 sm:p-7 text-white shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-teal-700 via-emerald-700 to-cyan-800 rounded-2xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-6 -translate-y-6 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -322,7 +322,7 @@ export const SpecialtyCareModule: React.FC = () => {
                 <Sparkles className="w-3.5 h-3.5" /> Specialities Care & Self-Tests
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+            <h1 className="text-lg font-extrabold tracking-tight">
               သွား၊ မျက်စိ နှင့် နား/အကြားအာရုံ အထူးကု မှတ်တမ်းနှင့် စစ်ဆေးမှုများ
             </h1>
             <p className="text-teal-100 text-xs sm:text-sm mt-1 max-w-2xl">
@@ -363,7 +363,7 @@ export const SpecialtyCareModule: React.FC = () => {
       {/* 1. DENTAL CARE TAB */}
       {/* ========================================================================= */}
       {activeTab === 'dental' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Brushing Timer & Interactive Teeth Chart Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
@@ -578,7 +578,7 @@ export const SpecialtyCareModule: React.FC = () => {
       {/* 2. EYE & VISION TAB */}
       {/* ========================================================================= */}
       {activeTab === 'eye' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Interactive Snellen Visual Acuity Chart */}
@@ -783,7 +783,7 @@ export const SpecialtyCareModule: React.FC = () => {
       {/* 3. EAR & HEARING TAB */}
       {/* ========================================================================= */}
       {activeTab === 'ear' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Tone Generator & Hearing Test */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             

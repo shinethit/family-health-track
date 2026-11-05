@@ -554,6 +554,10 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
 
   const ageObj = calculateAge(patient.dateOfBirth);
   const resolvedAge = ageObj ? ageObj.years : (patient.age || null);
+  // v2.4.23: pregnancy flag for the classifiers — same detection as
+  // TrendsOverview/Sidebar (isPregnant field or a 'ကိုယ်ဝန်ဆောင်' condition).
+  const isPatientPregnant = (patient as any)?.isPregnant ||
+    (patient.chronicConditions || []).includes('ကိုယ်ဝန်ဆောင်');
   // v2.4.14: the header BMI badge must not depend on the profile alone —
   // a patient whose height/weight live only in BMI records (added by the
   // doctor, family or import) still has a current BMI. Fall back to the
@@ -707,7 +711,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
       await onAnswerQuestion(qId, {
         answeredBy: adminAnswerName,
         answerText: answerText.trim(),
-        recommendations: recs.length > 0 ? recs : ['ဆရာဝန် ညွှန်ကြားချက်အတိုင်း ဆေးကို ဆက်လက်သောက်သုံးပါ'],
+        recommendations: recs,
         suggestedAction: answerSuggestedAction.trim() || undefined,
         answeredAt: new Date().toISOString(),
       });
@@ -767,7 +771,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             dietNotes: diet,
             foodIntake: diet,
             dietRecord: diet,
-            category: calculateBPCategory(sys, dia).category,
+            category: calculateBPCategory(sys, dia, resolvedAge ?? undefined, isPatientPregnant).category,
           });
         } else {
           saveResult = await addBPRecord({
@@ -786,7 +790,10 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         }
       } else if (kind === 'sugar') {
         const v = Number(gluValue);
-        if (!v || v < 20 || v > 900) {
+        // v2.4.23: range by type — HbA1c is a % (3-20); mg/dL is 20-600
+        // (aligned with the patient form). The old 20-900 check rejected
+        // every real HbA1c value, so an admin could not save one.
+        if (!v || (gluType === 'hba1c' ? (v < 3 || v > 20) : (v < 20 || v > 600))) {
           throw new Error('သွေးချို တန်ဖိုး မှန်ကန်စွာ ဖြည့်ပါ');
         }
         const diet = gluDiet.trim() || undefined;
@@ -803,7 +810,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         if (isEditing) {
           await updateGlucoseRecord(editingRecord!.id, {
             ...payload,
-            status: calculateGlucoseStatus(v, gluType as any).status,
+            status: calculateGlucoseStatus(v, gluType as any, resolvedAge ?? undefined).status,
           });
         } else {
           saveResult = await addGlucoseRecord({
@@ -922,7 +929,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
           throw new Error('အရပ်/ကိုယ်အလေးချိန် မှန်ကန်စွာ ဖြည့်ပါ');
         }
         if (isEditing) {
-          const calc = calculateBMI(w, h);
+          const calc = calculateBMI(w, h, resolvedAge ?? undefined);
           if (!calc) throw new Error('BMI တွက်ရန် ကိုယ်အလေးချိန်/အရပ် လိုအပ်ပါသည်');
           await updateBMIRecord(editingRecord!.id, {
             heightCm: h,
@@ -973,9 +980,9 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-4 animate-in fade-in duration-200">
       {/* Header Bar */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -989,7 +996,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
 
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">
+              <h2 className="text-lg font-extrabold text-slate-900 dark:text-white leading-tight">
                 {cleanName}
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
@@ -1145,7 +1152,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             <input type="number" required placeholder="Systolic (အပေါ်) *" value={bpSys} onChange={(e) => setBpSys(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" required placeholder="Diastolic (အောက်) *" value={bpDia} onChange={(e) => setBpDia(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" placeholder="Pulse (bpm)" value={bpPulse} onChange={(e) => setBpPulse(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <input type="datetime-local" required value={bpDate} onChange={(e) => setBpDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="datetime-local" required value={bpDate} onChange={(e) => setBpDate(e.target.value)} className="col-span-2 sm:col-span-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <select value={bpCondition} onChange={(e) => setBpCondition(e.target.value as typeof bpCondition)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold">
               <option value="resting">တိုင်းချိန် — နားနေချိန်</option>
               <option value="morning">တိုင်းချိန် — မနက်နိုးနိုးချင်း</option>
@@ -1174,7 +1181,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               <option value="bedtime">အိပ်ရာဝင်</option>
               <option value="hba1c">HbA1c (၃လ)</option>
             </select>
-            <input type="datetime-local" required value={gluDate} onChange={(e) => setGluDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="datetime-local" required value={gluDate} onChange={(e) => setGluDate(e.target.value)} className="col-span-2 sm:col-span-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="text" placeholder="အစာအကြောင်း (ဥပမာ- မနက်အစာမစားမီ ၈ နာရီအစာငတ်)" value={gluMealInfo} onChange={(e) => setGluMealInfo(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="text" placeholder="အစားအသောက် မှတ်တမ်း (မဖြည့်လည်းရသည်)" value={gluDiet} onChange={(e) => setGluDiet(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="text" placeholder="မှတ်ချက် (မဖြည့်လည်းရသည်)" value={gluNotes} onChange={(e) => setGluNotes(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
@@ -1190,7 +1197,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
           <form onSubmit={(e) => { e.preventDefault(); submitRecord('lab'); }} className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <input type="text" required placeholder="ဓာတ်ခွဲခန်း အမည် * (ဥပမာ- ABC Lab)" value={labName} onChange={(e) => setLabName(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-              <input type="datetime-local" required value={labDate} onChange={(e) => setLabDate(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+              <input type="datetime-local" required value={labDate} onChange={(e) => setLabDate(e.target.value)} className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             </div>
             <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
               စစ်ဆေးချက်များ — အသုံးပြုသူဘက်က သုံးတဲ့ စစ်ဆေးချက် စာရင်းအတိုင်းပါ (HbA1c၊ အစာစားပြီး သွေးချို PPBS အပါအဝင်)။ တန်ဖိုး မဖြည့်ထားတဲ့ အတန်းကို မသိမ်းပါ။
@@ -1289,7 +1296,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             <input type="text" placeholder="ကာကွယ်သော ရောဂါ (ဥပမာ- တုပ်ကွေး)" value={vaxDisease} onChange={(e) => setVaxDisease(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" min={1} placeholder="အကြိမ် (ဥပမာ- 1)" value={vaxDose} onChange={(e) => setVaxDose(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <input type="number" min={1} placeholder="စုစုပေါင်း အကြိမ် (ဥပမာ- 1)" value={vaxTotal} onChange={(e) => setVaxTotal(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
-            <input type="datetime-local" value={vaxDate} onChange={(e) => setVaxDate(e.target.value)} title="ထိုးပြီးသား — ထိုးသည့်ရက် / ထိုးရန် စီစဉ်ထား — ထိုးရမည့်ရက်။ မသိရင် ဗလာထားပါ — ရက်စွဲ အတု မထည့်ပါနှင့်" className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
+            <input type="datetime-local" value={vaxDate} onChange={(e) => setVaxDate(e.target.value)} title="ထိုးပြီးသား — ထိုးသည့်ရက် / ထိုးရန် စီစဉ်ထား — ထိုးရမည့်ရက်။ မသိရင် ဗလာထားပါ — ရက်စွဲ အတု မထည့်ပါနှင့်" className="col-span-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs" />
             <select value={vaxCategory} onChange={(e) => setVaxCategory(e.target.value as 'adult' | 'child' | 'travel')} className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold">
               <option value="adult">လူကြီး</option>
               <option value="child">ကလေး</option>
@@ -1376,7 +1383,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                 </p>
               )}
               {(() => {
-                const cat = calculateBPCategory(latestBP.systolic, latestBP.diastolic);
+                const cat = calculateBPCategory(latestBP.systolic, latestBP.diastolic, resolvedAge ?? undefined, isPatientPregnant);
                 return (
                   <div className="mt-2">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${cat.bgColor} ${cat.color} ${cat.borderColor}`}>
@@ -1440,7 +1447,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               {(() => {
                 const gluVal = latestGlucose.glucoseValue || latestGlucose.value || 0;
                 const gluType = latestGlucose.type || latestGlucose.timing || 'fasting';
-                const status = calculateGlucoseStatus(gluVal, gluType as any);
+                const status = calculateGlucoseStatus(gluVal, gluType as any, resolvedAge ?? undefined);
                 return (
                   <div className="mt-2">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${status.bgColor} ${status.color} ${status.borderColor}`}>
@@ -1508,7 +1515,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
                 <div key={r.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-extrabold text-slate-900 dark:text-white text-sm">
-                      {r.glucoseValue || r.value} <span className="text-[11px] font-semibold text-slate-400">mg/dL</span>
+                      {r.glucoseValue || r.value} <span className="text-[11px] font-semibold text-slate-400">{(r.type || r.timing) === 'hba1c' ? '%' : 'mg/dL'}</span>
                       <span className="text-[11px] font-semibold text-slate-400"> ({r.type || r.timing || 'random'})</span>
                     </p>
                     <p className="text-slate-500 mt-0.5">

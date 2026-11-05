@@ -232,7 +232,7 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
                     {stats.map((s) => {
                       const r = s.latestBP;
                       if (!r) return <td key={s.patient.id} className="p-2.5 text-slate-400">မရှိသေးပါ</td>;
-                      const cat = calculateBPCategory(r.systolic, r.diastolic);
+                      const cat = calculateBPCategory(r.systolic, r.diastolic, s.age ?? undefined, (s.patient as any)?.isPregnant || (s.patient.chronicConditions || []).includes('ကိုယ်ဝန်ဆောင်'));
                       return (
                         <td key={s.patient.id} className="p-2.5">
                           <div className="font-extrabold text-slate-900 dark:text-white text-sm">
@@ -273,11 +273,11 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
                       const r = s.latestGlu;
                       const v = r ? gluValue(r) : undefined;
                       if (!r || v === undefined) return <td key={s.patient.id} className="p-2.5 text-slate-400">မရှိသေးပါ</td>;
-                      const status = calculateGlucoseStatus(v, (r.type || r.timing || 'fasting') as never);
+                      const status = calculateGlucoseStatus(v, (r.type || r.timing || 'fasting') as never, s.age ?? undefined);
                       return (
                         <td key={s.patient.id} className="p-2.5">
                           <div className="font-extrabold text-slate-900 dark:text-white text-sm">
-                            {v} <span className="text-[11px] font-semibold text-slate-400">mg/dL</span>
+                            {v} <span className="text-[11px] font-semibold text-slate-400">{(r.type || r.timing) === 'hba1c' ? '%' : 'mg/dL'}</span>
                           </div>
                           <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${status.bgColor} ${status.color} ${status.borderColor}`}>
                             {status.labelMm}

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { usePersistentState } from '../../lib/usePersistentState';
 import {
   FlaskConical,
   TestTube,
@@ -203,19 +205,24 @@ const LAB_TEST_DATABASE: LabTestItem[] = [
 ];
 
 export const LabInvestigationGuideModule: React.FC = () => {
+  // v2.4.23: guide-module interactive state persists per user (it used to
+  // vanish on every tab switch) — see usePersistentState.
+  const { profile, currentUser } = useAuth();
+  const storageUid = profile?.id || currentUser?.uid || null;
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>('cbc');
 
   // Interactive Quick Interpreter Tool State
-  const [testType, setTestType] = useState<string>('fbs');
-  const [inputValue, setInputValue] = useState<string>('');
-  const [interpreterResult, setInterpreterResult] = useState<{
+  const [testType, setTestType] = usePersistentState<string>('fht_labguide_test_type', storageUid, 'fbs');
+  const [inputValue, setInputValue] = usePersistentState<string>('fht_labguide_input', storageUid, '');
+  const [interpreterResult, setInterpreterResult] = usePersistentState<{
     status: 'normal' | 'warning' | 'danger' | 'info';
     title: string;
     description: string;
     recommendation: string;
-  } | null>(null);
+  } | null>('fht_labguide_result', storageUid, null);
 
   const filteredTests = LAB_TEST_DATABASE.filter(item => {
     const matchesCat = selectedCategory === 'all' || item.category === selectedCategory;
@@ -340,9 +347,9 @@ export const LabInvestigationGuideModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Module Title Banner */}
-      <div className="bg-gradient-to-r from-teal-900 via-teal-800 to-emerald-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-teal-900 via-teal-800 to-emerald-900 rounded-3xl p-4 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-1/3 -translate-y-1/3 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2 max-w-2xl">
@@ -350,7 +357,7 @@ export const LabInvestigationGuideModule: React.FC = () => {
               <FlaskConical className="w-3.5 h-3.5" />
               <span>Medical Investigations Guide</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
               ဓာတ်ခွဲနှင့် စမ်းသပ်စစ်ဆေးမှုများ လမ်းညွှန်
             </h2>
             <p className="text-xs sm:text-sm text-teal-100/90 leading-relaxed">

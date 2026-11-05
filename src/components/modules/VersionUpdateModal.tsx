@@ -49,7 +49,7 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
       size="md"
       showHeader={false}
     >
-      <div className="p-6">
+      <div className="p-4">
         <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 mx-auto">
           <Sparkles className="w-6 h-6 animate-pulse" />
         </div>

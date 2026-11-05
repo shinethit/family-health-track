@@ -148,6 +148,7 @@ export const PregnancyCareModule: React.FC = () => {
     trimester: number;
     daysRemaining: number;
   } | null>(null);
+  const [lmpError, setLmpError] = useState<string | null>(null);
 
   // Interactive Fetal Kick Counter State — the log starts empty: a
   // hardcoded "this morning, 10 kicks" entry would present someone else's
@@ -181,9 +182,23 @@ export const PregnancyCareModule: React.FC = () => {
 
   // Calculate EDD based on Naegele's Rule: LMP + 280 days (40 weeks)
   useEffect(() => {
-    if (!lmpDate) return;
+    if (!lmpDate) {
+      setEddResult(null);
+      setLmpError(null);
+      return;
+    }
     const lmp = new Date(lmpDate);
     if (isNaN(lmp.getTime())) return;
+    // v2.4.23: a future LMP used to yield trimester 1 / week 0 with ~280+
+    // days remaining and no error. Reject it honestly instead.
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    if (lmp.getTime() > todayStart.getTime()) {
+      setEddResult(null);
+      setLmpError('နောက်ဆုံး ရာသီစတင်ရက်သည် အနာဂတ် ရက်စွဲ ဖြစ်နေပါသည်။ မှန်ကန်သော ရက် ထည့်ပါ');
+      return;
+    }
+    setLmpError(null);
 
     const edd = new Date(lmp);
     edd.setDate(edd.getDate() + 280);
@@ -311,9 +326,9 @@ export const PregnancyCareModule: React.FC = () => {
   const packedPercentage = Math.round((packedItemsCount / totalBagItems) * 100);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 rounded-2xl p-5 sm:p-7 text-white shadow-sm">
+      <div className="bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 rounded-2xl p-4 sm:p-5 text-white shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -322,7 +337,7 @@ export const PregnancyCareModule: React.FC = () => {
                 Maternal & Pregnancy Care
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            <h1 className="text-lg font-bold tracking-tight">
               ကိုယ်ဝန်ဆောင် ကျန်းမာရေးနှင့် စောင့်ရှောက်မှု လမ်းညွှန်
             </h1>
             <p className="text-xs sm:text-sm text-teal-100 max-w-2xl leading-relaxed">
@@ -395,6 +410,10 @@ export const PregnancyCareModule: React.FC = () => {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-teal-500"
             />
           </div>
+
+          {lmpError && (
+            <p className="text-[11px] text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">{lmpError}</p>
+          )}
 
           {!eddResult && (
             <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
@@ -502,7 +521,7 @@ export const PregnancyCareModule: React.FC = () => {
       </div>
 
       {/* Trimester-by-Trimester Detailed Guide */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-6 space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900">

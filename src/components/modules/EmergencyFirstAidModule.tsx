@@ -28,9 +28,9 @@ export const EmergencyFirstAidModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-4 max-w-7xl mx-auto pb-6">
       {/* Top Emergency Header Banner */}
-      <div className="bg-gradient-to-r from-rose-700 via-red-700 to-amber-700 rounded-2xl p-5 sm:p-7 text-white shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-rose-700 via-red-700 to-amber-700 rounded-2xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-6 -translate-y-6 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -40,8 +40,8 @@ export const EmergencyFirstAidModule: React.FC = () => {
                 <ShieldAlert className="w-3.5 h-3.5" /> Emergency First Aid Protocol
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-              အရေးပေါ် ကျန်းမာရေးနှင့် ရှေးဦးပြုစုခြင်း (First Aid Guides)
+            <h1 className="text-lg font-extrabold tracking-tight">
+              အရေးပေါ် ကျန်းမာရေးနှင့် ရှေးဦးပြုစုခြင်း
             </h1>
             <p className="text-red-100 text-xs sm:text-sm mt-1 max-w-2xl">
               မြွေကိုက်၊ ခွေးကိုက်၊ အပူလောင်၊ ဓားရှ၊ ဓာတ်မတည့်ခြင်းနှင့် အသက်ရှူရပ်ခြင်းဆိုင်ရာ အချိန်မီ အရေးပေါ် ပြုစုနည်းလမ်းများ။
@@ -114,7 +114,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
       {/* 1. BITES & STINGS SECTION */}
       {/* ========================================================================= */}
       {activeCategory === 'bites' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Snakebite Emergency Protocol */}
           <div className="bg-white rounded-2xl border border-rose-200 p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-2 text-rose-700 font-extrabold text-base pb-2 border-b border-rose-100">
@@ -178,7 +178,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
       {/* 2. BURNS SECTION */}
       {/* ========================================================================= */}
       {activeCategory === 'burns' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-orange-200 p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-2 text-orange-700 font-extrabold text-base pb-2 border-b border-orange-100">
               <Flame className="w-5 h-5" /> အပူလောင်ခြင်း ရှေးဦးပြုစုနည်း (Burn Injury Protocol)
@@ -215,7 +215,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
       {/* 3. CUTS & BLEEDING SECTION */}
       {/* ========================================================================= */}
       {activeCategory === 'cuts' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-red-200 p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-2 text-red-700 font-extrabold text-base pb-2 border-b border-red-100">
               <Scissors className="w-5 h-5" /> ဓားရှ/ဒဏ်ရာနှင့် သွေးထွက်လွန်ခြင်း (Cuts & Severe Bleeding)
@@ -245,7 +245,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
       {/* 4. SEVERE ALLERGIES & ANAPHYLAXIS */}
       {/* ========================================================================= */}
       {activeCategory === 'allergies' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-purple-200 p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-2 text-purple-700 font-extrabold text-base pb-2 border-b border-purple-100">
               <AlertTriangle className="w-5 h-5" /> ပြင်းထန် ဓာတ်မတည့်မှုနှင့် အသက်ရှူရပ်ခြင်း (Anaphylaxis)
@@ -271,7 +271,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
       {/* 5. CHOKING & CPR SECTION */}
       {/* ========================================================================= */}
       {activeCategory === 'cpr' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-emerald-200 p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-base pb-2 border-b border-emerald-100">
               <Heart className="w-5 h-5" /> သီးခြင်း (Heimlich Maneuver) နှင့် CPR နှလုံးနှိုးဆွခြင်း

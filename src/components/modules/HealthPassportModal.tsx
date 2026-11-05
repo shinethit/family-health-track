@@ -515,7 +515,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
         </div>
 
         {/* Printable Passport Body */}
-        <div className="p-6 sm:p-8 overflow-y-auto space-y-6 text-slate-800 bg-white" id="printable-health-passport">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-slate-800 bg-white" id="printable-health-passport">
           
           {/* Header Banner for Printed Document */}
           <div className="border-b-2 border-emerald-600 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

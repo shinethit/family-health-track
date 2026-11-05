@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ShieldCheck, CheckCircle2, AlertCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useHealthData, isPatientOnly, resolveCleanName } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
+import { calculateBPCategory, calculateGlucoseStatus } from '../../lib/medicalCalculations';
 import { UserProfile, DoctorAnswer } from '../../types/health';
 import { EditPatientModal } from './EditPatientModal';
 import { DeletePatientModal } from './DeletePatientModal';
@@ -59,6 +60,8 @@ export const AdminPatientPortal: React.FC = () => {
     familyMembers,
     bpRecords,
     glucoseRecords,
+    allBPRecords,
+    allGlucoseRecords,
     labRecords,
     medications,
     vaccineRecords,
@@ -144,14 +147,15 @@ export const AdminPatientPortal: React.FC = () => {
     const email = (p.email || '').toLowerCase().trim();
     const phone = (p.phone || '').trim();
 
-    const isGenericName = !resolved || resolved === 'အသုံးပြုသူ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-') || resolved.includes('6bce6599');
+    const isGenericName = !resolved || resolved === 'အသုံးပြုသူ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-');
     const isFakeEmail = !email || email.includes('@patient.local') || email.includes('@familyhealth.local') || email.includes('demo');
     const missingPhone = !phone;
     const missingAge = (!p.age || p.age <= 0) && !p.dateOfBirth;
     const missingVitals = !p.heightCm || !p.weightKg;
-    const missingConditions = !p.chronicConditions || p.chronicConditions.length === 0;
+    // v2.4.23: having NO chronic conditions is healthy, not incomplete —
+    // the old check counted every healthy user as an incomplete record.
 
-    return isGenericName || isFakeEmail || missingPhone || missingAge || missingVitals || missingConditions;
+    return isGenericName || isFakeEmail || missingPhone || missingAge || missingVitals;
   };
 
   const getMissingFields = (p: UserProfile): string[] => {
@@ -160,7 +164,7 @@ export const AdminPatientPortal: React.FC = () => {
     const email = (p.email || '').toLowerCase().trim();
     const phone = (p.phone || '').trim();
 
-    if (!resolved || resolved === 'အသုံးပြုသူ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-') || resolved.includes('6bce6599')) {
+    if (!resolved || resolved === 'အသုံးပြုသူ' || resolved === 'အမည်မရှိ' || resolved === 'အသုံးပြုသူ' || resolved.startsWith('pat-') || resolved.startsWith('user-')) {
       missing.push('အမည်မစုံ');
     }
     if (!email || email.includes('@patient.local') || email.includes('@familyhealth.local')) {
@@ -175,13 +179,33 @@ export const AdminPatientPortal: React.FC = () => {
     if (!p.heightCm || !p.weightKg) {
       missing.push('အရပ်/ဝိတ်မရှိ');
     }
-    if (!p.chronicConditions || p.chronicConditions.length === 0) {
-      missing.push('ရောဂါအခံမရှိ');
-    }
     return missing;
   };
 
   const countIncomplete = actualPatients.filter(isIncompletePatient).length;
+
+  // v2.4.23: latest-reading maps so the hypertension/diabetes filters
+  // also match a patient whose latest readings show the condition even
+  // when their chronicConditions text does not list it.
+  const latestBpCategoryByUser = useMemo(() => {
+    const map = new Map<string, string>();
+    const sorted = [...allBPRecords].sort((a, b) => new Date(b.date || b.timestamp || b.createdAt || 0).getTime() - new Date(a.date || a.timestamp || a.createdAt || 0).getTime());
+    for (const r of sorted) {
+      if (r.userId && !map.has(r.userId)) map.set(r.userId, (r as any).category || calculateBPCategory(r.systolic, r.diastolic).category);
+    }
+    return map;
+  }, [allBPRecords]);
+  const latestGluStatusByUser = useMemo(() => {
+    const map = new Map<string, string>();
+    const sorted = [...allGlucoseRecords].sort((a, b) => new Date(b.date || b.timestamp || b.createdAt || 0).getTime() - new Date(a.date || a.timestamp || a.createdAt || 0).getTime());
+    for (const r of sorted) {
+      if (r.userId && !map.has(r.userId)) {
+        const v = (r as any).glucoseValue ?? (r as any).value;
+        map.set(r.userId, (r as any).status || (v != null ? calculateGlucoseStatus(v, ((r as any).type || (r as any).timing || 'fasting') as never).status : ''));
+      }
+    }
+    return map;
+  }, [allGlucoseRecords]);
 
   // Filter patients
   const filteredPatients = actualPatients.filter(p => {
@@ -193,18 +217,22 @@ export const AdminPatientPortal: React.FC = () => {
     
     if (!matchesSearch) return false;
 
+    // v2.4.23: match the condition text OR the latest readings.
+    const hasHTN = (p.chronicConditions?.some(c => c.includes('သွေးတိုး') || c.toLowerCase().includes('hypertension')) ?? false) ||
+      ['stage1', 'stage2', 'crisis'].includes(latestBpCategoryByUser.get(p.id) || '');
+    const hasDM = (p.chronicConditions?.some(c => c.includes('ဆီးချို') || c.toLowerCase().includes('diabetes')) ?? false) ||
+      ['diabetic', 'high_danger'].includes(latestGluStatusByUser.get(p.id) || '');
+
     if (filterCondition === 'incomplete') {
       return isIncompletePatient(p);
     }
     if (filterCondition === 'hypertension') {
-      return p.chronicConditions?.some(c => c.includes('သွေးတိုး') || c.toLowerCase().includes('hypertension'));
+      return hasHTN;
     }
     if (filterCondition === 'diabetes') {
-      return p.chronicConditions?.some(c => c.includes('ဆီးချို') || c.toLowerCase().includes('diabetes'));
+      return hasDM;
     }
     if (filterCondition === 'both') {
-      const hasHTN = p.chronicConditions?.some(c => c.includes('သွေးတိုး') || c.toLowerCase().includes('hypertension'));
-      const hasDM = p.chronicConditions?.some(c => c.includes('ဆီးချို') || c.toLowerCase().includes('diabetes'));
       return hasHTN && hasDM;
     }
     return true;

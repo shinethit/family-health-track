@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { usePersistentState } from '../../lib/usePersistentState';
 import { 
   Baby, 
   Sparkles, 
@@ -258,13 +260,14 @@ const MILESTONES_DATA: AgeMilestoneData[] = [
 ];
 
 export const ChildMilestonesModule: React.FC = () => {
-  const [selectedAgeId, setSelectedAgeId] = useState<string>('6_months');
-  const [checkedMilestones, setCheckedMilestones] = useState<{ [key: string]: boolean }>({
-    'm6_1': true,
-    'm6_3': true,
-    'm6_5': true,
-    'm6_7': true
-  });
+  // v2.4.23: guide-module interactive state persists per user (it used to
+  // vanish on every tab switch) — see usePersistentState.
+  const { profile, currentUser } = useAuth();
+  const storageUid = profile?.id || currentUser?.uid || null;
+  const [selectedAgeId, setSelectedAgeId] = usePersistentState<string>('fht_milestones_age', storageUid, '6_months');
+  // v2.4.23: nothing pre-checked — checked milestones must be the
+  // parent's own ticks, never a seeded default.
+  const [checkedMilestones, setCheckedMilestones] = usePersistentState<{ [key: string]: boolean }>('fht_milestones_checked', storageUid, {});
 
   const activeAgeData = MILESTONES_DATA.find(a => a.ageId === selectedAgeId) || MILESTONES_DATA[0];
 
@@ -290,9 +293,9 @@ export const ChildMilestonesModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-5 sm:p-7 text-white shadow-sm">
+      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-4 sm:p-5 text-white shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -301,7 +304,7 @@ export const ChildMilestonesModule: React.FC = () => {
                 CDC & WHO Pediatric Milestones
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            <h1 className="text-lg font-bold tracking-tight">
               ကလေးဖွံ့ဖြိုးမှု မှတ်တိုင်များ စစ်ဆေးမှတ်တမ်း (Child Milestones)
             </h1>
             <p className="text-xs sm:text-sm text-amber-100 max-w-2xl leading-relaxed">
@@ -335,7 +338,7 @@ export const ChildMilestonesModule: React.FC = () => {
       </div>
 
       {/* Active Milestone Card & Interactive Progress */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
         {/* Card Header & Progress Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="space-y-1">

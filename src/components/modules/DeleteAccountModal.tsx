@@ -245,7 +245,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
       showHeader={false}
       className="border border-rose-200"
     >
-      <div className="p-6 relative">
+      <div className="p-4 relative">
         {/* Close Button */}
         {step !== 'deleting' && (
           <button

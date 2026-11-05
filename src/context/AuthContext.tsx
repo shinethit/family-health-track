@@ -204,9 +204,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (fbUser) {
           setCurrentUser(fbUser);
-          console.log("=========================================");
-          console.log("🔑 UID:", fbUser.uid, " | 📧 Email:", fbUser.email);
-          console.log("=========================================");
           
           const isUserAdmin = await verifyIsAdmin(fbUser.uid);
           if (!isMounted) return;

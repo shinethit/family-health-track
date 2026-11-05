@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { usePersistentState } from '../../lib/usePersistentState';
 import { 
   Utensils, 
   CheckCircle2, 
@@ -86,21 +88,28 @@ const DIET_GUIDES: DietRecommendation[] = [
 ];
 
 export const ClinicalDietModule: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<'hypertension' | 'diabetes' | 'kidney'>('hypertension');
-  const [waterDrunkGlasses, setWaterDrunkGlasses] = useState(4);
+  // v2.4.23: guide-module interactive state persists per user (it used to
+  // vanish on every tab switch) — see usePersistentState.
+  const { profile, currentUser } = useAuth();
+  const storageUid = profile?.id || currentUser?.uid || null;
+
+  const [selectedCategory, setSelectedCategory] = usePersistentState<'hypertension' | 'diabetes' | 'kidney'>('fht_diet_category', storageUid, 'hypertension');
+  // v2.4.23: starts at 0, not 4 — the old default was fabricated (no
+  // water had been drunk), and the count now persists per user.
+  const [waterDrunkGlasses, setWaterDrunkGlasses] = usePersistentState<number>('fht_diet_water', storageUid, 0);
 
   const activeGuide = DIET_GUIDES.find(g => g.category === selectedCategory) || DIET_GUIDES[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Module Title Banner */}
-      <div className="bg-gradient-to-r from-emerald-700 to-teal-800 text-white p-6 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-emerald-700 to-teal-800 text-white p-4 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
           <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-xs shrink-0">
             <Utensils className="w-8 h-8 text-emerald-200" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight">ရောဂါအလိုက် အာဟာရနှင့် စားသောက်ဖွယ်ရာ လမ်းညွှန် (Dietary & Nutrition Guide)</h2>
+            <h2 className="text-lg font-bold tracking-tight">ရောဂါအလိုက် အာဟာရနှင့် စားသောက်ဖွယ်ရာ လမ်းညွှန်</h2>
             <p className="text-xs text-emerald-100 mt-1">
               သွေးတိုး၊ ဆီးချို နှင့် နာတာရှည်ရောဂါများအတွက် မြန်မာ့ရိုးရာ အစားအစာများကို ကျန်းမာရေးနှင့် ညီညွတ်စွာ စားသုံးနည်း
             </p>

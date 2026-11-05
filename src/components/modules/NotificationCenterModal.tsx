@@ -737,7 +737,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         <Modal
           isOpen={pendingClearAll}
           onClose={() => setPendingClearAll(false)}
-          title="သတိပေးချက် အကုန် ဖျက်မည်"
+          title="သတိပေးချက် အားလုံး ဖျက်မည်"
           size="sm"
         >
           <div className="p-5 space-y-4 text-sm text-slate-700 dark:text-slate-300">
@@ -758,7 +758,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 }}
                 className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-xs"
               >
-                အကုန် ဖျက်မည်
+                အားလုံး ဖျက်မည်
               </button>
             </div>
           </div>

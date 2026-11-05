@@ -318,7 +318,7 @@ export const EmergencyIDModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <style>{`
         @media print {
           body * {
@@ -344,13 +344,13 @@ export const EmergencyIDModule: React.FC = () => {
       `}</style>
 
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-rose-700 to-red-800 text-white p-6 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-rose-700 to-red-800 text-white p-4 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
           <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-xs shrink-0">
             <ShieldAlert className="w-8 h-8 text-rose-200" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight">အရေးပေါ် ကျန်းမာရေးကတ် (Emergency Medical ID)</h2>
+            <h2 className="text-lg font-bold tracking-tight">အရေးပေါ် ကျန်းမာရေးကတ်</h2>
             <p className="text-xs text-rose-100 mt-1">
               အရေးပေါ် အခြေအနေများတွင် ရှေးဦးသူနာပြုများနှင့် ဆရာဝန်များ ချက်ချင်း ကြည့်ရှုနိုင်ရန် တိုက်ရိုက် ဆက်သွယ်ရန်နှင့် သွေးအမျိုးအစား မှတ်တမ်း
             </p>
@@ -437,7 +437,7 @@ export const EmergencyIDModule: React.FC = () => {
 
       {/* Edit Form or Visual Pocket Card View */}
       {isEditing ? (
-        <form onSubmit={handleSave} className="bg-white border border-slate-200 rounded-3xl p-6 space-y-4 shadow-sm text-xs">
+        <form onSubmit={handleSave} className="bg-white border border-slate-200 rounded-3xl p-4 space-y-3 shadow-sm text-xs">
           <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
             အရေးပေါ် ကျန်းမာရေး အချက်အလက်များ ပြင်ဆင်ရန်
             {isDirty && <span className="ml-2 text-[11px] font-semibold text-amber-700">(မသိမ်းရသေးသော ပြင်ဆင်မှုများ ရှိသည်)</span>}
@@ -691,7 +691,7 @@ export const EmergencyIDModule: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Print Pocket Wallet Card (Visual Preview) */}
           <div className="lg:col-span-1" id="printable-emergency-card">
-            <div className="bg-gradient-to-br from-rose-600 via-rose-700 to-red-800 text-white rounded-3xl p-6 shadow-xl border-2 border-rose-400 relative overflow-hidden">
+            <div className="bg-gradient-to-br from-rose-600 via-rose-700 to-red-800 text-white rounded-3xl p-4 shadow-xl border-2 border-rose-400 relative overflow-hidden">
               <div className="absolute top-0 right-0 -mr-6 -mt-6 w-24 h-24 bg-white/10 rounded-full blur-sm" />
               
               <div className="flex items-center justify-between border-b border-white/20 pb-3 mb-4">

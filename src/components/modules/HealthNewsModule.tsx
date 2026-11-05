@@ -49,6 +49,7 @@ export const HealthNewsModule: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   const [copiedNotification, setCopiedNotification] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   // Migrate the legacy device-global bookmarks key to this user's suffixed
   // key ONCE, so a later user on a shared phone never sees these bookmarks.
@@ -68,11 +69,22 @@ export const HealthNewsModule: React.FC = () => {
     localStorage.setItem(userKey('bookmarked_articles', storageUid), JSON.stringify(updated));
   };
 
-  const handleShare = (article: HealthArticle) => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(`${article.title}\n\n${article.summary}\n\n- Family Health Track Medical Tips`);
+  const handleShare = async (article: HealthArticle) => {
+    // v2.4.23: the old code showed "ကူးယူပြီးပါပြီ" without awaiting the
+    // clipboard write — on browsers without clipboard access it did
+    // nothing at all yet still claimed success.
+    if (!navigator.clipboard) {
+      setCopyError(true);
+      setTimeout(() => setCopyError(false), 2500);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(`${article.title}\n\n${article.summary}\n\n- Family Health Track Medical Tips`);
       setCopiedNotification(true);
       setTimeout(() => setCopiedNotification(false), 2500);
+    } catch {
+      setCopyError(true);
+      setTimeout(() => setCopyError(false), 2500);
     }
   };
 
@@ -223,12 +235,17 @@ export const HealthNewsModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-4 animate-in fade-in duration-200">
       {/* Toast Notification */}
       {copiedNotification && (
         <div className="fixed top-20 right-6 z-50 p-3 bg-emerald-600 text-white rounded-2xl shadow-lg flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-2">
           <Check className="w-4 h-4" />
           <span>ဆောင်းပါး အချက်အလက်များကို ကူးယူပြီးပါပြီ!</span>
+        </div>
+      )}
+      {copyError && (
+        <div className="fixed top-20 right-6 z-50 p-3 bg-rose-600 text-white rounded-2xl shadow-lg flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-2">
+          <span>ကူးယူခြင်း မအောင်မြင်ပါ — ဘရောက်ဇာတွင် ကူးယူခွင့် မရပါ</span>
         </div>
       )}
 
@@ -284,7 +301,7 @@ export const HealthNewsModule: React.FC = () => {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-700 text-white text-xs font-bold shadow-xs">
                 <span>🌊 ရေဘေး အရေးပေါ် ကျန်းမာရေး လမ်းညွှန် (၈ ပုဒ် စုစည်းမှု)</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug">
+              <h2 className="text-lg font-black text-slate-900 leading-snug">
                 ရေဘေးကာလ အသက်ကယ် ဆောင်ရန်/ရှောင်ရန်နှင့် အရေးပေါ် ကျန်းမာရေး လမ်းညွှန်
               </h2>
               <p className="text-xs text-slate-700 max-w-3xl leading-relaxed">
@@ -340,7 +357,7 @@ export const HealthNewsModule: React.FC = () => {
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                   <span>ယုံကြည်စိတ်ချရသော ဆေးပညာ ဗဟုသုတများ (စုစုပေါင်း {generalArticles.length} ပုဒ်)</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">
+                <h2 className="text-lg font-extrabold text-slate-900">
                   ကျန်းမာရေး ဗဟုသုတ စာကြည့်တိုက်
                 </h2>
                 <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">

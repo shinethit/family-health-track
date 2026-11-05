@@ -199,7 +199,7 @@ const MainContent: React.FC = () => {
     } catch {}
   };
   useEffect(() => {
-    if (loading || !currentUser || !profile) return;
+    if (loading || !currentUser || !profile || isAdmin) return;
     try {
       if (localStorage.getItem(`profile_setup_seen_${currentUser.uid}`)) return;
       if (Number(localStorage.getItem(`profile_setup_skips_${currentUser.uid}`) || '0') >= 2) {
@@ -213,7 +213,7 @@ const MainContent: React.FC = () => {
     // stayed incomplete for analysis.
     const missingBasics = !profile.dateOfBirth || !profile.heightCm || !profile.weightKg;
     if (missingBasics) setIsProfileSetupOpen(true);
-  }, [loading, currentUser, profile]);
+  }, [loading, currentUser, profile, isAdmin]);
 
   // First-run welcome: a brand-new user (no records at all yet) gets a
   // short 3-step checklist on the Trends tab. Dismissing it once sets the
@@ -669,7 +669,7 @@ const MainContent: React.FC = () => {
       
       {/* Clean Minimal Module Indicator */}
       <div className={`bg-white/95 backdrop-blur-md border-b border-slate-200 sticky ${showBroadcast ? 'top-[105px] sm:top-[110px]' : 'top-16'} z-30 w-full shadow-xs`}>
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
               <Activity className="w-4 h-4" />
@@ -688,7 +688,7 @@ const MainContent: React.FC = () => {
         </div>
         {/* Tab strip — one-tap switching between the current category's tabs */}
         {currentCategoryTabs.length > 1 && (
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-2.5">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-2">
             <div className="flex flex-wrap gap-1.5">
               {currentCategoryTabs.map((tab) => {
                 const TabIcon = tab.icon;
@@ -697,7 +697,7 @@ const MainContent: React.FC = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${isActive ? tab.activeColor : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                    className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${isActive ? tab.activeColor : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                   >
                     <TabIcon className="w-4 h-4" />
                     <span>{tab.label}</span>
@@ -714,11 +714,11 @@ const MainContent: React.FC = () => {
         )}
       </div>
       {/* Main Content Area - Pure White Clean Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
         {/* First-run welcome — 3-step checklist for a brand-new user with
             no records yet. Small and dismissible; never blocks the app. */}
         {showFirstRunWelcome && activeTab === 'trends' && !isProfileSetupOpen && (
-          <div className="mb-4 p-4 rounded-3xl bg-emerald-50 border border-emerald-200 shadow-xs">
+          <div className="mb-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 shadow-xs">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <h3 className="text-sm font-extrabold text-emerald-900">🎉 Family Health Track မှ ကြိုဆိုပါသည်!</h3>
@@ -732,22 +732,22 @@ const MainContent: React.FC = () => {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 onClick={() => setIsProfileSetupOpen(true)}
-                className="px-3 py-2.5 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs font-bold text-left hover:bg-emerald-100/60 cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs font-bold text-left hover:bg-emerald-100/60 cursor-pointer"
               >
                 ① ကိုယ်ရေးအချက်အလက် ဖြည့်ပါ
               </button>
               <button
                 onClick={() => setActiveTab('bp')}
-                className="px-3 py-2.5 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs font-bold text-left hover:bg-emerald-100/60 cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs font-bold text-left hover:bg-emerald-100/60 cursor-pointer"
               >
                 ② ပထမဆုံး သွေးပေါင်ချိန် ထည့်ပါ
               </button>
               <button
                 onClick={() => setActiveTab('medications')}
-                className="px-3 py-2.5 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs font-bold text-left hover:bg-emerald-100/60 cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-white border border-emerald-200 text-emerald-900 text-xs font-bold text-left hover:bg-emerald-100/60 cursor-pointer"
               >
                 ③ ဆေး ထည့်ပါ
               </button>
@@ -763,7 +763,7 @@ const MainContent: React.FC = () => {
           <ViewingAsIndicator onOpenFamily={() => setActiveTab('family')} />
         )}
         {activeTab === 'family' && !isAdmin && <FamilyMembersBar />}
-        <Suspense fallback={<div className="flex items-center justify-center py-16 text-slate-500 font-medium text-sm">ဖွင့်နေသည်...</div>}>
+        <Suspense fallback={<div className="flex items-center justify-center py-8 text-slate-500 font-medium text-sm">ဖွင့်နေသည်...</div>}>
           {activeTab === 'admin' && isAdmin && <AdminPatientPortal />}
           {activeTab === 'doctor_qa' && <DoctorQnAModule />}
           {activeTab === 'trends' && <TrendsOverview onNavigateTab={(t: any) => setActiveTab(t)} />}
@@ -794,8 +794,8 @@ const MainContent: React.FC = () => {
       </main>
 
       {/* Simple Clean Footer */}
-      <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <footer className="bg-white border-t border-slate-200 py-3 text-center text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Heart className="w-4 h-4 text-rose-500" />
             <span className="font-semibold text-slate-800">

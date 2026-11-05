@@ -201,7 +201,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center relative overflow-hidden p-4">
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 right-0 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 bg-slate-900/90 border border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+        <div className="relative z-10 bg-slate-900/90 border border-slate-800 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl backdrop-blur-md">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
               <Lock className="w-5 h-5" />
@@ -232,7 +232,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
               </p>
               <button
                 onClick={() => {
-                  clearResetParams();
+                  // v2.4.23: do NOT clearResetParams() here — it calls
+                  // onResetFinished(), which unmounts this screen and the
+                  // forgot-password modal below never opens. Open the
+                  // modal in place; the expired link stays behind it.
                   setForgotEmail(resetEmail);
                   setShowForgotPassword(true);
                 }}
@@ -351,10 +354,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
       </header>
 
       {/* Center Main Hero & Auth Box */}
-      <main className="relative z-10 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <main className="relative z-10 max-w-6xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         {/* Right Side: Secure Auth Card */}
         <div className="lg:col-span-5 order-first lg:order-first">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-md">
             
             {/* Switch Tabs (Login / Register) */}
             <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 mb-5 text-xs">
@@ -623,7 +626,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
       {/* Forgot Password Modal */}
       {showForgotPassword && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-4 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setShowForgotPassword(false)}
               className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"

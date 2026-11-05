@@ -58,12 +58,33 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.22',
+    version: 'v2.4.23',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
     isLatest: true,
+    title: '🔍 [NEW] အစအဆုံး သေချာပြန်စစ်ပြီး ကျစ်ကျစ်လျစ်လျစ် ပြင်ထားတယ်',
+    badge: 'Latest Release (v2.4.23)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🔍 အစအဆုံး ပြန်စစ်ခြင်း + ကျစ်ကျစ်လျစ်လျစ် + စာသားပြင်ဆင်ခြင်း',
+        icon: Sparkles,
+        items: [
+          'Login ကနေ Admin အထိ မျက်နှာပြင်တိုင်းကို ခလုတ်တစ်ခုချင်း နှိပ်ပြီး ပြန်စစ်ထားတယ် — ရက်စွဲ၊ အသက်၊ သွေးပေါင်ချိန် စစ်ဆေးမှုတွေ၊ သတိပေးချက်တွေ အားလုံး မှန်ကန်အောင် ပြင်ထားတယ်',
+          'Trends မျက်နှာပြင်က အစိမ်းရောင် ခေါင်းစဉ်ကတ် သေးသွားပြီး၊ Database စာရင်းကတ်တွေ ဖုန်းမှာ ၂ ခုစီ ဘေးချင်းယှဉ် ပြမယ် — မျက်နှာပြင်တိုင်း နေရာပိုကျစ်ကျစ်လျစ်လျစ် ဖြစ်သွားပြီ',
+          'ဖုန်း 360px မှာ တကယ် တိုင်းတာစစ်ဆေးပြီး BMI ဂရပ်က အကြံပြုချက်လေး ဘေးရောက်နေတာ၊ Admin ဖောင်က ရက်စွဲ+အချိန် ဖြည့်တာ ကျဉ်းနေတာတွေ ပြင်ထားတယ်',
+          'စကားလုံး ရွေးချယ်မှုတွေ ပိုမှန်ကန်သွားပြီ — ခလုတ်နဲ့ ခေါင်းစဉ်တွေမှာ "အားလုံး" လို့ သုံးလိုက်ပြီ',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v2.4.22',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: false,
     title: '💾 [NEW] သိမ်းဆည်းတာ တစ်နေ ခလုတ် မှိန်မနေတော့ဘူး + Horizontal Scroll မရှိတော့ဘူး',
-    badge: 'Latest Release (v2.4.22)',
+    badge: 'Previous Release (v2.4.22)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {

@@ -120,9 +120,13 @@ export const DoctorQnAModule: React.FC = () => {
   const sortedQuestions = sortQuestionsForAdmin(doctorQuestions);
   const urgentPendingCount = doctorQuestions.filter((q) => q.status === 'pending' && q.urgency === 'urgent').length;
 
-  // Latest stats for auto-fill preview
-  const latestBP = bpRecords[0];
-  const latestSugar = glucoseRecords[0];
+  // Latest stats for auto-fill preview — the context lists are unsorted
+  // Firestore return order (no orderBy), so sort a copy by date desc
+  // before taking [0]; otherwise an old reading is attached to the question.
+  const sortByDateDesc = <T extends { date?: string; timestamp?: string; createdAt?: string }>(arr: T[]): T[] =>
+    [...arr].sort((a, b) => new Date(b.date || b.timestamp || b.createdAt || 0).getTime() - new Date(a.date || a.timestamp || a.createdAt || 0).getTime());
+  const latestBP = sortByDateDesc(bpRecords)[0] ?? null;
+  const latestSugar = sortByDateDesc(glucoseRecords)[0] ?? null;
   const activeMeds = medications.filter(m => m.status === 'active').map(m => m.name).join(', ');
 
   const handleAskQuestion = async (e: React.FormEvent) => {
@@ -192,7 +196,7 @@ export const DoctorQnAModule: React.FC = () => {
         // role label 'Admin', not a personal name.
         answeredBy: profile?.displayName?.trim() || 'Admin',
         answerText: answerText.trim(),
-        recommendations: recs.length > 0 ? recs : ['ဆရာဝန် ညွှန်ကြားချက်အတိုင်း ဆေးကို ဆက်လက်သောက်သုံးပါ'],
+        recommendations: recs,
         suggestedAction: suggestedAction.trim() || undefined,
         answeredAt: new Date().toISOString(),
       });
@@ -210,15 +214,15 @@ export const DoctorQnAModule: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner - Pristine Pure White Style */}
-      <div className="p-6 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="p-4 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold mb-2">
               <Stethoscope className="w-3.5 h-3.5 text-indigo-600" />
               <span>ဆရာဝန်နှင့် ကျန်းမာရေး အမေး-အဖြေ စနစ်</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">
-              ဆရာဝန်ထံ မေးမြန်းချက်များ (Doctor Q&A)
+            <h2 className="text-lg font-extrabold text-slate-900">
+              ဆရာဝန်ထံ မေးမြန်းချက်များ
             </h2>
             <p className="text-xs text-slate-600 mt-1 max-w-xl">
               သွေးတိုး၊ ဆီးချို၊ ဆေးဝါးသောက်သုံးမှုနှင့် ကျန်းမာရေးခံစားချက်များကို အထူးကုဆရာဝန်ထံ အချိန်မရွေး တိုက်ရိုက် မေးမြန်းတိုင်ပင်နိုင်ပါသည်
@@ -295,8 +299,8 @@ export const DoctorQnAModule: React.FC = () => {
       {activeTab === 'my_questions' && (
         <div className="space-y-4">
           {doctorQuestions.length === 0 ? (
-            <div className="p-10 text-center rounded-3xl bg-slate-50 border border-dashed border-slate-300 text-slate-700 space-y-2">
-              <MessageSquareHeart className="w-12 h-12 mx-auto text-slate-400" />
+            <div className="p-6 text-center rounded-3xl bg-slate-50 border border-dashed border-slate-300 text-slate-700 space-y-2">
+              <MessageSquareHeart className="w-8 h-8 mx-auto text-slate-400" />
               <p className="text-sm font-bold text-slate-900">မေးမြန်းထားသော မေးခွန်း မရှိသေးပါ</p>
               <p className="text-xs text-slate-600 max-w-md mx-auto">
                 ကျန်းမာရေးနှင့် ပတ်သက်၍ သိလိုသည်များကို ဆရာဝန်ထံ အချိန်မရွေး မေးမြန်းနိုင်ပါသည်
@@ -551,7 +555,7 @@ export const DoctorQnAModule: React.FC = () => {
 
       {/* Tab Content 2: Ask New Question Form */}
       {activeTab === 'ask_new' && (
-        <div className="max-w-2xl mx-auto p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-5">
+        <div className="max-w-2xl mx-auto p-4 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
             <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <MessageSquareHeart className="w-5 h-5" />

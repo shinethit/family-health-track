@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { usePersistentState } from '../../lib/usePersistentState';
 import { 
   Baby, 
   Heart, 
@@ -164,6 +166,11 @@ const CHILD_CARE_TOPICS: ChildCareTopic[] = [
 ];
 
 export const ChildCareModule: React.FC = () => {
+  // v2.4.23: guide-module interactive state persists per user (it used to
+  // vanish on every tab switch) — see usePersistentState.
+  const { profile, currentUser } = useAuth();
+  const storageUid = profile?.id || currentUser?.uid || null;
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTopic, setActiveTopic] = useState<ChildCareTopic>(CHILD_CARE_TOPICS[0]);
@@ -177,14 +184,14 @@ export const ChildCareModule: React.FC = () => {
   // Celsius; the old tool was °F-only, so typing 38 meant 38°F, i.e. no
   // fever at all, v2.4.11 10-B). Assessment thresholds stay in °F
   // internally (100.4°F = 38.0°C, 102°F = 38.9°C, 104°F = 40.0°C).
-  const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
+  const [tempUnit, setTempUnit] = usePersistentState<'C' | 'F'>('fht_childcare_temp_unit', storageUid, 'C');
   // B-M9: the fever input starts EMPTY — no prefilled 38.3 °C and no
   // verdict until the user actually enters a measured temperature. A
   // "Moderate Fever" verdict before any measurement is a fabricated
   // diagnosis.
-  const [feverTemp, setFeverTemp] = useState<number | ''>('');
+  const [feverTemp, setFeverTemp] = usePersistentState<number | ''>('fht_childcare_fever_temp', storageUid, '');
   const feverTempF = feverTemp === '' ? NaN : tempUnit === 'C' ? (feverTemp * 9) / 5 + 32 : feverTemp;
-  const [hasEmergencySymptoms, setHasEmergencySymptoms] = useState<{ [key: string]: boolean }>({});
+  const [hasEmergencySymptoms, setHasEmergencySymptoms] = usePersistentState<{ [key: string]: boolean }>('fht_childcare_fever_symptoms', storageUid, {});
 
   // Switching units converts the entered value so nothing is lost.
   const handleTempUnitChange = (unit: 'C' | 'F') => {
@@ -248,9 +255,9 @@ export const ChildCareModule: React.FC = () => {
   const feverAssessment = feverTemp === '' ? null : getFeverAssessment();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 rounded-2xl p-5 sm:p-7 text-white shadow-sm">
+      <div className="bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 rounded-2xl p-4 sm:p-5 text-white shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -259,7 +266,7 @@ export const ChildCareModule: React.FC = () => {
                 Child & Pediatric Care
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            <h1 className="text-lg font-bold tracking-tight">
               ကလေးငယ် ပြုစုစောင့်ရှောက်ရေး လမ်းညွှန် (မွေးစမှ ၅ နှစ်)
             </h1>
             <p className="text-xs sm:text-sm text-sky-100 max-w-2xl leading-relaxed">
@@ -604,7 +611,7 @@ export const ChildCareModule: React.FC = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
+          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
             <div className="border-b border-slate-100 pb-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-3xl">{activeTopic.icon}</span>

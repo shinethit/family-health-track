@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { usePersistentState } from '../../lib/usePersistentState';
 import {
   Activity,
   Droplets,
@@ -30,12 +32,17 @@ interface HomeTestingGuideModuleProps {
 }
 
 export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ onNavigateTab }) => {
+  // v2.4.23: guide-module interactive state persists per user (it used to
+  // vanish on every tab switch) — see usePersistentState.
+  const { profile, currentUser } = useAuth();
+  const storageUid = profile?.id || currentUser?.uid || null;
+
   const [activeTab, setActiveTab] = useState<'all' | 'bp' | 'sugar' | 'temp' | 'oximeter' | 'weight'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSection, setExpandedSection] = useState<string | null>('bp_steps');
 
   // Interactive Checklist states for BP & Sugar
-  const [bpChecklist, setBpChecklist] = useState<Record<string, boolean>>({
+  const [bpChecklist, setBpChecklist] = usePersistentState<Record<string, boolean>>('fht_hometest_bp_checklist', storageUid, {
     rested5mins: false,
     noCoffeeSmoking: false,
     emptyBladder: false,
@@ -43,7 +50,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
     noTalking: false
   });
 
-  const [sugarChecklist, setSugarChecklist] = useState<Record<string, boolean>>({
+  const [sugarChecklist, setSugarChecklist] = usePersistentState<Record<string, boolean>>('fht_hometest_sugar_checklist', storageUid, {
     washedHandsSoap: false,
     driedHands: false,
     checkedStripExpiry: false,
@@ -63,7 +70,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
   const sugarReadyScore = Object.values(sugarChecklist).filter(Boolean).length;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-4 animate-in fade-in duration-200">
       {/* Top Banner - Medical White & Teal Gradient */}
       <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-indigo-50 border border-emerald-200/80 shadow-xs relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
@@ -72,7 +79,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
               <span>လက်တွေ့အသုံးချ ဆေးပညာလမ်းညွှန် (Clinical Home Self-Monitoring Guide)</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
               အိမ်တွင်း ကျန်းမာရေး စစ်ဆေးမှု လမ်းညွှန်
             </h2>
             <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
@@ -193,7 +200,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
 
       {/* SECTION 1: မှန်ကန်စွာ သွေးပေါင်ချိန်တိုင်းနည်း (Detailed Guide) */}
       {(activeTab === 'all' || activeTab === 'bp') && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden space-y-6 p-5 sm:p-7">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-4 sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold">
@@ -418,7 +425,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
 
       {/* SECTION 2: မှန်ကန်စွာ ဆီးချို စစ်နည်း (Blood Glucose Testing Detailed Guide) */}
       {(activeTab === 'all' || activeTab === 'sugar') && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden space-y-6 p-5 sm:p-7">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-4 sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
