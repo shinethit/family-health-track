@@ -20,6 +20,11 @@ import { useToast } from '../../context/ToastContext';
 import { EmergencyProfile, FamilyMember, UserProfile } from '../../types/health';
 import { formatDateLabel } from '../../lib/medicalCalculations';
 import {
+  SAVE_UNCONFIRMED_MESSAGE,
+  isSaveTimeoutError,
+  withSaveTimeout,
+} from '../../lib/saveConfirmation';
+import {
   buildPdfFilename,
   exportElementToPdf,
   isStandalonePwa,
@@ -240,7 +245,15 @@ export const EmergencyIDModule: React.FC = () => {
         // profile too when the target is the signed-in user themself.
         // Both writes are merge setDocs of the same emergencyProfile value.
         if (targetId === currentUser?.uid) {
-          await updateProfile({ emergencyProfile: toSave }, { silent: true });
+          // v2.4.22 (Bug A): the card itself is already saved by
+          // updatePatient above — this local profile refresh is best
+          // effort only, so a stalled refresh must never hang the save
+          // or report a failure that did not happen.
+          try {
+            await withSaveTimeout(updateProfile({ emergencyProfile: toSave }, { silent: true }));
+          } catch (refreshErr) {
+            console.warn('Emergency ID profile refresh failed (card itself is saved):', refreshErr);
+          }
         }
       }
       setEmergencyData(toSave);
@@ -248,7 +261,11 @@ export const EmergencyIDModule: React.FC = () => {
       setStaleNotice(false);
       setIsEditing(false);
     } catch (err) {
-      setSaveError('သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ထပ်စမ်းကြည့်ပါ။');
+      // v2.4.22 (Bug A): on timeout the context already checked the list;
+      // for an edit the outcome cannot be confirmed, so say so honestly.
+      // (SAVE_TIMEOUT_MESSAGE is the add-path text; edits use the
+      // unconfirmed text — both flow through err.message here.)
+      setSaveError(isSaveTimeoutError(err) ? SAVE_UNCONFIRMED_MESSAGE : 'သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ထပ်စမ်းကြည့်ပါ။');
     } finally {
       setIsSaving(false);
     }
@@ -346,7 +363,7 @@ export const EmergencyIDModule: React.FC = () => {
             className="px-4 py-2.5 bg-white/10 text-white hover:bg-white/20 rounded-xl text-xs font-bold transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
           >
             <Edit className="w-4 h-4" />
-            <span>{isEditing ? 'မလုပ်တော့ပါ' : 'ပြင်ဆင်မည်'}</span>
+            <span>{isEditing ? 'ပိတ်မည်' : 'ပြင်ဆင်မည်'}</span>
           </button>
 
           {/* v2.4.18: PDF is the PRIMARY button on every device — it
@@ -658,7 +675,7 @@ export const EmergencyIDModule: React.FC = () => {
               onClick={handleCancelEdit}
               className="px-4 py-2 border border-slate-300 rounded-xl font-semibold hover:bg-slate-100"
             >
-              မလုပ်တော့ပါ
+              ပိတ်မည်
             </button>
             <button
               type="submit"

@@ -15,6 +15,15 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* v2.4.22 (Bug C): second line of defence against horizontal
+     scrolling — the app root itself can never scroll sideways, on top of
+     the html/body rule above. clip (not hidden) keeps position:sticky
+     working. */
+  #root {
+    overflow-x: clip;
+    max-width: 100vw;
+  }
+
   /* Ensure Myanmar diacritics and text have maximum clarity and contrast */
   h1, h2, h3, h4, h5, h6 {
     line-height: 1.5;

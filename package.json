@@ -1,7 +1,7 @@
 {
   "name": "family-health-track",
   "private": true,
-  "version": "2.4.21",
+  "version": "2.4.22",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",

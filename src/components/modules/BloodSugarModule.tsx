@@ -1,9 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Modal } from '../common/Modal';
 import { Plus, Trash2, Droplets, AlertCircle, Info, Calendar, Utensils, BarChart2, Table, TrendingUp, Pencil } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import {
+  SAVE_LATE_CONFIRM_MESSAGE,
+  SAVE_TIMEOUT_MESSAGE,
+  isSaveTimeoutError,
+} from '../../lib/saveConfirmation';
 import { BloodSugarChart } from '../charts/HealthCharts';
 import { calculateGlucoseStatus, parseDateToMs, formatDateLabel } from '../../lib/medicalCalculations';
 import { BloodSugarType } from '../../types/health';
@@ -57,6 +62,10 @@ export const BloodSugarModule: React.FC = () => {
   const [date, setDate] = useState<string>(() => localDateTimeStr(new Date()));
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // v2.4.22 (Bug A): set when a save times out — the next submit is a
+  // retry, and the context must check the list first so it never writes a
+  // second copy of the same record.
+  const saveTimedOutRef = useRef(false);
 
   // Fresh add-mode defaults (used when leaving edit mode so the next Add
   // never shows the edited record's values).
@@ -227,6 +236,10 @@ export const BloodSugarModule: React.FC = () => {
       return;
     }
     setIsSubmitting(true);
+    // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
+    // context checks the list first and never writes a second copy.
+    const isRetry = saveTimedOutRef.current;
+    saveTimedOutRef.current = false;
     try {
       if (editingId) {
         // v2.4.13 edit: only the editable fields; the context recomputes
@@ -247,7 +260,7 @@ export const BloodSugarModule: React.FC = () => {
         showToast('သကြားဓာတ် မှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ', 'success');
         return;
       }
-      await addGlucoseRecord({
+      const saveResult = await addGlucoseRecord({
         userId: selectedPatient ? selectedPatient.id : (selectedFamilyMember ? selectedFamilyMember.id : profile.id),
         userName: selectedPatient ? selectedPatient.displayName : (selectedFamilyMember ? selectedFamilyMember.name : profile.displayName),
         value: Number(value),
@@ -258,19 +271,28 @@ export const BloodSugarModule: React.FC = () => {
         dietRecord: dietRecord.trim() || undefined,
         date,
         notes: notes.trim() || undefined,
-      });
+      }, { isRetry });
       setIsOpenAdd(false);
       setValue('');
       setDietRecord('');
       setNotes('');
       setDate(localDateTimeStr(new Date()));
-      showToast('သကြားဓာတ် မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+      showToast(saveResult.confirmedLate ? SAVE_LATE_CONFIRM_MESSAGE : 'သကြားဓာတ် မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
     } catch (err) {
       // Save failed: keep the form open with all values intact so the user
       // can retry (v2.4.11 F3 — saves used to fail silently). In edit mode
       // the context already shows its own failure toast, so no second one.
       console.warn('Error saving glucose record:', err);
-      if (!editingId) {
+      // v2.4.22 (Bug A): on timeout the context already checked the list —
+      // absent means it really did not save (as far as the app can see),
+      // so the values stay and the user retries. In edit mode the context
+      // already toasted, so no second one here.
+      if (isSaveTimeoutError(err)) {
+        saveTimedOutRef.current = true;
+        if (!editingId) {
+          showToast(SAVE_TIMEOUT_MESSAGE, 'error');
+        }
+      } else if (!editingId) {
         showToast('သကြားဓာတ် မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
       }
     } finally {
@@ -838,7 +860,7 @@ export const BloodSugarModule: React.FC = () => {
                   onClick={closeForm}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
-                  မလုပ်တော့ပါ
+                  ပိတ်မည်
                 </button>
                 <button
                   type="submit"

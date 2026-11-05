@@ -586,7 +586,7 @@ const MainContent: React.FC = () => {
   const currentCategoryTabs = currentCategory.tabs;
 
   return (
-    <div className="min-h-screen w-full bg-white text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen w-full overflow-x-clip bg-white text-slate-900 flex flex-col font-sans">
       {/* Live Version Check Toast Notification */}
       {versionToast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[70] max-w-[calc(100vw-2rem)] px-4 py-2.5 rounded-2xl shadow-xl border border-indigo-200 bg-white/95 text-slate-900 flex items-center gap-2.5 text-xs font-bold animate-in fade-in slide-in-from-top-2 backdrop-blur-md">
@@ -689,7 +689,7 @@ const MainContent: React.FC = () => {
         {/* Tab strip — one-tap switching between the current category's tabs */}
         {currentCategoryTabs.length > 1 && (
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-2.5">
-            <div className="flex gap-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex flex-wrap gap-1.5">
               {currentCategoryTabs.map((tab) => {
                 const TabIcon = tab.icon;
                 const isActive = tab.id === activeTab;

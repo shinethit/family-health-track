@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Modal } from '../common/Modal';
 import { 
   FlaskConical, 
@@ -27,6 +27,11 @@ import {
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import {
+  SAVE_LATE_CONFIRM_MESSAGE,
+  SAVE_TIMEOUT_MESSAGE,
+  isSaveTimeoutError,
+} from '../../lib/saveConfirmation';
 import { LabTestRecord, RecordedLabItem } from '../../types/health';
 import { evaluateCustomLabValue, evaluateThyroidFunction, formatDateLabel } from '../../lib/medicalCalculations';
 
@@ -740,6 +745,10 @@ export const LabTestModule: React.FC = () => {
   const [customRefRanges, setCustomRefRanges] = useState<Record<string, { min?: string; max?: string; isEditing?: boolean }>>({});
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // v2.4.22 (Bug A): set when a save times out — the next submit is a
+  // retry, and the context must check the list first so it never writes a
+  // second copy of the same record.
+  const saveTimedOutRef = useRef(false);
 
   // Reset entire form
   const resetForm = () => {
@@ -1074,6 +1083,10 @@ export const LabTestModule: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
+    // context checks the list first and never writes a second copy.
+    const isRetry = saveTimedOutRef.current;
+    saveTimedOutRef.current = false;
 
     try {
       const recordedTests: RecordedLabItem[] = [];
@@ -1256,21 +1269,30 @@ export const LabTestModule: React.FC = () => {
         firstTestKey: recordedTests.length > 0 ? `${recordedTests[0].id}:${recordedTests[0].value}` : '',
       });
 
-      await addLabRecord({
+      const saveResult = await addLabRecord({
         userId: selectedPatient ? selectedPatient.id : (selectedFamilyMember ? selectedFamilyMember.id : profile.id),
         userName: selectedPatient ? selectedPatient.displayName : (selectedFamilyMember ? selectedFamilyMember.name : profile.displayName),
         ...payload
-      });
+      }, { isRetry });
 
       resetForm();
       setIsOpenAdd(false);
-      showToast('Lab စစ်ဆေးချက် မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+      showToast(saveResult.confirmedLate ? SAVE_LATE_CONFIRM_MESSAGE : 'Lab စစ်ဆေးချက် မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
     } catch (err) {
       // Save failed: keep the form open with all values intact so the user
       // can retry (v2.4.11 F3 — saves used to fail silently). In edit mode
       // the context already shows its own failure toast, so no second one.
       console.warn('Error saving lab record:', err);
-      if (!editingId) {
+      // v2.4.22 (Bug A): on timeout the context already checked the list —
+      // absent means it really did not save (as far as the app can see),
+      // so the values stay and the user retries. In edit mode the context
+      // already toasted, so no second one here.
+      if (isSaveTimeoutError(err)) {
+        saveTimedOutRef.current = true;
+        if (!editingId) {
+          showToast(SAVE_TIMEOUT_MESSAGE, 'error');
+        }
+      } else if (!editingId) {
         showToast('Lab စစ်ဆေးချက် သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
       }
     } finally {
@@ -2001,7 +2023,7 @@ export const LabTestModule: React.FC = () => {
                     onClick={closeForm}
                     className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
-                    မလုပ်တော့ပါ
+                    ပိတ်မည်
                   </button>
                   <button
                     type="submit"

@@ -401,7 +401,7 @@ export const HealthNewsModule: React.FC = () => {
                   <button
                     key={cat.id}
                     onClick={() => setGeneralCategory(cat.id)}
-                    className={`px-3 py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer shadow-xs ${
+                    className={`px-3 py-2 rounded-xl font-bold transition-all cursor-pointer shadow-xs ${
                       generalCategory === cat.id
                         ? 'bg-emerald-600 text-white shadow-sm'
                         : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'

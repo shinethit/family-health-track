@@ -110,7 +110,7 @@ export const HomeMedicinesGuideModule: React.FC = () => {
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer shadow-xs ${
+                className={`px-3 py-2 rounded-xl font-bold transition-all cursor-pointer shadow-xs ${
                   selectedCategory === cat.id
                     ? 'bg-teal-700 text-white shadow-sm'
                     : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'

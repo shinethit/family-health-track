@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Megaphone, 
   Plus, 
@@ -11,10 +11,15 @@ import {
 } from 'lucide-react';
 import { BroadcastTicker } from '../../../types/health';
 import { Modal } from '../../common/Modal';
+import {
+  SaveOptions,
+  SaveResult,
+  isSaveTimeoutError,
+} from '../../../lib/saveConfirmation';
 
 interface AdminBroadcastManagerProps {
   tickers: BroadcastTicker[];
-  onAddTicker: (message: string, type: 'info' | 'warning' | 'urgent') => Promise<void>;
+  onAddTicker: (message: string, type: 'info' | 'warning' | 'urgent', opts?: SaveOptions) => Promise<SaveResult>;
   onToggleTicker: (id: string, isActive: boolean) => Promise<void>;
   onDeleteTicker: (id: string) => Promise<void>;
 }
@@ -28,6 +33,10 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
   const [message, setMessage] = useState('');
   const [type, setType] = useState<'info' | 'warning' | 'urgent'>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // v2.4.22 (Bug A): set when a send times out — the next send is a retry
+  // and the context checks the list first so the same ticker is never
+  // sent twice.
+  const saveTimedOutRef = useRef(false);
   // v2.4.16 (C-M3): a failed send used to fail silently — the form just
   // stopped spinning and the admin had no idea the ticker never went out.
   const [sendError, setSendError] = useState<string | null>(null);
@@ -38,11 +47,19 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
     if (!message.trim()) return;
     setIsSubmitting(true);
     setSendError(null);
+    // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
+    // context checks the list first and never writes a second copy.
+    const isRetry = saveTimedOutRef.current;
+    saveTimedOutRef.current = false;
     try {
-      await onAddTicker(message.trim(), type);
+      await onAddTicker(message.trim(), type, { isRetry });
       setMessage('');
     } catch (err: any) {
       // Honest failure: keep the typed message so the admin can retry.
+      // v2.4.22 (Bug A): on timeout the context already checked the list;
+      // absent means it really did not send. err.message is the timeout
+      // text in that case, so it shows as-is.
+      if (isSaveTimeoutError(err)) saveTimedOutRef.current = true;
       setSendError(err?.message || 'သတင်းလွှာ ပေးပို့ခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။');
     } finally {
       setIsSubmitting(false);
@@ -196,7 +213,7 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
               onClick={() => setConfirmDeleteId(null)}
               className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
             >
-              မလုပ်တော့ပါ
+              ပိတ်မည်
             </button>
             <button
               type="button"

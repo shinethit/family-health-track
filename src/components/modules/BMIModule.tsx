@@ -23,6 +23,14 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useToast } from '../../context/ToastContext';
+import {
+  SAVE_CONFIRM_TIMEOUT_MS,
+  SAVE_LATE_CONFIRM_MESSAGE,
+  SAVE_TIMEOUT_MESSAGE,
+  SAVE_UNCONFIRMED_MESSAGE,
+  isSaveTimeoutError,
+  withSaveTimeout,
+} from '../../lib/saveConfirmation';
 import { BMIWeightChart } from '../charts/HealthCharts';
 import {
   calculateAge,
@@ -147,6 +155,10 @@ export const BMIModule: React.FC = () => {
   const [recordDate, setRecordDate] = useState<string>(() => localDateStr(new Date()));
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // v2.4.22 (Bug A): set when a save times out — the next submit is a
+  // retry, and the context must check the list first so it never writes a
+  // second copy of the same record.
+  const saveTimedOutRef = useRef(false);
 
   // Profile Edit states (for Date of Birth & Age)
   const [editDob, setEditDob] = useState<string>(() => profile?.dateOfBirth || '');
@@ -381,6 +393,10 @@ export const BMIModule: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
+    // context checks the list first and never writes a second copy.
+    const isRetry = saveTimedOutRef.current;
+    saveTimedOutRef.current = false;
     try {
       const calculated = calculateBMI(resolvedWeightKg, resolvedHeightCm, activeAgeYears ?? undefined);
       // No fabricated fallback: if BMI cannot be computed from the entered
@@ -410,7 +426,7 @@ export const BMIModule: React.FC = () => {
         showToast('BMI မှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ', 'success');
         return;
       }
-      await addBMIRecord({
+      const saveResult = await addBMIRecord({
         userId: selectedPatient ? selectedPatient.id : (profile?.id || 'guest-user'),
         // v2.4.14: file the record under the family member's own name when
         // one is selected (the context stamps userId from the target, but
@@ -424,7 +440,7 @@ export const BMIModule: React.FC = () => {
         category: calculated.category,
         date: recordDate,
         notes: notes.trim() || undefined,
-      });
+      }, { isRetry });
 
       // Also update the profile with latest height & weight — but ONLY when
       // the record is for the signed-in user themself. When a family member
@@ -437,17 +453,21 @@ export const BMIModule: React.FC = () => {
       // is saved, only the profile update failed, and that is said plainly.
       if (!selectedPatient && !selectedFamilyMember) {
         try {
-          await updateProfile({
+          // v2.4.22 (Bug A): the profile sync is a second write inside
+          // the record save — bound it too, so a stalled sync cannot hang
+          // the button after the record itself saved. Its own catch below
+          // already says the record is saved and only the profile failed.
+          await withSaveTimeout(updateProfile({
             heightCm: resolvedHeightCm,
             weightKg: resolvedWeightKg,
             waistCm: waistInput ? Number(waistInput) : undefined,
             bmi: calculated?.bmi,
-          });
+          }));
         } catch (profileErr) {
           console.warn('BMI record saved but profile sync failed:', profileErr);
           setIsOpenAdd(false);
           setNotes('');
-          showToast('BMI မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+          showToast(saveResult.confirmedLate ? SAVE_LATE_CONFIRM_MESSAGE : 'BMI မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
           showToast('ပရိုဖိုင်းထဲ အရပ်/ကိုယ်အလေးချိန် မွမ်းမံခြင်း မအောင်မြင်ပါ — BMI မှတ်တမ်းကိုတော့ သိမ်းဆည်းပြီးပါပြီ', 'error');
           return;
         }
@@ -455,13 +475,22 @@ export const BMIModule: React.FC = () => {
 
       setIsOpenAdd(false);
       setNotes('');
-      showToast('BMI မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+      showToast(saveResult.confirmedLate ? SAVE_LATE_CONFIRM_MESSAGE : 'BMI မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
     } catch (err) {
       // Save failed: keep the form open with all values intact so the user
       // can retry (v2.4.11 F3 — saves used to fail silently). In edit mode
       // the context already shows its own failure toast, so no second one.
       console.warn('Error saving BMI record:', err);
-      if (!editingId) {
+      // v2.4.22 (Bug A): on timeout the context already checked the list —
+      // absent means it really did not save (as far as the app can see),
+      // so the values stay and the user retries. In edit mode the context
+      // already toasted, so no second one here.
+      if (isSaveTimeoutError(err)) {
+        saveTimedOutRef.current = true;
+        if (!editingId) {
+          showToast(SAVE_TIMEOUT_MESSAGE, 'error');
+        }
+      } else if (!editingId) {
         showToast('BMI မှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
       }
     } finally {
@@ -473,13 +502,25 @@ export const BMIModule: React.FC = () => {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const calculated = calculateAge(editDob);
-    await updateProfile({
-      dateOfBirth: editDob,
-      age: calculated ? calculated.years : undefined,
-      gender: editGender,
-      bloodType: editBloodType,
-    });
-    setIsOpenEditProfile(false);
+    try {
+      // v2.4.22 (Bug A): a stalled profile write must not hang this modal
+      // forever. The merge is idempotent, so a retry is safe; on timeout
+      // the outcome cannot be confirmed, so say so honestly.
+      await withSaveTimeout(
+        updateProfile({
+          dateOfBirth: editDob,
+          age: calculated ? calculated.years : undefined,
+          gender: editGender,
+          bloodType: editBloodType,
+        }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
+      setIsOpenEditProfile(false);
+    } catch (err) {
+      console.warn('Error saving profile from BMI module:', err);
+      showToast(isSaveTimeoutError(err) ? SAVE_UNCONFIRMED_MESSAGE : 'ပရိုဖိုင်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+    }
   };
 
   // While the first Firestore snapshot is still loading, show a loading
@@ -1281,7 +1322,7 @@ export const BMIModule: React.FC = () => {
                   onClick={closeForm}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
                 >
-                  မလုပ်တော့ပါ
+                  ပိတ်မည်
                 </button>
                 <button
                   type="submit"
@@ -1391,7 +1432,7 @@ export const BMIModule: React.FC = () => {
                   onClick={() => setIsOpenEditProfile(false)}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
                 >
-                  မလုပ်တော့ပါ
+                  ပိတ်မည်
                 </button>
                 <button
                   type="submit"

@@ -4,6 +4,11 @@ import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../common/Modal';
 import { UserProfile } from '../../types/health';
 import { ftInToCm, cmToFtIn, lbToKg, kgToLb } from '../../lib/medicalCalculations';
+import {
+  SAVE_CONFIRM_TIMEOUT_MS,
+  SAVE_UNCONFIRMED_MESSAGE,
+  withSaveTimeout,
+} from '../../lib/saveConfirmation';
 
 interface ProfileSetupModalProps {
   isOpen: boolean;
@@ -228,7 +233,15 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
         await clearUsername();
       }
       try {
-        await updateProfile({ ...data, ...prefsToSave });
+        // v2.4.22 (Bug A): a stalled profile write must not hang this
+        // modal forever. The merge is idempotent, so a retry is safe;
+        // on timeout the outcome cannot be confirmed, so say so honestly
+        // (the outer catch shows err.message inline).
+        await withSaveTimeout(
+          updateProfile({ ...data, ...prefsToSave }),
+          SAVE_CONFIRM_TIMEOUT_MS,
+          SAVE_UNCONFIRMED_MESSAGE,
+        );
       } catch (e) {
         // v2.4.16 (A-M5): the profile save failed AFTER the username was
         // reserved — roll the reservation back so the two never diverge.

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Syringe, 
   CheckCircle2, 
@@ -22,6 +22,11 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useToast } from '../../context/ToastContext';
+import {
+  SAVE_LATE_CONFIRM_MESSAGE,
+  SAVE_TIMEOUT_MESSAGE,
+  isSaveTimeoutError,
+} from '../../lib/saveConfirmation';
 import { VaccinationRecord } from '../../types/health';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 import { Modal } from '../common/Modal';
@@ -146,6 +151,10 @@ export const VaccinePassportModule: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // v2.4.22 (Bug A): set when a save times out — the next submit is a
+  // retry, and the context must check the list first so it never writes a
+  // second copy of the same record.
+  const saveTimedOutRef = useRef(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   // New / Edit Record Form State
@@ -249,6 +258,10 @@ export const VaccinePassportModule: React.FC = () => {
     if (!newVaccineName.trim()) return;
 
     setIsSubmitting(true);
+    // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
+    // context checks the list first and never writes a second copy.
+    const isRetry = saveTimedOutRef.current;
+    saveTimedOutRef.current = false;
     setStatusMessage(null);
 
     try {
@@ -277,7 +290,7 @@ export const VaccinePassportModule: React.FC = () => {
         setTimeout(() => setStatusMessage(null), 3000);
         return;
       }
-      await addVaccineRecord({
+      const saveResult = await addVaccineRecord({
         userId: currentPatient?.id || '',
         patientName: currentPersonName,
         vaccineName: newVaccineName.trim(),
@@ -294,20 +307,29 @@ export const VaccinePassportModule: React.FC = () => {
         status: newStatus,
         category: newCategory,
         notes: newNotes.trim() || undefined,
-      });
+      }, { isRetry });
 
       setShowAddModal(false);
       setActiveView('records');
       setStatusMessage('ကာကွယ်ဆေး မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ');
-      showToast('ကာကွယ်ဆေး မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+      showToast(saveResult.confirmedLate ? SAVE_LATE_CONFIRM_MESSAGE : 'ကာကွယ်ဆေး မှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
       setTimeout(() => setStatusMessage(null), 3000);
     } catch (err: any) {
       console.error('Failed to save vaccine record:', err);
-      setStatusMessage('ကာကွယ်ဆေး သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်');
-      // In edit mode the context already shows its own failure toast, so
-      // no second one; the form stays open with its values for a retry.
-      if (!editingId) {
-        showToast('ကာကွယ်ဆေး သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်', 'error');
+      // v2.4.22 (Bug A): on timeout the context already checked the list;
+      // absent means it really did not save, so the values stay and the
+      // user retries. In edit mode the context already toasted.
+      if (isSaveTimeoutError(err)) {
+        saveTimedOutRef.current = true;
+        setStatusMessage(SAVE_TIMEOUT_MESSAGE);
+        if (!editingId) {
+          showToast(SAVE_TIMEOUT_MESSAGE, 'error');
+        }
+      } else {
+        setStatusMessage('ကာကွယ်ဆေး သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်');
+        if (!editingId) {
+          showToast('ကာကွယ်ဆေး သိမ်းဆည်းရာတွင် အမှားဖြစ်ပေါ်ခဲ့ပါသည်', 'error');
+        }
       }
     } finally {
       setIsSubmitting(false);
@@ -996,7 +1018,7 @@ export const VaccinePassportModule: React.FC = () => {
                 onClick={closeModal}
                 className="px-4 py-2.5 border border-slate-300 rounded-xl font-semibold hover:bg-slate-100 cursor-pointer"
               >
-                မလုပ်တော့ပါ
+                ပိတ်မည်
               </button>
               <button
                 type="submit"

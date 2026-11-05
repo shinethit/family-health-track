@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   MessageSquareHeart, 
   Send, 
@@ -20,6 +20,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useHealthData } from '../../context/HealthDataContext';
 import { DoctorQuestion } from '../../types/health';
 import { Modal } from '../common/Modal';
+import { useToast } from '../../context/ToastContext';
+import {
+  SAVE_TIMEOUT_MESSAGE,
+  isSaveTimeoutError,
+} from '../../lib/saveConfirmation';
 
 // Hardcoded Myanmar month names — never toLocaleDateString('my-MM'): the
 // user's phone may lack the 'my-MM' locale and fall back to English (D-M4).
@@ -94,6 +99,11 @@ export const DoctorQnAModule: React.FC = () => {
   const [urgency, setUrgency] = useState<DoctorQuestion['urgency']>('routine');
   const [includeLatestVitals, setIncludeLatestVitals] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const { showToast } = useToast();
+  // v2.4.22 (Bug A): set when a send times out — the next send is a retry
+  // and the context checks the list first so the same question is never
+  // sent twice.
+  const saveTimedOutRef = useRef(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Admin Answer Modal/State
@@ -120,8 +130,12 @@ export const DoctorQnAModule: React.FC = () => {
     if (!title.trim() || !questionDetails.trim()) return;
 
     setSubmitting(true);
+    // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
+    // context checks the list first and never sends a second copy.
+    const isRetry = saveTimedOutRef.current;
+    saveTimedOutRef.current = false;
     try {
-      await addDoctorQuestion({
+      const saveResult = await addDoctorQuestion({
         userId: profile?.id || 'current-user',
         patientName: profile?.displayName || 'အသုံးပြုသူ',
         patientEmail: profile?.email || '',
@@ -133,17 +147,26 @@ export const DoctorQnAModule: React.FC = () => {
         recentBP: includeLatestVitals && latestBP ? `${latestBP.systolic}/${latestBP.diastolic} mmHg` : undefined,
         recentSugar: includeLatestVitals && latestSugar ? `${latestSugar.glucoseValue} mg/dL (${latestSugar.timing})` : undefined,
         currentMedications: includeLatestVitals && activeMeds ? activeMeds : undefined,
-      });
+      }, { isRetry });
 
       setTitle('');
       setQuestionDetails('');
       setDuration('');
       setUrgency('routine');
-      setSuccessMessage('မေးခွန်းကို ဆရာဝန်ထံ အောင်မြင်စွာ ပေးပို့ပြီးပါပြီ။ ဆရာဝန်မှ မကြာမီ ပြန်လည်ဖြေကြားပေးပါမည်။');
+      setSuccessMessage(saveResult.confirmedLate ? 'မေးခွန်းကို ဆရာဝန်ထံ အောင်မြင်စွာ ပေးပို့ပြီးပါပြီ — အင်တာနက် နှေးနေလို့ အတည်ပြုချက် နောက်ကျသွားပါတယ်။ ဆရာဝန်မှ မကြာမီ ပြန်လည်ဖြေကြားပေးပါမည်။' : 'မေးခွန်းကို ဆရာဝန်ထံ အောင်မြင်စွာ ပေးပို့ပြီးပါပြီ။ ဆရာဝန်မှ မကြာမီ ပြန်လည်ဖြေကြားပေးပါမည်။');
       setActiveTab('my_questions');
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       console.error(err);
+      // v2.4.22 (Bug A): the ask used to fail silently — and on timeout
+      // the context already checked the list; absent means it really did
+      // not send, so the text stays and the user retries.
+      if (isSaveTimeoutError(err)) {
+        saveTimedOutRef.current = true;
+        showToast(SAVE_TIMEOUT_MESSAGE, 'error');
+      } else {
+        showToast('မေးခွန်း ပေးပို့ခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -156,17 +179,27 @@ export const DoctorQnAModule: React.FC = () => {
       .map(r => r.trim())
       .filter(Boolean);
 
-    await answerDoctorQuestion(qId, {
-      // Attribute the answer to the admin who actually wrote it — never
-      // the patient's name, and never an invented doctor name. When the
-      // signed-in admin has no display name, fall back to the honest
-      // role label 'Admin', not a personal name.
-      answeredBy: profile?.displayName?.trim() || 'Admin',
-      answerText: answerText.trim(),
-      recommendations: recs.length > 0 ? recs : ['ဆရာဝန် ညွှန်ကြားချက်အတိုင်း ဆေးကို ဆက်လက်သောက်သုံးပါ'],
-      suggestedAction: suggestedAction.trim() || undefined,
-      answeredAt: new Date().toISOString(),
-    });
+    // v2.4.22 (Bug A): the answer used to have no error handling at
+    // all — a hung or failed answer was silent and the form looked stuck.
+    // The context already toasts on failure (timeout -> the "could not
+    // confirm" message), so this only stops the rejection going unhandled
+    // and keeps the answer text for a retry.
+    try {
+      await answerDoctorQuestion(qId, {
+        // Attribute the answer to the admin who actually wrote it — never
+        // the patient's name, and never an invented doctor name. When the
+        // signed-in admin has no display name, fall back to the honest
+        // role label 'Admin', not a personal name.
+        answeredBy: profile?.displayName?.trim() || 'Admin',
+        answerText: answerText.trim(),
+        recommendations: recs.length > 0 ? recs : ['ဆရာဝန် ညွှန်ကြားချက်အတိုင်း ဆေးကို ဆက်လက်သောက်သုံးပါ'],
+        suggestedAction: suggestedAction.trim() || undefined,
+        answeredAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Failed to send answer:', err);
+      return;
+    }
 
     setAnsweringQuestionId(null);
     setAnswerText('');
@@ -730,7 +763,7 @@ export const DoctorQnAModule: React.FC = () => {
               onClick={() => setDeleteTarget(null)}
               className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold cursor-pointer"
             >
-              မလုပ်တော့ပါ
+              ပိတ်မည်
             </button>
             <button
               type="button"
@@ -764,7 +797,7 @@ export const DoctorQnAModule: React.FC = () => {
               onClick={() => setCloseTarget(null)}
               className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold cursor-pointer"
             >
-              မလုပ်တော့ပါ
+              ပိတ်မည်
             </button>
             <button
               type="button"

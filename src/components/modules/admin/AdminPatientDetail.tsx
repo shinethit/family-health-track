@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   X, 
   Edit3, 
@@ -46,6 +46,12 @@ import {
   evaluateCustomLabValue,
   parseDateToMs 
 } from '../../../lib/medicalCalculations';
+import {
+  SAVE_LATE_CONFIRM_MESSAGE,
+  SaveResult,
+  isSameDoctorAdvice,
+  isSaveTimeoutError,
+} from '../../../lib/saveConfirmation';
 
 // --- 30-day medication adherence helpers (v2.4.10 6.3) ---
 // Denominator = EXPECTED doses, not log entries that happen to exist: for
@@ -195,6 +201,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   const [dietAdvice, setDietAdvice] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [adviceSuccess, setAdviceSuccess] = useState(false);
+  const [adviceError, setAdviceError] = useState<string | null>(null);
 
   // Inline Q&A answer form (v2.4.11, audit 5.2): one pending question open
   // at a time; the answer goes through onAnswerQuestion → the context's
@@ -217,6 +224,12 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   const [openRecordForm, setOpenRecordForm] = useState<RecordFormKind | null>(null);
   const [recordMsg, setRecordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [recordSaving, setRecordSaving] = useState(false);
+  // v2.4.22 (Bug A): per-record-kind retry flags for submitRecord, plus
+  // the advice form's own flag. Set when a save times out; the next
+  // submit of that kind checks the list first and never writes a second
+  // copy of the same record.
+  const saveTimedOutRef = useRef<Record<string, boolean>>({});
+  const adviceTimedOutRef = useRef(false);
   const [bpSys, setBpSys] = useState('');
   const [bpDia, setBpDia] = useState('');
   const [bpPulse, setBpPulse] = useState('');
@@ -644,12 +657,42 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
     e.preventDefault();
     if (!newAdvice.trim()) return;
     setIsSending(true);
+    setAdviceError(null);
+    // v2.4.22 (Bug A): retry after a timeout? If this advice is already
+    // in the list, the first attempt landed and only its ack was lost —
+    // show success instead of sending a second copy. (The check lives
+    // here: the send crosses the onSendAdvice prop into the portal.)
+    if (adviceTimedOutRef.current) {
+      const alreadySent = doctorAdvices.some((a) =>
+        isSameDoctorAdvice(a, {
+          userId: patient.id,
+          advice: newAdvice.trim(),
+          date: new Date().toISOString().split('T')[0],
+        }),
+      );
+      if (alreadySent) {
+        setIsSending(false);
+        setNewAdvice('');
+        setDietAdvice('');
+        setAdviceSuccess(true);
+        setTimeout(() => setAdviceSuccess(false), 3000);
+        return;
+      }
+    }
+    adviceTimedOutRef.current = false;
     try {
       await onSendAdvice(newAdvice.trim(), dietAdvice.trim());
       setNewAdvice('');
       setDietAdvice('');
       setAdviceSuccess(true);
       setTimeout(() => setAdviceSuccess(false), 3000);
+    } catch (err: any) {
+      // v2.4.22 (Bug A): the send used to have no error handling at all —
+      // a hung send left the button spinning with no explanation. The
+      // context already checked the list on timeout; err.message carries
+      // the right text.
+      if (isSaveTimeoutError(err)) adviceTimedOutRef.current = true;
+      setAdviceError(err?.message || 'အကြံပြုချက် ပေးပို့ခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။');
     } finally {
       setIsSending(false);
     }
@@ -696,10 +739,15 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   const submitRecord = async (kind: RecordFormKind) => {
     setRecordSaving(true);
     setRecordMsg(null);
+    // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
+    // context checks the list first and never writes a second copy.
+    const isRetry = saveTimedOutRef.current[kind] ?? false;
+    saveTimedOutRef.current[kind] = false;
     try {
       // Edit mode: the open form is editing an existing record. On success
       // the form is blanked back to add mode and stays open; on failure the
       // error shows and the form keeps its values.
+      let saveResult: SaveResult | null = null;
       const isEditing = editingRecord?.kind === kind;
       if (kind === 'bp') {
         const sys = Number(bpSys);
@@ -722,7 +770,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             category: calculateBPCategory(sys, dia).category,
           });
         } else {
-          await addBPRecord({
+          saveResult = await addBPRecord({
             userId: patient.id,
             userName: cleanName,
             systolic: sys,
@@ -734,7 +782,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             dietNotes: diet,
             foodIntake: diet,
             dietRecord: diet,
-          });
+          }, { isRetry });
         }
       } else if (kind === 'sugar') {
         const v = Number(gluValue);
@@ -758,11 +806,11 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             status: calculateGlucoseStatus(v, gluType as any).status,
           });
         } else {
-          await addGlucoseRecord({
+          saveResult = await addGlucoseRecord({
             userId: patient.id,
             userName: cleanName,
             ...payload,
-          });
+          }, { isRetry });
         }
       } else if (kind === 'lab') {
         if (!labName.trim()) {
@@ -787,7 +835,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             doctorReview: labDoctorReview.trim() || undefined,
           });
         } else {
-          await addLabRecord({
+          saveResult = await addLabRecord({
             userId: patient.id,
             userName: cleanName,
             testDate: labDate,
@@ -795,7 +843,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             tests,
             notes: labNotesValue,
             doctorReview: labDoctorReview.trim() || undefined,
-          });
+          }, { isRetry });
         }
       } else if (kind === 'med') {
         if (!medName.trim() || !medDosage.trim() || !medFrequency.trim() || !medFor.trim()) {
@@ -829,11 +877,11 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         } else {
           // v2.4.16 (C-L6): the status picker applies in ADD mode too — the
           // old code hardcoded 'active' here and ignored the picker.
-          await addMedication({
+          saveResult = await addMedication({
             userId: patient.id,
             ...payload,
             status: medStatus,
-          });
+          }, { isRetry });
         }
       } else if (kind === 'vaccine') {
         if (!vaxName.trim()) {
@@ -858,11 +906,11 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         if (isEditing) {
           await updateVaccineRecord(editingRecord!.id, payload);
         } else {
-          await addVaccineRecord({
+          saveResult = await addVaccineRecord({
             userId: patient.id,
             patientName: cleanName,
             ...payload,
-          });
+          }, { isRetry });
         }
       } else {
         // BMI — the admin had no form for this before (v2.4.13). BMI and
@@ -886,7 +934,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             category: calc.category,
           });
         } else {
-          await addBMIRecord({
+          saveResult = await addBMIRecord({
             userId: patient.id,
             userName: cleanName,
             heightCm: h,
@@ -894,7 +942,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             waistCm: bmiWaist ? Number(bmiWaist) : undefined,
             date: bmiDate,
             notes: bmiNotes.trim() || undefined,
-          });
+          }, { isRetry });
         }
       }
       resetRecordForm(kind);
@@ -903,11 +951,18 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         setEditingRecord(null);
         // The form stays open, blank, in add mode.
       } else {
-        setRecordMsg({ type: 'success', text: 'မှတ်တမ်း ထည့်သွင်းပြီးပါပြီ — အသုံးပြုသူဘက်က မြင်ရပါမည်။' });
+        setRecordMsg({ type: 'success', text: saveResult?.confirmedLate ? SAVE_LATE_CONFIRM_MESSAGE : 'မှတ်တမ်း ထည့်သွင်းပြီးပါပြီ — အသုံးပြုသူဘက်က မြင်ရပါမည်။' });
         setOpenRecordForm(null);
       }
       setTimeout(() => setRecordMsg(null), 4000);
     } catch (err: any) {
+      // v2.4.22 (Bug A): on timeout the context already checked the list.
+      // A timeout marks this kind as a retry, so the next save checks the
+      // list first and never writes a second copy. err.message already
+      // carries the right text (timeout / could-not-confirm).
+      if (isSaveTimeoutError(err)) {
+        saveTimedOutRef.current[kind] = true;
+      }
       setRecordMsg({
         type: 'error',
         text: err?.message || (editingRecord?.kind === kind ? 'မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ' : 'မှတ်တမ်း ထည့်သွင်းခြင်း မအောင်မြင်ပါ'),
@@ -1494,7 +1549,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
       </div>
 
       {/* Lab Tests & Medications */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 [&>*]:min-w-0">
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
             <FlaskConical className="w-4 h-4 text-sky-500" />
@@ -1955,6 +2010,12 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
             <span>အကြံပြုချက်အား အသုံးပြုသူထံ အောင်မြင်စွာ ပေးပို့ပြီးပါပြီ။</span>
           </div>
         )}
+        {adviceError && (
+          <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-bold text-rose-800 dark:text-rose-200 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{adviceError}</span>
+          </div>
+        )}
 
         <form onSubmit={handleAdviceSubmit} className="space-y-3">
           <div>
@@ -2042,7 +2103,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               onClick={() => setDeleteTarget(null)}
               className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
             >
-              မလုပ်တော့ပါ
+              ပိတ်မည်
             </button>
             <button
               type="button"
@@ -2072,7 +2133,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
               onClick={() => setCloseTargetId(null)}
               className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
             >
-              မလုပ်တော့ပါ
+              ပိတ်မည်
             </button>
             <button
               type="button"

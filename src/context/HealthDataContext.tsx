@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   collection, 
   query, 
@@ -32,6 +32,27 @@ import {
   VaccinationRecord
 } from '../types/health';
 import { calculateBPCategory, calculateGlucoseStatus, calculateBMI } from '../lib/medicalCalculations';
+import {
+  SAVE_CONFIRM_TIMEOUT_MS,
+  SAVE_TIMEOUT_MESSAGE,
+  SAVE_UNCONFIRMED_MESSAGE,
+  SaveOptions,
+  SaveResult,
+  isSameBMIRecord,
+  isSameBPRecord,
+  isSameBroadcastTicker,
+  isSameDoctorAdvice,
+  isSameDoctorQuestion,
+  isSameFamilyMember,
+  isSameGlucoseRecord,
+  isSameLabRecord,
+  isSameMedication,
+  isSamePatient,
+  isSameVaccineRecord,
+  isSaveTimeoutError,
+  withSaveConfirmation,
+  withSaveTimeout,
+} from '../lib/saveConfirmation';
 
 // v2.4.12 (B): dedupe helper for post-write inserts. Firestore's local
 // listener delivers a newly written doc immediately, and the manual prepend
@@ -306,7 +327,7 @@ interface HealthDataContextType {
   revokeAdmin: (adminId: string) => Promise<void>;
 
   // Broadcast Marquee Ticker Actions
-  addBroadcastTicker: (message: string, type?: 'info' | 'warning' | 'urgent') => Promise<void>;
+  addBroadcastTicker: (message: string, type?: 'info' | 'warning' | 'urgent', opts?: SaveOptions) => Promise<SaveResult>;
   toggleBroadcastTicker: (id: string, isActive: boolean) => Promise<void>;
   deleteBroadcastTicker: (id: string) => Promise<void>;
   
@@ -318,7 +339,7 @@ interface HealthDataContextType {
   selectedFamilyMemberId: string | null;
   setSelectedFamilyMemberId: (id: string | null) => void;
   selectedFamilyMember: FamilyMember | null;
-  addFamilyMember: (member: Omit<FamilyMember, 'id'>) => Promise<void>;
+  addFamilyMember: (member: Omit<FamilyMember, 'id'>, opts?: SaveOptions) => Promise<SaveResult>;
   updateFamilyMember: (id: string, updates: Partial<FamilyMember>) => Promise<void>;
   deleteFamilyMember: (id: string) => Promise<void>;
 
@@ -336,35 +357,35 @@ interface HealthDataContextType {
   clearAllPatients: () => Promise<void>;
 
   // Actions
-  addBPRecord: (data: Omit<BloodPressureRecord, 'id' | 'category' | 'createdAt'>) => Promise<void>;
+  addBPRecord: (data: Omit<BloodPressureRecord, 'id' | 'category' | 'createdAt'>, opts?: SaveOptions) => Promise<SaveResult>;
   updateBPRecord: (id: string, updates: Partial<BloodPressureRecord>) => Promise<void>;
   deleteBPRecord: (id: string) => Promise<void>;
   
-  addGlucoseRecord: (data: Omit<BloodSugarRecord, 'id' | 'status' | 'createdAt'>) => Promise<void>;
+  addGlucoseRecord: (data: Omit<BloodSugarRecord, 'id' | 'status' | 'createdAt'>, opts?: SaveOptions) => Promise<SaveResult>;
   updateGlucoseRecord: (id: string, updates: Partial<BloodSugarRecord>) => Promise<void>;
   deleteGlucoseRecord: (id: string) => Promise<void>;
 
-  addLabRecord: (data: Omit<LabTestRecord, 'id' | 'createdAt'>) => Promise<void>;
+  addLabRecord: (data: Omit<LabTestRecord, 'id' | 'createdAt'>, opts?: SaveOptions) => Promise<SaveResult>;
   updateLabRecord: (id: string, updates: Partial<LabTestRecord>) => Promise<void>;
   deleteLabRecord: (id: string) => Promise<void>;
 
-  addMedication: (data: Omit<Medication, 'id' | 'createdAt'>) => Promise<void>;
+  addMedication: (data: Omit<Medication, 'id' | 'createdAt'>, opts?: SaveOptions) => Promise<SaveResult>;
   updateMedication: (id: string, updates: Partial<Medication>) => Promise<void>;
   updateMedicationStatus: (id: string, status: Medication['status']) => Promise<void>;
   deleteMedication: (id: string) => Promise<void>;
 
-  addVaccineRecord: (data: Omit<VaccinationRecord, 'id' | 'createdAt'>) => Promise<void>;
+  addVaccineRecord: (data: Omit<VaccinationRecord, 'id' | 'createdAt'>, opts?: SaveOptions) => Promise<SaveResult>;
   updateVaccineRecord: (id: string, updates: Partial<VaccinationRecord>) => Promise<void>;
   deleteVaccineRecord: (id: string) => Promise<void>;
 
-  addBMIRecord: (data: Omit<BMIRecord, 'id' | 'category' | 'bmi' | 'createdAt'> & { bmi?: number; category?: any }) => Promise<void>;
+  addBMIRecord: (data: Omit<BMIRecord, 'id' | 'category' | 'bmi' | 'createdAt'> & { bmi?: number; category?: any }, opts?: SaveOptions) => Promise<SaveResult>;
   updateBMIRecord: (id: string, updates: Partial<BMIRecord>) => Promise<void>;
   deleteBMIRecord: (id: string) => Promise<void>;
 
-  addDoctorAdvice: (patientId: string, adviceText: string, diet?: string) => Promise<void>;
+  addDoctorAdvice: (patientId: string, adviceText: string, diet?: string) => Promise<SaveResult>;
   deleteDoctorAdvice: (id: string) => Promise<void>;
 
-  addDoctorQuestion: (data: Omit<DoctorQuestion, 'id' | 'createdAt' | 'status'>) => Promise<void>;
+  addDoctorQuestion: (data: Omit<DoctorQuestion, 'id' | 'createdAt' | 'status'>, opts?: SaveOptions) => Promise<SaveResult>;
   answerDoctorQuestion: (questionId: string, answer: DoctorAnswer) => Promise<void>;
   deleteDoctorQuestion: (id: string) => Promise<void>;
   closeDoctorQuestion: (id: string) => Promise<void>;
@@ -402,6 +423,32 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [selectedFamilyMemberId, setSelectedFamilyMemberId] = useState<string | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string>(() => new Date().toLocaleTimeString('my-MM'));
+
+  // v2.4.22 (Bug A): mirrors of the listener-fed lists for the save
+  // presence checks. The check runs 15s after the save started, inside a
+  // closure that captured the state at call time — only refs stay fresh.
+  const allBPRef = useRef(allBP);
+  allBPRef.current = allBP;
+  const allGlucoseRef = useRef(allGlucose);
+  allGlucoseRef.current = allGlucose;
+  const allLabsRef = useRef(allLabs);
+  allLabsRef.current = allLabs;
+  const allMedsRef = useRef(allMeds);
+  allMedsRef.current = allMeds;
+  const allVaccinesRef = useRef(allVaccines);
+  allVaccinesRef.current = allVaccines;
+  const allBMIRef = useRef(allBMI);
+  allBMIRef.current = allBMI;
+  const allQuestionsRef = useRef(allQuestions);
+  allQuestionsRef.current = allQuestions;
+  const allAdvicesRef = useRef(allAdvices);
+  allAdvicesRef.current = allAdvices;
+  const broadcastTickersRef = useRef(broadcastTickers);
+  broadcastTickersRef.current = broadcastTickers;
+  const familyMembersRef = useRef(familyMembers);
+  familyMembersRef.current = familyMembers;
+  const patientsListRef = useRef(patientsList);
+  patientsListRef.current = patientsList;
 
   // True until the first Firestore snapshot arrives. A fallback timeout
   // clears it so it can never stick on true forever (e.g. a listener error).
@@ -1032,7 +1079,24 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     try {
-      await setDoc(doc(db, 'users', newId), sanitizeForFirestore(newPatient));
+      // v2.4.22 (Bug A): confirm by presence — if the write landed but
+      // its ack was lost, the listener-fed patientsList already has the
+      // patient (the retry pre-check lives in AdminAddPatientModal).
+      const outcome = await withSaveConfirmation(
+        setDoc(doc(db, 'users', newId), sanitizeForFirestore(newPatient)),
+        () => patientsListRef.current.some((p) => isSamePatient(p, newPatient)),
+      );
+      if (outcome.outcome === 'already-present') {
+        const existing = patientsListRef.current.find((p) => isSamePatient(p, newPatient));
+        if (existing) {
+          setPatientsList(prev => prependUnique(prev, existing));
+          setSelectedPatientId(existing.id);
+          showToast('အသုံးပြုသူမှတ်တမ်း အသစ်ကို အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ', 'success');
+          return existing;
+        }
+        // Fell out of the list again (edge) — the doc id is newId either
+        // way, so the normal path below is still correct.
+      }
       // Only show the new user (and open their detail view) once the save
       // has actually succeeded. Inserting optimistically before the write
       // left a phantom user in the list when the save failed (e.g. rules
@@ -1044,7 +1108,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       showToast('အသုံးပြုသူမှတ်တမ်း အသစ်ကို အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ', 'success');
     } catch (e) {
       console.warn('Error saving patient to firestore:', e);
-      showToast('အသုံးပြုသူမှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_TIMEOUT_MESSAGE : 'အသုံးပြုသူမှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
 
@@ -1068,13 +1132,17 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setPatientsList(prev => prev.map(p => (p.id === id ? { ...p, ...cleanUpdates } : p)));
 
     try {
-      await setDoc(doc(db, 'users', id), sanitizeForFirestore(cleanUpdates), { merge: true });
+      await withSaveTimeout(
+        setDoc(doc(db, 'users', id), sanitizeForFirestore(cleanUpdates), { merge: true }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
       showToast('အသုံးပြုသူမှတ်တမ်းကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ', 'success');
     } catch (e) {
       // v2.4.16 (C-M6): roll back the optimistic patient update on failure.
       setPatientsList(prevPatientsList);
       console.warn('Error updating patient in firestore:', e);
-      showToast('အသုံးပြုသူမှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'အသုံးပြုသူမှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1206,7 +1274,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     showToast('အသုံးပြုသူအားလုံးနှင့် ဆက်စပ်မှတ်တမ်းများကို ဖျက်သိမ်းပြီးပါပြီ', 'success');
   };
 
-  const addBPRecord = async (data: Omit<BloodPressureRecord, 'id' | 'category' | 'createdAt'>) => {
+  const addBPRecord = async (data: Omit<BloodPressureRecord, 'id' | 'category' | 'createdAt'>, opts?: SaveOptions): Promise<SaveResult> => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
     const evalRes = calculateBPCategory(data.systolic, data.diastolic);
@@ -1226,8 +1294,22 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(collection(db, 'vitals'), sanitizeForFirestore(newRecord));
-    setAllBP(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
+    // v2.4.22 (Bug A): on a retry after a timeout, never write a second
+    // copy — if the matching record is already in the listener-fed list,
+    // the first attempt landed and only its ack was lost.
+    if (opts?.isRetry && allBPRef.current.some((r) => isSameBPRecord(r, newRecord))) {
+      return { confirmedLate: true };
+    }
+    const outcome = await withSaveConfirmation(
+      addDoc(collection(db, 'vitals'), sanitizeForFirestore(newRecord)),
+      () => allBPRef.current.some((r) => isSameBPRecord(r, newRecord)),
+    );
+    if (outcome.outcome === 'already-present') {
+      // Landed but unacked; the listener already put it in the list.
+      return { confirmedLate: true };
+    }
+    setAllBP(prev => prependUnique(prev, { ...newRecord, id: outcome.value.id }));
+    return { confirmedLate: false };
   };
 
   // v2.4.13: edit an already-saved BP record (e.g. add the time to an old
@@ -1254,11 +1336,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       Object.keys(merged).forEach(k => {
         if ((merged as Record<string, any>)[k] === undefined) payload[k] = deleteField();
       });
-      await setDoc(doc(db, 'vitals', id), payload, { merge: true });
+      await withSaveTimeout(
+        setDoc(doc(db, 'vitals', id), payload, { merge: true }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
     } catch (e) {
       setAllBP(prev);
       console.warn('Error updating blood pressure record in firestore:', e);
-      showToast('သွေးပေါင်ချိန် မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'သွေးပေါင်ချိန် မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1276,7 +1362,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const addGlucoseRecord = async (data: Omit<BloodSugarRecord, 'id' | 'status' | 'createdAt'>) => {
+  const addGlucoseRecord = async (data: Omit<BloodSugarRecord, 'id' | 'status' | 'createdAt'>, opts?: SaveOptions): Promise<SaveResult> => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
     // No fabricated default: a missing/invalid glucose value is an error,
@@ -1309,8 +1395,18 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(collection(db, 'glucose'), sanitizeForFirestore(newRecord));
-    setAllGlucose(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
+    if (opts?.isRetry && allGlucoseRef.current.some((r) => isSameGlucoseRecord(r, newRecord))) {
+      return { confirmedLate: true };
+    }
+    const outcome = await withSaveConfirmation(
+      addDoc(collection(db, 'glucose'), sanitizeForFirestore(newRecord)),
+      () => allGlucoseRef.current.some((r) => isSameGlucoseRecord(r, newRecord)),
+    );
+    if (outcome.outcome === 'already-present') {
+      return { confirmedLate: true };
+    }
+    setAllGlucose(prev => prependUnique(prev, { ...newRecord, id: outcome.value.id }));
+    return { confirmedLate: false };
   };
 
   // v2.4.13: edit an already-saved glucose record. Same pattern as
@@ -1339,11 +1435,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       Object.keys(merged).forEach(k => {
         if ((merged as Record<string, any>)[k] === undefined) payload[k] = deleteField();
       });
-      await setDoc(doc(db, 'glucose', id), payload, { merge: true });
+      await withSaveTimeout(
+        setDoc(doc(db, 'glucose', id), payload, { merge: true }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
     } catch (e) {
       setAllGlucose(prev);
       console.warn('Error updating glucose record in firestore:', e);
-      showToast('သွေးချို မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'သွေးချို မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1361,7 +1461,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const addLabRecord = async (data: Omit<LabTestRecord, 'id' | 'createdAt'>) => {
+  const addLabRecord = async (data: Omit<LabTestRecord, 'id' | 'createdAt'>, opts?: SaveOptions): Promise<SaveResult> => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
     const target = resolveTarget();
@@ -1373,8 +1473,18 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(collection(db, 'labTests'), sanitizeForFirestore(newRecord));
-    setAllLabs(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
+    if (opts?.isRetry && allLabsRef.current.some((r) => isSameLabRecord(r, newRecord))) {
+      return { confirmedLate: true };
+    }
+    const outcome = await withSaveConfirmation(
+      addDoc(collection(db, 'labTests'), sanitizeForFirestore(newRecord)),
+      () => allLabsRef.current.some((r) => isSameLabRecord(r, newRecord)),
+    );
+    if (outcome.outcome === 'already-present') {
+      return { confirmedLate: true };
+    }
+    setAllLabs(prev => prependUnique(prev, { ...newRecord, id: outcome.value.id }));
+    return { confirmedLate: false };
   };
 
   // v2.4.13: edit an already-saved lab record (e.g. correct a test value
@@ -1389,11 +1499,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       Object.keys(updates).forEach(k => {
         if ((updates as Record<string, any>)[k] === undefined) payload[k] = deleteField();
       });
-      await setDoc(doc(db, 'labTests', id), payload, { merge: true });
+      await withSaveTimeout(
+        setDoc(doc(db, 'labTests', id), payload, { merge: true }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
     } catch (e) {
       setAllLabs(prev);
       console.warn('Error updating lab test record in firestore:', e);
-      showToast('ဓာတ်ခွဲခန်း မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'ဓာတ်ခွဲခန်း မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1411,7 +1525,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const addMedication = async (data: Omit<Medication, 'id' | 'createdAt'>) => {
+  const addMedication = async (data: Omit<Medication, 'id' | 'createdAt'>, opts?: SaveOptions): Promise<SaveResult> => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
     const target = resolveTarget();
@@ -1423,20 +1537,34 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(collection(db, 'medications'), sanitizeForFirestore(newMed));
-    setAllMeds(prev => prependUnique(prev, { ...newMed, id: docRef.id }));
+    if (opts?.isRetry && allMedsRef.current.some((r) => isSameMedication(r, newMed))) {
+      return { confirmedLate: true };
+    }
+    const outcome = await withSaveConfirmation(
+      addDoc(collection(db, 'medications'), sanitizeForFirestore(newMed)),
+      () => allMedsRef.current.some((r) => isSameMedication(r, newMed)),
+    );
+    if (outcome.outcome === 'already-present') {
+      return { confirmedLate: true };
+    }
+    setAllMeds(prev => prependUnique(prev, { ...newMed, id: outcome.value.id }));
+    return { confirmedLate: false };
   };
 
   const updateMedicationStatus = async (id: string, status: Medication['status']) => {
     const prev = allMeds;
     setAllMeds(prev => prev.map(m => m.id === id ? { ...m, status } : m));
     try {
-      await updateDoc(doc(db, 'medications', id), { status });
+      await withSaveTimeout(
+        updateDoc(doc(db, 'medications', id), { status }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
     } catch (e) {
       // v2.4.16 (B-H4): roll back the optimistic status change on failure.
       setAllMeds(prev);
       console.warn('Error updating medication in firestore:', e);
-      showToast('ဆေးအခြေအနေ ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'ဆေးအခြေအနေ ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1453,11 +1581,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       Object.keys(updates).forEach(k => {
         if ((updates as Record<string, any>)[k] === undefined) payload[k] = deleteField();
       });
-      await setDoc(doc(db, 'medications', id), payload, { merge: true });
+      await withSaveTimeout(
+        setDoc(doc(db, 'medications', id), payload, { merge: true }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
     } catch (e) {
       setAllMeds(prev);
       console.warn('Error updating medication in firestore:', e);
-      showToast('ဆေးမှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'ဆေးမှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1475,7 +1607,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const addVaccineRecord = async (data: Omit<VaccinationRecord, 'id' | 'createdAt'>) => {
+  const addVaccineRecord = async (data: Omit<VaccinationRecord, 'id' | 'createdAt'>, opts?: SaveOptions): Promise<SaveResult> => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
     const target = resolveTarget();
@@ -1487,8 +1619,18 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(collection(db, 'vaccines'), sanitizeForFirestore(newRecord));
-    setAllVaccines(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
+    if (opts?.isRetry && allVaccinesRef.current.some((r) => isSameVaccineRecord(r, newRecord))) {
+      return { confirmedLate: true };
+    }
+    const outcome = await withSaveConfirmation(
+      addDoc(collection(db, 'vaccines'), sanitizeForFirestore(newRecord)),
+      () => allVaccinesRef.current.some((r) => isSameVaccineRecord(r, newRecord)),
+    );
+    if (outcome.outcome === 'already-present') {
+      return { confirmedLate: true };
+    }
+    setAllVaccines(prev => prependUnique(prev, { ...newRecord, id: outcome.value.id }));
+    return { confirmedLate: false };
   };
 
   const updateVaccineRecord = async (id: string, updates: Partial<VaccinationRecord>) => {
@@ -1504,13 +1646,17 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       Object.keys(updates).forEach(k => {
         if ((updates as Record<string, any>)[k] === undefined) payload[k] = deleteField();
       });
-      await setDoc(doc(db, 'vaccines', id), payload, { merge: true });
+      await withSaveTimeout(
+        setDoc(doc(db, 'vaccines', id), payload, { merge: true }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
     } catch (e) {
       // v2.4.16 (B-H4): roll back the optimistic update — the old code left
       // the edited values on screen after a failed save.
       setAllVaccines(prev);
       console.warn('Error updating vaccine record in firestore:', e);
-      showToast('ကာကွယ်ဆေး မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'ကာကွယ်ဆေး မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1528,7 +1674,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const addDoctorAdvice = async (patientId: string, adviceText: string, diet?: string) => {
+  const addDoctorAdvice = async (patientId: string, adviceText: string, diet?: string): Promise<SaveResult> => {
     if (!isAdmin) {
       throw new Error('စီမံခန့်ခွဲသူ/ဆရာဝန်သာလျှင် အကြံပြုချက် ပေးပို့နိုင်ပါသည်');
     }
@@ -1550,8 +1696,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(collection(db, 'doctorAdvices'), sanitizeForFirestore(newAdvice));
-    setAllAdvices(prev => prependUnique(prev, { ...newAdvice, id: docRef.id }));
+    const outcome = await withSaveConfirmation(
+      addDoc(collection(db, 'doctorAdvices'), sanitizeForFirestore(newAdvice)),
+      () => allAdvicesRef.current.some((a) => isSameDoctorAdvice(a, newAdvice)),
+    );
+    if (outcome.outcome === 'already-present') {
+      return { confirmedLate: true };
+    }
+    setAllAdvices(prev => prependUnique(prev, { ...newAdvice, id: outcome.value.id }));
+    return { confirmedLate: false };
   };
 
   const deleteDoctorAdvice = async (id: string) => {
@@ -1570,7 +1723,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const addBMIRecord = async (data: Omit<BMIRecord, 'id' | 'category' | 'bmi' | 'createdAt'> & { bmi?: number; category?: any }) => {
+  const addBMIRecord = async (data: Omit<BMIRecord, 'id' | 'category' | 'bmi' | 'createdAt'> & { bmi?: number; category?: any }, opts?: SaveOptions): Promise<SaveResult> => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
     const bmiEval = calculateBMI(data.weightKg, data.heightCm);
@@ -1598,8 +1751,18 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(collection(db, 'bmi'), sanitizeForFirestore(newRecord));
-    setAllBMI(prev => prependUnique(prev, { ...newRecord, id: docRef.id }));
+    if (opts?.isRetry && allBMIRef.current.some((r) => isSameBMIRecord(r, newRecord))) {
+      return { confirmedLate: true };
+    }
+    const outcome = await withSaveConfirmation(
+      addDoc(collection(db, 'bmi'), sanitizeForFirestore(newRecord)),
+      () => allBMIRef.current.some((r) => isSameBMIRecord(r, newRecord)),
+    );
+    if (outcome.outcome === 'already-present') {
+      return { confirmedLate: true };
+    }
+    setAllBMI(prev => prependUnique(prev, { ...newRecord, id: outcome.value.id }));
+    return { confirmedLate: false };
   };
 
   // v2.4.13: edit an already-saved BMI record (e.g. correct the weight or
@@ -1633,11 +1796,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       Object.keys(merged).forEach(k => {
         if ((merged as Record<string, any>)[k] === undefined) payload[k] = deleteField();
       });
-      await setDoc(doc(db, 'bmi', id), payload, { merge: true });
+      await withSaveTimeout(
+        setDoc(doc(db, 'bmi', id), payload, { merge: true }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
     } catch (e) {
       setAllBMI(prev);
       console.warn('Error updating BMI record in firestore:', e);
-      showToast('BMI မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'BMI မှတ်တမ်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1656,7 +1823,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // Doctor Q&A Actions
-  const addDoctorQuestion = async (data: Omit<DoctorQuestion, 'id' | 'createdAt' | 'status'>) => {
+  const addDoctorQuestion = async (data: Omit<DoctorQuestion, 'id' | 'createdAt' | 'status'>, opts?: SaveOptions): Promise<SaveResult> => {
     if (!currentUser) throw new Error('အကောင့်ဝင်ထားရန် လိုအပ်ပါသည်');
 
     const target = resolveTarget();
@@ -1669,8 +1836,18 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    const docRef = await addDoc(collection(db, 'doctorQuestions'), sanitizeForFirestore(newQuestion));
-    setAllQuestions(prev => prependUnique(prev, { ...newQuestion, id: docRef.id }));
+    if (opts?.isRetry && allQuestionsRef.current.some((q) => isSameDoctorQuestion(q, newQuestion))) {
+      return { confirmedLate: true };
+    }
+    const outcome = await withSaveConfirmation(
+      addDoc(collection(db, 'doctorQuestions'), sanitizeForFirestore(newQuestion)),
+      () => allQuestionsRef.current.some((q) => isSameDoctorQuestion(q, newQuestion)),
+    );
+    if (outcome.outcome === 'already-present') {
+      return { confirmedLate: true };
+    }
+    setAllQuestions(prev => prependUnique(prev, { ...newQuestion, id: outcome.value.id }));
+    return { confirmedLate: false };
   };
 
   const answerDoctorQuestion = async (questionId: string, answer: DoctorAnswer) => {
@@ -1692,16 +1869,20 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }));
 
     try {
-      await updateDoc(doc(db, 'doctorQuestions', questionId), sanitizeForFirestore({
-        status: 'answered',
-        doctorAnswer: answer,
-        updatedAt: new Date().toISOString(),
-      }));
+      await withSaveTimeout(
+        updateDoc(doc(db, 'doctorQuestions', questionId), sanitizeForFirestore({
+          status: 'answered',
+          doctorAnswer: answer,
+          updatedAt: new Date().toISOString(),
+        })),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
     } catch (e) {
       // v2.4.16 (C-M6): roll back the optimistic answer on failure.
       setAllQuestions(prevQuestions);
       console.warn('Error updating doctor question in firestore:', e);
-      showToast('မေးခွန်း အဖြေပေးပို့ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'မေးခွန်း အဖြေပေးပို့ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
 
@@ -1720,7 +1901,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const answerExcerpt = answer.answerText.length > 140
           ? `${answer.answerText.slice(0, 140)}…`
           : answer.answerText;
-        await addDoc(collection(db, 'notifications'), sanitizeForFirestore({
+        await withSaveTimeout(addDoc(collection(db, 'notifications'), sanitizeForFirestore({
           userId: q.userId,
           recipientEmail: q.patientEmail,
           type: 'qa_answered',
@@ -1731,7 +1912,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           read: false,
           priority: 'normal',
           data: { questionId, userId: q.userId },
-        }));
+        })));
       }
     } catch (e) {
       console.warn('Error sending answer notification:', e);
@@ -1745,11 +1926,15 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const prev = allQuestions;
     setAllQuestions(prev => prev.map(q => q.id === questionId ? { ...q, status: 'closed' } : q));
     try {
-      await updateDoc(doc(db, 'doctorQuestions', questionId), { status: 'closed' });
+      await withSaveTimeout(
+        updateDoc(doc(db, 'doctorQuestions', questionId), { status: 'closed' }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
     } catch (e) {
       setAllQuestions(prev);
       console.warn('Error closing doctor question in firestore:', e);
-      showToast('မေးခွန်း ပိတ်သိမ်းခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'မေးခွန်း ပိတ်သိမ်းခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1770,7 +1955,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const addBroadcastTicker = async (message: string, type: 'info' | 'warning' | 'urgent' = 'info') => {
+  const addBroadcastTicker = async (message: string, type: 'info' | 'warning' | 'urgent' = 'info', opts?: SaveOptions): Promise<SaveResult> => {
     if (!isAdmin) throw new Error('စီမံခန့်ခွဲသူသာလျှင် ထည့်သွင်းနိုင်ပါသည်');
 
     const newTicker = {
@@ -1781,8 +1966,18 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdBy: profile?.displayName || 'Admin',
     };
 
-    const docRef = await addDoc(collection(db, 'broadcastTickers'), sanitizeForFirestore(newTicker));
-    setBroadcastTickers(prev => prependUnique(prev, { ...newTicker, id: docRef.id }));
+    if (opts?.isRetry && broadcastTickersRef.current.some((t) => isSameBroadcastTicker(t, newTicker))) {
+      return { confirmedLate: true };
+    }
+    const outcome = await withSaveConfirmation(
+      addDoc(collection(db, 'broadcastTickers'), sanitizeForFirestore(newTicker)),
+      () => broadcastTickersRef.current.some((t) => isSameBroadcastTicker(t, newTicker)),
+    );
+    if (outcome.outcome === 'already-present') {
+      return { confirmedLate: true };
+    }
+    setBroadcastTickers(prev => prependUnique(prev, { ...newTicker, id: outcome.value.id }));
+    return { confirmedLate: false };
   };
 
   const toggleBroadcastTicker = async (id: string, isActive: boolean) => {
@@ -1791,12 +1986,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const prev = broadcastTickers;
     setBroadcastTickers(prev => prev.map(t => t.id === id ? { ...t, isActive } : t));
     try {
-      await updateDoc(doc(db, 'broadcastTickers', id), { isActive });
+      await withSaveTimeout(
+        updateDoc(doc(db, 'broadcastTickers', id), { isActive }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
     } catch (e) {
       // v2.4.16 (C-M6): roll back the optimistic toggle on failure.
       setBroadcastTickers(prev);
       console.warn('Error updating broadcast ticker in firestore:', e);
-      showToast('သတိပေးစာတန်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'သတိပေးစာတန်း ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1816,8 +2015,8 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const addFamilyMember = async (member: Omit<FamilyMember, 'id'>) => {
-    if (!currentUser) return;
+  const addFamilyMember = async (member: Omit<FamilyMember, 'id'>, opts?: SaveOptions): Promise<SaveResult> => {
+    if (!currentUser) return { confirmedLate: false };
     // A new family member belongs to the OWNER — the admin's selected patient
     // when one is selected, otherwise the signed-in user. Never to the
     // currently selected family member: members do not own members.
@@ -1832,12 +2031,28 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       avatarColor: member.gender === 'female' ? 'bg-rose-600' : 'bg-emerald-600',
     };
 
-    const docRef = await addDoc(collection(db, 'familyMembers'), sanitizeForFirestore(newMember));
-    const created = { ...newMember, id: docRef.id };
+    if (opts?.isRetry) {
+      const existing = familyMembersRef.current.find((f) => isSameFamilyMember(f, newMember));
+      if (existing) {
+        setSelectedFamilyMemberId(existing.id);
+        return { confirmedLate: true };
+      }
+    }
+    const outcome = await withSaveConfirmation(
+      addDoc(collection(db, 'familyMembers'), sanitizeForFirestore(newMember)),
+      () => familyMembersRef.current.some((f) => isSameFamilyMember(f, newMember)),
+    );
+    if (outcome.outcome === 'already-present') {
+      const existing = familyMembersRef.current.find((f) => isSameFamilyMember(f, newMember));
+      if (existing) setSelectedFamilyMemberId(existing.id);
+      return { confirmedLate: true };
+    }
+    const created = { ...newMember, id: outcome.value.id };
     // v2.4.12 (B): the family-members listener may already have delivered
     // this doc — never append a second copy with the same id.
     setFamilyMembers(prev => prev.some(f => f.id === created.id) ? prev : [...prev, created]);
     setSelectedFamilyMemberId(created.id);
+    return { confirmedLate: false };
   };
 
   const deleteFamilyMember = async (id: string) => {
@@ -1873,12 +2088,16 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const prev = familyMembers;
     setFamilyMembers(prev => prev.map(f => (f.id === id ? { ...f, ...updates } : f)));
     try {
-      await setDoc(doc(db, 'familyMembers', id), sanitizeForFirestore(updates), { merge: true });
+      await withSaveTimeout(
+        setDoc(doc(db, 'familyMembers', id), sanitizeForFirestore(updates), { merge: true }),
+        SAVE_CONFIRM_TIMEOUT_MS,
+        SAVE_UNCONFIRMED_MESSAGE,
+      );
       showToast('မိသားစုဝင် အချက်အလက် ပြင်ဆင်ပြီးပါပြီ', 'success');
     } catch (e) {
       setFamilyMembers(prev);
       console.warn('Error updating family member in firestore:', e);
-      showToast('မိသားစုဝင် အချက်အလက် ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
+      showToast(isSaveTimeoutError(e) ? SAVE_UNCONFIRMED_MESSAGE : 'မိသားစုဝင် အချက်အလက် ပြင်ဆင်ခြင်း မအောင်မြင်ပါ', 'error');
       throw e;
     }
   };
@@ -1911,10 +2130,10 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const prevTakenAt = existingLog.takenAt;
       setAllMedLogs(prev => prev.map(l => l.id === existingLog.id ? { ...l, taken, takenAt: taken ? new Date().toISOString() : undefined } : l));
       try {
-        await updateDoc(doc(db, 'medicationLogs', existingLog.id), {
+        await withSaveTimeout(updateDoc(doc(db, 'medicationLogs', existingLog.id), {
           taken,
           takenAt: taken ? new Date().toISOString() : null,
-        });
+        }));
         return true;
       } catch (err) {
         console.warn('Error updating med log:', err);
@@ -1934,7 +2153,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         createdAt: new Date().toISOString(),
       };
       try {
-        const docRef = await addDoc(collection(db, 'medicationLogs'), sanitizeForFirestore(newLog));
+        const docRef = await withSaveTimeout(addDoc(collection(db, 'medicationLogs'), sanitizeForFirestore(newLog)));
         setAllMedLogs(prev => prependUnique(prev, { ...newLog, id: docRef.id }));
         return true;
       } catch (err) {

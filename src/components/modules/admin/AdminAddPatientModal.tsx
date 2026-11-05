@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { UserPlus, Heart, Sparkles, AlertCircle } from 'lucide-react';
 import { Modal } from '../../common/Modal';
 import { useHealthData } from '../../../context/HealthDataContext';
 import { ftInToCm, cmToFtIn, lbToKg, kgToLb } from '../../../lib/medicalCalculations';
+import {
+  SAVE_TIMEOUT_MESSAGE,
+  isSamePatient,
+  isSaveTimeoutError,
+} from '../../../lib/saveConfirmation';
 
 // v2.4.12 — height/weight unit options (kg/lb, cm/m/ft-in). Values are
 // converted to the canonical heightCm / weightKg before onSave, so the
@@ -53,6 +58,11 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
   const [bloodType, setBloodType] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // v2.4.22 (Bug A): set when a save times out — the next submit checks
+  // the list first so a landed-but-unacked first attempt is never added
+  // twice. (The check lives here, not in the context: the save crosses
+  // the onSave prop into the portal, which cannot carry the flag.)
+  const saveTimedOutRef = useRef(false);
 
   if (!isOpen) return null;
 
@@ -137,6 +147,27 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
     }
     setIsSubmitting(true);
     setSaveError(null);
+    // v2.4.22 (Bug A): retry after a timeout? If the patient is already
+    // in the list, the first attempt landed and only its ack was lost —
+    // close with success instead of writing a second copy.
+    if (saveTimedOutRef.current) {
+      const duplicate = patientsList.find((p) =>
+        isSamePatient(p, {
+          displayName: name.trim(),
+          email: trimmedEmail || undefined,
+          phone: phone.trim() || undefined,
+          age: age === '' ? undefined : Number(age),
+          dateOfBirth: dateOfBirth || undefined,
+        }),
+      );
+      if (duplicate) {
+        setIsSubmitting(false);
+        resetForm();
+        onClose();
+        return;
+      }
+    }
+    saveTimedOutRef.current = false;
     try {
       // Wait for the real save result: only close (and clear the form)
       // after onSave actually succeeds. On failure the modal stays open
@@ -161,7 +192,15 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
       // The save failed: do NOT close, do NOT clear the form. The error
       // toast is shown by the caller; this inline message makes the
       // failure unmissable inside the modal itself.
-      setSaveError('သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။');
+      // v2.4.22 (Bug A): on timeout the context already checked the list;
+      // absent means it really did not save — say so, and mark this as a
+      // retry next time so a landed-but-unacked attempt is not doubled.
+      if (isSaveTimeoutError(err)) {
+        saveTimedOutRef.current = true;
+        setSaveError(SAVE_TIMEOUT_MESSAGE);
+      } else {
+        setSaveError('သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -465,7 +504,7 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
           >
-            မလုပ်တော့ပါ
+            ပိတ်မည်
           </button>
           <button
             type="submit"

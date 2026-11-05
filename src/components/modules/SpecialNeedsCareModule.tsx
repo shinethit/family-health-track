@@ -394,7 +394,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
         </div>
 
         {/* Category Filters */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex flex-wrap items-center gap-1.5">
           {[
             { id: 'all', label: 'အားလုံး', icon: Sparkles },
             { id: 'visual', label: 'မျက်စိမမြင်/အမြင်အာရုံ', icon: EyeOff },

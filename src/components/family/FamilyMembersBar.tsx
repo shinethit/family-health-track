@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Users, UserPlus, Heart, Activity, Check, Trash2, X, Plus, Pencil } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import {
+  SAVE_LATE_CONFIRM_MESSAGE,
+  SAVE_TIMEOUT_MESSAGE,
+  isSaveTimeoutError,
+} from '../../lib/saveConfirmation';
 import { Modal } from '../common/Modal';
 import { FamilyMember } from '../../types/health';
 
@@ -24,6 +29,10 @@ export const FamilyMembersBar: React.FC = () => {
 
   const [isOpenAdd, setIsOpenAdd] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // v2.4.22 (Bug A): set when a save times out — the next submit is a
+  // retry and the context checks the list first so the same member is
+  // never added twice.
+  const saveTimedOutRef = useRef(false);
   // D-M1: the member being edited (null = adding a new one). The same
   // form is reused, prefilled from the member — previously the only way
   // to fix a wrong age / relationship / blood type was delete + re-add,
@@ -103,6 +112,10 @@ export const FamilyMembersBar: React.FC = () => {
     e.preventDefault();
     if (!name.trim() || age === '' || !gender) return;
     setIsSubmitting(true);
+    // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
+    // context checks the list first and never writes a second copy.
+    const isRetry = saveTimedOutRef.current;
+    saveTimedOutRef.current = false;
     try {
       if (editingMember) {
         await updateFamilyMember(editingMember.id, {
@@ -119,7 +132,7 @@ export const FamilyMembersBar: React.FC = () => {
         setEditingMember(null);
         setIsOpenAdd(false);
       } else {
-        await addFamilyMember({
+        const saveResult = await addFamilyMember({
           name: name.trim(),
           relationship: relationship.trim(),
           age,
@@ -127,19 +140,28 @@ export const FamilyMembersBar: React.FC = () => {
           bloodType: bloodType || undefined,
           chronicConditions: conditions,
           notes: notes.trim() || undefined,
-        });
-        showToast('မိသားစုဝင်အသစ် ထည့်သွင်းပြီးပါပြီ', 'success');
+        }, { isRetry });
+        showToast(saveResult.confirmedLate ? SAVE_LATE_CONFIRM_MESSAGE : 'မိသားစုဝင်အသစ် ထည့်သွင်းပြီးပါပြီ', 'success');
         resetAddForm();
         setIsOpenAdd(false);
       }
     } catch (err) {
       console.warn('Error saving family member:', err);
-      showToast(
-        editingMember
-          ? 'မိသားစုဝင် ပြင်ဆင်ခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။'
-          : 'မိသားစုဝင် ထည့်သွင်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။',
-        'error'
-      );
+      // v2.4.22 (Bug A): on timeout the context already checked the list;
+      // in edit mode it already toasted too, so no second toast there.
+      if (isSaveTimeoutError(err)) {
+        saveTimedOutRef.current = true;
+        if (!editingMember) {
+          showToast(SAVE_TIMEOUT_MESSAGE, 'error');
+        }
+      } else {
+        showToast(
+          editingMember
+            ? 'မိသားစုဝင် ပြင်ဆင်ခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။'
+            : 'မိသားစုဝင် ထည့်သွင်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။',
+          'error'
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -541,7 +563,7 @@ export const FamilyMembersBar: React.FC = () => {
                   onClick={closeForm}
                   className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400"
                 >
-                  မလုပ်တော့ပါ
+                  ပိတ်မည်
                 </button>
                 <button
                   type="submit"

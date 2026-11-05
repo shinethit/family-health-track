@@ -936,7 +936,7 @@ export const SpecialtyCareModule: React.FC = () => {
                   onClick={() => setShowAddDentalModal(false)}
                   className="flex-1 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-700"
                 >
-                  မလုပ်တော့ပါ
+                  ပိတ်မည်
                 </button>
                 <button
                   type="submit"
@@ -1037,7 +1037,7 @@ export const SpecialtyCareModule: React.FC = () => {
                   onClick={() => setShowAddEyeModal(false)}
                   className="flex-1 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-700"
                 >
-                  မလုပ်တော့ပါ
+                  ပိတ်မည်
                 </button>
                 <button
                   type="submit"

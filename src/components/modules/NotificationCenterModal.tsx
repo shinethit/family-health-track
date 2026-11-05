@@ -687,7 +687,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   onClick={closeReminderPanel}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
-                  မလုပ်တော့ပါ
+                  ပိတ်မည်
                 </button>
                 <button
                   type="submit"

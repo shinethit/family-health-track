@@ -1,9 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Modal } from '../common/Modal';
 import { Pill, Plus, Trash2, Clock, Sparkles, X, Check, Pencil } from 'lucide-react';
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import {
+  SAVE_LATE_CONFIRM_MESSAGE,
+  SAVE_TIMEOUT_MESSAGE,
+  isSaveTimeoutError,
+} from '../../lib/saveConfirmation';
 import { Medication } from '../../types/health';
 import { MedicalDisclaimer } from '../common/MedicalDisclaimer';
 
@@ -107,6 +112,10 @@ export const MedicationsModule: React.FC = () => {
   const [prescribingDoctor, setPrescribingDoctor] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // v2.4.22 (Bug A): set when a save times out — the next submit is a
+  // retry, and the context must check the list first so it never writes a
+  // second copy of the same record.
+  const saveTimedOutRef = useRef(false);
 
   // v2.4.13 edit: id of the medication being edited, null in add mode.
   // The same modal/form is reused, prefilled from the record.
@@ -318,6 +327,10 @@ export const MedicationsModule: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    // v2.4.22 (Bug A): retry after a timeout? Pass it through so the
+    // context checks the list first and never writes a second copy.
+    const isRetry = saveTimedOutRef.current;
+    saveTimedOutRef.current = false;
     const effectiveFrequency = selectedFreqOption === 'custom' 
       ? (customFrequency.trim() || 'မနက် (၁) ကြိမ်') 
       : selectedFreqOption;
@@ -355,7 +368,7 @@ export const MedicationsModule: React.FC = () => {
         showToast('ဆေးမှတ်တမ်း ပြင်ဆင်ပြီးပါပြီ', 'success');
         return;
       }
-      await addMedication({
+      const saveResult = await addMedication({
         userId: selectedPatient ? selectedPatient.id : (selectedFamilyMember ? selectedFamilyMember.id : profile.id),
         name: tradeName,
         genericName: finalChems.length > 0 ? finalChems.join(', ') : undefined,
@@ -370,7 +383,7 @@ export const MedicationsModule: React.FC = () => {
         status: 'active',
         prescribingDoctor,
         notes: combinedNotes,
-      });
+      }, { isRetry });
       setIsOpenAdd(false);
       // Clear ALL form fields after a successful save (v2.4.11 F14) — the
       // old code left dosage, duration, prescribedFor, startDate, doctor
@@ -391,13 +404,22 @@ export const MedicationsModule: React.FC = () => {
       setSelectedFreqOption('မနက် (၁) ကြိမ်');
       setCustomFrequency('');
       setFrequency('မနက် (၁) ကြိမ်');
-      showToast('ဆေးမှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
+      showToast(saveResult.confirmedLate ? SAVE_LATE_CONFIRM_MESSAGE : 'ဆေးမှတ်တမ်းကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ', 'success');
     } catch (err) {
       // Save failed: keep the form open with all values intact so the user
       // can retry (v2.4.11 F3 — saves used to fail silently). In edit mode
       // the context already shows its own failure toast, so no second one.
       console.warn('Error saving medication:', err);
-      if (!editingId) {
+      // v2.4.22 (Bug A): on timeout the context already checked the list —
+      // absent means it really did not save (as far as the app can see),
+      // so the values stay and the user retries. In edit mode the context
+      // already toasted, so no second one here.
+      if (isSaveTimeoutError(err)) {
+        saveTimedOutRef.current = true;
+        if (!editingId) {
+          showToast(SAVE_TIMEOUT_MESSAGE, 'error');
+        }
+      } else if (!editingId) {
         showToast('ဆေးမှတ်တမ်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ — အင်တာနက် ချိတ်ဆက်မှု စစ်ပြီး ပြန်ကြိုးစားပါ။', 'error');
       }
     } finally {
@@ -1029,7 +1051,7 @@ export const MedicationsModule: React.FC = () => {
                   onClick={closeForm}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
-                  မလုပ်တော့ပါ
+                  ပိတ်မည်
                 </button>
                 <button
                   type="submit"
