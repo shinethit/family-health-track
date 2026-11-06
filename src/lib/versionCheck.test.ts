@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   VERSION_UPDATE_PROMPT_SHOWN_KEY,
+  VERSION_UPDATE_RELOAD_ATTEMPT_KEY,
+  clearVersionUpdateReloadAttempted,
   extractHistoryChunkFile,
   extractServedHighlights,
   extractServedVersion,
   markVersionUpdatePromptShown,
+  markVersionUpdateReloadAttempted,
+  readReloadAttemptedHash,
   readShownVersionUpdateHash,
+  reloadForUpdate,
+  setServiceWorkerUpdater,
   shouldShowVersionUpdatePrompt,
 } from './versionCheck';
 import { VERSION_HISTORY_DATA } from '../components/modules/VersionHistoryModal';
@@ -67,6 +73,41 @@ describe('shouldShowVersionUpdatePrompt', () => {
   it('auto never shows without a served hash', () => {
     expect(
       shouldShowVersionUpdatePrompt({ isManual: false, servedHash: null, alreadyShownHash: null }),
+    ).toBe(false);
+  });
+
+  it('auto shows once more after a failed reload attempt for the same hash (v2.4.25)', () => {
+    // User tapped "ပြန်ဖွင့်မည်" for this deploy but the reload still
+    // served the old bundle — one more prompt is allowed.
+    expect(
+      shouldShowVersionUpdatePrompt({
+        isManual: false,
+        servedHash: 'abc',
+        alreadyShownHash: 'abc',
+        reloadAttemptedHash: 'abc',
+      }),
+    ).toBe(true);
+  });
+
+  it('auto still skips when the reload attempt was for a DIFFERENT hash', () => {
+    expect(
+      shouldShowVersionUpdatePrompt({
+        isManual: false,
+        servedHash: 'abc',
+        alreadyShownHash: 'abc',
+        reloadAttemptedHash: 'def',
+      }),
+    ).toBe(false);
+  });
+
+  it('auto still skips with no reload attempt recorded', () => {
+    expect(
+      shouldShowVersionUpdatePrompt({
+        isManual: false,
+        servedHash: 'abc',
+        alreadyShownHash: 'abc',
+        reloadAttemptedHash: null,
+      }),
     ).toBe(false);
   });
 });
@@ -249,5 +290,222 @@ describe('extractServedHighlights', () => {
     );
     expect(out).not.toBeNull();
     expect(out!.items).toEqual(['see [NEW] here', 'second']);
+  });
+
+  it('never pulls the NEXT entry’s items into a short entry (v2.4.25 regression)', () => {
+    // Real minified shape: entries are separated by `},{version:` — the
+    // earlier `,version:` boundary never matched, so a 3-item entry
+    // silently showed the next version's first bullet as its 4th.
+    const chunk =
+      'B=[{version:`v2.4.25`,type:`minor`,title:`T25`,highlights:[' +
+      '{title:`G`,icon:f,items:[`new one`,`new two`,`new three`]}]}' +
+      ',{version:`v2.4.24`,type:`minor`,title:`T24`,highlights:[' +
+      '{title:`G`,icon:f,items:[`old one`,`old two`,`old three`,`old four`]}]}]';
+    const out = extractServedHighlights(chunk, 'v2.4.25');
+    expect(out).not.toBeNull();
+    expect(out!.title).toBe('T25');
+    expect(out!.items).toEqual(['new one', 'new two', 'new three']);
+    expect(out!.items).not.toContain('old one');
+  });
+});
+
+// v2.4.25 — the reload-attempt marker: one more prompt after a failed
+// reload, never a repeat on every focus event.
+describe('version update reload-attempt storage', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearVersionUpdateReloadAttempted();
+  });
+
+  it('round-trips the attempted hash through localStorage and clears it', () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        store.set(k, v);
+      },
+      removeItem: (k: string) => {
+        store.delete(k);
+      },
+    });
+    expect(readReloadAttemptedHash()).toBeNull();
+    markVersionUpdateReloadAttempted('hash789');
+    expect(readReloadAttemptedHash()).toBe('hash789');
+    expect(store.get(VERSION_UPDATE_RELOAD_ATTEMPT_KEY)).toBe('hash789');
+    clearVersionUpdateReloadAttempted();
+    expect(readReloadAttemptedHash()).toBeNull();
+    expect(store.has(VERSION_UPDATE_RELOAD_ATTEMPT_KEY)).toBe(false);
+  });
+
+  it('does not throw when no storage exists at all', () => {
+    expect(readReloadAttemptedHash()).toBeNull();
+    expect(() => markVersionUpdateReloadAttempted('x')).not.toThrow();
+    expect(() => clearVersionUpdateReloadAttempted()).not.toThrow();
+  });
+});
+
+// v2.4.25 — reloadForUpdate(): one tap must land the new version.
+// All service-worker pieces are mocked; the real lifecycle is proven by
+// the headless-Chromium test (see the v2.4.25 handoff).
+describe('reloadForUpdate', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setServiceWorkerUpdater(null);
+  });
+
+  /** Minimal SW container mock: listeners + a manual emit(). */
+  function makeContainer() {
+    const handlers = new Map<string, Set<() => void>>();
+    return {
+      handlers,
+      addEventListener: (type: string, fn: () => void) => {
+        if (!handlers.has(type)) handlers.set(type, new Set());
+        handlers.get(type)!.add(fn);
+      },
+      removeEventListener: (type: string, fn: () => void) => {
+        handlers.get(type)?.delete(fn);
+      },
+      emit: (type: string) => {
+        handlers.get(type)?.forEach((fn) => fn());
+      },
+    };
+  }
+
+  function mockRegistration(overrides: Record<string, unknown> = {}) {
+    return {
+      update: vi.fn(async () => undefined),
+      waiting: null,
+      installing: null,
+      ...overrides,
+    } as unknown as ServiceWorkerRegistration;
+  }
+
+  it('plain-reloads when there is no service worker registration', async () => {
+    const doReload = vi.fn();
+    const result = await reloadForUpdate({
+      getRegistration: async () => undefined,
+      doReload,
+    });
+    expect(result).toBe('plain-reload');
+    expect(doReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('plain-reloads when getRegistration throws', async () => {
+    const doReload = vi.fn();
+    const result = await reloadForUpdate({
+      getRegistration: async () => {
+        throw new Error('no SW');
+      },
+      doReload,
+    });
+    expect(result).toBe('plain-reload');
+    expect(doReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('plain-reloads when registration.update() throws', async () => {
+    const doReload = vi.fn();
+    const reg = mockRegistration({
+      update: vi.fn(async () => {
+        throw new Error('update failed');
+      }),
+    });
+    const result = await reloadForUpdate({
+      getRegistration: async () => reg,
+      serviceWorkerContainer: makeContainer(),
+      doReload,
+    });
+    expect(result).toBe('plain-reload');
+    expect(doReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for activation (controllerchange) and reports sw-updated', async () => {
+    const doReload = vi.fn();
+    const stages: string[] = [];
+    const container = makeContainer();
+    const reg = mockRegistration();
+    // The new worker activates 10ms after the update check.
+    setTimeout(() => container.emit('controllerchange'), 10);
+    const result = await reloadForUpdate({
+      getRegistration: async () => reg,
+      serviceWorkerContainer: container,
+      doReload,
+      onProgress: (stage) => stages.push(stage),
+      timeoutMs: 5000,
+    });
+    expect(result).toBe('sw-updated');
+    expect(doReload).toHaveBeenCalledTimes(1);
+    expect(stages).toEqual(['checking', 'activating']);
+  });
+
+  it('plain-reloads on activation timeout (worker never activates)', async () => {
+    const doReload = vi.fn();
+    const result = await reloadForUpdate({
+      getRegistration: async () => mockRegistration(),
+      serviceWorkerContainer: makeContainer(),
+      doReload,
+      timeoutMs: 40,
+    });
+    expect(result).toBe('plain-reload');
+    expect(doReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells a waiting worker to skip waiting', async () => {
+    const doReload = vi.fn();
+    const waiting = { postMessage: vi.fn() };
+    const reg = mockRegistration({ waiting });
+    const result = await reloadForUpdate({
+      getRegistration: async () => reg,
+      serviceWorkerContainer: makeContainer(),
+      doReload,
+      timeoutMs: 600,
+    });
+    expect(result).toBe('plain-reload');
+    expect(doReload).toHaveBeenCalledTimes(1);
+    expect(waiting.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+  });
+
+  it('calls the canonical updater first, then proceeds manually', async () => {
+    const doReload = vi.fn();
+    const swUpdater = vi.fn(async (_reloadPage?: boolean) => undefined);
+    const container = makeContainer();
+    setTimeout(() => container.emit('controllerchange'), 10);
+    const result = await reloadForUpdate({
+      getRegistration: async () => mockRegistration(),
+      serviceWorkerContainer: container,
+      swUpdater,
+      doReload,
+      timeoutMs: 5000,
+    });
+    expect(swUpdater).toHaveBeenCalledWith(false);
+    expect(result).toBe('sw-updated');
+    expect(doReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls through to the manual path when the canonical updater throws', async () => {
+    const doReload = vi.fn();
+    const swUpdater = vi.fn(async (_reloadPage?: boolean) => {
+      throw new Error('updater failed');
+    });
+    const result = await reloadForUpdate({
+      getRegistration: async () => undefined,
+      swUpdater,
+      doReload,
+    });
+    expect(swUpdater).toHaveBeenCalled();
+    expect(result).toBe('plain-reload');
+    expect(doReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the updater registered from main.tsx when no option is passed', async () => {
+    const doReload = vi.fn();
+    const swUpdater = vi.fn(async (_reloadPage?: boolean) => undefined);
+    setServiceWorkerUpdater(swUpdater);
+    const result = await reloadForUpdate({
+      getRegistration: async () => undefined,
+      doReload,
+    });
+    expect(swUpdater).toHaveBeenCalledWith(false);
+    expect(result).toBe('plain-reload');
+    expect(doReload).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { VERSION_HISTORY_DATA } from './VersionHistoryModal';
 import { Modal } from '../common/Modal';
 
 import type { ServedVersionHighlights } from '../../lib/versionCheck';
+import { markVersionUpdateReloadAttempted, reloadForUpdate } from '../../lib/versionCheck';
 
 interface VersionUpdateModalProps {
   // The version of the deploy being offered — null when the prompt is for
@@ -24,6 +25,11 @@ interface VersionUpdateModalProps {
   // True when a newer deploy was detected while this (old) bundle is still
   // loaded — the update is NOT installed yet, a reload is needed.
   pendingReload?: boolean;
+  // v2.4.25: the served bundle hash of the pending update, so the reload
+  // button can record the reload attempt for THIS deploy (the re-prompt
+  // guard is keyed by hash). Null when unknown — the reload still works,
+  // only the re-prompt record is skipped.
+  servedHash?: string | null;
 }
 
 export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
@@ -32,7 +38,13 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
   onClose,
   onOpenFullHistory,
   pendingReload = false,
+  servedHash = null,
 }) => {
+  // v2.4.25: honest in-modal progress while the service-worker update is
+  // in flight after the user taps "ပြန်ဖွင့်မည်" — on slow mobile data
+  // the SW download may take seconds, and the tap must not look dead.
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateStage, setUpdateStage] = useState<'checking' | 'activating' | null>(null);
   // v2.4.20: when the offered version is NOT in this (old) bundle's
   // history — i.e. it is a genuinely newer deploy — there are NO
   // highlights to show, only the honest note below. The old
@@ -137,22 +149,43 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               if (pendingReload) {
-                // v2.4.20: reload WITHOUT clearing the "already shown"
-                // marker (the v2.4.16 H-H2 clear was the repeat-prompt
-                // bug — a reload that still serves the stale bundle must
-                // NOT prompt again for the same deploy; the localStorage
-                // guard remembers it). A newer deploy with a different
-                // hash still prompts once.
-                window.location.reload();
+                // v2.4.25: ONE tap must actually land the new version.
+                // A plain window.location.reload() asks the OLD service
+                // worker for the page, and the old SW serves the OLD
+                // precached bundle — the user stayed on the old version
+                // until a LATER reload. reloadForUpdate() forces the SW
+                // to fetch the new deploy now, waits for it to activate,
+                // and only then reloads. The attempt is recorded FIRST,
+                // so if this reload still serves the old bundle, the
+                // once-per-deploy guard allows ONE more prompt for this
+                // deploy (bounded — never on every focus event).
+                if (isUpdating) return;
+                if (servedHash) markVersionUpdateReloadAttempted(servedHash);
+                setIsUpdating(true);
+                await reloadForUpdate({
+                  onProgress: (stage) => setUpdateStage(stage),
+                });
+                // reloadForUpdate always reloads (or the new SW's
+                // activation does) — reaching here means the reload did
+                // not happen, so reset the button for another tap.
+                setIsUpdating(false);
+                setUpdateStage(null);
               } else {
                 onClose();
               }
             }}
-            className="flex-1 py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer text-center"
+            disabled={isUpdating}
+            className={`flex-1 py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer text-center ${isUpdating ? 'opacity-60 cursor-wait' : ''}`}
           >
-            {pendingReload ? 'ပြန်ဖွင့်မည်' : 'စတင်အသုံးပြုမည်'}
+            {pendingReload
+              ? isUpdating
+                ? updateStage === 'activating'
+                  ? 'အသစ်ရယူနေသည်...'
+                  : 'အသစ်စစ်ဆေးနေသည်...'
+                : 'ပြန်ဖွင့်မည်'
+              : 'စတင်အသုံးပြုမည်'}
           </button>
         </div>
       </div>

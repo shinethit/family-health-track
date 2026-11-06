@@ -38,10 +38,12 @@ import { LoginScreen } from './components/auth/LoginScreen';
 import { CURRENT_SYSTEM_VERSION } from './constants/version';
 import { db } from './lib/firebase';
 import {
+  clearVersionUpdateReloadAttempted,
   extractHistoryChunkFile,
   extractServedHighlights,
   extractServedVersion,
   markVersionUpdatePromptShown,
+  readReloadAttemptedHash,
   readShownVersionUpdateHash,
   shouldShowVersionUpdatePrompt,
   type ServedVersionHighlights,
@@ -136,6 +138,10 @@ const MainContent: React.FC = () => {
   // unless a pending-reload check actually extracted one — never the OLD
   // version's highlights.
   const [servedHighlights, setServedHighlights] = useState<ServedVersionHighlights | null>(null);
+  // v2.4.25: the served bundle hash of the pending update, so the modal's
+  // reload button can record the reload attempt for THIS deploy (the
+  // re-prompt guard is keyed by hash, not version string).
+  const [servedUpdateHash, setServedUpdateHash] = useState<string | null>(null);
   const [versionToast, setVersionToast] = useState<{ message: string; type: 'checking' | 'success' | 'updated' | 'error' } | null>(null);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
 
@@ -418,6 +424,9 @@ const MainContent: React.FC = () => {
         // a number, and never show the OLD version's highlights.
         setLatestAppVersion(null);
         setVersionUpdatePendingReload(true);
+        // v2.4.25: remember WHICH deploy is pending, so the modal's
+        // reload button can record the reload attempt for this hash.
+        setServedUpdateHash(servedHash);
         // v2.4.16 — the AUTO prompt appears at most once per deploy.
         // Remember the served hash we already prompted for, so dismissing
         // the modal without reloading does not re-show the SAME prompt on
@@ -429,6 +438,9 @@ const MainContent: React.FC = () => {
             isManual,
             servedHash,
             alreadyShownHash: readShownVersionUpdateHash(),
+            // v2.4.25: allow ONE more auto prompt when the user already
+            // tapped reload for this deploy but still loads the old bundle.
+            reloadAttemptedHash: readReloadAttemptedHash(),
           })
         ) {
           // Fetch the served bundle (only when an update was actually
@@ -477,6 +489,11 @@ const MainContent: React.FC = () => {
           if (servedVersion) setLatestAppVersion(servedVersion);
           setServedHighlights(highlights);
           markVersionUpdatePromptShown(servedHash);
+          // v2.4.25: CONSUME the reload-attempt marker when the prompt is
+          // shown for this hash — the re-prompt is allowed exactly once
+          // per failed reload attempt, never on every focus event (the
+          // v2.4.16 5-times bug). A NEW reload attempt re-sets it.
+          clearVersionUpdateReloadAttempted();
           setShowVersionUpdateModal(true);
           // v2.4.16 (E-L7): the modal waits for the profile-setup modal,
           // and so must the toast — otherwise the toast pops over it.
@@ -495,6 +512,10 @@ const MainContent: React.FC = () => {
         // successful reload. A stale served summary must not linger either.
         setVersionUpdatePendingReload(false);
         setServedHighlights(null);
+        // v2.4.25: the loaded bundle is current again — any reload
+        // attempt for the old pending deploy is stale now.
+        setServedUpdateHash(null);
+        clearVersionUpdateReloadAttempted();
         if (isManual) {
           showVersionToast({
             message: `✅ သင်သည် နောက်ဆုံးပေါ် စနစ်ဗားရှင်း ${CURRENT_SYSTEM_VERSION} ကို အသုံးပြုနေပါသည်!`,
@@ -873,6 +894,7 @@ const MainContent: React.FC = () => {
           <VersionUpdateModal
             latestAppVersion={latestAppVersion}
             servedHighlights={servedHighlights}
+            servedHash={servedUpdateHash}
             pendingReload={versionUpdatePendingReload}
             onClose={() => setShowVersionUpdateModal(false)}
             onOpenFullHistory={() => {

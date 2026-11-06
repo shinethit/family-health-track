@@ -58,12 +58,32 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.24',
+    version: 'v2.4.25',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
     isLatest: true,
+    title: '🔄 [NEW] ဗားရှင်းအသစ် ရရင် တစ်ချက်နှိပ်ရုံနဲ့ ရောက်ပြီ',
+    badge: 'Latest Release (v2.4.25)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '🔄 Update ပြန်ဖွင့်တာ — တစ်ချက်နှိပ်ရုံနဲ့ အသစ်ရောက်ပြီ',
+        icon: RefreshCw,
+        items: [
+          'Update modal မှာ "ပြန်ဖွင့်မည်" နှိပ်လိုက်တာနဲ့ အသစ်ကို ချက်ချင်း စစ်ပြီး ရယူမယ် — အဟောင်း ဆက်ကျန်နေတော့မှာ မဟုတ်ဘူး',
+          'အသစ်ရယူနေတုန်း ခလုတ်မှာ "အသစ်ရယူနေသည်..." လို့ ပြမယ် — နှိပ်တာ သေချာလား မသေချာလား သိရမယ်',
+          'ပြန်ဖွင့်တာ မအောင်ခဲ့ရင် နောက် update စစ်ဆေးမှုမှာ modal တစ်ကြိမ် ပြန်ပေါ်မယ် — အသစ်ကို လက်လွတ်မခံရတော့ဘူး (အကြိမ်ကြိမ် ထပ်မပြဘူး)',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v2.4.24',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: false,
     title: '📐 [NEW] မျက်နှာပြင် အသစ်ပြန်စီစဉ်ပြီး နေရာပို ကျစ်ကျစ်လျစ်လျစ် ဖြစ်သွားပြီ',
-    badge: 'Latest Release (v2.4.24)',
+    badge: 'Previous Release (v2.4.24)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
