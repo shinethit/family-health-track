@@ -94,7 +94,7 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
 
   // Dimensions & Coordinates
   const width = 640;
-  const height = 270;
+  const height = 180; // v2.4.24: compact chart height (was 270 — Trends screen far too long)
   const padding = { top: 30, right: 30, bottom: 45, left: 45 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
@@ -136,7 +136,7 @@ export const BloodPressureChart: React.FC<BloodPressureChartProps> = ({ records,
   const ySys140 = getY(140);
 
   return (
-    <div className="relative bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div className="relative bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
           <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
@@ -465,7 +465,7 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
   const activeMeta = activeKey ? GLUCOSE_SERIES_META[activeKey] : null;
 
   const width = 640;
-  const height = 270;
+  const height = 180; // v2.4.24: compact chart height (was 270)
   const padding = { top: 30, right: 30, bottom: 45, left: 45 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
@@ -517,7 +517,7 @@ export const BloodSugarChart: React.FC<BloodSugarChartProps> = ({ records, class
         })();
 
   return (
-    <div className="relative bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div className="relative bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
           <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
@@ -752,7 +752,7 @@ export const BMIWeightChart: React.FC<BMIWeightChartProps> = ({ records, classNa
   const sortedRecords = [...records].sort((a, b) => recordMs(a) - recordMs(b));
 
   const width = 640;
-  const height = 270;
+  const height = 180; // v2.4.24: compact chart height (was 270)
   const padding = { top: 30, right: 30, bottom: 45, left: 45 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
@@ -784,7 +784,7 @@ export const BMIWeightChart: React.FC<BMIWeightChartProps> = ({ records, classNa
   const weightPath = buildPath(weightPoints);
 
   return (
-    <div className="relative bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div className="relative bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
           <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">

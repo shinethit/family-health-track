@@ -245,7 +245,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
       showHeader={false}
       className="border border-rose-200"
     >
-      <div className="p-4 relative">
+      <div className="p-3 relative">
         {/* Close Button */}
         {step !== 'deleting' && (
           <button
@@ -260,13 +260,13 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
 
         {/* Step 1: Warning */}
         {step === 'warn' && (
-          <div className="space-y-4 text-center">
+          <div className="space-y-3 text-center">
             <div className="w-14 h-14 rounded-3xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-inner">
               <AlertTriangle className="w-7 h-7" />
             </div>
 
             <div>
-              <h3 id="delete-account-title" className="text-lg font-extrabold text-slate-900">
+              <h3 id="delete-account-title" className="text-base font-extrabold text-slate-900">
                 အကောင့်နှင့် ဒေတာအားလုံး ဖျက်ပစ်မည်
               </h3>
               <p className="text-xs text-rose-600 font-semibold mt-1">
@@ -274,7 +274,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs text-slate-600 space-y-2">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs text-slate-600 space-y-2">
               <p className="font-bold text-slate-800">အောက်ပါ အချက်အလက်များ အားလုံး အပြီးတိုင် ပျက်ပြယ်သွားပါမည် -</p>
               <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-600">
                 <li>သွေးပေါင်ချိန်၊ သွေးချို၊ BMI နှင့် ဓာတ်ခွဲခန်း မှတ်တမ်းများအားလုံး</li>
@@ -309,7 +309,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
 
         {/* Step 2: Re-Authentication */}
         {step === 'reauth' && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
                 <ShieldAlert className="w-5 h-5" />
@@ -341,7 +341,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
                 </button>
               </div>
             ) : (
-              <form onSubmit={(e) => { e.preventDefault(); handleExecuteDeletion(); }} className="space-y-4">
+              <form onSubmit={(e) => { e.preventDefault(); handleExecuteDeletion(); }} className="space-y-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     လက်ရှိ စကားဝှက် (Current Password) *
@@ -381,7 +381,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
 
         {/* Step 3: Deleting in progress */}
         {step === 'deleting' && (
-          <div className="space-y-4 text-center py-6">
+          <div className="space-y-3 text-center py-4">
             <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
             <div>
               <h3 className="font-bold text-slate-900 text-base">ဒေတာများ ဖျက်သိမ်းနေပါသည်...</h3>
@@ -392,7 +392,7 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
 
         {/* Step 4: Done */}
         {step === 'done' && (
-          <div className="space-y-4 text-center py-6">
+          <div className="space-y-3 text-center py-4">
             <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>

@@ -362,10 +362,10 @@ export const WomensHealthModule: React.FC = () => {
   const positiveAnswersCount = Object.values(assessmentAnswers).filter(Boolean).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-rose-600 via-pink-600 to-rose-700 rounded-2xl p-4 sm:p-5 text-white shadow-sm">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-rose-600 via-pink-600 to-rose-700 rounded-2xl p-3 sm:p-4 text-white shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="p-2 bg-white/20 backdrop-blur-md rounded-xl text-xl">🌸</span>
@@ -373,7 +373,7 @@ export const WomensHealthModule: React.FC = () => {
                 Women's Health & Gynecology
               </span>
             </div>
-            <h1 className="text-lg font-bold tracking-tight">
+            <h1 className="text-base font-bold tracking-tight">
               အမျိုးသမီး ကျန်းမာရေးနှင့် ရောဂါများ လမ်းညွှန်
             </h1>
             <p className="text-xs sm:text-sm text-rose-100 max-w-2xl leading-relaxed">
@@ -388,7 +388,7 @@ export const WomensHealthModule: React.FC = () => {
       </div>
 
       {/* Interactive Tool 1: Period & Ovulation Calculator */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-6 space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-5 space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-rose-50 text-rose-600 rounded-xl">
@@ -403,7 +403,7 @@ export const WomensHealthModule: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700">နောက်ဆုံး ရာသီစတင်လာခဲ့သည့်ရက် (LMP)</label>
             <input 
@@ -442,7 +442,7 @@ export const WomensHealthModule: React.FC = () => {
         </div>
 
         {cycleResults && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gradient-to-br from-rose-50/70 via-pink-50/50 to-amber-50/40 p-4 rounded-xl border border-rose-100">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gradient-to-br from-rose-50/70 via-pink-50/50 to-amber-50/40 p-3 rounded-xl border border-rose-100">
             <div className="bg-white p-3.5 rounded-xl border border-rose-100 shadow-2xs">
               <span className="text-[11px] font-bold text-rose-600 block mb-1">နောက်တစ်ကြိမ် ရာသီလာမည့်ရက်</span>
               <p className="text-sm font-bold text-slate-800">{cycleResults.nextPeriod}</p>
@@ -469,7 +469,7 @@ export const WomensHealthModule: React.FC = () => {
       </div>
 
       {/* Interactive Tool 2: Self-Check Symptom Screener */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-6 space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-5 space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-pink-50 text-pink-600 rounded-xl">
@@ -519,7 +519,7 @@ export const WomensHealthModule: React.FC = () => {
 
         {/* Screening Feedback Box */}
         {positiveAnswersCount > 0 ? (
-          <div className={`p-4 rounded-xl border flex items-start gap-3 ${
+          <div className={`p-3 rounded-xl border flex items-start gap-3 ${
             positiveAnswersCount >= 3 
               ? 'bg-red-50 border-red-200 text-red-900' 
               : 'bg-amber-50 border-amber-200 text-amber-900'
@@ -547,7 +547,7 @@ export const WomensHealthModule: React.FC = () => {
       </div>
 
       {/* Main Knowledge Hub & Topics */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Search & Filter Header */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
           {/* Mobile Category Dropdown (No Horizontal Scroll on Mobile) */}
@@ -653,7 +653,7 @@ export const WomensHealthModule: React.FC = () => {
           </div>
 
           {/* Right Column: Detailed Topic View (8 Cols) */}
-          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
+          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-4 space-y-3">
             {/* Header of Active Topic */}
             <div className="border-b border-slate-100 pb-4 space-y-2">
               <div className="flex items-center gap-2">
@@ -671,9 +671,9 @@ export const WomensHealthModule: React.FC = () => {
             </div>
 
             {/* Symptoms & Causes Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Symptoms */}
-              <div className="bg-rose-50/50 rounded-xl p-4 border border-rose-100 space-y-2.5">
+              <div className="bg-rose-50/50 rounded-xl p-3 border border-rose-100 space-y-2.5">
                 <div className="flex items-center gap-2 text-rose-900 font-bold text-xs">
                   <AlertTriangle className="w-4 h-4 text-rose-600" />
                   <span>အဖြစ်များသော လက္ခဏာများ</span>
@@ -689,7 +689,7 @@ export const WomensHealthModule: React.FC = () => {
               </div>
 
               {/* Causes */}
-              <div className="bg-purple-50/50 rounded-xl p-4 border border-purple-100 space-y-2.5">
+              <div className="bg-purple-50/50 rounded-xl p-3 border border-purple-100 space-y-2.5">
                 <div className="flex items-center gap-2 text-purple-900 font-bold text-xs">
                   <Info className="w-4 h-4 text-purple-600" />
                   <span>ဖြစ်ပွားရသော အကြောင်းရင်းများ</span>
@@ -706,7 +706,7 @@ export const WomensHealthModule: React.FC = () => {
             </div>
 
             {/* Prevention & Daily Care */}
-            <div className="space-y-3 bg-emerald-50/50 rounded-xl p-4 border border-emerald-100">
+            <div className="space-y-3 bg-emerald-50/50 rounded-xl p-3 border border-emerald-100">
               <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>ကာကွယ်ရန်နှင့် နေထိုင်စားသောက်မှု လမ်းညွှန်ချက်များ</span>
@@ -722,7 +722,7 @@ export const WomensHealthModule: React.FC = () => {
             </div>
 
             {/* Warning Red Flags */}
-            <div className="space-y-2.5 bg-red-50 rounded-xl p-4 border border-red-200">
+            <div className="space-y-2.5 bg-red-50 rounded-xl p-3 border border-red-200">
               <div className="flex items-center gap-2 text-red-900 font-bold text-xs">
                 <ShieldAlert className="w-4 h-4 text-red-600" />
                 <span>⚠️ အရေးပေါ် သတိပြုရမည့် အန္တရာယ်လက္ခဏာများ (Red Flags)</span>
@@ -738,7 +738,7 @@ export const WomensHealthModule: React.FC = () => {
             </div>
 
             {/* Medical Advice Footer */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-start gap-3">
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-start gap-3">
               <BookOpen className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
               <div className="space-y-1 text-xs text-slate-700">
                 <span className="font-bold text-teal-900">ဆရာဝန်၏ ဆေးပညာဆိုင်ရာ အကြံပြုချက်:</span>

@@ -58,12 +58,33 @@ export interface VersionItem {
 
 export const VERSION_HISTORY_DATA: VersionItem[] = [
   {
-    version: 'v2.4.23',
+    version: 'v2.4.24',
     type: 'minor',
     releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
     isLatest: true,
+    title: '📐 [NEW] မျက်နှာပြင် အသစ်ပြန်စီစဉ်ပြီး နေရာပို ကျစ်ကျစ်လျစ်လျစ် ဖြစ်သွားပြီ',
+    badge: 'Latest Release (v2.4.24)',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    highlights: [
+      {
+        title: '📐 ပြန်လည်စီစဉ်ခြင်း — Trends, Database, Menu တွေ ကျစ်ကျစ်လျစ်လျစ်',
+        icon: Sparkles,
+        items: [
+          'Trends မျက်နှာပြင် — အစိမ်းရောင် ခေါင်းစဉ်ကတ် အစား အမည် + ကျန်းမာရေးအဆင့် တစ်တန်းတည်း ပြမယ်; သွေးပေါင်၊ သကြားဓာတ်၊ BMI၊ ဓာတ်ခွဲခန်း မှတ်တမ်းတွေ တစ်ကတ်တည်း တစ်တန်းစီ ပြမယ်',
+          'Database စာမျက်နှာ — ကတ် ၄ ခု အစား စာရင်းတစ်ခု တည်းနဲ့ ဂဏန်းအားလုံး တစ်ခါတည်း မြင်ရမယ်',
+          'ဂရပ်တွေ သေးသွားပြီး မျက်နှာပြင်တိုင်း နေရာပိုကျစ်သွားတယ် — Scroll ဆွဲရတာ တိုသွားပြီ',
+          'Menu တွေ ထပ်နေတာ ဖယ်ရှားပြီး တစ်တန်းတည်း ဖြစ်သွားပြီ — လိုတဲ့ မျက်နှာပြင်တိုင်းကို တစ်ချက်နှိပ်ရုံနဲ့ ရောက်မယ်',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v2.4.23',
+    type: 'minor',
+    releaseDate: '၂၀၂၆ ခုနှစ်၊ နိုဝင်ဘာလ',
+    isLatest: false,
     title: '🔍 [NEW] အစအဆုံး သေချာပြန်စစ်ပြီး ကျစ်ကျစ်လျစ်လျစ် ပြင်ထားတယ်',
-    badge: 'Latest Release (v2.4.23)',
+    badge: 'Previous Release (v2.4.23)',
     badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     highlights: [
       {
@@ -2141,7 +2162,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h3 className="font-extrabold text-sm sm:text-lg text-slate-900">
+                <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
                   Version History & Change Log
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
@@ -2222,7 +2243,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
         <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200">
           
           {/* Left Column: Version Selector & Filter Tabs (On Mobile: visible only if mobileTab === 'list') */}
-          <div className={`${mobileTab === 'list' ? 'block' : 'hidden'} md:block md:col-span-4 p-4 space-y-3 bg-slate-50/70`}>
+          <div className={`${mobileTab === 'list' ? 'block' : 'hidden'} md:block md:col-span-4 p-3 space-y-3 bg-slate-50/70`}>
             {/* Filter Tabs */}
             <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl text-xs font-bold">
               <button
@@ -2294,12 +2315,12 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
           </div>
 
           {/* Right Column: Selected Version Details (On Mobile: visible only if mobileTab === 'details') */}
-          <div className={`${mobileTab === 'details' ? 'block' : 'hidden'} md:block md:col-span-8 p-4 sm:p-6 space-y-5 sm:space-y-6`}>
+          <div className={`${mobileTab === 'details' ? 'block' : 'hidden'} md:block md:col-span-8 p-3 sm:p-5 space-y-4 sm:space-y-5`}>
             {/* Version Title Card */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-100">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h4 className="text-lg sm:text-xl font-bold text-slate-900">
+                  <h4 className="text-base sm:text-lg font-bold text-slate-900">
                     {currentDetail.version}
                   </h4>
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${currentDetail.badgeColor}`}>
@@ -2323,7 +2344,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({ isOpen
             </div>
 
             {/* Highlights Sections */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               {currentDetail.highlights.map((sec, idx) => {
                 const IconComponent = sec.icon;
                 return (

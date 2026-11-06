@@ -224,7 +224,7 @@ export const AdminAddPatientModal: React.FC<AdminAddPatientModalProps> = ({
       size="lg"
       title={modalTitle}
     >
-      <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3">
+      <form onSubmit={handleSubmit} className="p-3 sm:p-4 space-y-3">
         <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs leading-relaxed">
           ဤအသုံးပြုသူအတွက် အကောင့်ဖွင့်ပေးခြင်း မဟုတ်ပါ — မှတ်တမ်းသာ ထည့်ပေးခြင်းဖြစ်ပြီး၊ သူကိုယ်တိုင် App ထဲ ဝင်လို့မရပါ။ App သုံးချင်ရင် သူကိုယ်တိုင် Sign Up လုပ်ရပါမယ်။
         </div>

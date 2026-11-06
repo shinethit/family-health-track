@@ -148,9 +148,9 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-4 animate-in fade-in duration-200">
       {/* Header Bar */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -428,13 +428,13 @@ export const AdminPatientComparison: React.FC<AdminPatientComparisonProps> = ({
 
           {/* Per-patient charts */}
           {stats.map((s) => (
-            <div key={s.patient.id} className="space-y-4">
+            <div key={s.patient.id} className="space-y-3">
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-indigo-500" />
                 <span>{resolveName(s.patient)} — ပြောင်းလဲမှု ဂရပ်</span>
               </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
                   <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
                     <Activity className="w-4 h-4 text-rose-500" />
                     <span>သွေးပေါင်ချိန် ပြောင်းလဲမှု ဂရပ်</span>

@@ -220,7 +220,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
         {/* Content Body: Sidebar List & Detail View */}
         <div className="flex-1 overflow-y-auto min-h-0 grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800">
           {/* Left Column: Topics Search & List */}
-          <div className="md:col-span-4 p-4 space-y-3 bg-slate-50/50 dark:bg-slate-950/40">
+          <div className="md:col-span-4 p-3 space-y-3 bg-slate-50/50 dark:bg-slate-950/40">
             {/* Search Box */}
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -269,9 +269,9 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
           </div>
 
           {/* Right Column: Selected Guide Details */}
-          <div className="md:col-span-8 p-5 sm:p-6 space-y-6 overflow-y-auto max-h-[calc(80vh-80px)]">
+          <div className="md:col-span-8 p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[calc(80vh-80px)]">
             {/* Guide Header Banner */}
-            <div className="flex items-start gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-start gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
                 <ActiveIcon className="w-6 h-6" />
               </div>

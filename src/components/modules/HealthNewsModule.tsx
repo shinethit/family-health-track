@@ -235,7 +235,7 @@ export const HealthNewsModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
+    <div className="space-y-3 animate-in fade-in duration-200">
       {/* Toast Notification */}
       {copiedNotification && (
         <div className="fixed top-20 right-6 z-50 p-3 bg-emerald-600 text-white rounded-2xl shadow-lg flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-2">
@@ -294,14 +294,14 @@ export const HealthNewsModule: React.FC = () => {
 
       {/* SECTION 1: FLOOD EMERGENCY SECTION */}
       {activeSection === 'flood' && (
-        <div className="space-y-5 animate-in fade-in duration-150">
+        <div className="space-y-4 animate-in fade-in duration-150">
           {/* Flood Emergency Banner */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-sky-50 via-cyan-50 to-blue-50 border-2 border-sky-300 shadow-xs relative overflow-hidden">
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-sky-50 via-cyan-50 to-blue-50 border-2 border-sky-300 shadow-xs relative overflow-hidden">
             <div className="space-y-2 relative z-10">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-700 text-white text-xs font-bold shadow-xs">
                 <span>🌊 ရေဘေး အရေးပေါ် ကျန်းမာရေး လမ်းညွှန် (၈ ပုဒ် စုစည်းမှု)</span>
               </div>
-              <h2 className="text-lg font-black text-slate-900 leading-snug">
+              <h2 className="text-base font-black text-slate-900 leading-snug">
                 ရေဘေးကာလ အသက်ကယ် ဆောင်ရန်/ရှောင်ရန်နှင့် အရေးပေါ် ကျန်းမာရေး လမ်းညွှန်
               </h2>
               <p className="text-xs text-slate-700 max-w-3xl leading-relaxed">
@@ -314,7 +314,7 @@ export const HealthNewsModule: React.FC = () => {
           </div>
 
           {/* Flood Search & Subtopic Filters */}
-          <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+          <div className="bg-white p-3 rounded-3xl border border-slate-200 shadow-xs space-y-3">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -348,16 +348,16 @@ export const HealthNewsModule: React.FC = () => {
 
       {/* SECTION 2: GENERAL MEDICAL KNOWLEDGE SECTION */}
       {activeSection === 'general' && (
-        <div className="space-y-5 animate-in fade-in duration-150">
+        <div className="space-y-4 animate-in fade-in duration-150">
           {/* General Medical Banner */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-sky-50 border border-emerald-200/80 shadow-xs relative overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-sky-50 border border-emerald-200/80 shadow-xs relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 relative z-10">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-2 shadow-xs">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                   <span>ယုံကြည်စိတ်ချရသော ဆေးပညာ ဗဟုသုတများ (စုစုပေါင်း {generalArticles.length} ပုဒ်)</span>
                 </div>
-                <h2 className="text-lg font-extrabold text-slate-900">
+                <h2 className="text-base font-extrabold text-slate-900">
                   ကျန်းမာရေး ဗဟုသုတ စာကြည့်တိုက်
                 </h2>
                 <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
@@ -466,7 +466,7 @@ export const HealthNewsModule: React.FC = () => {
 
       {/* Articles Grid - Bright, Clean White Cards */}
       {displayedArticles.length === 0 ? (
-        <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
             <BookOpen className="w-6 h-6" />
           </div>
@@ -474,13 +474,13 @@ export const HealthNewsModule: React.FC = () => {
           <p className="text-xs text-slate-500">ရှာဖွေမှု စကားလုံးကို ပြောင်းလဲရိုက်ထည့်ကြည့်ပါ</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {displayedArticles.map((article) => {
             const isBookmarked = bookmarkedIds.includes(article.id);
             return (
               <div 
                 key={article.id}
-                className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all flex flex-col justify-between group"
+                className="bg-white rounded-3xl border border-slate-200/90 p-4 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">
@@ -561,7 +561,7 @@ export const HealthNewsModule: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Fixed Header */}
-            <div className="flex items-start justify-between gap-4 p-5 sm:p-6 border-b border-slate-100 bg-slate-50/70 shrink-0">
+            <div className="flex items-start justify-between gap-4 p-4 sm:p-5 border-b border-slate-100 bg-slate-50/70 shrink-0">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase ${getCategoryBadgeColor(activeArticle.category)}`}>
@@ -591,11 +591,11 @@ export const HealthNewsModule: React.FC = () => {
 
             {/* Modal Scrollable Body (Key Takeaways + Full Article) with Native Momentum Touch Scrolling */}
             <div 
-              className="flex-1 overflow-y-auto min-h-0 p-5 sm:p-6 space-y-5 overscroll-contain"
+              className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4 overscroll-contain"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {/* Key Takeaways Box */}
-              <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs shadow-xs">
+              <div className="p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs shadow-xs">
                 <div className="flex items-center gap-2 font-bold text-emerald-900 mb-2.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>အဓိက လိုက်နာဆောင်ရွက်ရန် အချက်များ (Key Action Points):</span>
@@ -611,7 +611,7 @@ export const HealthNewsModule: React.FC = () => {
               </div>
 
               {/* Full Article Content */}
-              <div className="space-y-4 text-xs sm:text-sm text-slate-800 leading-relaxed">
+              <div className="space-y-3 text-xs sm:text-sm text-slate-800 leading-relaxed">
                 {activeArticle.content.map((paragraph, idx) => (
                   <p key={idx} className="leading-relaxed whitespace-pre-line bg-white rounded-xl">
                     {paragraph}
@@ -635,7 +635,7 @@ export const HealthNewsModule: React.FC = () => {
             </div>
 
             {/* Modal Fixed Footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+            <div className="p-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => toggleBookmark(activeArticle.id)}

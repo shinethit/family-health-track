@@ -37,12 +37,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 text-center space-y-5">
+          <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-4 sm:p-6 text-center space-y-4">
             <div className="w-16 h-16 mx-auto rounded-3xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-xs">
               <AlertTriangle className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
                 မမျှော်လင့်သော ချို့ယွင်းချက် ဖြစ်ပေါ်နေပါသည်
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">

@@ -67,7 +67,7 @@ export const DeletePatientModal: React.FC<DeletePatientModalProps> = ({
       closeOnBackdrop={!isDeleting}
       title={titleHeader}
     >
-      <div className="p-4 sm:p-5 space-y-4">
+      <div className="p-3 sm:p-4 space-y-3">
         {errorMsg && (
           <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0" />
@@ -76,7 +76,7 @@ export const DeletePatientModal: React.FC<DeletePatientModalProps> = ({
         )}
 
         {/* Warning Box */}
-        <div className="p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 space-y-3">
+        <div className="p-3 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 space-y-3">
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
             <div className="text-xs text-rose-900 dark:text-rose-200 space-y-1">

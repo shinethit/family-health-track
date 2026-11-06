@@ -326,10 +326,10 @@ export const PregnancyCareModule: React.FC = () => {
   const packedPercentage = Math.round((packedItemsCount / totalBagItems) * 100);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 rounded-2xl p-4 sm:p-5 text-white shadow-sm">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 rounded-2xl p-3 sm:p-4 text-white shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="p-2 bg-white/20 backdrop-blur-md rounded-xl text-xl">🤰</span>
@@ -337,7 +337,7 @@ export const PregnancyCareModule: React.FC = () => {
                 Maternal & Pregnancy Care
               </span>
             </div>
-            <h1 className="text-lg font-bold tracking-tight">
+            <h1 className="text-base font-bold tracking-tight">
               ကိုယ်ဝန်ဆောင် ကျန်းမာရေးနှင့် စောင့်ရှောက်မှု လမ်းညွှန်
             </h1>
             <p className="text-xs sm:text-sm text-teal-100 max-w-2xl leading-relaxed">
@@ -352,7 +352,7 @@ export const PregnancyCareModule: React.FC = () => {
       </div>
 
       {/* Emergency Danger Signs Box (CRITICAL) */}
-      <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 sm:p-5 text-red-950 space-y-3 shadow-xs">
+      <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-3 sm:p-4 text-red-950 space-y-3 shadow-xs">
         <div className="flex items-center gap-2 text-red-700 font-bold text-sm">
           <ShieldAlert className="w-5 h-5 text-red-600 shrink-0" />
           <span>⚠️ ကိုယ်ဝန်ဆောင်ချိန် ချက်ချင်း ဆေးရုံ/ဆေးခန်း ပြသရမည့် အရေးပေါ် အန္တရာယ်လက္ခဏာများ (Danger Signs)</span>
@@ -388,7 +388,7 @@ export const PregnancyCareModule: React.FC = () => {
       {/* Grid: 2 Interactive Tools (EDD Calculator & Kick Counter) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Tool 1: EDD Calculator (5 cols) */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
+        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-4 space-y-3">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
             <div className="p-2 bg-teal-50 text-teal-700 rounded-xl">
               <Calendar className="w-5 h-5" />
@@ -422,7 +422,7 @@ export const PregnancyCareModule: React.FC = () => {
           )}
 
           {eddResult && (
-            <div className="bg-gradient-to-br from-teal-50 to-emerald-50/60 p-4 rounded-xl border border-teal-100 space-y-3">
+            <div className="bg-gradient-to-br from-teal-50 to-emerald-50/60 p-3 rounded-xl border border-teal-100 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-teal-800">ခန့်မှန်း မွေးဖွားမည့်ရက် (EDD):</span>
                 <span className="text-sm font-extrabold text-teal-900">{eddResult.eddFormatted}</span>
@@ -451,7 +451,7 @@ export const PregnancyCareModule: React.FC = () => {
         </div>
 
         {/* Tool 2: Fetal Kick Counter (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-4 space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-rose-50 text-rose-600 rounded-xl">
@@ -478,7 +478,7 @@ export const PregnancyCareModule: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div className="text-center sm:text-left space-y-1">
               <span className="text-[11px] font-bold text-slate-500 uppercase">လက်ရှိ လှုပ်ရှားမှု အကြိမ်ရေ</span>
               <div className="flex items-baseline gap-2">
@@ -521,7 +521,7 @@ export const PregnancyCareModule: React.FC = () => {
       </div>
 
       {/* Trimester-by-Trimester Detailed Guide */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-6 space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-5 space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900">
@@ -552,7 +552,7 @@ export const PregnancyCareModule: React.FC = () => {
         {(() => {
           const tri = TRIMESTER_DATA.find(t => t.trimester === selectedTrimester) || TRIMESTER_DATA[0];
           return (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div className="flex items-center justify-between bg-teal-50/70 p-3.5 rounded-xl border border-teal-100">
                 <span className="text-sm font-bold text-teal-950">{tri.titleMm}</span>
                 <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white text-teal-800 border border-teal-200">
@@ -561,7 +561,7 @@ export const PregnancyCareModule: React.FC = () => {
               </div>
 
               {/* Baby growth vs Mother's changes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-xs">
                     <Baby className="w-4 h-4 text-teal-600" />
@@ -580,8 +580,8 @@ export const PregnancyCareModule: React.FC = () => {
               </div>
 
               {/* Nutrition & ANC Checkups */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 space-y-2">
                   <span className="text-xs font-bold text-emerald-900 block">🥗 အာဟာရနှင့် ဗီတာမင် လမ်းညွှန်ချက်များ</span>
                   <ul className="space-y-1.5 text-xs text-slate-700">
                     {tri.nutritionTipsMm.map((tip, idx) => (
@@ -593,7 +593,7 @@ export const PregnancyCareModule: React.FC = () => {
                   </ul>
                 </div>
 
-                <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-100 space-y-2">
+                <div className="bg-sky-50/50 p-3 rounded-xl border border-sky-100 space-y-2">
                   <span className="text-xs font-bold text-sky-900 block">🩺 မဖြစ်မနေ စစ်ဆေးရမည့် ဆေးစစ်ချက်များ (ANC)</span>
                   <ul className="space-y-1.5 text-xs text-slate-700">
                     {tri.medicalCheckupsMm.map((chk, idx) => (
@@ -607,7 +607,7 @@ export const PregnancyCareModule: React.FC = () => {
               </div>
 
               {/* Do's and Don'ts */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
                 <span className="text-xs font-bold text-slate-800 block">⚖️ ပြုလုပ်ရန် နှင့် ရှောင်ကြဉ်ရန်များ (Do's & Don'ts)</span>
                 <div className="space-y-2">
                   {tri.dosAndDonts.map((item, idx) => (
@@ -630,7 +630,7 @@ export const PregnancyCareModule: React.FC = () => {
       </div>
 
       {/* Interactive Hospital Bag Checklist */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-amber-50 text-amber-700 rounded-xl">
@@ -658,9 +658,9 @@ export const PregnancyCareModule: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {hospitalBagSections.map((sec, idx) => (
-            <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+            <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
               <h3 className="text-xs font-bold text-slate-800 border-b border-slate-200 pb-2">
                 {sec.category}
               </h3>

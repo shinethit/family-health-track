@@ -47,7 +47,7 @@ export const AdminDataRepair: React.FC = () => {
   };
 
   return (
-    <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+    <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-3">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
           <Wrench className="w-5 h-5" />
@@ -86,7 +86,7 @@ export const AdminDataRepair: React.FC = () => {
       )}
 
       {result && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
           <div className="flex items-center gap-2 text-xs font-bold text-emerald-800">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>ပြီးပါပြီ — အသုံးပြုသူဘက်က ပြန်ဖွင့်ကြည့်ပါ</span>

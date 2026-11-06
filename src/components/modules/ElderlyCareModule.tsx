@@ -220,10 +220,10 @@ export const ElderlyCareModule: React.FC = () => {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-teal-700 via-emerald-700 to-teal-800 rounded-2xl p-4 sm:p-5 text-white shadow-sm">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-teal-700 via-emerald-700 to-teal-800 rounded-2xl p-3 sm:p-4 text-white shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="p-2 bg-white/20 backdrop-blur-md rounded-xl text-xl">👵</span>
@@ -231,7 +231,7 @@ export const ElderlyCareModule: React.FC = () => {
                 Geriatric & Elderly Care
               </span>
             </div>
-            <h1 className="text-lg font-bold tracking-tight">
+            <h1 className="text-base font-bold tracking-tight">
               သက်ကြီးရွယ်အို စောင့်ရှောက်ရေး လမ်းညွှန် (Elderly Care)
             </h1>
             <p className="text-xs sm:text-sm text-teal-100 max-w-2xl leading-relaxed">
@@ -246,7 +246,7 @@ export const ElderlyCareModule: React.FC = () => {
       </div>
 
       {/* Interactive Tool: Home Fall Risk Assessment */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-6 space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-5 space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-rose-50 text-rose-600 rounded-xl">
@@ -287,7 +287,7 @@ export const ElderlyCareModule: React.FC = () => {
         </div>
 
         {/* Risk Assessment Result */}
-        <div className={`p-4 rounded-xl border space-y-1.5 ${
+        <div className={`p-3 rounded-xl border space-y-1.5 ${
           totalRiskScore >= 4 
             ? 'bg-red-50 border-red-200 text-red-950' 
             : totalRiskScore >= 2 
@@ -321,7 +321,7 @@ export const ElderlyCareModule: React.FC = () => {
       </div>
 
       {/* Main Geriatric Topics Hub */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
           {/* Mobile Category Dropdown (No Horizontal Scroll on Mobile) */}
           <div className="sm:hidden w-full">
@@ -444,7 +444,7 @@ export const ElderlyCareModule: React.FC = () => {
             </div>
           </div>
 
-          <div className="col-span-1 lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
+          <div className="col-span-1 lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-4 space-y-3">
             <div className="border-b border-slate-100 pb-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-3xl">{activeTopic.icon}</span>
@@ -461,8 +461,8 @@ export const ElderlyCareModule: React.FC = () => {
             </div>
 
             {/* Care Guidelines & Risks */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100 space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-emerald-50/50 rounded-xl p-3 border border-emerald-100 space-y-2.5">
                 <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>မှန်ကန်သော ပြုစုစောင့်ရှောက်နည်းများ</span>
@@ -477,7 +477,7 @@ export const ElderlyCareModule: React.FC = () => {
                 </ul>
               </div>
 
-              <div className="bg-red-50/50 rounded-xl p-4 border border-red-100 space-y-2.5">
+              <div className="bg-red-50/50 rounded-xl p-3 border border-red-100 space-y-2.5">
                 <div className="flex items-center gap-2 text-red-900 font-bold text-xs">
                   <AlertTriangle className="w-4 h-4 text-red-600" />
                   <span>ရှောင်ကြဉ်ရမည့် အန္တရာယ်နှင့် အမှားများ</span>
@@ -494,7 +494,7 @@ export const ElderlyCareModule: React.FC = () => {
             </div>
 
             {/* Warning Signs */}
-            <div className="space-y-2.5 bg-red-50 rounded-xl p-4 border border-red-200">
+            <div className="space-y-2.5 bg-red-50 rounded-xl p-3 border border-red-200">
               <div className="flex items-center gap-2 text-red-900 font-bold text-xs">
                 <ShieldAlert className="w-4 h-4 text-red-600" />
                 <span>⚠️ အရေးပေါ် ဆရာဝန်ပြသရန် သတိပေးလက္ခဏာများ</span>
@@ -510,7 +510,7 @@ export const ElderlyCareModule: React.FC = () => {
             </div>
 
             {/* Specialist Advice */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-700 flex items-start gap-3">
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-700 flex items-start gap-3">
               <BookOpen className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold text-teal-900 block mb-0.5">သက်ကြီးရောဂါ အထူးကုဆရာဝန်၏ အကြံပြုချက်:</span>

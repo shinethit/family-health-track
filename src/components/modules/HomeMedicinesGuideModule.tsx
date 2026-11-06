@@ -50,16 +50,16 @@ export const HomeMedicinesGuideModule: React.FC = () => {
   }, [selectedCategory, searchQuery]);
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
+    <div className="space-y-3 animate-in fade-in duration-200">
       {/* Top Banner & Medical Disclaimer */}
-      <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-teal-50 via-sky-50 to-emerald-50 border border-teal-200 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-teal-50 via-sky-50 to-emerald-50 border border-teal-200 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 relative z-10">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 border border-teal-200 text-teal-800 text-xs font-bold mb-2 shadow-xs">
               <Pill className="w-3.5 h-3.5 text-teal-600" />
               <span>အိမ်သုံး ဆေးဝါးများ အသုံးပြုပုံနှင့် လုံခြုံရေး လမ်းညွှန်</span>
             </div>
-            <h2 className="text-lg font-extrabold text-slate-900">
+            <h2 className="text-base font-extrabold text-slate-900">
               အိမ်သုံး ဆေးဝါးများ လမ်းညွှန် (Household OTC Guide)
             </h2>
             <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
@@ -125,7 +125,7 @@ export const HomeMedicinesGuideModule: React.FC = () => {
 
       {/* Medicines Cards Grid */}
       {filteredMedicines.length === 0 ? (
-        <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
             <Pill className="w-6 h-6" />
           </div>
@@ -133,11 +133,11 @@ export const HomeMedicinesGuideModule: React.FC = () => {
           <p className="text-xs text-slate-500">ရှာဖွေမှု စကားလုံး သို့မဟုတ် Category ကို ပြောင်းလဲကြည့်ပါ</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filteredMedicines.map((med) => (
             <div 
               key={med.id}
-              className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs hover:border-teal-400 hover:shadow-md transition-all flex flex-col justify-between"
+              className="bg-white rounded-3xl border border-slate-200/90 p-4 shadow-xs hover:border-teal-400 hover:shadow-md transition-all flex flex-col justify-between"
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
@@ -202,7 +202,7 @@ export const HomeMedicinesGuideModule: React.FC = () => {
       {/* Medicine Detail Modal */}
       {activeMedicine && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-3xl max-w-2xl w-full p-4 sm:p-5 shadow-2xl my-6 max-h-[90vh] flex flex-col">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-2xl w-full p-3 sm:p-4 shadow-2xl my-6 max-h-[90vh] flex flex-col">
             
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-100 shrink-0">
@@ -215,7 +215,7 @@ export const HomeMedicinesGuideModule: React.FC = () => {
                     {activeMedicine.genericName}
                   </span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900">
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
                   {activeMedicine.nameMm}
                 </h3>
               </div>
@@ -230,7 +230,7 @@ export const HomeMedicinesGuideModule: React.FC = () => {
 
             {/* Modal Body */}
             <div 
-              className="flex-1 overflow-y-auto min-h-0 py-4 space-y-4 text-xs pr-1 overscroll-contain"
+              className="flex-1 overflow-y-auto min-h-0 py-3 space-y-3 text-xs pr-1 overscroll-contain"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               
@@ -248,7 +248,7 @@ export const HomeMedicinesGuideModule: React.FC = () => {
               </div>
 
               {/* Usage & Dose Box */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
                 <h4 className="font-bold text-slate-900 flex items-center gap-1.5 text-xs">
                   <Clock className="w-4 h-4 text-sky-600" />
                   <span>သောက်သုံးပုံနှင့် ဆေးပမာဏ (Dosage & Instructions):</span>

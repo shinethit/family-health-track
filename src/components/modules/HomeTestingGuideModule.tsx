@@ -70,16 +70,16 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
   const sugarReadyScore = Object.values(sugarChecklist).filter(Boolean).length;
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
+    <div className="space-y-3 animate-in fade-in duration-200">
       {/* Top Banner - Medical White & Teal Gradient */}
-      <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-indigo-50 border border-emerald-200/80 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-indigo-50 border border-emerald-200/80 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 relative z-10">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/90 border border-emerald-200 text-emerald-800 text-xs font-bold mb-2 shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
               <span>လက်တွေ့အသုံးချ ဆေးပညာလမ်းညွှန် (Clinical Home Self-Monitoring Guide)</span>
             </div>
-            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
               အိမ်တွင်း ကျန်းမာရေး စစ်ဆေးမှု လမ်းညွှန်
             </h2>
             <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
@@ -200,7 +200,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
 
       {/* SECTION 1: မှန်ကန်စွာ သွေးပေါင်ချိန်တိုင်းနည်း (Detailed Guide) */}
       {(activeTab === 'all' || activeTab === 'bp') && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-4 sm:p-5">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden space-y-3 p-3 sm:p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold">
@@ -210,7 +210,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
                   သွေးတိုးရောဂါ ထိန်းချုပ်မှု
                 </span>
-                <h3 className="text-lg font-bold text-slate-900 mt-0.5">
+                <h3 className="text-base font-bold text-slate-900 mt-0.5">
                   မှန်ကန်စွာ သွေးပေါင်ချိန်တိုင်းနည်း (How to Accurately Measure Blood Pressure)
                 </h3>
               </div>
@@ -225,7 +225,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
           </div>
 
           {/* Quick Pre-measurement Readiness Checklist */}
-          <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200/80 space-y-3">
+          <div className="p-3 rounded-2xl bg-rose-50/60 border border-rose-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-rose-950 flex items-center gap-2">
                 <CheckSquare className="w-4 h-4 text-rose-600" />
@@ -315,15 +315,15 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
           </div>
 
           {/* 4 Step Sequential Guide */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-rose-600" />
               <span>တိကျသော အဆင့် ၄ ဆင့်ဖြင့် တိုင်းတာနည်း (4-Step Standard Protocol)</span>
             </h4>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Step 1 */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-rose-600 text-white font-bold text-xs flex items-center justify-center">
                     ၁
@@ -340,7 +340,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
               </div>
 
               {/* Step 2 */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-rose-600 text-white font-bold text-xs flex items-center justify-center">
                     ၂
@@ -357,7 +357,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
               </div>
 
               {/* Step 3 */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-rose-600 text-white font-bold text-xs flex items-center justify-center">
                     ၃
@@ -374,7 +374,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
               </div>
 
               {/* Step 4 */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-rose-600 text-white font-bold text-xs flex items-center justify-center">
                     ၄
@@ -393,8 +393,8 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
           </div>
 
           {/* Do's & Don'ts Comparison Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-            <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+            <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-2">
               <h5 className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>လုပ်ဆောင်သင့်သည့် အချက်များ (DO)</span>
@@ -407,7 +407,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
               </ul>
             </div>
 
-            <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-2">
+            <div className="p-3 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-2">
               <h5 className="text-xs font-bold text-rose-900 flex items-center gap-1.5">
                 <XCircle className="w-4 h-4 text-rose-600" />
                 <span>လုံးဝ ရှောင်ကြဉ်ရမည့် အချက်များ (DON'T)</span>
@@ -425,7 +425,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
 
       {/* SECTION 2: မှန်ကန်စွာ ဆီးချို စစ်နည်း (Blood Glucose Testing Detailed Guide) */}
       {(activeTab === 'all' || activeTab === 'sugar') && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-4 sm:p-5">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden space-y-3 p-3 sm:p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
@@ -435,7 +435,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                   ဆီးချိုရောဂါ စောင့်ရှောက်မှု
                 </span>
-                <h3 className="text-lg font-bold text-slate-900 mt-0.5">
+                <h3 className="text-base font-bold text-slate-900 mt-0.5">
                   မှန်ကန်စွာ ဆီးချို စစ်နည်း (How to Accurately Test Blood Glucose at Home)
                 </h3>
               </div>
@@ -450,7 +450,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
           </div>
 
           {/* Quick Pre-test Readiness Checklist */}
-          <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 space-y-3">
+          <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-emerald-950 flex items-center gap-2">
                 <CheckSquare className="w-4 h-4 text-emerald-600" />
@@ -540,15 +540,15 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
           </div>
 
           {/* 5-Step Glucometer Protocol */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-emerald-600" />
               <span>စက်ဖြင့် မှန်ကန်စွာ သွေးဖောက်စစ်ဆေးနည်း အဆင့် ၅ ဆင့်</span>
             </h4>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Step 1 */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
                     ၁
@@ -563,7 +563,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
               </div>
 
               {/* Step 2 */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
                     ၂
@@ -578,7 +578,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
               </div>
 
               {/* Step 3 */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
                     ၃
@@ -593,7 +593,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
               </div>
 
               {/* Step 4 */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
                     ၄
@@ -608,7 +608,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
               </div>
 
               {/* Step 5 */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
                     ၅
@@ -623,7 +623,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
               </div>
 
               {/* Step 6 */}
-              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
                     ၆
@@ -640,7 +640,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
           </div>
 
           {/* Blood Sugar Testing Schedule & Target Matrix */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
             <h5 className="text-xs font-bold text-slate-900 flex items-center gap-2">
               <Clock className="w-4 h-4 text-emerald-600" />
               <span>စစ်ဆေးရမည့် အချိန်နှင့် ပစ်မှတ်စံနှုန်းများ (Clinical Target Ranges):</span>
@@ -695,7 +695,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
           </div>
 
           {/* Emergency Alert Box: Rule of 15 */}
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-xs space-y-2">
+          <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300 text-xs space-y-2">
             <div className="flex items-center gap-2 text-amber-900 font-bold">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
               <span>သွေးချိုလွန်စွာကျဆင်းခြင်း (Hypoglycemia &lt; 70 mg/dL) အတွက် Rule of 15 ကယ်ဆယ်နည်း:</span>
@@ -713,7 +713,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
           
           {/* Temperature Guide */}
           {(activeTab === 'all' || activeTab === 'temp') && (
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-6 space-y-4">
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-4 space-y-3">
               <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
                 <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
                   <Thermometer className="w-5 h-5" />
@@ -746,7 +746,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
 
           {/* Pulse Oximeter Guide */}
           {(activeTab === 'all' || activeTab === 'oximeter') && (
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-6 space-y-4">
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-4 space-y-3">
               <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
                 <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center font-bold">
                   <Wind className="w-5 h-5" />
@@ -786,7 +786,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
 
           {/* Weight & BMI Guide */}
           {(activeTab === 'all' || activeTab === 'weight') && (
-            <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-xs p-6 space-y-4">
+            <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-xs p-4 space-y-3">
               <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
                 <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
                   <Scale className="w-5 h-5" />
@@ -822,7 +822,7 @@ export const HomeTestingGuideModule: React.FC<HomeTestingGuideModuleProps> = ({ 
       )}
 
       {/* Emergency Red Flag Notice Banner */}
-      <div className="p-5 rounded-3xl bg-rose-50 border border-rose-200 text-rose-950 text-xs space-y-2">
+      <div className="p-4 rounded-3xl bg-rose-50 border border-rose-200 text-rose-950 text-xs space-y-2">
         <div className="flex items-center gap-2 font-bold text-rose-900">
           <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
           <span>ဆေးရုံ / ဆေးခန်းသို့ အရေးပေါ် သွားရောက်ပြသရမည့် အခြေအနေများ (Red Flag Warnings):</span>

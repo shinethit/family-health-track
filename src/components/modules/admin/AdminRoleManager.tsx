@@ -123,7 +123,7 @@ export const AdminRoleManager: React.FC = () => {
   };
 
   return (
-    <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+    <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-3">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
           <ShieldCheck className="w-5 h-5" />

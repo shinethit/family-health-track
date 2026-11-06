@@ -217,14 +217,14 @@ export const PhysiotherapyModule: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 pb-8">
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 rounded-2xl p-5 sm:p-7 text-white shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 rounded-2xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
         <div className="absolute -right-6 -bottom-8 opacity-10 text-white pointer-events-none">
           <Activity className="w-64 h-64" />
         </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-emerald-100 text-xs font-medium mb-2 backdrop-blur-xs">
               <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
@@ -318,7 +318,7 @@ export const PhysiotherapyModule: React.FC = () => {
 
       {/* TAB 1: EXERCISES LIST VIEW */}
       {activeTab === 'exercises' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Search & Category Filter */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
             {/* Search Input */}
@@ -394,7 +394,7 @@ export const PhysiotherapyModule: React.FC = () => {
           </div>
 
           {/* Exercise Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredExercises.map(ex => {
               const isDoneToday = completedTodayIds.includes(ex.id);
               return (
@@ -404,7 +404,7 @@ export const PhysiotherapyModule: React.FC = () => {
                     isDoneToday ? 'border-emerald-300 bg-emerald-50/20' : 'border-slate-200 hover:border-emerald-400'
                   }`}
                 >
-                  <div className="p-4 sm:p-5 space-y-3">
+                  <div className="p-3 sm:p-4 space-y-3">
                     {/* Header Row */}
                     <div className="flex items-start justify-between gap-2">
                       <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${ex.badgeColor}`}>
@@ -488,7 +488,7 @@ export const PhysiotherapyModule: React.FC = () => {
           </div>
 
           {filteredExercises.length === 0 && (
-            <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200">
+            <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-200">
               <Activity className="w-12 h-12 text-slate-300 mx-auto mb-2" />
               <p className="text-slate-600 font-medium text-sm">ရှာဖွေမှုနှင့် ကိုက်ညီသော လေ့ကျင့်ခန်း မတွေ့ပါ။</p>
               <button 
@@ -504,9 +504,9 @@ export const PhysiotherapyModule: React.FC = () => {
 
       {/* TAB 2: INTERACTIVE BODY AREA PAIN SELECTOR */}
       {activeTab === 'body_map' && (
-        <div className="space-y-6">
-          <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 text-center max-w-3xl mx-auto">
-            <h2 className="text-lg font-bold text-slate-900">
+        <div className="space-y-4">
+          <div className="bg-slate-50 p-3 sm:p-5 rounded-2xl border border-slate-200 text-center max-w-3xl mx-auto">
+            <h2 className="text-base font-bold text-slate-900">
               မိမိ ခန္ဓာကိုယ် နာကျင်နေသည့် နေရာကို နှိပ်၍ လေ့ကျင့်ခန်း ရွေးချယ်ပါ
             </h2>
             <p className="text-xs text-slate-600 mt-1">
@@ -523,7 +523,7 @@ export const PhysiotherapyModule: React.FC = () => {
                       setSelectedBodyPart(part.id);
                       setActiveTab('exercises');
                     }}
-                    className="p-4 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all text-left group cursor-pointer flex flex-col justify-between"
+                    className="p-3 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all text-left group cursor-pointer flex flex-col justify-between"
                   >
                     <div>
                       <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">{part.icon}</div>
@@ -546,7 +546,7 @@ export const PhysiotherapyModule: React.FC = () => {
       {activeTab === 'runner' && activeExercise && (
         <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden">
           {/* Header */}
-          <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+          <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
             <div>
               <button 
                 onClick={() => setActiveTab('exercises')}
@@ -555,7 +555,7 @@ export const PhysiotherapyModule: React.FC = () => {
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>လေ့ကျင့်ခန်း စာရင်းသို့ ပြန်သွားမည်</span>
               </button>
-              <h2 className="text-lg font-bold">{activeExercise.titleMm}</h2>
+              <h2 className="text-base font-bold">{activeExercise.titleMm}</h2>
               <div className="text-xs text-emerald-400 font-medium">{activeExercise.titleEn}</div>
             </div>
 
@@ -564,9 +564,9 @@ export const PhysiotherapyModule: React.FC = () => {
             </span>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="p-4 space-y-4">
             {/* Countdown Display */}
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-3">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center space-y-3">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 စက္ကန့် တိုက်ရိုက် ရေတွက်စနစ် (Timer)
               </div>
@@ -613,7 +613,7 @@ export const PhysiotherapyModule: React.FC = () => {
             </div>
 
             {/* Reps Counter */}
-            <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+            <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl border border-emerald-200">
               <div>
                 <div className="text-xs font-bold text-emerald-900">ပြုလုပ်ပြီးသမျှ အကြိမ်ရေ ရေတွက်ရန်:</div>
                 <div className="text-2xl font-black text-emerald-700">{completedReps} ကြိမ်</div>
@@ -680,13 +680,13 @@ export const PhysiotherapyModule: React.FC = () => {
 
       {/* TAB 4: PHYSIOTHERAPY ARTICLES & GUIDES */}
       {activeTab === 'articles' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {physioArticles.map(art => (
               <div 
                 key={art.id}
                 onClick={() => setSelectedArticle(art)}
-                className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs text-slate-500">
@@ -721,13 +721,13 @@ export const PhysiotherapyModule: React.FC = () => {
       {/* Article Detail Modal */}
       {selectedArticle && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-4 space-y-3">
             <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
                 <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
                   {selectedArticle.author}
                 </span>
-                <h2 className="text-lg font-bold text-slate-900 mt-2">{selectedArticle.title}</h2>
+                <h2 className="text-base font-bold text-slate-900 mt-2">{selectedArticle.title}</h2>
               </div>
               <button 
                 onClick={() => setSelectedArticle(null)}

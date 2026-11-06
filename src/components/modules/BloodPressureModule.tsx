@@ -325,11 +325,11 @@ export const BloodPressureModule: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Top Banner / Summary */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Activity className="w-6 h-6 text-rose-500" />
             သွေးတိုး / သွေးပေါင်ချိန် မှတ်တမ်း
           </h2>
@@ -664,7 +664,7 @@ export const BloodPressureModule: React.FC = () => {
       {/* Add New BP Modal */}
       {isOpenAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-x-hidden overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md sm:max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 my-auto shrink-0 max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md sm:max-w-lg w-full p-3 sm:p-5 shadow-2xl border border-slate-200 dark:border-slate-800 my-auto shrink-0 max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Activity className="w-5 h-5 text-rose-500 shrink-0" />

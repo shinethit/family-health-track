@@ -52,10 +52,10 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 text-xs text-slate-700 leading-relaxed">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs text-slate-700 leading-relaxed">
           
           {/* Overview Box */}
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-2">
+          <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-2">
             <div className="flex items-center gap-2 font-bold text-emerald-900 text-sm">
               <Lock className="w-4 h-4 text-emerald-600" />
               <span>ကိုယ်ရေးကိုယ်တာ အချက်အလက် ကာကွယ်ရေး မူဝါဒ</span>
@@ -66,10 +66,10 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
           </div>
 
           {/* Core Pillars */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             
             {/* Pillar 1 */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
               <h4 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
                 <Database className="w-4 h-4 text-teal-600" />
                 <span>၁။ သိမ်းဆည်းထားသော အချက်အလက်များနှင့် သိုလှောင်မှု (Data Stored in Google Firebase)</span>
@@ -80,7 +80,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
             </div>
 
             {/* Pillar 2 */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
               <h4 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
                 <Stethoscope className="w-4 h-4 text-indigo-600" />
                 <span>၂။ စီမံခန့်ခွဲသူများ အသုံးပြုသူမှတ်တမ်း ကြည့်ရှုခွင့် (Administrator & Doctor Record Access)</span>
@@ -91,7 +91,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
             </div>
 
             {/* Pillar 3 */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
               <h4 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-rose-600" />
                 <span>၃။ ဒေတာ ထုတ်ယူခွင့်နှင့် အကောင့်ဖျက်သိမ်းခွင့် (Export & Permanent Account Deletion Rights)</span>
@@ -102,7 +102,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
             </div>
 
             {/* Pillar 4 */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
               <h4 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-amber-600" />
                 <span>၄။ အကောင့်ဝင်ရောက်မှုနှင့် စကားဝှက် လုံခြုံရေး (Firebase Authentication)</span>
@@ -113,7 +113,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, 
             </div>
 
             {/* Pillar 5 */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
               <h4 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
                 <EyeOff className="w-4 h-4 text-emerald-600" />
                 <span>၅။ အချက်အလက်များ ပြင်ပသို့ ရောင်းချခြင်း မပြုလုပ်ခြင်း</span>

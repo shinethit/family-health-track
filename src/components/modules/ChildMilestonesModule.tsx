@@ -293,10 +293,10 @@ export const ChildMilestonesModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-4 sm:p-5 text-white shadow-sm">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-3 sm:p-4 text-white shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="p-2 bg-white/20 backdrop-blur-md rounded-xl text-xl">🏆</span>
@@ -304,7 +304,7 @@ export const ChildMilestonesModule: React.FC = () => {
                 CDC & WHO Pediatric Milestones
               </span>
             </div>
-            <h1 className="text-lg font-bold tracking-tight">
+            <h1 className="text-base font-bold tracking-tight">
               ကလေးဖွံ့ဖြိုးမှု မှတ်တိုင်များ စစ်ဆေးမှတ်တမ်း (Child Milestones)
             </h1>
             <p className="text-xs sm:text-sm text-amber-100 max-w-2xl leading-relaxed">
@@ -338,9 +338,9 @@ export const ChildMilestonesModule: React.FC = () => {
       </div>
 
       {/* Active Milestone Card & Interactive Progress */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-4 space-y-3">
         {/* Card Header & Progress Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200">
@@ -411,7 +411,7 @@ export const ChildMilestonesModule: React.FC = () => {
         </div>
 
         {/* Red Flags & Warning Signs Box */}
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2.5">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2.5">
           <div className="flex items-center gap-2 text-red-900 font-bold text-xs">
             <ShieldAlert className="w-4 h-4 text-red-600" />
             <span>⚠️ ဤအသက်အရွယ်တွင် သတိပြုရမည့် ဖွံ့ဖြိုးမှု နှောင့်နှေးခြင်း သတိပေးလက္ခဏာများ (Red Flags)</span>
@@ -430,7 +430,7 @@ export const ChildMilestonesModule: React.FC = () => {
         </div>
 
         {/* Parent Tips & Activities */}
-        <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 space-y-2.5">
+        <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3 space-y-2.5">
           <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
             <Lightbulb className="w-4 h-4 text-emerald-600" />
             <span>💡 ဤအရွယ် ကလေးငယ်၏ ဖွံ့ဖြိုးမှုကို မြှင့်တင်ပေးမည့် မိဘများ လေ့ကျင့်ပေးနိုင်သော နည်းလမ်းများ</span>

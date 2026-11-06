@@ -332,9 +332,9 @@ export const SpecialNeedsCareModule: React.FC = () => {
   const checklistPercentage = Math.round((completedChecklistCount / ACCESSIBILITY_CHECKLIST_ITEMS.length) * 100);
 
   return (
-    <div className="space-y-4 animate-fadeIn pb-6">
+    <div className="space-y-3 animate-fadeIn pb-4">
       {/* Top Header Card */}
-      <div className="bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 rounded-3xl p-4 sm:p-6 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 rounded-3xl p-3 sm:p-5 text-white shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
         
         <div className="relative z-10">
@@ -357,7 +357,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
           </p>
 
           {/* Quick Metrics / Action Row */}
-          <div className="mt-6 pt-5 border-t border-indigo-600/40 flex flex-wrap items-center justify-between gap-4">
+          <div className="mt-4 pt-4 border-t border-indigo-600/40 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-200 font-bold">
                 {SPECIAL_CARE_TOPICS.length}
@@ -380,7 +380,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
       </div>
 
       {/* Category Tabs & Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3.5">
+      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs space-y-3.5">
         {/* Search Bar */}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -511,7 +511,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
         <div className="col-span-1 lg:col-span-7">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden sticky top-36">
             {/* Topic Header & Dropdown Switcher */}
-            <div className="p-5 sm:p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-indigo-50/30">
+            <div className="p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-indigo-50/30">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                 <div className="flex items-center gap-3">
                   <span className="text-3xl">{activeTopic.icon}</span>
@@ -547,9 +547,9 @@ export const SpecialNeedsCareModule: React.FC = () => {
             </div>
 
             {/* Scrollable Content Body */}
-            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            <div className="p-4 space-y-3 max-h-[75vh] overflow-y-auto">
               {/* Summary Box */}
-              <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4">
+              <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-3">
                 <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
                   <Info className="w-3.5 h-3.5 text-indigo-600" />
                   အကျဉ်းချုပ် ရှင်းလင်းချက်
@@ -626,7 +626,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
               </div>
 
               {/* Specialist Advice */}
-              <div className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl p-4 shadow-sm">
+              <div className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl p-3 shadow-sm">
                 <div className="flex items-center gap-2 mb-1.5 text-indigo-300 text-xs font-bold">
                   <Stethoscope className="w-4 h-4 text-emerald-400" />
                   အထူးကု ဆရာဝန်ကြီးများ၏ အကြံပြုချက်
@@ -647,7 +647,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
       {showChecklistModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scaleIn">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
                   <CheckSquare className="w-5 h-5" />
@@ -679,7 +679,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-3 flex-1">
+            <div className="p-4 overflow-y-auto space-y-3 flex-1">
               {ACCESSIBILITY_CHECKLIST_ITEMS.map((item) => {
                 const isChecked = !!checklistState[item.id];
                 return (
@@ -707,7 +707,7 @@ export const SpecialNeedsCareModule: React.FC = () => {
               })}
             </div>
 
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end">
+            <div className="p-3 border-t border-slate-100 bg-slate-50 flex items-center justify-end">
               <button
                 onClick={() => setShowChecklistModal(false)}
                 className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-xs cursor-pointer"

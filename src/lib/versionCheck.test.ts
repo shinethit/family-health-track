@@ -9,6 +9,7 @@ import {
   shouldShowVersionUpdatePrompt,
 } from './versionCheck';
 import { VERSION_HISTORY_DATA } from '../components/modules/VersionHistoryModal';
+import { CURRENT_SYSTEM_VERSION } from '../constants/version';
 
 // v2.4.16 (H-H12) — the "Latest" badge in the Version History list is
 // derived from isLatest (VersionHistoryModal renders the Latest pill only
@@ -23,8 +24,8 @@ describe('version history latest entry', () => {
   it('the latest entry is the first entry and matches the current version', () => {
     const latest = VERSION_HISTORY_DATA.filter((v) => v.isLatest);
     expect(latest[0]).toBe(VERSION_HISTORY_DATA[0]);
-    expect(latest[0].version).toBe('v2.4.23');
-    expect(latest[0].badge).toContain('v2.4.23');
+    expect(latest[0].version).toBe(CURRENT_SYSTEM_VERSION);
+    expect(latest[0].badge).toContain(CURRENT_SYSTEM_VERSION);
   });
 
   it('no other entry claims to be latest', () => {

@@ -318,7 +318,7 @@ export const EmergencyIDModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <style>{`
         @media print {
           body * {
@@ -344,13 +344,13 @@ export const EmergencyIDModule: React.FC = () => {
       `}</style>
 
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-rose-700 to-red-800 text-white p-4 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      <div className="bg-gradient-to-r from-rose-700 to-red-800 text-white p-3 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
           <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-xs shrink-0">
             <ShieldAlert className="w-8 h-8 text-rose-200" />
           </div>
           <div>
-            <h2 className="text-lg font-bold tracking-tight">အရေးပေါ် ကျန်းမာရေးကတ်</h2>
+            <h2 className="text-base font-bold tracking-tight">အရေးပေါ် ကျန်းမာရေးကတ်</h2>
             <p className="text-xs text-rose-100 mt-1">
               အရေးပေါ် အခြေအနေများတွင် ရှေးဦးသူနာပြုများနှင့် ဆရာဝန်များ ချက်ချင်း ကြည့်ရှုနိုင်ရန် တိုက်ရိုက် ဆက်သွယ်ရန်နှင့် သွေးအမျိုးအစား မှတ်တမ်း
             </p>
@@ -437,13 +437,13 @@ export const EmergencyIDModule: React.FC = () => {
 
       {/* Edit Form or Visual Pocket Card View */}
       {isEditing ? (
-        <form onSubmit={handleSave} className="bg-white border border-slate-200 rounded-3xl p-4 space-y-3 shadow-sm text-xs">
+        <form onSubmit={handleSave} className="bg-white border border-slate-200 rounded-3xl p-3 space-y-3 shadow-sm text-xs">
           <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
             အရေးပေါ် ကျန်းမာရေး အချက်အလက်များ ပြင်ဆင်ရန်
             {isDirty && <span className="ml-2 text-[11px] font-semibold text-amber-700">(မသိမ်းရသေးသော ပြင်ဆင်မှုများ ရှိသည်)</span>}
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="font-semibold text-slate-700 block mb-1">အသုံးပြုသူအမည်</label>
               <input
@@ -792,9 +792,9 @@ export const EmergencyIDModule: React.FC = () => {
           </div>
 
           {/* Detailed Emergency Info Cards */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-3">
             {/* Primary Contacts */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
+            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-xs">
               <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
                 <PhoneCall className="w-4 h-4 text-rose-600" />
                 <span>အရေးပေါ် ဆက်သွယ်ရန် ဖုန်းနံပါတ်များ (Direct Emergency Contacts)</span>
@@ -844,7 +844,7 @@ export const EmergencyIDModule: React.FC = () => {
             </div>
 
             {/* Doctor & Preferred Hospital */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs">
+            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-xs">
               <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
                 <Stethoscope className="w-4 h-4 text-indigo-600" />
                 <span>ပြသနေသော ဆရာဝန်နှင့် ဆေးရုံ (Physician & Hospital)</span>
@@ -868,7 +868,7 @@ export const EmergencyIDModule: React.FC = () => {
             </div>
 
             {/* Special Instructions & Organ Donation */}
-            <div className="bg-amber-50/60 border border-amber-200 rounded-3xl p-5 text-xs text-amber-950 space-y-2">
+            <div className="bg-amber-50/60 border border-amber-200 rounded-3xl p-4 text-xs text-amber-950 space-y-2">
               <p className="font-bold flex items-center gap-1.5 text-amber-900">
                 <Info className="w-4 h-4 text-amber-700" />
                 <span>အရေးပေါ် လမ်းညွှန်ချက် (Special Medical Instructions)</span>

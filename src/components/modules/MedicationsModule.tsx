@@ -439,11 +439,11 @@ export const MedicationsModule: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Pill className="w-6 h-6 text-sky-500" />
             သောက်နေသောဆေးများ စာရင်း
           </h2>
@@ -466,7 +466,7 @@ export const MedicationsModule: React.FC = () => {
       </div>
 
       {/* Today's Pill Schedule & Compliance Box with Adherence progress */}
-      <div className="bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 dark:from-sky-950/40 dark:via-blue-950/40 dark:to-indigo-950/40 p-4 rounded-3xl border border-sky-200 dark:border-sky-800 shadow-xs space-y-3">
+      <div className="bg-gradient-to-r from-sky-500/10 via-blue-500/10 to-indigo-500/10 dark:from-sky-950/40 dark:via-blue-950/40 dark:to-indigo-950/40 p-3 rounded-3xl border border-sky-200 dark:border-sky-800 shadow-xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-2xl bg-sky-600 text-white flex items-center justify-center shadow-xs">
@@ -612,7 +612,7 @@ export const MedicationsModule: React.FC = () => {
           return (
             <div
               key={med.id}
-              className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative flex flex-col justify-between"
+              className="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-start justify-between gap-3 mb-2">
@@ -746,9 +746,9 @@ export const MedicationsModule: React.FC = () => {
       {/* Add Medication Modal */}
       {isOpenAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-4 shadow-2xl border border-slate-200 dark:border-slate-800 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Pill className="w-5 h-5 text-sky-500" />
                 {editingId ? 'ဆေး မှတ်တမ်း ပြင်ဆင်မည်' : 'ဆေးအသစ် ထည့်သွင်းခြင်း'}
               </h3>
@@ -780,7 +780,7 @@ export const MedicationsModule: React.FC = () => {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+            <form onSubmit={handleSubmit} className="mt-3 space-y-3">
               {/* Trade Name */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -846,7 +846,7 @@ export const MedicationsModule: React.FC = () => {
               </div>
 
               {/* Dosage & Duration Days */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     ဆေးပမာဏ (Dosage) *
@@ -879,7 +879,7 @@ export const MedicationsModule: React.FC = () => {
               </div>
 
               {/* Frequency & Timing */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     သောက်ရမည့်အကြိမ် (Frequency) *
@@ -937,7 +937,7 @@ export const MedicationsModule: React.FC = () => {
               </div>
 
               {/* Start Date & End Date */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     စတင်သောက်သည့်ရက် (Start Date)
@@ -970,7 +970,7 @@ export const MedicationsModule: React.FC = () => {
               </div>
 
               {/* Dose Times (both optional) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     သောက်ရမည့်အချိန် (မဖြည့်လည်းရသည်)
@@ -1003,7 +1003,7 @@ export const MedicationsModule: React.FC = () => {
               </div>
 
               {/* Prescribed For & Doctor */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     ကုသရန် ရောဂါ (Condition)

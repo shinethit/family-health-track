@@ -198,7 +198,7 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
       size="2xl"
       title={titleHeader}
     >
-      <div className="p-4 sm:p-5 space-y-3 text-xs">
+      <div className="p-3 sm:p-4 space-y-3 text-xs">
         {errorMsg && (
           <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -206,9 +206,9 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-3 text-xs">
           {/* Section 1: Basic Identifiers */}
-          <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+          <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-3">
             <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
               <span>၁။ အခြေခံ အချက်အလက်များ (Basic Info)</span>
             </h4>
@@ -321,7 +321,7 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
           </div>
 
           {/* Section 2: Physical Vitals & BMI */}
-          <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+          <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5 text-rose-500" />
@@ -394,7 +394,7 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
           </div>
 
           {/* Section 3: Chronic Conditions */}
-          <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+          <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
                 <Heart className="w-3.5 h-3.5 text-rose-500" />
@@ -447,7 +447,7 @@ export const EditPatientModal: React.FC<EditPatientModalProps> = ({
           </div>
 
           {/* Section 4: Allergies & Clinical Notes */}
-          <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-3">
+          <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 space-y-3">
             <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
               <span>၄။ မတည့်သောဆေးဝါးနှင့် မှတ်ချက်များ (Allergies & Clinical Notes)</span>

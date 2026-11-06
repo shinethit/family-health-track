@@ -669,27 +669,14 @@ const MainContent: React.FC = () => {
       
       {/* Clean Minimal Module Indicator */}
       <div className={`bg-white/95 backdrop-blur-md border-b border-slate-200 sticky ${showBroadcast ? 'top-[105px] sm:top-[110px]' : 'top-16'} z-30 w-full shadow-xs`}>
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
-              <Activity className="w-4 h-4" />
-            </div>
-            <h2 className="text-sm font-bold text-slate-800">
-              {currentCategoryTabs.find(t => t.id === activeTab)?.label || 'Menu'}
-            </h2>
-          </div>
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <span>မော်ဂျူး ပြောင်းမည်</span>
-            <ChevronDown className="w-4 h-4" />
-          </button>
-        </div>
-        {/* Tab strip — one-tap switching between the current category's tabs */}
-        {currentCategoryTabs.length > 1 && (
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-2">
-            <div className="flex flex-wrap gap-1.5">
+        {/* Tab strip — one-tap switching between the current category's tabs.
+            v2.4.24: merged with the old header row above it. Its current-tab
+            label duplicated the active pill here, and its "မော်ဂျူး ပြောင်းမည်"
+            button now lives in this strip. Always rendered (no length > 1
+            gate) so single-tab categories (family, admin) keep their only
+            path to the sidebar. */}
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2">
+          <div className="flex flex-wrap gap-1.5">
               {currentCategoryTabs.map((tab) => {
                 const TabIcon = tab.icon;
                 const isActive = tab.id === activeTab;
@@ -709,9 +696,16 @@ const MainContent: React.FC = () => {
                   </button>
                 );
               })}
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="shrink-0 ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                aria-label="မော်ဂျူး ပြောင်းမည်"
+              >
+                <span>မော်ဂျူး ပြောင်းမည်</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
             </div>
           </div>
-        )}
       </div>
       {/* Main Content Area - Pure White Clean Layout */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">

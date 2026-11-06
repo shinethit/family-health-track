@@ -310,19 +310,19 @@ export const SpecialtyCareModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-6">
+    <div className="space-y-3 max-w-7xl mx-auto pb-4">
       {/* Top Specialty Care Header Banner */}
-      <div className="bg-gradient-to-r from-teal-700 via-emerald-700 to-cyan-800 rounded-2xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-teal-700 via-emerald-700 to-cyan-800 rounded-2xl p-3 sm:p-4 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-6 -translate-y-6 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="px-2.5 py-0.5 rounded-full bg-teal-400/20 text-teal-200 text-xs font-bold border border-teal-300/30 flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5" /> Specialities Care & Self-Tests
               </span>
             </div>
-            <h1 className="text-lg font-extrabold tracking-tight">
+            <h1 className="text-base font-extrabold tracking-tight">
               သွား၊ မျက်စိ နှင့် နား/အကြားအာရုံ အထူးကု မှတ်တမ်းနှင့် စစ်ဆေးမှုများ
             </h1>
             <p className="text-teal-100 text-xs sm:text-sm mt-1 max-w-2xl">
@@ -363,12 +363,12 @@ export const SpecialtyCareModule: React.FC = () => {
       {/* 1. DENTAL CARE TAB */}
       {/* ========================================================================= */}
       {activeTab === 'dental' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Brushing Timer & Interactive Teeth Chart Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* 2-Min Brushing Coach */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -427,7 +427,7 @@ export const SpecialtyCareModule: React.FC = () => {
             </div>
 
             {/* Interactive Teeth Map (Adult 32 Teeth) */}
-            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
@@ -445,7 +445,7 @@ export const SpecialtyCareModule: React.FC = () => {
               </div>
 
               {/* Teeth Display Grid */}
-              <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="space-y-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 {/* Upper Jaw (Teeth 1 to 16) */}
                 <div>
                   <div className="text-[11px] font-bold text-slate-500 text-center mb-1">အပေါ် မေးရိုး သွားများ (Upper Arch)</div>
@@ -506,7 +506,7 @@ export const SpecialtyCareModule: React.FC = () => {
           </div>
 
           {/* Dental History Records List */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
                 <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
@@ -531,7 +531,7 @@ export const SpecialtyCareModule: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 {dentalRecords.map(rec => (
-                  <div key={rec.id} className="p-4 rounded-xl border border-slate-200 hover:border-emerald-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+                  <div key={rec.id} className="p-3 rounded-xl border border-slate-200 hover:border-emerald-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
@@ -578,11 +578,11 @@ export const SpecialtyCareModule: React.FC = () => {
       {/* 2. EYE & VISION TAB */}
       {/* ========================================================================= */}
       {activeTab === 'eye' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Interactive Snellen Visual Acuity Chart */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -597,7 +597,7 @@ export const SpecialtyCareModule: React.FC = () => {
                 </div>
 
                 {/* Snellen Board Display */}
-                <div className="bg-white p-6 rounded-xl border border-slate-300 text-center my-4 min-h-[160px] flex flex-col items-center justify-center shadow-inner">
+                <div className="bg-white p-4 rounded-xl border border-slate-300 text-center my-4 min-h-[160px] flex flex-col items-center justify-center shadow-inner">
                   <div className={`font-mono font-black tracking-widest text-slate-900 ${snellenLines[snellenLevel].size}`}>
                     {snellenLines[snellenLevel].letters}
                   </div>
@@ -631,7 +631,7 @@ export const SpecialtyCareModule: React.FC = () => {
             </div>
 
             {/* Ishihara Color Vision Test */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -712,7 +712,7 @@ export const SpecialtyCareModule: React.FC = () => {
           </div>
 
           {/* Eye Prescription Records List */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
                 <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
@@ -735,9 +735,9 @@ export const SpecialtyCareModule: React.FC = () => {
                 <p className="text-xs text-slate-500 font-medium">မျက်မှန်ပါဝါ မှတ်တမ်း မရှိသေးပါ</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {eyePrescriptions.map(ep => (
-                  <div key={ep.id} className="p-4 rounded-xl border border-slate-200 hover:border-cyan-300 transition-all bg-white">
+                  <div key={ep.id} className="p-3 rounded-xl border border-slate-200 hover:border-cyan-300 transition-all bg-white">
                     <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
                       <div className="flex items-center gap-2">
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-cyan-100 text-cyan-800">
@@ -783,11 +783,11 @@ export const SpecialtyCareModule: React.FC = () => {
       {/* 3. EAR & HEARING TAB */}
       {/* ========================================================================= */}
       {activeTab === 'ear' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Tone Generator & Hearing Test */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             
-            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
@@ -846,7 +846,7 @@ export const SpecialtyCareModule: React.FC = () => {
             </div>
 
             {/* Ear Hygiene & Decibel Safety Guide */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col justify-between">
               <div>
                 <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5 mb-3">
                   <ShieldAlert className="w-4 h-4 text-amber-500" /> အကြားအာရုံ ကာကွယ်ရေး လမ်းညွှန်
@@ -876,7 +876,7 @@ export const SpecialtyCareModule: React.FC = () => {
       {/* --- MODAL: Add Dental Record --- */}
       {showAddDentalModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-4 shadow-xl border border-slate-200 space-y-3">
             <h3 className="font-extrabold text-slate-900 text-base">သွားဆေးခန်း ပြသမှု မှတ်တမ်းအသစ်</h3>
             
             <form onSubmit={handleAddDental} className="space-y-3 text-xs">
@@ -953,7 +953,7 @@ export const SpecialtyCareModule: React.FC = () => {
       {/* --- MODAL: Add Eye Prescription --- */}
       {showAddEyeModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 space-y-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 shadow-xl border border-slate-200 space-y-3">
             <h3 className="font-extrabold text-slate-900 text-base">မျက်မှန်ပါဝါ မှတ်တမ်းအသစ် ထည့်သွင်းမည်</h3>
             
             <form onSubmit={handleAddEye} className="space-y-3 text-xs">

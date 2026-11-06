@@ -980,9 +980,9 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
+    <div className="space-y-3 animate-in fade-in duration-200">
       {/* Header Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -996,7 +996,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
 
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg font-extrabold text-slate-900 dark:text-white leading-tight">
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">
                 {cleanName}
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
@@ -1335,7 +1335,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Latest BP */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
@@ -1466,8 +1466,8 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
       {/* Full BP / Glucose history (v2.4.16, C-H4) — every row editable,
           not just the latest. The old detail page showed only the latest
           value with an edit button, so older records could never be fixed. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-1 flex items-center gap-2">
             <Activity className="w-4 h-4 text-rose-500" />
             <span>သွေးပေါင်ချိန် မှတ်တမ်းအားလုံး ({sortedUserBP.length} ကြိမ်) — အချိန်အားလုံး</span>
@@ -1537,8 +1537,8 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
       </div>
 
       {/* Interactive Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
             <Activity className="w-4 h-4 text-rose-500" />
             <span>သွေးပေါင်ချိန် ပြောင်းလဲမှု ဂရပ် (အချိန်အားလုံး)</span>
@@ -1556,8 +1556,8 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
       </div>
 
       {/* Lab Tests & Medications */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 [&>*]:min-w-0">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 [&>*]:min-w-0">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
             <FlaskConical className="w-4 h-4 text-sky-500" />
             <span>ဓာတ်ခွဲခန်း စစ်ဆေးချက်များ (နောက်ဆုံး ၅ ခု)</span>
@@ -1677,8 +1677,8 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
       </div>
 
       {/* Vaccines & BMI History */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
             <Syringe className="w-4 h-4 text-teal-500" />
             <span>ကာကွယ်ဆေးများ ({vaccineRecords.length} ကြိမ်)</span>
@@ -1996,7 +1996,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
       </div>
 
       {/* Doctor Advice Composer */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
             <Stethoscope className="w-4 h-4" />
@@ -2099,7 +2099,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         size="sm"
         title="မှတ်တမ်း ဖျက်မည်"
       >
-        <div className="p-5 space-y-4 text-xs">
+        <div className="p-4 space-y-3 text-xs">
           <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
             “{deleteTarget?.label}” မှတ်တမ်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။
             {deleteTarget?.kind === 'lab' ? ' ဓာတ်ခွဲခန်း မှတ်တမ်းတစ်ခုလုံးနှင့် ၎င်းထဲက စစ်ဆေးချက် အားလုံး ဖျက်ပါမည်။' : ''}
@@ -2130,7 +2130,7 @@ export const AdminPatientDetail: React.FC<AdminPatientDetailProps> = ({
         size="sm"
         title="မေးခွန်း ပိတ်သိမ်းမည်"
       >
-        <div className="p-5 space-y-4 text-xs">
+        <div className="p-4 space-y-3 text-xs">
           <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
             ဤမေးခွန်းကို ပိတ်သိမ်းမှာသေချာပါသလား? အဖြေရပြီးဖြစ်ကြောင်း မှတ်သားပါမည်။
           </p>

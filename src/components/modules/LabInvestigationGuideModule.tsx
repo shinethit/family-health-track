@@ -347,11 +347,11 @@ export const LabInvestigationGuideModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Module Title Banner */}
-      <div className="bg-gradient-to-r from-teal-900 via-teal-800 to-emerald-900 rounded-3xl p-4 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-teal-900 via-teal-800 to-emerald-900 rounded-3xl p-3 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-1/3 -translate-y-1/3 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/20 text-teal-200 text-xs font-bold border border-teal-400/30">
               <FlaskConical className="w-3.5 h-3.5" />
@@ -364,7 +364,7 @@ export const LabInvestigationGuideModule: React.FC = () => {
               သွေးစစ်ဆေးမှု၊ ဆီးစစ်ဆေးမှု၊ ဝမ်းစစ်ဆေးမှု နှင့် ရင်ဘတ်ဓာတ်မှန်/အာထရာဆောင်း စသည့် ဆေးစစ်ချက်များ၏ ပုံမှန်စံနှုန်းများ၊ ဆေးစစ်မီ ပြင်ဆင်ရန်များနှင့် ရလဒ်ကြည့်ရှုနည်းများကို စုံလင်စွာ လေ့လာနိုင်ပါသည်။
             </p>
           </div>
-          <div className="shrink-0 flex items-center gap-3 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+          <div className="shrink-0 flex items-center gap-3 bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/10">
             <TestTube className="w-8 h-8 text-teal-300" />
             <div>
               <div className="text-xs text-teal-200 font-medium">စစ်ဆေးချက်ပေါင်း</div>
@@ -375,7 +375,7 @@ export const LabInvestigationGuideModule: React.FC = () => {
       </div>
 
       {/* Interactive Quick Test Interpreter */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">
         <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
           <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
             <Sparkles className="w-5 h-5" />
@@ -433,7 +433,7 @@ export const LabInvestigationGuideModule: React.FC = () => {
 
         {/* Interpretation Result Alert */}
         {interpreterResult && (
-          <div className={`p-4 rounded-2xl border text-xs space-y-1.5 animate-in fade-in duration-200 ${
+          <div className={`p-3 rounded-2xl border text-xs space-y-1.5 animate-in fade-in duration-200 ${
             interpreterResult.status === 'normal' ? 'bg-emerald-50 border-emerald-200 text-emerald-950' :
             interpreterResult.status === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-950' :
             interpreterResult.status === 'danger' ? 'bg-rose-50 border-rose-200 text-rose-950' :
@@ -456,7 +456,7 @@ export const LabInvestigationGuideModule: React.FC = () => {
       </div>
 
       {/* Pre-Test Preparation Quick Notice */}
-      <div className="bg-amber-50/80 border border-amber-200 rounded-3xl p-5 text-xs text-amber-950 space-y-3">
+      <div className="bg-amber-50/80 border border-amber-200 rounded-3xl p-4 text-xs text-amber-950 space-y-3">
         <div className="flex items-center gap-2 font-extrabold text-amber-900 text-sm">
           <Clock className="w-5 h-5 text-amber-600" />
           <span>⚠️ ဆေးစစ်ခန်း မသွားမီ အရေးကြီး ကြိုတင်ပြင်ဆင်ရန်များ</span>
@@ -520,7 +520,7 @@ export const LabInvestigationGuideModule: React.FC = () => {
               {/* Item Card Header */}
               <button
                 onClick={() => setExpandedId(isExpanded ? null : test.id)}
-                className="w-full p-4 text-left flex items-start sm:items-center justify-between gap-3 cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors"
+                className="w-full p-3 text-left flex items-start sm:items-center justify-between gap-3 cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex items-start sm:items-center gap-3">
                   <div className={`p-3 rounded-2xl border ${test.iconBg} shrink-0`}>
@@ -555,7 +555,7 @@ export const LabInvestigationGuideModule: React.FC = () => {
 
               {/* Item Card Expanded Body */}
               {isExpanded && (
-                <div className="p-5 border-t border-slate-100 space-y-4 bg-white text-xs animate-in slide-in-from-top-2 duration-200">
+                <div className="p-4 border-t border-slate-100 space-y-3 bg-white text-xs animate-in slide-in-from-top-2 duration-200">
                   {/* Short Description */}
                   <div className="p-3 rounded-2xl bg-slate-50 text-slate-800 leading-relaxed">
                     <span className="font-bold text-teal-800">အနှစ်ချုပ် - </span>

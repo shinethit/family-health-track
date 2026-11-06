@@ -472,7 +472,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               <FileText className="w-6 h-6 text-emerald-200" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">ကျန်းမာရေး အစီရင်ခံစာ PDF / Print Passport</h2>
+              <h2 className="text-base font-bold">ကျန်းမာရေး အစီရင်ခံစာ PDF / Print Passport</h2>
               <p className="text-xs text-emerald-100">နောက်ဆုံးအခြေအနေနှင့် ၁ လ ၊ ၃ လ ၊ ၆ လ စာ သမိုင်းမှတ်တမ်း အပြည့်အစုံ</p>
             </div>
           </div>
@@ -515,7 +515,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
         </div>
 
         {/* Printable Passport Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-slate-800 bg-white" id="printable-health-passport">
+        <div className="p-3 sm:p-5 overflow-y-auto space-y-3 text-slate-800 bg-white" id="printable-health-passport">
           
           {/* Header Banner for Printed Document */}
           <div className="border-b-2 border-emerald-600 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -538,7 +538,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
           </div>
 
           {/* Patient Personal Information Card */}
-          <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">အသုံးပြုသူ / အသုံးပြုသူအမည်</p>
               <p className="text-base font-extrabold text-slate-900">{patientName}</p>
@@ -609,7 +609,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* BP Summary */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
+              <div className="border border-slate-200 rounded-2xl p-3 bg-white shadow-xs">
                 <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
                   <span>နောက်ဆုံး သွေးပေါင်ချိန်</span>
                   <span className="text-[11px] text-slate-400">{latestBP ? formatRecordDate(latestBP) : '-'}</span>
@@ -628,7 +628,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               </div>
 
               {/* Glucose Summary */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
+              <div className="border border-slate-200 rounded-2xl p-3 bg-white shadow-xs">
                 <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
                   <span>နောက်ဆုံး ဆီးချို/သွေးချို</span>
                   <span className="text-[11px] text-slate-400">{latestSugar ? formatRecordDate(latestSugar) : '-'}</span>
@@ -647,7 +647,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
               </div>
 
               {/* BMI Summary */}
-              <div className="border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
+              <div className="border border-slate-200 rounded-2xl p-3 bg-white shadow-xs">
                 <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
                   <span>ကိုယ်အလေးချိန် & BMI</span>
                   <span className="text-[11px] text-slate-400">{passportBmi?.record ? formatRecordDate(passportBmi.record) : '-'}</span>
@@ -666,7 +666,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
           </div>
 
           {/* SECTION 2: Historical Trends Summary (၁ လ ၊ ၃ လ ၊ ၆ လ စာ ကျန်းမာရေး အနှစ်ချုပ်နှင့် ပျမ်းမျှတန်ဖိုးများ) */}
-          <div className="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
+          <div className="bg-slate-50/80 border border-slate-200 rounded-2xl p-3 sm:p-4 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-indigo-600" />
@@ -767,7 +767,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
           </div>
 
           {/* SECTION 3: Detailed Historical Data, Trend Graphs & Logs */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2.5">
               <div className="flex items-center gap-2">
                 <History className="w-4 h-4 text-emerald-600" />
@@ -845,13 +845,13 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
 
             {/* Visual Trend Graphs (Rendered when displayMode === 'both' or 'graph', and in print) */}
             {(effectiveDisplayMode === 'both' || effectiveDisplayMode === 'graph') && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                   <BarChart2 className="w-4 h-4 text-emerald-600" />
                   <span>ကာလအလိုက် ပြောင်းလဲမှု Trend Graphs (Visual Curves & Target Zones):</span>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   {displayedBP.length > 0 && (
                     <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                       <BloodPressureChart records={displayedBP} />
@@ -875,7 +875,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
 
             {/* Detailed Data Table Logs (Rendered when displayMode === 'both' or 'table', and in print) */}
             {(effectiveDisplayMode === 'both' || effectiveDisplayMode === 'table') && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {(effectiveDisplayMode === 'both') && (
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200 mt-2">
                     <Table className="w-4 h-4 text-emerald-600" />
@@ -1092,7 +1092,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
             </h3>
 
             {latestLab ? (
-              <div className="bg-purple-50/50 border border-purple-200 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+              <div className="bg-purple-50/50 border border-purple-200 rounded-2xl p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                 {/* Current-format tests[] (the format labs are saved in now) */}
                 {latestLab.tests && latestLab.tests.length > 0 && (
                   <div className="sm:col-span-2 lg:col-span-3">
@@ -1374,7 +1374,7 @@ export const HealthPassportModal: React.FC<HealthPassportModalProps> = ({ isOpen
         </div>
 
         {/* Modal Bottom Footer Actions */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between no-print shrink-0">
+        <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between no-print shrink-0">
           <span className="text-xs text-slate-500 font-medium">
             A4 Size Layout ဖြင့် ပုံနှိပ်ထုတ်ယူရန် အဆင်သင့်ဖြစ်ပါသည်။
           </span>

@@ -179,16 +179,16 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Top Banner - Pure White High Contrast */}
-      <div className="p-4 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-xs relative overflow-hidden">
+      <div className="p-3 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-xs relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold mb-2">
               <BellRing className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
               <span>ကျန်းမာရေး သတိပေးချက်နှင့် Reminder စနစ်</span>
             </div>
-            <h2 className="text-lg font-extrabold text-slate-900">
+            <h2 className="text-base font-extrabold text-slate-900">
               သတိပေးချက်များ & Reminders
             </h2>
             <p className="text-xs text-slate-600 mt-1 max-w-xl">
@@ -218,7 +218,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
 
         {/* Admin Mode Clarification Banner */}
         {isAdmin && (
-          <div className="mt-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-center gap-3">
+          <div className="mt-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-center gap-3">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
             <div>
               <p className="font-bold">အက်မင် (Admin) မုဒ် သတ်မှတ်ချက်:</p>
@@ -265,7 +265,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
       {/* Browser Notification Permission & Environment Scope Notice */}
       <div className="space-y-3">
         {!permissionGranted && (
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
             <div className="flex items-center gap-2.5">
               <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
               <div>
@@ -298,11 +298,11 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
 
       {/* Tab 1: Reminders List */}
       {activeTab === 'reminders' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <p className="text-[11px] text-slate-500">ဤသတိပေးချက်များကို ဤစက်တွင်သာ သိမ်းထားပါသည် — အခြားစက်မှာ မပေါ်ပါ။ အက်ပ် ဖွင့်ထားချိန်မှသာ သတိပေးနိုင်ပါသည်။</p>
           {/* v2.4.16 (F-M9): empty state — a clear message, not a blank grid. */}
           {customReminders.length === 0 ? (
-            <div className="p-6 text-center rounded-3xl bg-white border border-dashed border-slate-300 text-slate-700 space-y-2 shadow-xs">
+            <div className="p-4 text-center rounded-3xl bg-white border border-dashed border-slate-300 text-slate-700 space-y-2 shadow-xs">
               <BellRing className="w-8 h-8 mx-auto text-slate-400" />
               <p className="text-sm font-bold text-slate-900">Reminder မသတ်မှတ်ရသေးပါ</p>
               <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
@@ -316,7 +316,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
               </button>
             </div>
           ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {customReminders.map((rem) => {
               const getIcon = () => {
                 switch (rem.category) {
@@ -332,7 +332,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
               return (
                 <div
                   key={rem.id}
-                  className={`p-5 rounded-3xl border transition-all flex items-start justify-between gap-4 shadow-xs ${
+                  className={`p-4 rounded-3xl border transition-all flex items-start justify-between gap-3 shadow-xs ${
                     rem.isActive
                       ? 'bg-white border-slate-200 text-slate-900'
                       : 'bg-slate-50 border-slate-200 opacity-60 text-slate-500'
@@ -408,7 +408,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
 
       {/* Tab 2: Notifications History */}
       {activeTab === 'notifications' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <span className="text-xs font-bold text-slate-700">
               ကျန်းမာရေး သတိပေးချက် မှတ်တမ်းများ ({notifications.length})
@@ -431,7 +431,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
           </div>
 
           {notifications.length === 0 ? (
-            <div className="p-6 text-center rounded-3xl bg-slate-50 border border-dashed border-slate-300 text-slate-700 space-y-2">
+            <div className="p-4 text-center rounded-3xl bg-slate-50 border border-dashed border-slate-300 text-slate-700 space-y-2">
               <Bell className="w-8 h-8 mx-auto text-slate-400" />
               <p className="text-sm font-bold text-slate-900">သတိပေးချက် မရှိသေးပါ</p>
               <p className="text-xs text-slate-600 max-w-md mx-auto">
@@ -443,7 +443,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
               {notifications.map((n) => (
                 <div
                   key={n.id}
-                  className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-3 shadow-xs ${
+                  className={`p-3 rounded-2xl border transition-all flex items-start justify-between gap-3 shadow-xs ${
                     n.read
                       ? 'bg-white border-slate-200 text-slate-800'
                       : 'bg-emerald-50/60 border-emerald-200 text-slate-900 font-medium'
@@ -546,7 +546,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
       {/* Add / Edit Reminder Modal (v2.4.16 F-H1: one form serves both) */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md p-4 shadow-2xl space-y-3">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md p-3 shadow-2xl space-y-3">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
                 <BellRing className="w-5 h-5 text-amber-600" />
@@ -560,7 +560,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
               </button>
             </div>
 
-            <form onSubmit={handleSaveReminder} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveReminder} className="space-y-3 text-xs">
               {formError && (
                 <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -690,7 +690,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
         title="Reminder ဖျက်မည်"
         size="sm"
       >
-        <div className="p-5 space-y-4 text-sm text-slate-700">
+        <div className="p-4 space-y-3 text-sm text-slate-700">
           <p className="leading-relaxed">
             <strong className="text-slate-900 break-words">“{pendingDeleteReminder?.title}”</strong>
             {' '}({pendingDeleteReminder ? formatDaysMm(pendingDeleteReminder.daysOfWeek) : ''} {pendingDeleteReminder?.time})
@@ -723,7 +723,7 @@ export const RemindersModule: React.FC<RemindersModuleProps> = ({ onOpenDoctorQA
         title="သတိပေးချက် အားလုံး ဖျက်မည်"
         size="sm"
       >
-        <div className="p-5 space-y-4 text-sm text-slate-700">
+        <div className="p-4 space-y-3 text-sm text-slate-700">
           <p className="leading-relaxed">
             သတိပေးချက် မှတ်တမ်း <strong className="text-slate-900">{notifications.length} ခု</strong> လုံးကို ဖျက်လိုက်မှာလား? ဖျက်ပြီးရင် ပြန်ရတော့မှာ မဟုတ်ပါဘူး။
           </p>

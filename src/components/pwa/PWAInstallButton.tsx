@@ -55,8 +55,8 @@ export const PWAInstallButton: React.FC<{ className?: string }> = ({ className =
 
         {showIOSGuide && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-sm rounded-3xl bg-slate-900 border border-purple-800/80 p-6 shadow-2xl text-white">
-              <div className="flex items-center justify-between mb-4">
+            <div className="w-full max-w-sm rounded-3xl bg-slate-900 border border-purple-800/80 p-4 shadow-2xl text-white">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-xl bg-purple-950 border border-amber-400/50 flex items-center justify-center text-amber-400 shadow-xs">
                     <Smartphone className="w-5 h-5" />
@@ -117,7 +117,7 @@ export const PWAInstallButton: React.FC<{ className?: string }> = ({ className =
       </button>
 
       {showFallbackHelp && (
-        <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl bg-slate-900 border border-amber-400/40 p-4 shadow-2xl text-white z-50">
+        <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl bg-slate-900 border border-amber-400/40 p-3 shadow-2xl text-white z-50">
           <p className="text-xs font-myanmar text-slate-200 leading-relaxed">
             App အဖြစ် ထည့်သွင်းရန် Browser Menu (⋮) ကို နှိပ်ပြီး &quot;Add to Home screen&quot; သို့မဟုတ် &quot;Install App&quot; ကို ရွေးချယ်နိုင်ပါသည်။
           </p>

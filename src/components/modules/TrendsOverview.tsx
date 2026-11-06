@@ -1,18 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Activity, 
-  Droplets, 
-  FlaskConical, 
+import {
+  Activity,
+  Droplets,
+  FlaskConical,
   Stethoscope,
-  AlertTriangle, 
-  Scale, 
-  Calendar, 
-  Users,
-  BarChart2,
+  AlertTriangle,
+  Scale,
   Table,
   History,
   Loader2,
-  TrendingUp,
   Clock,
   Heart,
   CheckCircle2,
@@ -22,10 +18,10 @@ import {
 import { useHealthData } from '../../context/HealthDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { BloodPressureChart, BloodSugarChart, BMIWeightChart } from '../charts/HealthCharts';
-import { 
-  calculateBPCategory, 
-  calculateGlucoseStatus, 
-  calculateBMI, 
+import {
+  calculateBPCategory,
+  calculateGlucoseStatus,
+  calculateBMI,
   calculateAge,
   parseDateToMs,
   formatDateLabel
@@ -79,11 +75,6 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
     : isMemberView
       ? selectedFamilyMember!.name
       : (profile?.displayName || 'အသုံးပြုသူ');
-  const viewRoleLabel = isPatientView
-    ? 'အသုံးပြုသူ'
-    : isMemberView
-      ? 'မိသားစုဝင်'
-      : (selectedFamilyMemberId === 'all' ? 'ကိုယ်တိုင်' : null);
   const isPatientRecord = (r: { userId?: string; patientEmail?: string }): boolean =>
     !!selectedPatient && (r.userId === selectedPatient.id ||
       (!r.userId && !!selectedPatient.email && r.patientEmail === selectedPatient.email));
@@ -213,19 +204,19 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
   // Chronologically sorted records (oldest -> newest for graphs)
   const sortedBP = useMemo(() => {
-    return [...viewBPRecords].sort((a, b) => 
+    return [...viewBPRecords].sort((a, b) =>
       parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
     );
   }, [viewBPRecords]);
 
   const sortedGlucose = useMemo(() => {
-    return [...viewGlucoseRecords].sort((a, b) => 
+    return [...viewGlucoseRecords].sort((a, b) =>
       parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
     );
   }, [viewGlucoseRecords]);
 
   const sortedBMI = useMemo(() => {
-    return [...viewBMIRecords].sort((a, b) => 
+    return [...viewBMIRecords].sort((a, b) =>
       parseDateToMs(a.date || a.timestamp || a.createdAt) - parseDateToMs(b.date || b.timestamp || b.createdAt)
     );
   }, [viewBMIRecords]);
@@ -394,57 +385,41 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
   }
 
   return (
-    <div className="space-y-3">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white p-4 rounded-2xl shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-100">
-              ကျန်းမာရေးသုံးသပ်ချက် အနှစ်ချုပ်
-            </span>
-            <h2 className="text-lg font-extrabold mt-1">
-              {viewName} ၏ ကျန်းမာရေး သမိုင်းမှတ်တမ်း
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="px-3 py-1.5 bg-white/10 rounded-2xl backdrop-blur-xs text-center border border-white/20">
-              <span className="text-sm font-bold">ကျန်းမာရေးအဆင့်: {healthBadge.text}</span>
-              {healthBadge.reason && (
-                <span className="text-[11px] text-emerald-100 block font-normal mt-0.5">
-                  {healthBadge.reason}
-                </span>
-              )}
-              {!hasAnyHealthData && (
-                <span className="text-[11px] text-emerald-100 block font-normal mt-0.5">
-                  မှတ်တမ်းထည့်ပြီးမှ ကျန်းမာရေး အခြေအနေ ပြပေးပါမယ်
-                </span>
-              )}
-            </div>
-          </div>
+    <div className="space-y-2">
+      {/* Top Banner — slim status strip (v2.4.24): name + health pill on
+          one row; the reason / no-data note is a small second row only
+          when present. Eyebrow line deleted. */}
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white px-3 py-2 rounded-2xl shadow-xs">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-base font-bold truncate min-w-0">
+            {viewName} ၏ ကျန်းမာရေး သမိုင်းမှတ်တမ်း
+          </h2>
+          <span className="px-2.5 py-1 bg-white/10 rounded-xl border border-white/20 text-xs font-bold whitespace-nowrap shrink-0">
+            {healthBadge.text}
+          </span>
         </div>
+        {healthBadge.reason && (
+          <p className="text-[11px] text-emerald-100 mt-1">{healthBadge.reason}</p>
+        )}
+        {!hasAnyHealthData && (
+          <p className="text-[11px] text-emerald-100 mt-1">
+            မှတ်တမ်းထည့်ပြီးမှ ကျန်းမာရေး အခြေအနေ ပြပေးပါမယ်
+          </p>
+        )}
       </div>
 
-      {/* User Selector Filter Bar for Admin / Multi-user view */}
+      {/* User Selector Filter Bar for Admin / Multi-user view — one
+          compact row, no card chrome (v2.4.24). The select itself shows
+          the current person, so the "currently viewing" line is gone. */}
       {profile?.role === 'admin' && patientsList.length > 0 && (
-        <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-              <Users className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs font-extrabold text-slate-900 dark:text-white block">
-                အသုံးပြုသူ ရွေးချယ်ရန်
-              </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                လက်ရှိ ပြသနေသော အသုံးပြုသူ: {viewName}{viewRoleLabel ? ` (${viewRoleLabel})` : ''}
-              </span>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 px-1">
+          <span className="text-xs font-extrabold text-slate-900 dark:text-white whitespace-nowrap shrink-0">
+            အသုံးပြုသူ ရွေးချယ်ရန်
+          </span>
           <select
             value={selectedPatientId || '__self__'}
             onChange={(e) => setSelectedPatientId(e.target.value === '__self__' ? null : e.target.value)}
-            className="px-3 py-1.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-xs"
+            className="min-w-0 flex-1 px-3 py-1.5 rounded-2xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-xs"
           >
             {/* E-H3: no pooled "All Users" option — the filter selects
                 exactly ONE person; no selection means the admin's own data. */}
@@ -483,7 +458,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
       {/* Empty state (E-L10): zero records is never "all good" — say so
           plainly and point at adding the first record. */}
       {!hasAnyHealthData && (
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
           <p className="text-sm font-bold text-slate-900 dark:text-white">မှတ်တမ်း မရှိသေးပါ</p>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {viewName} ၏ သွေးပေါင်၊ သကြားဓာတ်၊ BMI သို့မဟုတ် ဓာတ်ခွဲခန်း မှတ်တမ်း တစ်ခုမှ မရှိသေးပါ။ မှတ်တမ်း တစ်ခုထည့်လိုက်မှ Trend Graph နှင့် သုံးသပ်ချက် ပြပေးပါမယ်။
@@ -497,231 +472,219 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
         </div>
       )}
 
-      {/* Snapshot Cards - Pristine Pure White */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+      {/* Snapshot — compact rows in one card (v2.4.24): one row per
+          metric, name left, value + status + date right (max 2 lines).
+          Card click-navigation kept; the BMI row keeps its "Profile အရ"
+          suffix on the value line when the value comes from the profile. */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs divide-y divide-slate-100 overflow-hidden">
         {/* Age & Profile — E-L3: age is not a BMI shortcut; no navigation. */}
-        <div 
-          className="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs"
-        >
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-bold">အသက် (Age)</span>
-            <Calendar className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="text-lg font-extrabold font-mono text-slate-900 mt-1">
-            {activeAgeYears !== null ? activeAgeYears : '--'} <span className="text-xs text-slate-500 font-sans">နှစ်</span>
-          </div>
-          <span className="text-[11px] text-teal-700 font-semibold mt-1 block truncate">
-            {ageObj ? ageObj.formattedMm : 'မွေးနေ့မှ တွက်ချက်မည်'}
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+          <span className="text-xs font-bold text-slate-500 shrink-0">အသက် (Age)</span>
+          <span className="text-right min-w-0">
+            <span className="text-sm font-extrabold font-mono text-slate-900">
+              {activeAgeYears !== null ? activeAgeYears : '--'} <span className="text-[11px] text-slate-500 font-sans">နှစ်</span>
+            </span>
+            <span className="text-[11px] text-teal-700 font-semibold block truncate">
+              {ageObj ? ageObj.formattedMm : 'မွေးနေ့မှ တွက်ချက်မည်'}
+            </span>
           </span>
         </div>
 
         {/* BMI & Weight */}
-        <div 
+        <div
           onClick={() => onNavigateTab && onNavigateTab('bmi')}
-          className="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 transition-all cursor-pointer group"
+          className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
         >
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-bold">BMI အညွှန်း</span>
-            <Scale className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="text-lg font-extrabold font-mono text-slate-900 mt-1">
-            {cardBmi ? cardBmi.eval.bmi : '--'} <span className="text-xs text-slate-500 font-sans">kg/m²</span>
-          </div>
-          {cardBmi ? (
-            <>
-              <span className={`text-[11px] font-bold mt-1 inline-block truncate ${cardBmi.eval.color}`}>
-                {statusWithLabel(plainBMIStatus(cardBmi.eval.category), cardBmi.eval.labelMm, cardBmi.eval.category === 'normal', cardBmi.eval.isPediatric)}
-              </span>
-              {cardBmi.source === 'profile' && (
-                <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">Profile အရ တွက်ချက်ထားသည်</span>
+          <span className="text-xs font-bold text-slate-500 shrink-0">BMI အညွှန်း</span>
+          <span className="text-right min-w-0">
+            <span className="text-sm font-extrabold font-mono text-slate-900">
+              {cardBmi ? cardBmi.eval.bmi : '--'} <span className="text-[11px] text-slate-500 font-sans">kg/m²</span>
+              {cardBmi?.source === 'profile' && (
+                <span className="text-[11px] text-slate-400 font-sans font-medium"> · Profile အရ</span>
               )}
-            </>
-          ) : (
-            <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
-          )}
-          {cardBmi?.record && (
-            <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">
-              📅 {displayDate(cardBmi.record.date || cardBmi.record.timestamp)}
             </span>
-          )}
+            {cardBmi ? (
+              <span className="text-[11px] block truncate">
+                <span className={`font-bold ${cardBmi.eval.color}`}>
+                  {statusWithLabel(plainBMIStatus(cardBmi.eval.category), cardBmi.eval.labelMm, cardBmi.eval.category === 'normal', cardBmi.eval.isPediatric)}
+                </span>
+                {cardBmi.record && (
+                  <span className="text-slate-400 font-medium"> · 📅 {displayDate(cardBmi.record.date || cardBmi.record.timestamp)}</span>
+                )}
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-500 block font-medium">မှတ်တမ်းမရှိသေး</span>
+            )}
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
         </div>
 
         {/* BP */}
-        <div 
+        <div
           onClick={() => onNavigateTab && onNavigateTab('bp')}
-          className="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-rose-500 transition-all cursor-pointer group"
+          className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
         >
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-bold">သွေးပေါင်ချိန် (BP)</span>
-            <Activity className="w-4 h-4 text-rose-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="text-lg font-extrabold font-mono text-slate-900 mt-1">
-            {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : '--/--'} <span className="text-xs text-slate-500 font-sans">mmHg</span>
-          </div>
-          {bpEval ? (
-            <span className={`text-[11px] font-bold mt-1 inline-block ${bpEval.color}`}>
-              {statusWithLabel(plainBPStatus(bpEval.category), bpEval.labelMm, bpEval.category === 'normal', bpEval.isPediatric)}
+          <span className="text-xs font-bold text-slate-500 shrink-0">သွေးပေါင်ချိန် (BP)</span>
+          <span className="text-right min-w-0">
+            <span className="text-sm font-extrabold font-mono text-slate-900">
+              {latestBP ? `${latestBP.systolic}/${latestBP.diastolic}` : '--/--'} <span className="text-[11px] text-slate-500 font-sans">mmHg</span>
             </span>
-          ) : (
-            <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
-          )}
-          {latestBP && (
-            <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">
-              📅 {`${dateTimeLabel(latestBP)} · ${bpConditionLabel(latestBP.condition)}`}
-            </span>
-          )}
+            {bpEval ? (
+              <span className="text-[11px] block truncate">
+                <span className={`font-bold ${bpEval.color}`}>
+                  {statusWithLabel(plainBPStatus(bpEval.category), bpEval.labelMm, bpEval.category === 'normal', bpEval.isPediatric)}
+                </span>
+                {latestBP && (
+                  <span className="text-slate-400 font-medium"> · 📅 {`${dateTimeLabel(latestBP)} · ${bpConditionLabel(latestBP.condition)}`}</span>
+                )}
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-500 block font-medium">မှတ်တမ်းမရှိသေး</span>
+            )}
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
         </div>
 
         {/* Glucose */}
-        <div 
+        <div
           onClick={() => onNavigateTab && onNavigateTab('sugar')}
-          className="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 transition-all cursor-pointer group"
+          className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
         >
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-bold">သွေးတွင်းသကြားဓာတ်</span>
-            <Droplets className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="text-lg font-extrabold font-mono text-slate-900 mt-1">
-            {latestGlucose ? latestGlucose.value : '--'} <span className="text-xs text-slate-500 font-sans">{latestGlucose?.type === 'hba1c' ? '%' : 'mg/dL'}</span>
-          </div>
-          {gluEval ? (
-            <span className={`text-[11px] font-bold mt-1 inline-block ${gluEval.color}`}>
-              {statusWithLabel(plainGluStatus(gluEval.status), gluEval.labelMm, gluEval.status === 'normal', gluEval.isPediatric)}
+          <span className="text-xs font-bold text-slate-500 shrink-0">သွေးတွင်းသကြားဓာတ်</span>
+          <span className="text-right min-w-0">
+            <span className="text-sm font-extrabold font-mono text-slate-900">
+              {latestGlucose ? latestGlucose.value : '--'} <span className="text-[11px] text-slate-500 font-sans">{latestGlucose?.type === 'hba1c' ? '%' : 'mg/dL'}</span>
             </span>
-          ) : (
-            <span className="text-[11px] text-slate-500 mt-1 block font-medium">မှတ်တမ်းမရှိသေး</span>
-          )}
-          {latestGlucose && (
-            <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">
-              📅 {`${dateTimeLabel(latestGlucose)} · ${glucoseSeriesLabel(latestGlucose.type || latestGlucose.timing)}`}
-            </span>
-          )}
+            {gluEval ? (
+              <span className="text-[11px] block truncate">
+                <span className={`font-bold ${gluEval.color}`}>
+                  {statusWithLabel(plainGluStatus(gluEval.status), gluEval.labelMm, gluEval.status === 'normal', gluEval.isPediatric)}
+                </span>
+                {latestGlucose && (
+                  <span className="text-slate-400 font-medium"> · 📅 {`${dateTimeLabel(latestGlucose)} · ${glucoseSeriesLabel(latestGlucose.type || latestGlucose.timing)}`}</span>
+                )}
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-500 block font-medium">မှတ်တမ်းမရှိသေး</span>
+            )}
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
         </div>
 
         {/* Renal & Uric Acid */}
-        <div 
+        <div
           onClick={() => onNavigateTab && onNavigateTab('labs')}
-          className="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-purple-500 transition-all cursor-pointer group"
+          className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
         >
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-bold">ဓာတ်ခွဲခန်းစစ်ဆေးချက်</span>
-            <FlaskConical className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="text-sm font-extrabold font-mono text-slate-900 mt-1 truncate">
-            Cr: {latestLab?.renal?.creatinine ?? '--'} | Uric: {latestLab?.renal?.uricAcid ?? '--'}
-          </div>
-          <span className="text-[11px] text-slate-500 mt-1 block truncate font-medium">
-            📅 {latestLab ? displayDate(latestLab.testDate || latestLab.recordedAt) : 'စစ်ဆေးချက်မရှိသေး'}
-          </span>
-          {latestLab?.renal?.uricAcid != null && (
-            <span className="text-[11px] mt-0.5 block font-bold">
-              {labFlag(latestLab.renal.uricAcid, 3.5, 7.2)}
+          <span className="text-xs font-bold text-slate-500 shrink-0">ဓာတ်ခွဲခန်းစစ်ဆေးချက်</span>
+          <span className="text-right min-w-0">
+            <span className="text-sm font-extrabold font-mono text-slate-900 block truncate">
+              Cr: {latestLab?.renal?.creatinine ?? '--'} | Uric: {latestLab?.renal?.uricAcid ?? '--'}
             </span>
-          )}
+            <span className="text-[11px] text-slate-500 block truncate font-medium">
+              📅 {latestLab ? displayDate(latestLab.testDate || latestLab.recordedAt) : 'စစ်ဆေးချက်မရှိသေး'}
+              {latestLab?.renal?.uricAcid != null && (
+                <span className="font-bold"> · {labFlag(latestLab.renal.uricAcid, 3.5, 7.2)}</span>
+              )}
+            </span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
         </div>
       </div>
 
-      {/* Control Bar: View Switcher (Graph vs Table vs Both) + Timeframe Filter */}
-      <div className="p-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <TrendingUp className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              ပြသမှု ပုံစံ
-            </h3>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
+      {/* Control Bar — header row only (v2.4.24): title + Graph/Data
+          segmented control inline; timeframe pills as a compact second
+          row. Icon box deleted; the toggle icons were redundant with the
+          emoji in each label, so the buttons are emoji + text only. */}
+      <div className="p-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
+            ပြသမှု ပုံစံ
+          </h3>
           {/* View Toggle */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
+          <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
             <button
               onClick={() => setViewMode('both')}
-              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 viewMode === 'both'
                   ? 'bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <BarChart2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>📊 Graph & Data</span>
+              📊 Graph & Data
             </button>
             <button
               onClick={() => setViewMode('graph')}
-              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 viewMode === 'graph'
                   ? 'bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-              <span>📈 Graph View သာ</span>
+              📈 Graph View သာ
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 viewMode === 'table'
                   ? 'bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
               }`}
             >
-              <Table className="w-3.5 h-3.5 text-emerald-600" />
-              <span>📋 Data ဇယားသာ</span>
+              📋 Data ဇယားသာ
             </button>
           </div>
+        </div>
 
-          {/* Timeframe Filter */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold">
-            <button
-              onClick={() => setTimeframe('all')}
-              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
-                timeframe === 'all'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              အားလုံး
-            </button>
-            <button
-              onClick={() => setTimeframe('1m')}
-              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
-                timeframe === '1m'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              ၁ လ
-            </button>
-            <button
-              onClick={() => setTimeframe('3m')}
-              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
-                timeframe === '3m'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              ၃ လ
-            </button>
-            <button
-              onClick={() => setTimeframe('6m')}
-              className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
-                timeframe === '6m'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              ၆ လ
-            </button>
-          </div>
+        {/* Timeframe Filter */}
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-bold mt-2 w-fit">
+          <button
+            onClick={() => setTimeframe('all')}
+            className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+              timeframe === 'all'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            အားလုံး
+          </button>
+          <button
+            onClick={() => setTimeframe('1m')}
+            className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+              timeframe === '1m'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            ၁ လ
+          </button>
+          <button
+            onClick={() => setTimeframe('3m')}
+            className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+              timeframe === '3m'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            ၃ လ
+          </button>
+          <button
+            onClick={() => setTimeframe('6m')}
+            className={`px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+              timeframe === '6m'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            ၆ လ
+          </button>
         </div>
       </div>
 
       {/* GRAPH VIEW SECTION (Rendered if 'both' or 'graph') */}
       {(viewMode === 'both' || viewMode === 'graph') && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
             <div>
               <BloodPressureChart records={filteredBP} />
             </div>
@@ -739,7 +702,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             // v2.4.20: a trend chart needs real measurements, so no fake
             // points — but the section must not vanish silently while
             // the card above shows a BMI. Say so honestly, with the value.
-            <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
+            <div className="p-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs text-center">
               <p className="text-sm font-bold text-slate-900 dark:text-white">BMI တိုင်းတာမှု မှတ်တမ်း မရှိသေးပါ</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 လက်ရှိ BMI {cardBmi.eval.bmi} kg/m² ({cardBmi.eval.labelMm}) ကို Profile အရ တွက်ချက်ထားပါသည် — မှတ်တမ်း ထည့်လိုက်မှ Trend Graph ပြပေးပါမယ်။
@@ -751,9 +714,9 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
       {/* DATA TABLE VIEW SECTION (Rendered if 'both' or 'table') */}
       {(viewMode === 'both' || viewMode === 'table') && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {viewMode === 'both' && (
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
               <Table className="w-4 h-4 text-emerald-600" />
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 ရက်စွဲအလိုက် စစ်ဆေးတိုင်းတာချက် ဒေတာဇယားများ ({timeframe === 'all' ? 'အားလုံး' : timeframe === '1m' ? '၁ လစာ' : timeframe === '3m' ? '၃ လစာ' : '၆ လစာ'}):
@@ -763,7 +726,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
           {/* Blood Pressure Table */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-            <div className="p-3 bg-rose-50/60 dark:bg-rose-950/40 border-b border-rose-100 dark:border-rose-900 flex items-center justify-between">
+            <div className="p-2 bg-rose-50/60 dark:bg-rose-950/40 border-b border-rose-100 dark:border-rose-900 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-rose-600" />
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white">
@@ -845,7 +808,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
           {/* Blood Sugar Table */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-            <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/40 border-b border-emerald-100 dark:border-emerald-900 flex items-center justify-between">
+            <div className="p-2 bg-emerald-50/60 dark:bg-emerald-950/40 border-b border-emerald-100 dark:border-emerald-900 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Droplets className="w-4 h-4 text-emerald-600" />
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white">
@@ -926,7 +889,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
           {/* BMI Log Table */}
           {filteredBMI.length > 0 ? (
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-              <div className="p-3 bg-teal-50/60 dark:bg-teal-950/40 border-b border-teal-100 dark:border-teal-900 flex items-center justify-between">
+              <div className="p-2 bg-teal-50/60 dark:bg-teal-950/40 border-b border-teal-100 dark:border-teal-900 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Scale className="w-4 h-4 text-teal-600" />
                   <h4 className="font-bold text-sm text-slate-900 dark:text-white">
@@ -987,13 +950,13 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             // v2.4.20: same honesty as the chart above — no fake rows, but
             // the table must not vanish silently while the card shows a BMI.
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-              <div className="p-3 bg-teal-50/60 dark:bg-teal-950/40 border-b border-teal-100 dark:border-teal-900 flex items-center gap-2">
+              <div className="p-2 bg-teal-50/60 dark:bg-teal-950/40 border-b border-teal-100 dark:border-teal-900 flex items-center gap-2">
                 <Scale className="w-4 h-4 text-teal-600" />
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white">
                   ကိုယ်အလေးချိန်နှင့် BMI သမိုင်းမှတ်တမ်း
                 </h4>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 p-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400 p-3">
                 BMI တိုင်းတာမှု မှတ်တမ်း မရှိသေးပါ — လက်ရှိ BMI {cardBmi.eval.bmi} kg/m² ({cardBmi.eval.labelMm}) ကို Profile အရ တွက်ချက်ထားပါသည်။
               </p>
             </div>
@@ -1003,7 +966,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
       {/* Doctor Advice Feed */}
       {viewAdvices.length > 0 && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-3 rounded-3xl border border-slate-200 shadow-xs">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
               <Stethoscope className="w-4 h-4" />
@@ -1020,7 +983,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
           <div className="space-y-3">
             {viewAdvices.map((adv) => (
-              <div key={adv.id} className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs">
+              <div key={adv.id} className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs">
                 <div className="flex items-center justify-between text-slate-500 mb-1">
                   <span className="font-extrabold text-indigo-950">{adv.doctorName}</span>
                   <span className="font-mono">{displayDate(adv.date)}</span>
@@ -1042,8 +1005,8 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
 
       {/* Latest Lab Report Quick Panel */}
       {latestLab && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white p-3 rounded-3xl border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
             <div>
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <FlaskConical className="w-5 h-5 text-purple-600" />
@@ -1053,9 +1016,9 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
             {/* Hb */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+            <div className="p-2 rounded-2xl bg-slate-50 border border-slate-200">
               <span className="text-slate-500 block text-[11px] font-bold">သွေးအား (Hb)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.cbc?.hemoglobin != null ? `${latestLab.cbc.hemoglobin} g/dL` : '--'}
@@ -1067,7 +1030,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             </div>
 
             {/* FBS */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+            <div className="p-2 rounded-2xl bg-slate-50 border border-slate-200">
               <span className="text-slate-500 block text-[11px] font-bold">ဆီးချို (FBS)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.glucose?.fbs != null ? `${latestLab.glucose.fbs} mg/dL` : '--'}
@@ -1079,7 +1042,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             </div>
 
             {/* ALT */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+            <div className="p-2 rounded-2xl bg-slate-50 border border-slate-200">
               <span className="text-slate-500 block text-[11px] font-bold">အသည်း (SGPT/ALT)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.liver?.alt_sgpt != null ? `${latestLab.liver.alt_sgpt} U/L` : '--'}
@@ -1091,7 +1054,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             </div>
 
             {/* Creatinine */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+            <div className="p-2 rounded-2xl bg-slate-50 border border-slate-200">
               <span className="text-slate-500 block text-[11px] font-bold">ကျောက်ကပ် (Creatinine)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.renal?.creatinine != null ? `${latestLab.renal.creatinine} mg/dL` : '--'}
@@ -1103,7 +1066,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             </div>
 
             {/* Uric Acid */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+            <div className="p-2 rounded-2xl bg-slate-50 border border-slate-200">
               <span className="text-slate-500 block text-[11px] font-bold">ဂေါက်/ယူရစ် (Uric Acid)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.renal?.uricAcid != null ? `${latestLab.renal.uricAcid} mg/dL` : '--'}
@@ -1115,7 +1078,7 @@ export const TrendsOverview: React.FC<TrendsOverviewProps> = ({ onNavigateTab })
             </div>
 
             {/* Cholesterol */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+            <div className="p-2 rounded-2xl bg-slate-50 border border-slate-200">
               <span className="text-slate-500 block text-[11px] font-bold">ကိုလက်စထရော (Chol)</span>
               <span className="text-base font-extrabold font-mono text-slate-900">
                 {latestLab.lipid?.totalCholesterol != null ? `${latestLab.lipid.totalCholesterol} mg/dL` : '--'}

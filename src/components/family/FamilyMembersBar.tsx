@@ -193,7 +193,7 @@ export const FamilyMembersBar: React.FC = () => {
   };
 
   return (
-    <div className="bg-gradient-to-r from-emerald-900/10 via-teal-900/10 to-indigo-900/10 dark:from-emerald-950/40 dark:via-teal-950/40 dark:to-indigo-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-3xl p-3 sm:p-4 mb-4">
+    <div className="bg-gradient-to-r from-emerald-900/10 via-teal-900/10 to-indigo-900/10 dark:from-emerald-950/40 dark:via-teal-950/40 dark:to-indigo-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-3xl p-3 mb-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
@@ -223,7 +223,7 @@ export const FamilyMembersBar: React.FC = () => {
 
       {/* Member Cards or Empty State */}
       {familyMembers.length === 0 ? (
-        <div className="bg-white/90 dark:bg-slate-900/90 border border-dashed border-emerald-300 dark:border-emerald-800 rounded-2xl p-4 text-center mt-3 shadow-xs">
+        <div className="bg-white/90 dark:bg-slate-900/90 border border-dashed border-emerald-300 dark:border-emerald-800 rounded-2xl p-3 text-center mt-3 shadow-xs">
           <div className="w-10 h-10 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2.5">
             <Users className="w-6 h-6" />
           </div>
@@ -412,7 +412,7 @@ export const FamilyMembersBar: React.FC = () => {
       {/* Add / Edit Family Member Modal */}
       {isOpenAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-4 shadow-2xl border border-slate-200 dark:border-slate-800 my-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-3 shadow-2xl border border-slate-200 dark:border-slate-800 my-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
                 {editingMember ? <Pencil className="w-5 h-5 text-emerald-600" /> : <UserPlus className="w-5 h-5 text-emerald-600" />}
@@ -589,7 +589,7 @@ export const FamilyMembersBar: React.FC = () => {
         size="sm"
         showHeader={false}
       >
-        <div className="p-4 space-y-3 text-center">
+        <div className="p-3 space-y-3 text-center">
           <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
             <Trash2 className="w-6 h-6" />
           </div>

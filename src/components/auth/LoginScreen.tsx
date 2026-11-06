@@ -201,8 +201,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center relative overflow-hidden p-4">
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 right-0 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 bg-slate-900/90 border border-slate-800 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl backdrop-blur-md">
-          <div className="flex items-center gap-3 mb-4">
+        <div className="relative z-10 bg-slate-900/90 border border-slate-800 rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
               <Lock className="w-5 h-5" />
             </div>
@@ -222,7 +222,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
           )}
 
           {resetCodeState === 'invalid' && (
-            <div className="space-y-4 py-4 text-center">
+            <div className="space-y-3 py-3 text-center">
               <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
                 <AlertCircle className="w-6 h-6" />
               </div>
@@ -247,7 +247,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
           )}
 
           {resetCodeState === 'valid' && resetDone && (
-            <div className="space-y-4 py-4 text-center">
+            <div className="space-y-3 py-3 text-center">
               <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
@@ -263,7 +263,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
           )}
 
           {resetCodeState === 'valid' && !resetDone && (
-            <form onSubmit={handleConfirmReset} className="space-y-4">
+            <form onSubmit={handleConfirmReset} className="space-y-3">
               {resetError && (
                 <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
@@ -339,7 +339,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-lg sm:text-xl tracking-tight text-white">
+              <span className="font-extrabold text-base sm:text-lg tracking-tight text-white">
                 Family Health Track
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
@@ -357,7 +357,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
       <main className="relative z-10 max-w-6xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         {/* Right Side: Secure Auth Card */}
         <div className="lg:col-span-5 order-first lg:order-first">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-md">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-2xl backdrop-blur-md">
             
             {/* Switch Tabs (Login / Register) */}
             <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 mb-5 text-xs">
@@ -399,7 +399,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
               </div>
             )}
 
-            <form onSubmit={handleAuth} className="space-y-4">
+            <form onSubmit={handleAuth} className="space-y-3">
               {/* Register Mode Extra Fields */}
               {mode === 'register' && (
                 <>
@@ -559,7 +559,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
         </div>
 
         {/* Left Side: App Intro & Highlights */}
-        <div className="lg:col-span-7 order-last lg:order-last space-y-6 text-left">
+        <div className="lg:col-span-7 order-last lg:order-last space-y-4 text-left">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-semibold text-emerald-300 backdrop-blur-xs">
             <Sparkles className="w-4 h-4 text-emerald-400" />
             <span>ကျန်းမာရေးမှတ်တမ်းများကို လုံခြုံစွာ သိမ်းဆည်းပါ</span>
@@ -626,7 +626,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
       {/* Forgot Password Modal */}
       {showForgotPassword && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-4 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-3 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setShowForgotPassword(false)}
               className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
@@ -645,7 +645,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
             </div>
 
             {forgotSuccess ? (
-              <div className="space-y-4 py-4 text-center">
+              <div className="space-y-3 py-3 text-center">
                 <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
@@ -683,7 +683,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onResetFinished }) => 
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-3">
                 {forgotError && (
                   <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />

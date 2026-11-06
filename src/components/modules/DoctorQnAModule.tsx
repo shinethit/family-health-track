@@ -212,16 +212,16 @@ export const DoctorQnAModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header Banner - Pristine Pure White Style */}
-      <div className="p-4 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-xs relative overflow-hidden">
+      <div className="p-3 rounded-3xl bg-white border border-slate-200 text-slate-900 shadow-xs relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold mb-2">
               <Stethoscope className="w-3.5 h-3.5 text-indigo-600" />
               <span>ဆရာဝန်နှင့် ကျန်းမာရေး အမေး-အဖြေ စနစ်</span>
             </div>
-            <h2 className="text-lg font-extrabold text-slate-900">
+            <h2 className="text-base font-extrabold text-slate-900">
               ဆရာဝန်ထံ မေးမြန်းချက်များ
             </h2>
             <p className="text-xs text-slate-600 mt-1 max-w-xl">
@@ -281,7 +281,7 @@ export const DoctorQnAModule: React.FC = () => {
       </div>
 
       {successMessage && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+        <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           <span>{successMessage}</span>
         </div>
@@ -289,7 +289,7 @@ export const DoctorQnAModule: React.FC = () => {
 
       {/* Urgent questions must be visible at a glance, not buried (C-M5). */}
       {urgentPendingCount > 0 && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+        <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
           <span>🔴</span>
           <span>အရေးကြီး မေးခွန်း {urgentPendingCount} ခု ဖြေကြားရန် စောင့်ဆိုင်းနေပါသည် — အရင်ဆုံး ဖြေကြားပေးပါ။</span>
         </div>
@@ -297,9 +297,9 @@ export const DoctorQnAModule: React.FC = () => {
 
       {/* Tab Content 1: My Questions */}
       {activeTab === 'my_questions' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {doctorQuestions.length === 0 ? (
-            <div className="p-6 text-center rounded-3xl bg-slate-50 border border-dashed border-slate-300 text-slate-700 space-y-2">
+            <div className="p-4 text-center rounded-3xl bg-slate-50 border border-dashed border-slate-300 text-slate-700 space-y-2">
               <MessageSquareHeart className="w-8 h-8 mx-auto text-slate-400" />
               <p className="text-sm font-bold text-slate-900">မေးမြန်းထားသော မေးခွန်း မရှိသေးပါ</p>
               <p className="text-xs text-slate-600 max-w-md mx-auto">
@@ -314,13 +314,13 @@ export const DoctorQnAModule: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {sortedQuestions.map((q) => {
                 const isAnswered = q.status === 'answered' && q.doctorAnswer;
                 return (
                   <div
                     key={q.id}
-                    className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4 text-slate-900"
+                    className="p-4 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-3 text-slate-900"
                   >
                     {/* Question Header */}
                     <div className="flex items-start justify-between gap-3">
@@ -413,7 +413,7 @@ export const DoctorQnAModule: React.FC = () => {
 
                     {/* Doctor's Answer Section */}
                     {isAnswered && (
-                      <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-3 text-slate-900">
+                      <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-3 text-slate-900">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
@@ -477,7 +477,7 @@ export const DoctorQnAModule: React.FC = () => {
                     {isAdmin && (
                       <div className="pt-2">
                         {answeringQuestionId === q.id ? (
-                          <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">
+                          <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-3">
                             <h4 className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                               <ShieldCheck className="w-4 h-4 text-indigo-600" />
                               <span>အသုံးပြုသူထံ ဆေးပညာ အကြံပြုချက် ပြန်လည်ဖြေကြားမည်</span>
@@ -555,7 +555,7 @@ export const DoctorQnAModule: React.FC = () => {
 
       {/* Tab Content 2: Ask New Question Form */}
       {activeTab === 'ask_new' && (
-        <div className="max-w-2xl mx-auto p-4 sm:p-6 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">
+        <div className="max-w-2xl mx-auto p-3 sm:p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-3">
           <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
             <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <MessageSquareHeart className="w-5 h-5" />
@@ -570,7 +570,7 @@ export const DoctorQnAModule: React.FC = () => {
             </div>
           </div>
 
-          <form onSubmit={handleAskQuestion} className="space-y-4">
+          <form onSubmit={handleAskQuestion} className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 မေးခွန်း ခေါင်းစဉ် (Question Title) *
@@ -713,8 +713,8 @@ export const DoctorQnAModule: React.FC = () => {
 
       {/* Tab Content 3: FAQ */}
       {activeTab === 'faq' && (
-        <div className="max-w-3xl mx-auto space-y-4">
-          <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 flex items-center gap-2 font-medium">
+        <div className="max-w-3xl mx-auto space-y-3">
+          <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 flex items-center gap-2 font-medium">
             <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
             <span>အသုံးပြုသူများ အမေးအများဆုံး ကျန်းမာရေး သိကောင်းစရာများနှင့် ဆရာဝန်များ၏ အဖြေများ</span>
           </div>
@@ -729,7 +729,7 @@ export const DoctorQnAModule: React.FC = () => {
                 >
                   <button
                     onClick={() => setExpandedFaq(isExpanded ? null : index)}
-                    className="w-full p-4 text-left flex items-center justify-between gap-3 text-xs sm:text-sm font-bold text-slate-900 hover:text-indigo-600 cursor-pointer"
+                    className="w-full p-3 text-left flex items-center justify-between gap-3 text-xs sm:text-sm font-bold text-slate-900 hover:text-indigo-600 cursor-pointer"
                   >
                     <span className="flex items-center gap-2">
                       <HelpCircle className="w-4 h-4 text-indigo-600 shrink-0" />
@@ -757,7 +757,7 @@ export const DoctorQnAModule: React.FC = () => {
         size="sm"
         title="မေးခွန်း ဖျက်မည်"
       >
-        <div className="p-5 space-y-4 text-xs">
+        <div className="p-4 space-y-3 text-xs">
           <p className="text-slate-700 leading-relaxed">
             “{deleteTarget?.title}” မေးခွန်းကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။
           </p>
@@ -791,7 +791,7 @@ export const DoctorQnAModule: React.FC = () => {
         size="sm"
         title="မေးခွန်း ပိတ်သိမ်းမည်"
       >
-        <div className="p-5 space-y-4 text-xs">
+        <div className="p-4 space-y-3 text-xs">
           <p className="text-slate-700 leading-relaxed">
             “{closeTarget?.title}” မေးခွန်းကို ပိတ်သိမ်းမှာသေချာပါသလား? အဖြေရပြီးဖြစ်ကြောင်း မှတ်သားပါမည်။
           </p>

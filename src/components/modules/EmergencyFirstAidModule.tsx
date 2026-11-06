@@ -28,19 +28,19 @@ export const EmergencyFirstAidModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-6">
+    <div className="space-y-3 max-w-7xl mx-auto pb-4">
       {/* Top Emergency Header Banner */}
-      <div className="bg-gradient-to-r from-rose-700 via-red-700 to-amber-700 rounded-2xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-rose-700 via-red-700 to-amber-700 rounded-2xl p-3 sm:p-4 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-6 -translate-y-6 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="px-2.5 py-0.5 rounded-full bg-red-400/20 text-red-100 text-xs font-bold border border-red-300/30 flex items-center gap-1 animate-pulse">
                 <ShieldAlert className="w-3.5 h-3.5" /> Emergency First Aid Protocol
               </span>
             </div>
-            <h1 className="text-lg font-extrabold tracking-tight">
+            <h1 className="text-base font-extrabold tracking-tight">
               အရေးပေါ် ကျန်းမာရေးနှင့် ရှေးဦးပြုစုခြင်း
             </h1>
             <p className="text-red-100 text-xs sm:text-sm mt-1 max-w-2xl">
@@ -114,16 +114,16 @@ export const EmergencyFirstAidModule: React.FC = () => {
       {/* 1. BITES & STINGS SECTION */}
       {/* ========================================================================= */}
       {activeCategory === 'bites' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Snakebite Emergency Protocol */}
-          <div className="bg-white rounded-2xl border border-rose-200 p-5 shadow-xs space-y-4">
+          <div className="bg-white rounded-2xl border border-rose-200 p-4 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-rose-700 font-extrabold text-base pb-2 border-b border-rose-100">
               <Bug className="w-5 h-5" /> ၁။ မြွေကိုက်ခံရပါက အရေးပေါ် ရှေးဦးပြုစုနည်း (Snakebite First Aid)
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               {/* DOs */}
-              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
                 <p className="font-extrabold text-emerald-900 text-sm flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" /> ပြုလုပ်ရမည့် အချက်များ (DOs)
                 </p>
@@ -136,7 +136,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
               </div>
 
               {/* DON'Ts */}
-              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 space-y-2">
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 space-y-2">
                 <p className="font-extrabold text-rose-900 text-sm flex items-center gap-1.5">
                   <XCircle className="w-4 h-4 text-rose-600" /> မပြုလုပ်ရမည့် အချက်များ (DON'Ts)
                 </p>
@@ -150,7 +150,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
           </div>
 
           {/* Dog / Cat Bite & Rabies Risk */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3 text-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3 text-xs">
             <h4 className="font-extrabold text-slate-900 text-sm">၂။ ခွေး/ကြောင် ကိုက်ခြစ်ခံရခြင်း (Dog/Cat Bite & Rabies Risk)</h4>
             <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
               <p className="font-bold text-amber-900">အရေးပေါ် ဆောင်ရွက်ရမည့် အဆင့်များ:</p>
@@ -163,7 +163,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
           </div>
 
           {/* Bee / Scorpion / Centipede Stings */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3 text-xs">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3 text-xs">
             <h4 className="font-extrabold text-slate-900 text-sm">၃။ ကင်းမြီးကောက်၊ ပျားနှင့် ပလူ ကိုက်ခြင်း (Scorpion / Bee Stings)</h4>
             <ul className="space-y-1.5 text-slate-700 list-disc list-inside bg-slate-50 p-3.5 rounded-xl">
               <li>ပျားတုပ်ပါက ပျားစူးဆူးတံကို ကတ်ပြား သို့မဟုတ် ဇာဂနာဖြင့် အမြန်ဆုံး ဖယ်ရှားပါ။</li>
@@ -178,13 +178,13 @@ export const EmergencyFirstAidModule: React.FC = () => {
       {/* 2. BURNS SECTION */}
       {/* ========================================================================= */}
       {activeCategory === 'burns' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-orange-200 p-5 shadow-xs space-y-4">
+        <div className="space-y-3">
+          <div className="bg-white rounded-2xl border border-orange-200 p-4 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-orange-700 font-extrabold text-base pb-2 border-b border-orange-100">
               <Flame className="w-5 h-5" /> အပူလောင်ခြင်း ရှေးဦးပြုစုနည်း (Burn Injury Protocol)
             </div>
 
-            <div className="p-4 rounded-xl bg-cyan-50 border border-cyan-200 text-xs space-y-2">
+            <div className="p-3 rounded-xl bg-cyan-50 border border-cyan-200 text-xs space-y-2">
               <p className="font-extrabold text-cyan-900 text-sm">💧 အဓိက သတိပြုရမည့် စည်းမျဉ်း: မိနစ် ၂၀ ရေအေး လောင်းပါ</p>
               <p className="text-slate-700">
                 အပူလောင်သည်နှင့် အပူလောင်ရာနေရာကို စီးဆင်းနေသော ရေအေး (Running Tap Water) ဖြင့် <strong>မိနစ် ၂၀ ကြာအောင်</strong> ဆက်တိုက် လောင်းပေးပါ။
@@ -215,8 +215,8 @@ export const EmergencyFirstAidModule: React.FC = () => {
       {/* 3. CUTS & BLEEDING SECTION */}
       {/* ========================================================================= */}
       {activeCategory === 'cuts' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-red-200 p-5 shadow-xs space-y-4">
+        <div className="space-y-3">
+          <div className="bg-white rounded-2xl border border-red-200 p-4 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-red-700 font-extrabold text-base pb-2 border-b border-red-100">
               <Scissors className="w-5 h-5" /> ဓားရှ/ဒဏ်ရာနှင့် သွေးထွက်လွန်ခြင်း (Cuts & Severe Bleeding)
             </div>
@@ -245,13 +245,13 @@ export const EmergencyFirstAidModule: React.FC = () => {
       {/* 4. SEVERE ALLERGIES & ANAPHYLAXIS */}
       {/* ========================================================================= */}
       {activeCategory === 'allergies' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-purple-200 p-5 shadow-xs space-y-4">
+        <div className="space-y-3">
+          <div className="bg-white rounded-2xl border border-purple-200 p-4 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-purple-700 font-extrabold text-base pb-2 border-b border-purple-100">
               <AlertTriangle className="w-5 h-5" /> ပြင်းထန် ဓာတ်မတည့်မှုနှင့် အသက်ရှူရပ်ခြင်း (Anaphylaxis)
             </div>
 
-            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs space-y-2">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs space-y-2">
               <p className="font-extrabold text-rose-900 text-sm">⚠️ သတိပြုရမည့် အရေးပေါ် လက္ခဏာများ:</p>
               <ul className="list-disc list-inside space-y-1 text-slate-800">
                 <li>နှုတ်ခမ်း၊ လျှာနှင့် လည်ပင်း ရောင်ရမ်းလာခြင်း။</li>
@@ -271,14 +271,14 @@ export const EmergencyFirstAidModule: React.FC = () => {
       {/* 5. CHOKING & CPR SECTION */}
       {/* ========================================================================= */}
       {activeCategory === 'cpr' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-emerald-200 p-5 shadow-xs space-y-4">
+        <div className="space-y-3">
+          <div className="bg-white rounded-2xl border border-emerald-200 p-4 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-base pb-2 border-b border-emerald-100">
               <Heart className="w-5 h-5" /> သီးခြင်း (Heimlich Maneuver) နှင့် CPR နှလုံးနှိုးဆွခြင်း
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <p className="font-bold text-slate-900 text-sm">၁။ သီးခြင်း (Choking - Adult):</p>
                 <ol className="list-decimal list-inside space-y-1 text-slate-700">
                   <li>အသုံးပြုသူ၏ အနောက်မှ ရပ်၍ ခါးကို ဖက်ပါ။</li>
@@ -286,7 +286,7 @@ export const EmergencyFirstAidModule: React.FC = () => {
                 </ol>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <p className="font-bold text-slate-900 text-sm">၂။ CPR နှလုံးနှိုးဆွခြင်း စည်းဝါး (100-120 BPM):</p>
                 <p className="text-slate-700">
                   ရင်ဘတ်အလယ် အစုတ်ရိုးပေါ်တွင် လက်နှစ်ဖက် ထပ်၍ ၁ မိနစ်လျှင် အကြိမ် ၁၀၀-၁၂၀ နှုန်း (၃၀ ကြိမ် ဖိပြီး ၂ ကြိမ် အသက်ရှူသွင်း) စည်းဝါးမှန်စွာ ဖိပေးပါ။

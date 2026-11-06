@@ -76,7 +76,7 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+    <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
@@ -203,7 +203,7 @@ export const AdminBroadcastManager: React.FC<AdminBroadcastManagerProps> = ({
         size="sm"
         title="သတင်းလွှာ ဖျက်မည်"
       >
-        <div className="p-5 space-y-4 text-xs">
+        <div className="p-4 space-y-3 text-xs">
           <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
             “{tickers.find((t) => t.id === confirmDeleteId)?.message}” သတင်းလွှာကို ဖျက်မှာသေချာပါသလား? ပြန်မရတော့ပါ။
           </p>

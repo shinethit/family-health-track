@@ -54,9 +54,9 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
   onToggleSelect,
 }) => {
   return (
-    <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+    <div className="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
       {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
@@ -131,7 +131,7 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
             return (
               <div 
                 key={p.id}
-                className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all bg-white dark:bg-slate-900 shadow-2xs flex flex-col justify-between gap-3 group"
+                className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all bg-white dark:bg-slate-900 shadow-2xs flex flex-col justify-between gap-3 group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
@@ -235,7 +235,7 @@ export const AdminPatientList: React.FC<AdminPatientListProps> = ({
           })}
         </div>
       ) : (
-        <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-200 dark:border-slate-700 text-slate-500 text-xs">
+        <div className="text-center py-8 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-200 dark:border-slate-700 text-slate-500 text-xs">
           ရှာဖွေမှုနှင့် ကိုက်ညီသော အသုံးပြုသူမှတ်တမ်း မတွေ့ရှိပါ။
         </div>
       )}

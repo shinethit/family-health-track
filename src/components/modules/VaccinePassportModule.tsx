@@ -420,7 +420,7 @@ export const VaccinePassportModule: React.FC = () => {
   // loading state instead of flashing "no records".
   if (dataLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 space-y-3">
+      <div className="flex flex-col items-center justify-center py-8 space-y-3">
         <div className="w-10 h-10 rounded-full border-4 border-slate-200 border-t-teal-600 animate-spin" aria-label="ဒေတာ ရယူနေပါသည်" />
         <p className="text-sm text-slate-500">ဒေတာ ရယူနေပါသည်...</p>
       </div>
@@ -428,15 +428,15 @@ export const VaccinePassportModule: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Module Title Banner */}
-      <div className="bg-gradient-to-r from-teal-700 to-emerald-800 text-white p-4 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      <div className="bg-gradient-to-r from-teal-700 to-emerald-800 text-white p-3 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
           <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-xs shrink-0">
             <Syringe className="w-8 h-8 text-teal-200" />
           </div>
           <div>
-            <h2 className="text-lg font-bold tracking-tight">ကာကွယ်ဆေး ထိုးနှံမှု မှတ်တမ်းနှင့် အချိန်ဇယား</h2>
+            <h2 className="text-base font-bold tracking-tight">ကာကွယ်ဆေး ထိုးနှံမှု မှတ်တမ်းနှင့် အချိန်ဇယား</h2>
             <p className="text-xs text-teal-100 mt-1">
               {currentPersonName} ၏ တရားဝင် ကာကွယ်ဆေး ထိုးနှံပြီးစီးမှု မှတ်တမ်းများနှင့် အကြံပြုချက်များ
             </p>
@@ -461,8 +461,8 @@ export const VaccinePassportModule: React.FC = () => {
       )}
 
       {/* Progress Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-emerald-800">ထိုးနှံပြီးစီးခဲ့သော ကာကွယ်ဆေး</p>
             <p className="text-xl font-black text-emerald-900 mt-0.5">{completedCount} မျိုး</p>
@@ -470,7 +470,7 @@ export const VaccinePassportModule: React.FC = () => {
           <ShieldCheck className="w-8 h-8 text-emerald-600" />
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-amber-800">ထိုးနှံရန် အစီအစဉ်ရှိသော ကာကွယ်ဆေး</p>
             <p className="text-xl font-black text-amber-900 mt-0.5">{scheduledCount} မျိုး</p>
@@ -478,7 +478,7 @@ export const VaccinePassportModule: React.FC = () => {
           <Clock className="w-8 h-8 text-amber-600" />
         </div>
 
-        <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex items-center justify-between">
+        <div className="bg-sky-50 border border-sky-200 rounded-2xl p-3 flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-sky-800">လက်ရှိ အသုံးပြုသူ / မိသားစုဝင်</p>
             <p className="text-base font-extrabold text-sky-900 mt-0.5 truncate max-w-[160px]">
@@ -490,7 +490,7 @@ export const VaccinePassportModule: React.FC = () => {
       </div>
 
       {/* Controls: View Tabs, Search & Category Filter */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+      <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           
           {/* Main View Toggle: My Records vs Recommended Guide */}
@@ -566,7 +566,7 @@ export const VaccinePassportModule: React.FC = () => {
       {activeView === 'records' && (
         <div>
           {filteredRecords.length === 0 ? (
-            <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-6 text-center space-y-3">
+            <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-4 text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
                 <Syringe className="w-6 h-6" />
               </div>
@@ -595,14 +595,14 @@ export const VaccinePassportModule: React.FC = () => {
             </div>
           ) : (
             <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {displayRecords.map((vac) => {
                 const isDone = vac.status === 'completed';
 
                 return (
                   <div 
                     key={vac.id}
-                    className={`border rounded-2xl p-4 transition-all bg-white relative ${
+                    className={`border rounded-2xl p-3 transition-all bg-white relative ${
                       isDone ? 'border-emerald-200 shadow-xs' : 'border-amber-200 bg-amber-50/20'
                     }`}
                   >
@@ -738,8 +738,8 @@ export const VaccinePassportModule: React.FC = () => {
 
       {/* 2. VIEW: Recommended Vaccines Reference Guide (Read-Only reference, status: 'မှတ်တမ်းမရှိသေး') */}
       {activeView === 'recommendations' && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-teal-50 border border-teal-200 text-teal-950 text-xs flex items-start gap-2.5">
+        <div className="space-y-3">
+          <div className="p-3 rounded-2xl bg-teal-50 border border-teal-200 text-teal-950 text-xs flex items-start gap-2.5">
             <Info className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-bold">မြန်မာမိသားစုများအတွက် ထိုးနှံရန် အကြံပြုထားသော စံပြကာကွယ်ဆေးများ လမ်းညွှန်</p>
@@ -749,7 +749,7 @@ export const VaccinePassportModule: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filteredRecommendations.map((rec) => {
               // Check if patient already recorded this vaccine
               const existingRecord = vaccineRecords.find(r => 
@@ -759,7 +759,7 @@ export const VaccinePassportModule: React.FC = () => {
               return (
                 <div 
                   key={rec.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3"
+                  className="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs space-y-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
@@ -836,7 +836,7 @@ export const VaccinePassportModule: React.FC = () => {
           </span>
         }
       >
-        <div className="p-4 sm:p-5">
+        <div className="p-3 sm:p-4">
           <form onSubmit={handleAddVaccine} className="space-y-3.5 text-xs">
             <div>
               <label htmlFor="vac-name" className="font-semibold text-slate-700 block mb-1">

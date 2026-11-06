@@ -101,15 +101,15 @@ export const ClinicalDietModule: React.FC = () => {
   const activeGuide = DIET_GUIDES.find(g => g.category === selectedCategory) || DIET_GUIDES[0];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Module Title Banner */}
-      <div className="bg-gradient-to-r from-emerald-700 to-teal-800 text-white p-4 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      <div className="bg-gradient-to-r from-emerald-700 to-teal-800 text-white p-3 rounded-3xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
           <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-xs shrink-0">
             <Utensils className="w-8 h-8 text-emerald-200" />
           </div>
           <div>
-            <h2 className="text-lg font-bold tracking-tight">ရောဂါအလိုက် အာဟာရနှင့် စားသောက်ဖွယ်ရာ လမ်းညွှန်</h2>
+            <h2 className="text-base font-bold tracking-tight">ရောဂါအလိုက် အာဟာရနှင့် စားသောက်ဖွယ်ရာ လမ်းညွှန်</h2>
             <p className="text-xs text-emerald-100 mt-1">
               သွေးတိုး၊ ဆီးချို နှင့် နာတာရှည်ရောဂါများအတွက် မြန်မာ့ရိုးရာ အစားအစာများကို ကျန်းမာရေးနှင့် ညီညွတ်စွာ စားသုံးနည်း
             </p>
@@ -181,7 +181,7 @@ export const ClinicalDietModule: React.FC = () => {
       </div>
 
       {/* Water Hydration Tracker Card */}
-      <div className="bg-sky-50 border border-sky-200 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-sky-50 border border-sky-200 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-sky-500 text-white rounded-2xl shadow-xs">
             <Droplet className="w-6 h-6 fill-white" />
@@ -221,7 +221,7 @@ export const ClinicalDietModule: React.FC = () => {
       {/* Recommended vs Avoid Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recommended Foods */}
-        <div className="bg-emerald-50/50 border border-emerald-200 rounded-3xl p-6 space-y-4">
+        <div className="bg-emerald-50/50 border border-emerald-200 rounded-3xl p-4 space-y-3">
           <div className="flex items-center gap-2.5 text-emerald-900 border-b border-emerald-200 pb-3">
             <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
             <div>
@@ -241,7 +241,7 @@ export const ClinicalDietModule: React.FC = () => {
         </div>
 
         {/* Foods to Avoid */}
-        <div className="bg-rose-50/50 border border-rose-200 rounded-3xl p-6 space-y-4">
+        <div className="bg-rose-50/50 border border-rose-200 rounded-3xl p-4 space-y-3">
           <div className="flex items-center gap-2.5 text-rose-900 border-b border-rose-200 pb-3">
             <XCircle className="w-6 h-6 text-rose-600 shrink-0" />
             <div>
@@ -262,7 +262,7 @@ export const ClinicalDietModule: React.FC = () => {
       </div>
 
       {/* Myanmar Meal Cooking Tips */}
-      <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-6 space-y-3">
+      <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-4 space-y-3">
         <h3 className="text-sm font-bold text-amber-950 flex items-center gap-2">
           <Utensils className="w-5 h-5 text-amber-700" />
           <span>မြန်မာ့ရိုးရာ ဟင်းလျာများ ချက်ပြုတ်ရာတွင် သတိပြုရန် အကြံပြုချက်များ</span>

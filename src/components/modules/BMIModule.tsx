@@ -546,16 +546,16 @@ export const BMIModule: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Top Banner & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center">
               <Scale className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 BMI နှင့် ခန္ဓာကိုယ် ဖွဲ့စည်းမှု တွက်ချက်ခြင်း
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -591,7 +591,7 @@ export const BMIModule: React.FC = () => {
       {/* Primary Vitals Cards: Age & BMI Current Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Card 1: Age & Date of Birth */}
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-teal-500" />
@@ -632,7 +632,7 @@ export const BMIModule: React.FC = () => {
         </div>
 
         {/* Card 2: Current BMI */}
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <Scale className="w-4 h-4 text-emerald-500" />
@@ -685,7 +685,7 @@ export const BMIModule: React.FC = () => {
         </div>
 
         {/* Card 3: Height & Weight */}
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
               <Ruler className="w-4 h-4 text-sky-500" />
@@ -750,7 +750,7 @@ export const BMIModule: React.FC = () => {
       </div>
 
       {/* Visual BMI Gauge & Spectrum Bar */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
           <Activity className="w-4 h-4 text-teal-600" />
           အာရှ-ပစိဖိတ် BMI စံသတ်မှတ်ချက် တိုင်းတာပြကွက် (Asian BMI Classification Spectrum)
@@ -818,7 +818,7 @@ export const BMIModule: React.FC = () => {
 
         {/* Current Assessment & Medical Advice */}
         {currentBMIResult && (
-          <div className={`mt-5 p-4 rounded-2xl border text-xs ${currentBMIResult.bgColor} ${currentBMIResult.borderColor}`}>
+          <div className={`mt-4 p-3 rounded-2xl border text-xs ${currentBMIResult.bgColor} ${currentBMIResult.borderColor}`}>
             <div className="flex items-start gap-2.5">
               <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${currentBMIResult.color}`} />
               <div className="space-y-1">
@@ -959,7 +959,7 @@ export const BMIModule: React.FC = () => {
       {/* DATA TABLE VIEW */}
       {(viewMode === 'both' || viewMode === 'table') && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 ကိုယ်အလေးချိန် နှင့် BMI မှတ်တမ်းများ (BMI History Log)
@@ -985,7 +985,7 @@ export const BMIModule: React.FC = () => {
           </div>
 
           {searchedBMI.length === 0 ? (
-            <div className="p-12 text-center">
+            <div className="p-6 text-center">
               <div className="w-12 h-12 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3">
                 <Scale className="w-6 h-6" />
               </div>
@@ -1108,8 +1108,8 @@ export const BMIModule: React.FC = () => {
       {/* Modal 1: Add BMI Record */}
       {isOpenAdd && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-4 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
                   <Scale className="w-4 h-4" />
@@ -1131,7 +1131,7 @@ export const BMIModule: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitRecord} className="mt-4 space-y-4">
+            <form onSubmit={handleSubmitRecord} className="mt-3 space-y-3">
               {/* Height input with unit switch */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -1292,7 +1292,7 @@ export const BMIModule: React.FC = () => {
 
               {/* Live BMI Calculation Box */}
               {liveModalBMI && (
-                <div className={`p-4 rounded-2xl border text-xs ${liveModalBMI.bgColor} ${liveModalBMI.borderColor}`}>
+                <div className={`p-3 rounded-2xl border text-xs ${liveModalBMI.bgColor} ${liveModalBMI.borderColor}`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-slate-600 dark:text-slate-300">
                       တွက်ချက်ရရှိသော BMI:
@@ -1348,8 +1348,8 @@ export const BMIModule: React.FC = () => {
       {/* Modal 2: Edit Profile / Date of Birth / Age */}
       {isOpenEditProfile && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-4 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
                   <Calendar className="w-4 h-4" />
@@ -1371,7 +1371,7 @@ export const BMIModule: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="mt-4 space-y-4">
+            <form onSubmit={handleSaveProfile} className="mt-3 space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
                   မွေးသက္ကရာဇ် (Date of Birth)

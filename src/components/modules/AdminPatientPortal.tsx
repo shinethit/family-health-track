@@ -87,7 +87,6 @@ export const AdminPatientPortal: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCondition, setFilterCondition] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showQuotaDetails, setShowQuotaDetails] = useState(true);
 
   // Admin tool panels — collapsed by default; the user list is the daily job.
   const [openTools, setOpenTools] = useState<{ repair: boolean; roles: boolean; broadcast: boolean }>({
@@ -392,12 +391,12 @@ export const AdminPatientPortal: React.FC = () => {
       )}
 
       {/* 1. Firestore Quota & Live Database Statistics */}
+      {/* v2.4.24: stats are always shown now (one compact card), so the
+          collapse toggle and its state are gone. */}
       <AdminQuotaBanner
         dbStats={dbStats}
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
-        showQuotaDetails={showQuotaDetails}
-        onToggleQuotaDetails={() => setShowQuotaDetails(!showQuotaDetails)}
       />
 
       {/* 1b. Data Repair — ရှိပြီးသား မှတ်တမ်းဟောင်းတွေရဲ့ patientEmail ပြင်ဆင်ခြင်း */}

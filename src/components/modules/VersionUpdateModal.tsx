@@ -49,12 +49,12 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
       size="md"
       showHeader={false}
     >
-      <div className="p-4">
+      <div className="p-3">
         <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 mx-auto">
           <Sparkles className="w-6 h-6 animate-pulse" />
         </div>
 
-        <h3 className="text-lg font-bold text-center text-slate-900 dark:text-white">
+        <h3 className="text-base font-bold text-center text-slate-900 dark:text-white">
           {pendingReload ? '🎉 ဗားရှင်းအသစ် ရပါပြီ!' : '🎉 အက်ပ်ဗားရှင်းအသစ်သို့ တင်မြှင့်ပြီးပါပြီ!'}
         </h3>
         <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-1">
@@ -78,7 +78,7 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
             3. the honest note — never the OLD version's highlights as the
                new version's (v2.4.16, H-H1; v2.4.20 ?? null rule). */}
         {servedHighlights ? (
-          <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs text-slate-700 dark:text-slate-300 max-h-64 overflow-y-auto">
+          <div className="mt-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs text-slate-700 dark:text-slate-300 max-h-64 overflow-y-auto">
             <div className="font-bold flex items-center gap-1.5 text-teal-700 dark:text-teal-300 text-xs">
               <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping shrink-0" />
               <span>{servedHighlights.title}</span>
@@ -94,7 +94,7 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
             </ul>
           </div>
         ) : currentVersionInfo ? (
-          <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs text-slate-700 dark:text-slate-300 max-h-64 overflow-y-auto">
+          <div className="mt-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3 text-xs text-slate-700 dark:text-slate-300 max-h-64 overflow-y-auto">
             <div className="font-bold flex items-center gap-1.5 text-teal-700 dark:text-teal-300 text-xs">
               <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping shrink-0" />
               <span>{currentVersionInfo.title}</span>
@@ -119,7 +119,7 @@ export const VersionUpdateModal: React.FC<VersionUpdateModalProps> = ({
             </div>
           </div>
         ) : (
-          <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 text-center">
+          <div className="mt-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 text-center">
             ဗားရှင်းအသစ်မှာ ဘာတွေ ပါလဲ ဆိုတာ ပြန်ဖွင့်ပြီးမှ Version History မှာ ကြည့်နိုင်ပါသည်။
           </div>
         )}

@@ -136,19 +136,19 @@ export const DermatologyModule: React.FC = () => {
   );
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-6">
+    <div className="space-y-3 max-w-7xl mx-auto pb-4">
       {/* Top Dermatology Banner */}
-      <div className="bg-gradient-to-r from-rose-700 via-pink-700 to-purple-800 rounded-2xl p-4 sm:p-5 text-white shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-rose-700 via-pink-700 to-purple-800 rounded-2xl p-3 sm:p-4 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-6 -translate-y-6 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="px-2.5 py-0.5 rounded-full bg-rose-400/20 text-rose-200 text-xs font-bold border border-rose-300/30 flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5" /> Dermatology & Beauty Health
               </span>
             </div>
-            <h1 className="text-lg font-extrabold tracking-tight">
+            <h1 className="text-base font-extrabold tracking-tight">
               အရေပြား ကျန်းမာရေးနှင့် မြန်မာ့ရာသီဥတု အလှအပ ထိန်းသိမ်းနည်း
             </h1>
             <p className="text-rose-100 text-xs sm:text-sm mt-1 max-w-2xl">
@@ -197,8 +197,8 @@ export const DermatologyModule: React.FC = () => {
       {/* 1. SKIN TYPE QUIZ TAB */}
       {/* ========================================================================= */}
       {activeTab === 'quiz' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs max-w-3xl mx-auto">
+        <div className="space-y-3">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs max-w-3xl mx-auto">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
               <Sparkles className="w-5 h-5 text-rose-600" />
               <div>
@@ -208,9 +208,9 @@ export const DermatologyModule: React.FC = () => {
             </div>
 
             {!quizResult ? (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {quizQuestions.map((q) => (
-                  <div key={q.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                  <div key={q.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                     <p className="font-bold text-slate-800 text-xs sm:text-sm">{q.id}။ {q.question}</p>
                     <div className="space-y-1.5">
                       {q.options.map((opt, i) => (
@@ -246,7 +246,7 @@ export const DermatologyModule: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="text-center py-6 space-y-4">
+              <div className="text-center py-4 space-y-3">
                 <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-inner">
                   <Heart className="w-8 h-8 fill-rose-500" />
                 </div>
@@ -263,7 +263,7 @@ export const DermatologyModule: React.FC = () => {
                   </h3>
                 </div>
 
-                <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-950 text-left space-y-2 max-w-xl mx-auto">
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-950 text-left space-y-2 max-w-xl mx-auto">
                   <p className="font-bold">အကြံပြု Skincare အစီအစဉ်:</p>
                   <ul className="list-disc list-inside space-y-1 text-slate-700">
                     {quizResult === 'dry' && (
@@ -314,8 +314,8 @@ export const DermatologyModule: React.FC = () => {
       {/* 2. MOLE ABCDE CHECKER TAB */}
       {/* ========================================================================= */}
       {activeTab === 'abcde' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs max-w-3xl mx-auto space-y-4">
+        <div className="space-y-3">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs max-w-3xl mx-auto space-y-3">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
               <div>
@@ -354,7 +354,7 @@ export const DermatologyModule: React.FC = () => {
               ))}
             </div>
 
-            <div className={`p-4 rounded-xl border text-xs font-bold ${
+            <div className={`p-3 rounded-xl border text-xs font-bold ${
               abcdeRiskCount >= 2 
                 ? 'bg-rose-100 border-rose-300 text-rose-900' 
                 : 'bg-emerald-50 border-emerald-200 text-emerald-900'
@@ -377,8 +377,8 @@ export const DermatologyModule: React.FC = () => {
       {/* 3. COMMON SKIN CONDITIONS TAB */}
       {/* ========================================================================= */}
       {activeTab === 'conditions' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+        <div className="space-y-3">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">အဖြစ်များသော အရေပြား ရောဂါများနှင့် ကုသနည်း</h3>
@@ -397,9 +397,9 @@ export const DermatologyModule: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {filteredConditions.map(item => (
-                <div key={item.id} className="p-4 rounded-xl border border-slate-200 hover:border-rose-300 transition-all bg-white space-y-2">
+                <div key={item.id} className="p-3 rounded-xl border border-slate-200 hover:border-rose-300 transition-all bg-white space-y-2">
                   <div className="flex items-center justify-between">
                     <h4 className="font-extrabold text-slate-900 text-sm">{item.nameMm}</h4>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
@@ -430,10 +430,10 @@ export const DermatologyModule: React.FC = () => {
       {/* 4. MYANMAR CLIMATE SKINCARE TAB */}
       {/* ========================================================================= */}
       {activeTab === 'climate' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
               <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
                 <Sun className="w-5 h-5" /> မြန်မာ့နွေရာသီ နေရောင်ခြည် (UV) ကာကွယ်ရေး
               </div>
@@ -447,7 +447,7 @@ export const DermatologyModule: React.FC = () => {
               </ul>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
               <div className="flex items-center gap-2 text-rose-600 font-bold text-sm">
                 <Droplets className="w-5 h-5" /> မိုးရာသီ/စိုစွတ်မှုနှင့် မှိုပိုးမဖြစ်အောင် ထိန်းသိမ်းနည်း
               </div>

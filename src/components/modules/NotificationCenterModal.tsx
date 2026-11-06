@@ -340,7 +340,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
           {/* If in Reminders Tab, show custom scheduled reminders */}
           {activeTab === 'reminders' ? (
             <div className="space-y-3">
@@ -351,7 +351,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
               {/* v2.4.16 (F-M9): empty state — a clear message, not a blank list. */}
               {customReminders.length === 0 ? (
-                <div className="text-center py-12 text-slate-400">
+                <div className="text-center py-8 text-slate-400">
                   <Bell className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-700 stroke-1" />
                   <p className="font-medium text-sm text-slate-700 dark:text-slate-300">Reminder မသတ်မှတ်ရသေးပါ</p>
                   <p className="text-xs text-slate-400 mt-1">
@@ -368,7 +368,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               customReminders.map(rem => (
                 <div 
                   key={rem.id}
-                  className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                  className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                     rem.isActive 
                       ? 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700' 
                       : 'bg-slate-100/50 dark:bg-slate-900/40 border-slate-200/50 opacity-60'
@@ -439,7 +439,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           ) : (
             // Notifications List
             filteredNotifications.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">
+              <div className="text-center py-8 text-slate-400">
                 <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-slate-300 dark:text-slate-700 stroke-1" />
                 <p className="font-medium text-sm">သတိပေးချက်အသစ် မရှိသေးပါ</p>
                 <p className="text-xs text-slate-400 mt-1">
@@ -463,7 +463,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               filteredNotifications.map(item => (
                 <div
                   key={item.id}
-                  className={`p-4 rounded-2xl border transition-all relative ${
+                  className={`p-3 rounded-2xl border transition-all relative ${
                     item.read 
                       ? 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800/80 opacity-75' 
                       : 'bg-emerald-50/40 dark:bg-slate-800/80 border-emerald-200/80 dark:border-emerald-800/50 shadow-xs'
@@ -574,7 +574,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
         {/* Add / Edit Reminder Panel (v2.4.16 F-H1: one panel serves both) */}
         {showAddReminderModal && (
-          <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850">
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850">
             <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-3 flex items-center gap-2">
               <Plus className="w-4 h-4 text-emerald-500" />
               {editingReminder ? 'Reminder ပြင်ဆင်ရန်' : 'Reminder အသစ် သတ်မှတ်ရန်'}
@@ -707,7 +707,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           title="Reminder ဖျက်မည်"
           size="sm"
         >
-          <div className="p-5 space-y-4 text-sm text-slate-700 dark:text-slate-300">
+          <div className="p-4 space-y-3 text-sm text-slate-700 dark:text-slate-300">
             <p className="leading-relaxed">
               <strong className="text-slate-900 dark:text-white break-words">“{pendingDeleteReminder?.title}”</strong>
               {' '}({pendingDeleteReminder ? formatDaysMm(pendingDeleteReminder.daysOfWeek) : ''} {pendingDeleteReminder?.time})
@@ -740,7 +740,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           title="သတိပေးချက် အားလုံး ဖျက်မည်"
           size="sm"
         >
-          <div className="p-5 space-y-4 text-sm text-slate-700 dark:text-slate-300">
+          <div className="p-4 space-y-3 text-sm text-slate-700 dark:text-slate-300">
             <p className="leading-relaxed">
               သတိပေးချက် မှတ်တမ်း <strong className="text-slate-900 dark:text-white">{notifications.length} ခု</strong> လုံးကို ဖျက်လိုက်မှာလား? ဖျက်ပြီးရင် ပြန်ရတော့မှာ မဟုတ်ပါဘူး။
             </p>

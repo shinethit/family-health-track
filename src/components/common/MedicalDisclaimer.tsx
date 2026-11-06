@@ -39,7 +39,7 @@ export const MedicalDisclaimer: React.FC<MedicalDisclaimerProps> = ({
   }
 
   return (
-    <div className={`mt-6 p-4 rounded-3xl bg-amber-50/70 border border-amber-200/90 text-amber-950 text-xs leading-relaxed shadow-2xs ${className}`}>
+    <div className={`mt-4 p-3 rounded-3xl bg-amber-50/70 border border-amber-200/90 text-amber-950 text-xs leading-relaxed shadow-2xs ${className}`}>
       <div className="flex items-center gap-2 font-extrabold text-amber-900 text-xs mb-1.5">
         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
         <span>⚠️ အရေးကြီး ဆေးဘက်ဆိုင်ရာ သတိပေးချက် (Medical Disclaimer)</span>

@@ -287,7 +287,7 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
       size="md"
       title={titleHeader}
     >
-      <div className="p-4 sm:p-5 space-y-3 text-xs">
+      <div className="p-3 sm:p-4 space-y-3 text-xs">
         {error && (
           <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-xs text-rose-700 dark:text-rose-400 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -302,7 +302,7 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ isOpen, on
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-3 text-xs">
           <div>
             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
               အမည် *
